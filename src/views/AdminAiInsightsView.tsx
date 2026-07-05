@@ -345,15 +345,16 @@ export const AdminAiInsightsView: React.FC = () => {
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#070B1B',
     minHeight: '100vh',
+    backgroundImage: 'radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 28%), radial-gradient(circle at bottom right, rgba(251, 191, 36, 0.1), transparent 22%)',
   },
   header: {
     padding: 'calc(24px + var(--safe-area-top)) 24px 16px 24px',
-    background: 'rgba(250, 250, 250, 0.85)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-    borderBottom: '1px solid rgba(0, 0, 0, 0.03)',
+    background: 'rgba(8, 12, 30, 0.88)',
+    backdropFilter: 'blur(22px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(22px) saturate(180%)',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
     position: 'sticky',
     top: 0,
     zIndex: 10,
@@ -402,22 +403,23 @@ const styles: { [key: string]: React.CSSProperties } = {
   /* SEARCH BAR */
   searchBar: {
     width: '100%',
-    padding: '12px 16px',
-    borderRadius: '14px',
-    border: '1px solid rgba(0,0,0,0.08)',
+    padding: '14px 18px',
+    borderRadius: '16px',
+    border: '1px solid rgba(255,255,255,0.12)',
     outline: 'none',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    color: 'var(--dark-charcoal)',
     fontSize: '12.5px',
     fontFamily: 'var(--font-family)',
   },
 
   /* HERO HEALTH CARD */
   heroCard: {
-    padding: '20px',
-    backgroundColor: 'rgba(255, 255, 255, 0.55)',
-    border: '1.5px solid rgba(255, 255, 255, 0.7)',
-    boxShadow: 'var(--shadow-md)',
-    borderRadius: '24px',
+    padding: '24px',
+    backgroundColor: 'rgba(15, 23, 42, 0.84)',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    boxShadow: '0 18px 48px rgba(0, 0, 0, 0.28)',
+    borderRadius: '28px',
   },
   heroHeader: {
     display: 'flex',
@@ -452,7 +454,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   heroLine: {
     width: '100%',
     height: '1px',
-    backgroundColor: 'rgba(0,0,0,0.03)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     margin: '16px 0',
   },
   summaryList: {
@@ -488,10 +490,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '10px',
   },
   quickCard: {
-    padding: '12px 6px',
-    backgroundColor: 'rgba(255,255,255,0.45)',
-    border: '1px solid rgba(0,0,0,0.03)',
-    borderRadius: '16px',
+    padding: '16px 14px',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '20px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -517,10 +519,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '16px',
   },
   chartCard: {
-    padding: '16px',
-    backgroundColor: 'rgba(255,255,255,0.45)',
-    border: '1px solid rgba(0,0,0,0.03)',
-    borderRadius: '20px',
+    padding: '18px',
+    backgroundColor: 'rgba(15, 23, 42, 0.82)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '24px',
   },
   chartTitle: {
     fontSize: '11px',
@@ -585,10 +587,10 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   scrollItemCard: {
     minWidth: '170px',
-    padding: '12px 14px',
-    backgroundColor: 'rgba(255,255,255,0.45)',
-    border: '1px solid rgba(0,0,0,0.03)',
-    borderRadius: '16px',
+    padding: '14px 16px',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '18px',
   },
   scrollItemHeader: {
     display: 'flex',
@@ -641,10 +643,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: 'var(--muted-gray)',
   },
   actionBtnOutline: {
-    padding: '8px 14px',
-    borderRadius: '10px',
-    border: '1px solid rgba(0,0,0,0.05)',
-    backgroundColor: '#fff',
+    padding: '10px 16px',
+    borderRadius: '12px',
+    border: '1px solid rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     fontSize: '11px',
     fontWeight: 750,
     color: 'var(--dark-charcoal)',
@@ -654,10 +656,10 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   /* TIMELINE TIMELINE */
   activityCard: {
-    padding: '16px 20px',
-    backgroundColor: 'rgba(255,255,255,0.45)',
-    border: '1px solid rgba(0,0,0,0.03)',
-    borderRadius: '20px',
+    padding: '18px 22px',
+    backgroundColor: 'rgba(15, 23, 42, 0.82)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '24px',
   },
   activityTimeline: {
     display: 'flex',
@@ -695,8 +697,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    border: '1.5px solid rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'rgba(15, 23, 42, 0.96)',
+    border: '1.5px solid rgba(212, 175, 55, 0.25)',
     boxShadow: 'var(--shadow-lg)',
     borderRadius: '16px',
   },
