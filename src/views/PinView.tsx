@@ -126,10 +126,8 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
           <p style={styles.subtitle}>
             {portalRole === 'student'
               ? 'Inspire Junior College Student Portal'
-              : portalRole === 'parent'
-              ? 'Inspire Junior College Parent Portal'
               : portalRole === 'faculty'
-              ? 'Inspire Junior College Faculty Portal'
+              ? 'Inspire Junior College Teacher Portal'
               : 'Inspire Junior College Admin Portal'}
           </p>
 
@@ -137,10 +135,10 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
           <div style={{
             display: 'flex',
             backgroundColor: 'rgba(0, 0, 0, 0.04)',
-            borderRadius: '12px',
+            borderRadius: '14px',
             padding: '2px',
-            marginTop: '16px',
-            width: '340px',
+            marginTop: '18px',
+            width: '360px',
             marginLeft: 'auto',
             marginRight: 'auto',
             border: '1px solid rgba(0, 0, 0, 0.03)'
@@ -149,74 +147,55 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
               onClick={() => { setPortalRole('student'); setPin(''); }}
               style={{
                 flex: 1,
-                padding: '8px 0',
-                borderRadius: '10px',
+                padding: '10px 0',
+                borderRadius: '12px',
                 border: 'none',
                 fontFamily: 'var(--font-family)',
-                fontSize: '9.5px',
+                fontSize: '10px',
                 fontWeight: 800,
                 cursor: 'pointer',
-                backgroundColor: portalRole === 'student' ? 'var(--white)' : 'transparent',
-                color: portalRole === 'student' ? 'var(--royal-gold)' : 'var(--muted-gray)',
+                backgroundColor: portalRole === 'student' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                color: portalRole === 'student' ? '#0F172A' : 'var(--muted-gray)',
                 boxShadow: portalRole === 'student' ? 'var(--shadow-sm)' : 'none',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s ease'
               }}
             >
               Student
             </button>
             <button
-              onClick={() => { setPortalRole('parent'); setPin(''); }}
-              style={{
-                flex: 1,
-                padding: '8px 0',
-                borderRadius: '10px',
-                border: 'none',
-                fontFamily: 'var(--font-family)',
-                fontSize: '9.5px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                backgroundColor: portalRole === 'parent' ? 'var(--white)' : 'transparent',
-                color: portalRole === 'parent' ? 'var(--royal-gold)' : 'var(--muted-gray)',
-                boxShadow: portalRole === 'parent' ? 'var(--shadow-sm)' : 'none',
-                transition: 'all 0.2s'
-              }}
-            >
-              Parent
-            </button>
-            <button
               onClick={() => { setPortalRole('faculty'); setPin(''); }}
               style={{
                 flex: 1,
-                padding: '8px 0',
-                borderRadius: '10px',
+                padding: '10px 0',
+                borderRadius: '12px',
                 border: 'none',
                 fontFamily: 'var(--font-family)',
-                fontSize: '9.5px',
+                fontSize: '10px',
                 fontWeight: 800,
                 cursor: 'pointer',
-                backgroundColor: portalRole === 'faculty' ? 'var(--white)' : 'transparent',
-                color: portalRole === 'faculty' ? 'var(--royal-gold)' : 'var(--muted-gray)',
+                backgroundColor: portalRole === 'faculty' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                color: portalRole === 'faculty' ? '#0F172A' : 'var(--muted-gray)',
                 boxShadow: portalRole === 'faculty' ? 'var(--shadow-sm)' : 'none',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s ease'
               }}
             >
-              Faculty
+              Teacher
             </button>
             <button
               onClick={() => { setPortalRole('admin'); setPin(''); }}
               style={{
                 flex: 1,
-                padding: '8px 0',
-                borderRadius: '10px',
+                padding: '10px 0',
+                borderRadius: '12px',
                 border: 'none',
                 fontFamily: 'var(--font-family)',
-                fontSize: '9.5px',
+                fontSize: '10px',
                 fontWeight: 800,
                 cursor: 'pointer',
-                backgroundColor: portalRole === 'admin' ? 'var(--white)' : 'transparent',
-                color: portalRole === 'admin' ? 'var(--royal-gold)' : 'var(--muted-gray)',
+                backgroundColor: portalRole === 'admin' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                color: portalRole === 'admin' ? '#0F172A' : 'var(--muted-gray)',
                 boxShadow: portalRole === 'admin' ? 'var(--shadow-sm)' : 'none',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s ease'
               }}
             >
               Admin

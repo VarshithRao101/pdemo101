@@ -234,10 +234,39 @@
   }
 }
 
+@keyframes floatWave {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes colorPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(59, 130, 246, 0.04);
+  }
+}
+
 .shimmer-item {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.15) 25%, rgba(255, 255, 255, 0.35) 50%, rgba(255, 255, 255, 0.15) 75%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.1) 25%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 255, 255, 0.1) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.6s infinite linear;
+}
+
+.anim-float {
+  animation: floatWave 6s ease-in-out infinite;
+}
+
+.anim-glow {
+  animation: colorPulse 2.2s infinite ease-in-out;
 }
 
 /* Pulsating Notification Badge */

@@ -8,6 +8,7 @@ import { AcademicsView } from './AcademicsView';
 import { UpdatesView } from './UpdatesView';
 import { ProfileView } from './ProfileView';
 import { InspireLogo } from '../components/common/InspireLogo';
+import heroBackground from '../assets/hero.png';
 
 // --- PREMIUM SVG ICONS ---
 const SearchIcon = () => (
@@ -241,7 +242,7 @@ export const DashboardView: React.FC = () => {
     { type: 'fee', label: 'Fee Payments', sub: 'Payments & Receipts', Icon: FeePaymentsIconSvg },
     { type: 'attendance', label: 'Attendance', sub: 'View Daily Report', Icon: AttendanceIconSvg },
     { type: 'poll', label: 'Opinion Poll', sub: 'Share Feedback', Icon: OpinionPollIconSvg },
-    { type: 'contact', label: 'Parent Concerns', sub: 'Contact Support', Icon: ParentConcernsIconSvg },
+    { type: 'contact', label: 'Campus Support', sub: 'Contact Helpdesk', Icon: ParentConcernsIconSvg },
     { type: 'hostel', label: 'Wellness', sub: 'Boarding & Health', Icon: WellnessIconSvg },
     { type: 'leave', label: 'Gate Pass', sub: 'Apply Outing Pass', Icon: GatePassIconSvg, hasBadge: true },
     { type: 'events', label: 'Events & Gallery', sub: 'Campus Activities', Icon: EventsIconSvg },
@@ -582,6 +583,7 @@ export const DashboardView: React.FC = () => {
 
   return (
     <div className="view-container anim-slide-up" style={styles.container}>
+      <div style={styles.backgroundVisual} className="anim-float" />
       {/* Top Glass App Bar with Inspire Logo */}
       <header style={styles.appBar}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -757,7 +759,19 @@ export const DashboardView: React.FC = () => {
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    backgroundColor: '#FAFAFA',
+    position: 'relative',
+    backgroundColor: '#060817',
+    backgroundImage: `linear-gradient(180deg, rgba(6,8,23,0.88), rgba(12,18,32,0.90)), url(${heroBackground})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    overflow: 'hidden',
+  },
+  backgroundVisual: {
+    position: 'absolute',
+    inset: 0,
+    background: 'radial-gradient(circle at top left, rgba(59,130,246,0.16), transparent 24%), radial-gradient(circle at bottom right, rgba(251,191,36,0.12), transparent 18%), radial-gradient(circle at center right, rgba(239,68,68,0.10), transparent 22%)',
+    pointerEvents: 'none',
+    zIndex: 0,
   },
   appBar: {
     height: '72px',

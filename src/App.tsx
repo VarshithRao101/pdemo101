@@ -8,12 +8,6 @@ import { ProfileView } from './views/ProfileView';
 import { SplashView } from './views/SplashView';
 import { PinView } from './views/PinView';
 import {
-  ParentDashboardView,
-  ParentAcademicsView,
-  ParentUpdatesView,
-  ParentProfileView
-} from './views/ParentPortalViews';
-import {
   FacultyDashboardView,
   FacultyClassesView,
   FacultyUpdatesView,
@@ -40,21 +34,6 @@ const AppContent: React.FC = () => {
   }, []);
 
   const renderActiveView = () => {
-    if (portalRole === 'parent') {
-      switch (activeTab) {
-        case 'dashboard':
-          return <ParentDashboardView />;
-        case 'academics':
-          return <ParentAcademicsView />;
-        case 'updates':
-          return <ParentUpdatesView />;
-        case 'profile':
-          return <ParentProfileView />;
-        default:
-          return <ParentDashboardView />;
-      }
-    }
-
     if (portalRole === 'faculty') {
       switch (activeTab) {
         case 'dashboard':

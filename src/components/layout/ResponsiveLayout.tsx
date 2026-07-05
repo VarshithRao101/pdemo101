@@ -78,14 +78,14 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
         <div style={styles.sidebarFooter}>
           <div style={styles.userCard} className="glass-panel">
             <div style={styles.avatar} className="glass-gold-ring">
-              {portalRole === 'student' ? 'VR' : portalRole === 'parent' ? 'RR' : portalRole === 'faculty' ? 'SF' : 'DK'}
+              {portalRole === 'student' ? 'VR' : portalRole === 'faculty' ? 'SF' : 'DK'}
             </div>
             <div style={styles.userInfo}>
               <div style={styles.userName}>
-                {portalRole === 'student' ? 'Varshith Rao' : portalRole === 'parent' ? 'Mr. Rajesh Rao' : portalRole === 'faculty' ? 'Mr. Srinivas' : 'Dr. Ramesh Kumar'}
+                {portalRole === 'student' ? 'Varshith Rao' : portalRole === 'faculty' ? 'Mr. Srinivas' : 'Dr. Ramesh Kumar'}
               </div>
               <div style={styles.userRole}>
-                {portalRole === 'student' ? 'ID: IJC240145 • MPC' : portalRole === 'parent' ? 'Parent of Varshith' : portalRole === 'faculty' ? 'FAC-1045 • Physics' : 'Principal • Admin'}
+                {portalRole === 'student' ? 'ID: IJC240145 • MPC' : portalRole === 'faculty' ? 'FAC-1045 • Physics' : 'Principal • Admin'}
               </div>
             </div>
           </div>
