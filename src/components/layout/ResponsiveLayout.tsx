@@ -1,13 +1,7 @@
 import React, { useState, type ReactNode } from 'react';
-import { useNavigation, type TabType } from '../../context/NavigationContext';
+import { useNavigation } from '../../context/NavigationContext';
 import { FloatingBottomNav } from './FloatingBottomNav';
 import { InspireLogo } from '../common/InspireLogo';
-import {
-  DashboardIcon,
-  AcademicsIcon,
-  UpdatesIcon,
-  ProfileIcon,
-} from '../icons';
 
 interface ResponsiveLayoutProps {
   children: ReactNode;
@@ -716,81 +710,229 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
     );
   }
 
-  // Desktop Menu Items
-  const menuItems: { type: TabType; label: string; Icon: React.ComponentType<any> }[] = portalRole === 'admin' ? [
-    { type: 'dashboard', label: 'Dashboard', Icon: DashboardIcon },
-    { type: 'academics', label: 'Management', Icon: AcademicsIcon },
-    { type: 'updates', label: 'Reports', Icon: UpdatesIcon },
-    { type: 'profile', label: 'Profile', Icon: ProfileIcon },
-  ] : portalRole === 'faculty' ? [
-    { type: 'dashboard', label: 'Dashboard', Icon: DashboardIcon },
-    { type: 'academics', label: 'Classes', Icon: AcademicsIcon },
-    { type: 'updates', label: 'Broadcaster', Icon: UpdatesIcon },
-    { type: 'profile', label: 'Profile', Icon: ProfileIcon },
-  ] : [
-    { type: 'dashboard', label: 'Dashboard', Icon: DashboardIcon },
-    { type: 'academics', label: 'Academics Portal', Icon: AcademicsIcon },
-    { type: 'updates', label: 'Campus Updates', Icon: UpdatesIcon },
-    { type: 'profile', label: 'My Account', Icon: ProfileIcon },
-  ];
+
 
   return (
     <div style={styles.desktopContainer} className="anim-fade-in">
       {/* Left Sidebar Menu */}
-      <aside style={styles.sidebar} className="glass-panel">
-        <div style={styles.sidebarHeader}>
-          <InspireLogo size="md" />
+      <aside style={{
+        width: '260px',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '24px 16px',
+        backgroundColor: '#0c1938', // Dark blue navy from screenshot
+        borderRight: '1px solid rgba(255,255,255,0.08)',
+        zIndex: 100,
+        position: 'relative'
+      }}>
+        {/* User profile header card */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start',
+          padding: '20px 8px 8px 8px',
+        }}>
+          {/* Avatar Clickable to Go to Profile */}
+          <div
+            onClick={() => setActiveTab('profile')}
+            style={{
+              width: '68px',
+              height: '68px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1.5px solid rgba(255,255,255,0.15)',
+              marginBottom: '12px',
+              cursor: 'pointer'
+            }}
+            className="press-interactive"
+            title="View Profile"
+          >
+            <div style={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              backgroundColor: '#CBD5E1',
+              color: '#0c1938',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              fontWeight: 800,
+            }}>
+              PM
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
+            <h3
+              onClick={() => setActiveTab('profile')}
+              style={{
+                fontSize: '14.5px',
+                fontWeight: 800,
+                color: '#ffffff',
+                margin: 0,
+                cursor: 'pointer'
+              }}
+              className="press-interactive"
+              title="View Profile"
+            >
+              Polsani Manoneeth Rao
+            </h3>
+            <span style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>👤 2421604 &gt;</span>
+            <div style={{
+              fontSize: '10px',
+              fontWeight: 800,
+              color: 'var(--royal-gold)',
+              letterSpacing: '0.08em',
+              marginTop: '6px',
+              textTransform: 'uppercase'
+            }}>
+              INSPIRE JUNIOR COLLEGE
+            </div>
+          </div>
         </div>
 
+        <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '16px 0' }} />
+
         {/* Sidebar Nav Links */}
-        <nav style={styles.sidebarNav}>
-          {menuItems.map((item) => {
-            const isActive = activeTab === item.type;
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          flex: 1,
+          overflowY: 'auto',
+          paddingRight: '4px'
+        }} className="drawer-scrollbar">
+          {[
+            { label: 'Home', type: 'home', icon: <SvgHome />, action: () => setActiveTab('dashboard') },
+            { label: 'Add Sibling', type: 'sibling', icon: <SvgSibling />, action: () => setShowSiblingModal(true) },
+            { label: 'Notifications', type: 'notif', icon: <SvgBell />, action: () => setActiveTab('updates'), badge: 5 },
+            { label: 'About Us', type: 'about', icon: <SvgCrest />, action: () => setShowAboutModal(true) },
+            { label: 'Spotlight', type: 'spotlight', icon: <SvgStar />, action: () => setShowSpotlightModal(true) },
+            { label: 'Help & Feedback', type: 'feedback', icon: <SvgQuestion />, action: () => setActiveTab('profile') },
+            { label: 'Rate the App', type: 'rate', icon: <SvgStar />, action: () => setShowRateModal(true) },
+            { label: 'Contact Us', type: 'contact', icon: <SvgPhone />, action: () => setActiveTab('profile') },
+            { label: 'Settings', type: 'settings', icon: <SvgCog />, action: () => setShowSettingsModal(true) },
+          ].map((item, idx) => {
+            const isHomeActive = item.type === 'home' && activeTab === 'dashboard';
+            const isUpdatesActive = item.type === 'notif' && activeTab === 'updates';
+            const isProfileActive = (item.type === 'settings' || item.type === 'contact' || item.type === 'feedback') && activeTab === 'profile';
+            const isActive = isHomeActive || isUpdatesActive || isProfileActive;
             return (
               <button
-                key={item.type}
-                onClick={() => setActiveTab(item.type)}
+                key={idx}
+                onClick={item.action}
                 style={{
-                  ...styles.navLink,
-                  backgroundColor: isActive ? 'rgba(212, 175, 55, 0.08)' : 'transparent',
-                  borderColor: isActive ? 'rgba(212, 175, 55, 0.2)' : 'transparent',
-                  color: isActive ? 'var(--dark-charcoal)' : 'var(--muted-gray)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  width: '100%',
+                  textAlign: 'left',
+                  fontSize: '13px',
+                  fontFamily: 'var(--font-family)',
+                  transition: 'all 0.2s ease',
+                  backgroundColor: isActive ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+                  color: isActive ? '#3B82F6' : '#94A3B8',
+                  fontWeight: isActive ? 700 : 500,
+                  borderLeft: isActive ? '3px solid #3B82F6' : '3px solid transparent',
+                  position: 'relative'
                 }}
                 className="press-interactive"
               >
-                <item.Icon active={isActive} size={18} />
-                <span style={{ fontWeight: isActive ? 600 : 500 }}>{item.label}</span>
-                {isActive && <div style={styles.activeIndicator} />}
+                <span style={{ display: 'flex', alignItems: 'center', color: isActive ? '#3B82F6' : '#94A3B8' }}>{item.icon}</span>
+                <span style={{ flex: 1 }}>{item.label}</span>
+                {item.badge && (
+                  <span style={{
+                    backgroundColor: '#EF4444',
+                    color: '#fff',
+                    fontSize: '9px',
+                    fontWeight: 800,
+                    borderRadius: '50%',
+                    width: '15px',
+                    height: '15px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>{item.badge}</span>
+                )}
               </button>
             );
           })}
-        </nav>
+        </div>
 
-        {/* User Card at bottom of Sidebar */}
-        <div style={styles.sidebarFooter}>
-          <div style={styles.userCard} className="glass-panel">
-            <div style={styles.avatar} className="glass-gold-ring">
-              {portalRole === 'student' ? 'PM' : portalRole === 'faculty' ? 'SF' : 'DK'}
-            </div>
-            <div style={styles.userInfo}>
-              <div style={styles.userName}>
-                {portalRole === 'student' ? 'Polsani Manoneeth Rao' : portalRole === 'faculty' ? 'Mr. Srinivas' : 'Dr. Ramesh Kumar'}
-              </div>
-              <div style={styles.userRole}>
-                {portalRole === 'student' ? 'ID: 2421604 • MPC' : portalRole === 'faculty' ? 'FAC-1045 • Physics' : 'Principal • Admin'}
-              </div>
-            </div>
+        {/* Sidebar Footer */}
+        <div style={{ padding: '16px 8px 0 8px' }}>
+          <button
+            onClick={() => {
+              if ((window as any).logoutUser) (window as any).logoutUser();
+            }}
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.06)',
+              border: '1.5px solid rgba(255,255,255,0.1)',
+              borderRadius: '10px',
+              padding: '10px 14px',
+              color: '#ffffff',
+              fontSize: '12.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontFamily: 'var(--font-family)',
+              transition: 'all 0.2s ease'
+            }}
+            className="press-interactive"
+          >
+            👤 Switch Account
+          </button>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            marginTop: '16px',
+            opacity: 0.6
+          }}>
+            <div style={{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              border: '1.5px solid #fff',
+              color: '#fff',
+              fontSize: '11px',
+              fontWeight: 900,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>I</div>
+            <div style={{ fontSize: '11px', fontWeight: 800, color: '#fff', letterSpacing: '0.05em' }}>INSPIRE GROUP</div>
           </div>
         </div>
       </aside>
 
       {/* Main Content Area */}
       <main style={styles.mainContent}>
+        {/* Render Modals on Desktop */}
+        {showSiblingModal && renderSiblingModal()}
+        {showAboutModal && renderAboutModal()}
+        {showSpotlightModal && renderSpotlightModal()}
+        {showRateModal && renderRateModal()}
+        {showSettingsModal && renderSettingsModal()}
+
         {children}
       </main>
     </div>
   );
-};
+}
 
 const styles: { [key: string]: React.CSSProperties } = {
   mobileWrapper: {

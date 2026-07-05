@@ -131,7 +131,7 @@ export const DashboardView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const { setAcademicsTab, theme, setThemeMode, setIsDrawerOpen, isMobile } = useNavigation();
+  const { setAcademicsTab, theme, setThemeMode, setIsDrawerOpen, isMobile, setActiveTab } = useNavigation();
 
   // Poll state variables
   const [selectedPollOption, setSelectedPollOption] = useState<string | null>(null);
@@ -250,12 +250,12 @@ export const DashboardView: React.FC = () => {
     { type: 'fee', label: 'Fee Payments', sub: 'Payments & Receipts', Icon: FeePaymentsIconSvg, bgColor: 'linear-gradient(135deg, rgba(239,68,68,0.16), rgba(251,113,133,0.06))', iconBg: 'rgba(239,68,68,0.16)', iconColor: '#B91C1C' },
     { type: 'attendance', label: 'Attendance', sub: 'Daily Report', Icon: AttendanceIconSvg, bgColor: 'linear-gradient(135deg, rgba(59,130,246,0.16), rgba(93,173,238,0.06))', iconBg: 'rgba(59,130,246,0.16)', iconColor: '#1D4ED8' },
     { type: 'poll', label: 'Opinion Poll', sub: 'Share Feedback', Icon: OpinionPollIconSvg, bgColor: 'linear-gradient(135deg, rgba(168,85,247,0.16), rgba(192,132,252,0.06))', iconBg: 'rgba(168,85,247,0.16)', iconColor: '#7C3AED' },
-    { type: 'contact', label: 'Campus Support', sub: 'Contact Helpdesk', Icon: ParentConcernsIconSvg, bgColor: 'linear-gradient(135deg, rgba(14,165,233,0.16), rgba(56,189,248,0.06))', iconBg: 'rgba(14,165,233,0.16)', iconColor: '#0369A1' },
+    { type: 'contact', label: 'Parent Concerns', sub: 'Contact Helpdesk', Icon: ParentConcernsIconSvg, bgColor: 'linear-gradient(135deg, rgba(14,165,233,0.16), rgba(56,189,248,0.06))', iconBg: 'rgba(14,165,233,0.16)', iconColor: '#0369A1' },
     { type: 'hostel', label: 'Wellness', sub: 'Boarding & Health', Icon: WellnessIconSvg, bgColor: 'linear-gradient(135deg, rgba(34,197,94,0.16), rgba(134,239,172,0.06))', iconBg: 'rgba(34,197,94,0.16)', iconColor: '#15803D' },
     { type: 'leave', label: 'Gate Pass', sub: 'Apply Outing Pass', Icon: GatePassIconSvg, hasBadge: true, bgColor: 'linear-gradient(135deg, rgba(234,179,8,0.18), rgba(251,191,36,0.08))', iconBg: 'rgba(234,179,8,0.18)', iconColor: '#B45309' },
     { type: 'events', label: 'Events & Gallery', sub: 'Campus Activities', Icon: EventsIconSvg, bgColor: 'linear-gradient(135deg, rgba(249,115,22,0.16), rgba(251,191,36,0.06))', iconBg: 'rgba(249,115,22,0.16)', iconColor: '#C2410C' },
     { type: 'bus', label: 'Bus Tracking', sub: 'Transit Routes', Icon: BusTrackingIconSvg, bgColor: 'linear-gradient(135deg, rgba(14,165,233,0.14), rgba(59,130,246,0.06))', iconBg: 'rgba(14,165,233,0.14)', iconColor: '#0EA5E9' },
-    { type: 'assignments', label: 'Assignments', sub: 'Pending Tasks', Icon: AssignmentsIconSvg, bgColor: 'linear-gradient(135deg, rgba(234,88,12,0.16), rgba(251,146,60,0.06))', iconBg: 'rgba(234,88,12,0.16)', iconColor: '#C2410C' }
+    { type: 'assignments', label: 'Time Table', sub: 'Weekly Schedule', Icon: AssignmentsIconSvg, bgColor: 'linear-gradient(135deg, rgba(234,88,12,0.16), rgba(251,146,60,0.06))', iconBg: 'rgba(234,88,12,0.16)', iconColor: '#C2410C' }
   ];
 
   const searchSuggestions = [
@@ -727,42 +727,141 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* Right Side: Bell Icon & Desktop Theme Toggle */}
-        <div style={{ width: '40px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' }}>
-          {!isMobile && (
-            <button
-              onClick={() => setThemeMode(theme === 'light' ? 'Dark' : 'Light')}
-              style={styles.appBarBtn}
-              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
-              className="press-interactive"
-            >
-              {theme === 'light' ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        {/* Right Side: Bell Icon & Desktop Theme Toggle & Profile Button */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
+          {!isMobile ? (
+            <>
+              {/* Sun/Moon Toggle */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                backgroundColor: theme === 'light' ? '#E2E8F0' : '#1E293B',
+                borderRadius: '20px',
+                padding: '2px',
+                border: '1.5px solid var(--card-border)',
+                gap: '2px',
+                marginRight: '8px'
+              }}>
+                <button
+                  onClick={() => setThemeMode('Light')}
+                  style={{
+                    background: theme === 'light' ? '#fff' : 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    borderRadius: '50%',
+                    width: '28px',
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    color: theme === 'light' ? '#F59E0B' : '#64748B',
+                    boxShadow: theme === 'light' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                  className="press-interactive"
+                  title="Light Theme"
+                >
+                  ☀️
+                </button>
+                <button
+                  onClick={() => setThemeMode('Dark')}
+                  style={{
+                    background: theme === 'dark' ? '#0F172A' : 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    borderRadius: '50%',
+                    width: '28px',
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    color: theme === 'dark' ? '#FBBF24' : '#64748B',
+                    boxShadow: theme === 'dark' ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                  }}
+                  className="press-interactive"
+                  title="Dark Theme"
+                >
+                  🌙
+                </button>
+              </div>
+
+              {/* Notification Bell */}
+              <button
+                onClick={() => setSubPage('notifications')}
+                style={{
+                  ...styles.appBarBtn,
+                  position: 'relative',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '6px',
+                  marginRight: '8px'
+                }}
+                className="press-interactive"
+                aria-label="Notifications"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#FBBF24" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="5" />
-                  <line x1="12" y1="1" x2="12" y2="3" />
-                  <line x1="12" y1="21" x2="12" y2="23" />
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                  <line x1="1" y1="12" x2="3" y2="12" />
-                  <line x1="21" y1="12" x2="23" y2="12" />
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                </svg>
-              )}
+                <div style={{
+                  ...styles.badge,
+                  position: 'absolute',
+                  top: '2px',
+                  right: '2px',
+                  backgroundColor: '#EF4444',
+                  color: '#fff',
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  borderRadius: '50%',
+                  width: '15px',
+                  height: '15px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }} className="pulse-badge">5</div>
+              </button>
+
+              {/* Profile Avatar Button */}
+              <button
+                onClick={() => setActiveTab('profile')}
+                style={{
+                  background: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#CBD5E1',
+                  color: '#0F172A',
+                  fontWeight: 800,
+                  fontSize: '12px',
+                  border: '1.5px solid var(--card-border)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+                className="press-interactive"
+                title="My Profile"
+              >
+                PM
+              </button>
+            </>
+          ) : (
+            /* Mobile controls */
+            <button onClick={() => setSubPage('notifications')} style={styles.appBarBtn} className="press-interactive" aria-label="Notifications">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="#FBBF24" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <div style={styles.badge} className="pulse-badge">3</div>
             </button>
           )}
-
-          <button onClick={() => setSubPage('notifications')} style={styles.appBarBtn} className="press-interactive" aria-label="Notifications">
-            {/* Flat yellow bell icon */}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="#FBBF24" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-            <div style={styles.badge} className="pulse-badge">3</div>
-          </button>
         </div>
       </header>
 
@@ -782,36 +881,120 @@ export const DashboardView: React.FC = () => {
           <span style={styles.searchShortcutBadge}>Search</span>
         </div>
 
-        {/* WELCOME GOLD AVATAR CARD */}
-        <GlassCard hoverable={false} style={styles.welcomeCard}>
-          <div style={styles.welcomeLeft}>
-            <div style={styles.userAvatarContainer} className="glass-gold-ring" onClick={() => setSubPage('profile')}>
-              <div style={styles.userAvatar}>PM</div>
-            </div>
-            <div style={styles.welcomeDetails} onClick={() => setSubPage('profile')}>
-              <span style={styles.greetingText}>Good Evening,</span>
-              <h2 style={styles.studentName}>Polsani Manoneeth Rao</h2>
-              <div style={styles.detailsRow}>
-                <span style={styles.detailLabel}>ID:</span>
-                <span style={styles.detailVal}>2421604</span>
+        {/* WELCOME BLOCK: Split side-by-side on desktop, single card on mobile */}
+        {!isMobile ? (
+          <div style={{ display: 'flex', gap: '20px', marginBottom: '8px' }}>
+            {/* Left Card: Welcome / Profile details */}
+            <GlassCard hoverable={false} style={{ flex: 3, display: 'flex', alignItems: 'center', gap: '24px', padding: '24px' }}>
+              <div style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                backgroundColor: '#CBD5E1',
+                color: '#0c1938',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '28px',
+                fontWeight: 800,
+                border: '2px solid var(--card-border)'
+              }}>
+                PM
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+                <span style={{ fontSize: '14px', color: 'var(--muted-gray)' }}>Good evening,</span>
+                <h2 style={{ fontSize: '22px', fontWeight: 850, color: '#3B82F6', margin: 0 }}>Polsani Manoneeth Rao</h2>
+                <div style={{ fontSize: '13px', color: 'var(--muted-gray)' }}>
+                  S/O <strong style={{ color: 'var(--dark-charcoal)' }}>Sridhar Rao</strong>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--muted-gray)', flexWrap: 'wrap' }}>
+                  <span>🆔 2421604</span>
+                  <span>•</span>
+                  <span>JR/1-PUC/XI - MPC - CO-SUPER CHAINA - 1331</span>
+                </div>
+                <div style={{
+                  marginTop: '8px',
+                  fontSize: '11px',
+                  fontWeight: 900,
+                  color: 'var(--royal-gold)',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase'
+                }}>INSPIRE JUNIOR COLLEGE</div>
+              </div>
+            </GlassCard>
+
+            {/* Right Card: News Carousel Highlights */}
+            <GlassCard hoverable={false} style={{ flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>What's New</span>
+                  <span style={{
+                    fontSize: '9px',
+                    fontWeight: 800,
+                    color: '#22C55E',
+                    backgroundColor: 'rgba(34,197,94,0.1)',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(34,197,94,0.2)'
+                  }}>NEW</span>
+                </div>
+                <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--dark-charcoal)', margin: '0 0 6px 0', textAlign: 'left' }}>
+                  Check out what's new at Inspire Junior College.
+                </h3>
+                <span style={{ fontSize: '12px', color: 'var(--muted-gray)', display: 'block', textAlign: 'left' }}>5th July, 2026</span>
+              </div>
+              <button
+                onClick={() => setSubPage('notifications')}
+                style={{
+                  alignSelf: 'flex-end',
+                  background: 'none',
+                  border: 'none',
+                  color: '#3B82F6',
+                  fontWeight: 800,
+                  fontSize: '12.5px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  marginTop: '12px'
+                }}
+                className="press-interactive"
+              >
+                View All ➔
+              </button>
+            </GlassCard>
+          </div>
+        ) : (
+          <GlassCard hoverable={false} style={styles.welcomeCard}>
+            <div style={styles.welcomeLeft}>
+              <div style={styles.userAvatarContainer} className="glass-gold-ring" onClick={() => setSubPage('profile')}>
+                <div style={styles.userAvatar}>PM</div>
+              </div>
+              <div style={styles.welcomeDetails} onClick={() => setSubPage('profile')}>
+                <span style={styles.greetingText}>Good Evening,</span>
+                <h2 style={styles.studentName}>Polsani Manoneeth Rao</h2>
+                <div style={styles.detailsRow}>
+                  <span style={styles.detailLabel}>ID:</span>
+                  <span style={styles.detailVal}>2421604</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div style={styles.qrContainer} className="press-interactive" onClick={() => setSubPage('profile')}>
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="url(#goldGradientQR)" strokeWidth="1.5">
-              <defs>
-                <linearGradient id="goldGradientQR" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#E5C158" />
-                  <stop offset="100%" stopColor="#C5A880" />
-                </linearGradient>
-              </defs>
-              <rect x="3" y="3" width="6" height="6" rx="1" />
-              <rect x="15" y="3" width="6" height="6" rx="1" />
-              <rect x="3" y="15" width="6" height="6" rx="1" />
-              <path d="M19 19v-4h-4v4h4zm-4-4h-2M15 11h2M11 15h2" />
-            </svg>
-          </div>
-        </GlassCard>
+            <div style={styles.qrContainer} className="press-interactive" onClick={() => setSubPage('profile')}>
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="url(#goldGradientQR)" strokeWidth="1.5">
+                <defs>
+                  <linearGradient id="goldGradientQR" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#E5C158" />
+                    <stop offset="100%" stopColor="#C5A880" />
+                  </linearGradient>
+                </defs>
+                <rect x="3" y="3" width="6" height="6" rx="1" />
+                <rect x="15" y="3" width="6" height="6" rx="1" />
+                <rect x="3" y="15" width="6" height="6" rx="1" />
+                <path d="M19 19v-4h-4v4h4zm-4-4h-2M15 11h2M11 15h2" />
+              </svg>
+            </div>
+          </GlassCard>
+        )}
 
         {/* SMART DASHBOARD SYSTEM (ROTATING CAROUSEL) */}
         <section style={styles.section} className="anim-scale-in">
@@ -861,10 +1044,13 @@ export const DashboardView: React.FC = () => {
           </GlassCard>
         </section>
 
-        {/* 12 GRID ITEMS LAYOUT (3 columns x 4 rows) */}
+        {/* 12 GRID ITEMS LAYOUT (3 columns x 4 rows or 6 columns x 2 rows on desktop) */}
         <section style={styles.section} className="anim-slide-up stagger-1">
           <h3 style={styles.sectionTitle}>Academic Portal</h3>
-          <div style={styles.grid}>
+          <div style={{
+            ...styles.grid,
+            gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)'
+          }}>
             {gridItems.map((item, idx) => (
               <GlassCard
                 key={item.type}
@@ -911,9 +1097,157 @@ export const DashboardView: React.FC = () => {
                   <item.Icon />
                 </div>
                 <h3 style={{ ...styles.gridTitle, color: item.iconColor }}>{item.label}</h3>
-                <span style={{ ...styles.gridSubtitle, color: 'var(--muted-gray)' }}>{item.sub}</span>
+                {isMobile && (
+                  <span style={{ ...styles.gridSubtitle, color: 'var(--muted-gray)' }}>{item.sub}</span>
+                )}
               </GlassCard>
             ))}
+          </div>
+        </section>
+
+        {/* QUICK OVERVIEW BLOCK */}
+        <section style={styles.section} className="anim-slide-up stagger-2">
+          <h3 style={styles.sectionTitle}>Quick Overview</h3>
+          <div style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: '16px',
+            flexWrap: 'wrap'
+          }}>
+            {/* Card 1: Attendance */}
+            <div style={{
+              flex: 1,
+              minWidth: '180px',
+              borderRadius: '16px',
+              border: '2px solid var(--card-border)',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)',
+              color: '#FFFFFF',
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxShadow: 'var(--shadow-sm)',
+              position: 'relative',
+              overflow: 'hidden',
+              minHeight: '110px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, opacity: 0.85, textTransform: 'uppercase' }}>Attendance</span>
+                <span style={{ fontSize: '16px' }}>📊</span>
+              </div>
+              <div style={{ textAlign: 'left', marginTop: '12px' }}>
+                <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>92%</h4>
+                <span style={{ fontSize: '11px', opacity: 0.8 }}>This Month</span>
+              </div>
+            </div>
+
+            {/* Card 2: Average Score */}
+            <div style={{
+              flex: 1,
+              minWidth: '180px',
+              borderRadius: '16px',
+              border: '2px solid var(--card-border)',
+              background: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)',
+              color: '#FFFFFF',
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxShadow: 'var(--shadow-sm)',
+              position: 'relative',
+              overflow: 'hidden',
+              minHeight: '110px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, opacity: 0.85, textTransform: 'uppercase' }}>Average Score</span>
+                <span style={{ fontSize: '16px' }}>📈</span>
+              </div>
+              <div style={{ textAlign: 'left', marginTop: '12px' }}>
+                <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>84%</h4>
+                <span style={{ fontSize: '11px', opacity: 0.8 }}>In All Subjects</span>
+              </div>
+            </div>
+
+            {/* Card 3: Subjects */}
+            <div style={{
+              flex: 1,
+              minWidth: '180px',
+              borderRadius: '16px',
+              border: '2px solid var(--card-border)',
+              background: 'linear-gradient(135deg, #9A3412 0%, #F97316 100%)',
+              color: '#FFFFFF',
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxShadow: 'var(--shadow-sm)',
+              position: 'relative',
+              overflow: 'hidden',
+              minHeight: '110px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, opacity: 0.85, textTransform: 'uppercase' }}>Subjects</span>
+                <span style={{ fontSize: '16px' }}>📖</span>
+              </div>
+              <div style={{ textAlign: 'left', marginTop: '12px' }}>
+                <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>03</h4>
+                <span style={{ fontSize: '11px', opacity: 0.8 }}>Active Subjects</span>
+              </div>
+            </div>
+
+            {/* Card 4: Class Rank */}
+            <div style={{
+              flex: 1,
+              minWidth: '180px',
+              borderRadius: '16px',
+              border: '2px solid var(--card-border)',
+              background: 'linear-gradient(135deg, #5B21B6 0%, #8B5CF6 100%)',
+              color: '#FFFFFF',
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxShadow: 'var(--shadow-sm)',
+              position: 'relative',
+              overflow: 'hidden',
+              minHeight: '110px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, opacity: 0.85, textTransform: 'uppercase' }}>Class Rank</span>
+                <span style={{ fontSize: '16px' }}>🏆</span>
+              </div>
+              <div style={{ textAlign: 'left', marginTop: '12px' }}>
+                <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>15<span style={{ fontSize: '14px', fontWeight: 500 }}>/120</span></h4>
+                <span style={{ fontSize: '11px', opacity: 0.8 }}>In Class</span>
+              </div>
+            </div>
+
+            {/* Card 5: Upcoming Exam */}
+            <div style={{
+              flex: 1,
+              minWidth: '180px',
+              borderRadius: '16px',
+              border: '2px solid var(--card-border)',
+              background: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)',
+              color: '#FFFFFF',
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxShadow: 'var(--shadow-sm)',
+              position: 'relative',
+              overflow: 'hidden',
+              minHeight: '110px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, opacity: 0.85, textTransform: 'uppercase' }}>Upcoming Exam</span>
+                <span style={{ fontSize: '16px' }}>📅</span>
+              </div>
+              <div style={{ textAlign: 'left', marginTop: '12px' }}>
+                <h4 style={{ fontSize: '18px', fontWeight: 900, margin: 0, color: '#fff' }}>JEE Main Mock</h4>
+                <span style={{ fontSize: '11px', opacity: 0.8 }}>12 Days Left</span>
+              </div>
+            </div>
           </div>
         </section>
 
