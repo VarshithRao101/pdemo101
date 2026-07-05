@@ -235,19 +235,28 @@ export const DashboardView: React.FC = () => {
   const totalVotes = Object.values(votes).reduce((a, b) => a + b, 0);
 
   // EXPLICIT 3X4 (12 GRID ITEMS) LAYOUT
-  const gridItems: { type: SubPageType; label: string; sub: string; Icon: React.ComponentType; hasBadge?: boolean }[] = [
-    { type: 'announcements', label: 'Announcements', sub: 'Notice Board', Icon: AnnouncementsIconSvg },
-    { type: 'achievements', label: 'Achievements', sub: 'Awards & Honors', Icon: AchievementsIconSvg },
-    { type: 'results', label: 'Exam Results', sub: 'Report Cards', Icon: ExamResultsIconSvg },
-    { type: 'fee', label: 'Fee Payments', sub: 'Payments & Receipts', Icon: FeePaymentsIconSvg },
-    { type: 'attendance', label: 'Attendance', sub: 'View Daily Report', Icon: AttendanceIconSvg },
-    { type: 'poll', label: 'Opinion Poll', sub: 'Share Feedback', Icon: OpinionPollIconSvg },
-    { type: 'contact', label: 'Campus Support', sub: 'Contact Helpdesk', Icon: ParentConcernsIconSvg },
-    { type: 'hostel', label: 'Wellness', sub: 'Boarding & Health', Icon: WellnessIconSvg },
-    { type: 'leave', label: 'Gate Pass', sub: 'Apply Outing Pass', Icon: GatePassIconSvg, hasBadge: true },
-    { type: 'events', label: 'Events & Gallery', sub: 'Campus Activities', Icon: EventsIconSvg },
-    { type: 'bus', label: 'Bus Tracking', sub: 'Transit Routes', Icon: BusTrackingIconSvg },
-    { type: 'assignments', label: 'Assignments', sub: 'Pending Tasks', Icon: AssignmentsIconSvg }
+  const gridItems: Array<{
+    type: SubPageType;
+    label: string;
+    sub: string;
+    Icon: React.ComponentType;
+    hasBadge?: boolean;
+    bgColor: string;
+    iconBg: string;
+    iconColor: string;
+  }> = [
+    { type: 'announcements', label: 'Announcements', sub: 'Notice Board', Icon: AnnouncementsIconSvg, bgColor: 'linear-gradient(135deg, rgba(59,130,246,0.16), rgba(96,165,250,0.04))', iconBg: 'rgba(59,130,246,0.16)', iconColor: '#2563EB' },
+    { type: 'achievements', label: 'Achievements', sub: 'Awards & Honors', Icon: AchievementsIconSvg, bgColor: 'linear-gradient(135deg, rgba(245,158,11,0.16), rgba(251,191,36,0.06))', iconBg: 'rgba(245,158,11,0.16)', iconColor: '#B45309' },
+    { type: 'results', label: 'Exam Results', sub: 'Report Cards', Icon: ExamResultsIconSvg, bgColor: 'linear-gradient(135deg, rgba(16,185,129,0.16), rgba(52,211,153,0.06))', iconBg: 'rgba(16,185,129,0.16)', iconColor: '#0F766E' },
+    { type: 'fee', label: 'Fee Payments', sub: 'Payments & Receipts', Icon: FeePaymentsIconSvg, bgColor: 'linear-gradient(135deg, rgba(239,68,68,0.16), rgba(251,113,133,0.06))', iconBg: 'rgba(239,68,68,0.16)', iconColor: '#B91C1C' },
+    { type: 'attendance', label: 'Attendance', sub: 'Daily Report', Icon: AttendanceIconSvg, bgColor: 'linear-gradient(135deg, rgba(59,130,246,0.16), rgba(93,173,238,0.06))', iconBg: 'rgba(59,130,246,0.16)', iconColor: '#1D4ED8' },
+    { type: 'poll', label: 'Opinion Poll', sub: 'Share Feedback', Icon: OpinionPollIconSvg, bgColor: 'linear-gradient(135deg, rgba(168,85,247,0.16), rgba(192,132,252,0.06))', iconBg: 'rgba(168,85,247,0.16)', iconColor: '#7C3AED' },
+    { type: 'contact', label: 'Campus Support', sub: 'Contact Helpdesk', Icon: ParentConcernsIconSvg, bgColor: 'linear-gradient(135deg, rgba(14,165,233,0.16), rgba(56,189,248,0.06))', iconBg: 'rgba(14,165,233,0.16)', iconColor: '#0369A1' },
+    { type: 'hostel', label: 'Wellness', sub: 'Boarding & Health', Icon: WellnessIconSvg, bgColor: 'linear-gradient(135deg, rgba(34,197,94,0.16), rgba(134,239,172,0.06))', iconBg: 'rgba(34,197,94,0.16)', iconColor: '#15803D' },
+    { type: 'leave', label: 'Gate Pass', sub: 'Apply Outing Pass', Icon: GatePassIconSvg, hasBadge: true, bgColor: 'linear-gradient(135deg, rgba(234,179,8,0.18), rgba(251,191,36,0.08))', iconBg: 'rgba(234,179,8,0.18)', iconColor: '#B45309' },
+    { type: 'events', label: 'Events & Gallery', sub: 'Campus Activities', Icon: EventsIconSvg, bgColor: 'linear-gradient(135deg, rgba(249,115,22,0.16), rgba(251,191,36,0.06))', iconBg: 'rgba(249,115,22,0.16)', iconColor: '#C2410C' },
+    { type: 'bus', label: 'Bus Tracking', sub: 'Transit Routes', Icon: BusTrackingIconSvg, bgColor: 'linear-gradient(135deg, rgba(14,165,233,0.14), rgba(59,130,246,0.06))', iconBg: 'rgba(14,165,233,0.14)', iconColor: '#0EA5E9' },
+    { type: 'assignments', label: 'Assignments', sub: 'Pending Tasks', Icon: AssignmentsIconSvg, bgColor: 'linear-gradient(135deg, rgba(234,88,12,0.16), rgba(251,146,60,0.06))', iconBg: 'rgba(234,88,12,0.16)', iconColor: '#C2410C' }
   ];
 
   const searchSuggestions = [
@@ -723,6 +732,8 @@ export const DashboardView: React.FC = () => {
                 }}
                 style={{
                   ...styles.gridCard,
+                  background: item.bgColor,
+                  borderColor: item.iconBg,
                   animationDelay: `${idx * 40}ms`
                 }}
                 className="stagger-anim"
@@ -730,11 +741,19 @@ export const DashboardView: React.FC = () => {
                 {item.hasBadge && (
                   <div style={styles.newBadge}>New</div>
                 )}
-                <div style={styles.gridIcon} className="glass-gold-ring">
+                <div
+                  style={{
+                    ...styles.gridIcon,
+                    backgroundColor: item.iconBg,
+                    color: item.iconColor,
+                    boxShadow: `0 16px 28px ${item.iconBg.replace('0.16', '0.08')}`
+                  }}
+                  className="glass-gold-ring"
+                >
                   <item.Icon />
                 </div>
-                <h3 style={styles.gridTitle}>{item.label}</h3>
-                <span style={styles.gridSubtitle}>{item.sub}</span>
+                <h3 style={{ ...styles.gridTitle, color: item.iconColor }}>{item.label}</h3>
+                <span style={{ ...styles.gridSubtitle, color: '#475569' }}>{item.sub}</span>
               </GlassCard>
             ))}
           </div>
@@ -760,11 +779,15 @@ export const DashboardView: React.FC = () => {
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
     position: 'relative',
-    backgroundColor: '#060817',
-    backgroundImage: `linear-gradient(180deg, rgba(6,8,23,0.88), rgba(12,18,32,0.90)), url(${heroBackground})`,
+    minHeight: '100vh',
+    backgroundColor: '#F8FAFC',
+    '--dark-charcoal': '#0F172A',
+    '--muted-gray': '#475569',
+    '--light-gray': '#CBD5E1',
+    backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.96), rgba(240,248,255,0.92) 45%, rgba(254,240,242,0.95)), url(${heroBackground})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   backgroundVisual: {
     position: 'absolute',
@@ -984,27 +1007,29 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '12px',
   },
   gridCard: {
-    padding: '16px 8px',
-    borderRadius: '20px',
+    padding: '20px 12px',
+    borderRadius: '24px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     textAlign: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    border: '1.5px solid rgba(255, 255, 255, 0.6)',
-    boxShadow: 'var(--shadow-sm)',
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    border: '1px solid rgba(255, 255, 255, 0.8)',
+    boxShadow: '0 18px 32px rgba(15, 23, 42, 0.08)',
     position: 'relative',
     overflow: 'hidden',
+    minHeight: '152px',
   },
   gridIcon: {
-    width: '42px',
-    height: '42px',
-    borderRadius: '50%',
+    width: '50px',
+    height: '50px',
+    borderRadius: '18px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     color: 'var(--royal-gold)',
-    marginBottom: '10px',
+    marginBottom: '12px',
+    border: '1px solid rgba(255,255,255,0.8)',
   },
   gridTitle: {
     fontSize: '11.5px',

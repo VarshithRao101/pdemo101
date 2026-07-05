@@ -233,7 +233,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   mainContent: {
     flex: 1,
     height: '100%',
-    overflow: 'hidden',
+    overflow: 'visible',
     position: 'relative',
   },
 };

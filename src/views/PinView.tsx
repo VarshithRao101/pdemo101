@@ -122,13 +122,15 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
 
         {/* Main Title Section */}
         <div style={styles.titleSection}>
-          <h1 style={styles.welcomeTitle}>Welcome Back</h1>
+          <h1 style={styles.welcomeTitle}>
+            {portalRole === 'student' ? 'Inspire Junior College' : 'Welcome Back'}
+          </h1>
           <p style={styles.subtitle}>
             {portalRole === 'student'
-              ? 'Inspire Junior College Student Portal'
+              ? 'Student Portal'
               : portalRole === 'faculty'
-              ? 'Inspire Junior College Teacher Portal'
-              : 'Inspire Junior College Admin Portal'}
+              ? 'Teacher Portal'
+              : 'Admin Portal'}
           </p>
 
           {/* Role selector Segment */}
@@ -416,6 +418,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: 'column',
     justifyContent: 'space-between',
     backgroundColor: '#FAFAFA',
+    '--dark-charcoal': '#0F172A',
+    '--muted-gray': '#475569',
+    '--light-gray': '#CBD5E1',
     padding: 'calc(24px + var(--safe-area-top)) 24px calc(24px + var(--safe-area-bottom)) 24px',
     position: 'absolute',
     top: 0,
@@ -426,11 +431,15 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   desktopBg: {
     width: '100vw',
-    height: '100vh',
+    minHeight: '100vh',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F8FAFF',
+    '--dark-charcoal': '#0F172A',
+    '--muted-gray': '#475569',
+    '--light-gray': '#CBD5E1',
+    backgroundImage: 'radial-gradient(circle at top left, rgba(59,130,246,0.18), transparent 18%), radial-gradient(circle at bottom right, rgba(251,191,36,0.16), transparent 20%)',
     position: 'absolute',
     top: 0,
     left: 0,
@@ -440,19 +449,19 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   ambientGlow: {
     position: 'absolute',
-    width: '600px',
-    height: '600px',
-    background: 'radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, rgba(0,0,0,0) 70%)',
+    width: '560px',
+    height: '560px',
+    background: 'radial-gradient(circle, rgba(59,130,246,0.16) 0%, rgba(251,191,36,0.1) 45%, rgba(239,68,68,0.08) 100%)',
     pointerEvents: 'none',
   },
   desktopCard: {
-    width: '400px',
+    width: '420px',
     display: 'flex',
     flexDirection: 'column',
-    padding: '32px 32px',
-    backgroundColor: 'rgba(255, 255, 255, 0.55)',
-    border: '1.5px solid rgba(255, 255, 255, 0.7)',
-    boxShadow: 'var(--shadow-lg), 0 20px 60px rgba(0, 0, 0, 0.03)',
+    padding: '34px 34px',
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    border: '1px solid rgba(15, 23, 42, 0.07)',
+    boxShadow: 'var(--shadow-lg), 0 25px 60px rgba(15, 23, 42, 0.08)',
     borderRadius: 'var(--radius-xl)',
     position: 'relative',
     zIndex: 10,
@@ -479,18 +488,23 @@ const styles: { [key: string]: React.CSSProperties } = {
   titleSection: {
     textAlign: 'center',
     marginTop: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '10px',
   },
   welcomeTitle: {
-    fontSize: '28px',
-    fontWeight: 800,
+    fontSize: '32px',
+    fontWeight: 900,
     color: 'var(--dark-charcoal)',
-    letterSpacing: '-0.02em',
+    letterSpacing: '-0.03em',
+    lineHeight: '1.05',
   },
   subtitle: {
     fontSize: '14px',
-    color: 'var(--muted-gray)',
-    fontWeight: 500,
-    marginTop: '6px',
+    color: '#475569',
+    fontWeight: 700,
+    marginTop: '0px',
   },
   pinContainer: {
     display: 'flex',
