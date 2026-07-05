@@ -32,21 +32,20 @@ export const SplashView: React.FC<SplashViewProps> = ({ onComplete }) => {
       }}
     >
       <div style={styles.centerContent}>
-        {/* Narayana Logo Crest */}
+        {/* Inspire Logo Crest */}
         <div style={styles.logoContainer} className="glass-panel anim-scale-logo">
           <div style={styles.logoCrest}>
-            <svg width="56" height="56" viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="14" stroke="#0B56A4" strokeWidth="1.5" />
-              <path d="M10 22V10l12 12V10" stroke="#F15C22" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M7 24s4.5-1.5 9-1.5 9 1.5 9 1.5" stroke="#0B56A4" strokeWidth="1.5" strokeLinecap="round" />
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <text x="12" y="16" fontSize="11" fontWeight="900" textAnchor="middle" fill="var(--royal-gold)" stroke="none" fontFamily="var(--font-family)">I</text>
             </svg>
           </div>
         </div>
  
         {/* College Name & Subtitle */}
         <div className="anim-slide-up stagger-1" style={styles.textContainer}>
-          <h1 style={styles.collegeName}>NARAYANA</h1>
-          <h2 style={styles.collegeNameSub}>Educational Institutions</h2>
+          <h1 style={styles.collegeName}>INSPIRE</h1>
+          <h2 style={styles.collegeNameSub}>Junior College</h2>
           <p style={styles.subtitle}>Residential Campus Portal</p>
         </div>
       </div>

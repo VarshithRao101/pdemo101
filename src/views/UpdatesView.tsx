@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
+import { useNavigation } from '../context/NavigationContext';
 
 // --- ANNOUNCEMENT CATEGORY ICONS ---
 const AcademicsAnnouncementIcon = () => (
@@ -71,6 +72,7 @@ export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('All');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const { isMobile, setIsDrawerOpen } = useNavigation();
 
   // Simulation Empty State hook
   const [simulateEmpty, setSimulateEmpty] = useState(false);
@@ -202,12 +204,35 @@ export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
       {/* Sticky App Header */}
       <header style={styles.header}>
         <div style={styles.titleRow}>
-          {onClose && (
+          {onClose ? (
             <button onClick={onClose} style={styles.backBtn} className="press-interactive">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="15 18 9 12 15 6" />
               </svg>
             </button>
+          ) : (
+            isMobile && (
+              <button
+                onClick={() => setIsDrawerOpen(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--dark-charcoal)',
+                  cursor: 'pointer',
+                  padding: '4px 12px 4px 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                className="press-interactive"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
+            )
           )}
           <div>
             <h1 style={styles.title}>Updates</h1>
@@ -417,31 +442,31 @@ export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    backgroundColor: '#FAFAFA',
+    height: '100vh',
+    overflowY: 'auto',
+    backgroundColor: 'var(--bg-primary)',
   },
   appBar: {
-    height: '64px',
-    padding: '0 24px',
+    height: 'calc(72px + var(--safe-area-top))',
+    paddingTop: 'var(--safe-area-top)',
+    paddingLeft: '24px',
+    paddingRight: '24px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    background: 'rgba(250, 250, 250, 0.85)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-    borderBottom: '1px solid rgba(0, 0, 0, 0.03)',
+    background: 'var(--glass-bg)',
+    borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
-    zIndex: 100,
+    zIndex: 1000,
   },
   header: {
     padding: 'calc(24px + var(--safe-area-top)) 24px 16px 24px',
-    background: 'rgba(250, 250, 250, 0.85)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-    borderBottom: '1px solid rgba(0, 0, 0, 0.03)',
+    background: 'var(--glass-bg)',
+    borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
-    zIndex: 10,
+    zIndex: 1000,
     display: 'flex',
     flexDirection: 'column',
     gap: '16px',

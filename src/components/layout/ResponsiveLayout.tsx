@@ -98,7 +98,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
             <div style={styles.drawerProfileInfo}>
               <h3 style={styles.drawerProfileName}>Polsani Manoneeth Rao</h3>
               <span style={styles.drawerProfileMeta}>👤 2421604 &gt;</span>
-              <div style={styles.drawerBrandText}>NARAYANA</div>
+              <div style={styles.drawerBrandText}>INSPIRE JUNIOR COLLEGE</div>
             </div>
           </div>
 
@@ -144,8 +144,8 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               👤 Switch Account
             </button>
             <div style={styles.footerBrandingWrapper}>
-              <div style={styles.brandingCrestSmall}>N</div>
-              <div style={styles.brandingCrestText}>NARAYANA GROUP</div>
+              <div style={styles.brandingCrestSmall}>I</div>
+              <div style={styles.brandingCrestText}>INSPIRE GROUP</div>
             </div>
           </div>
         </div>

@@ -224,9 +224,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
           <GlassCard hoverable={false} style={styles.idCard} className="glass-gold-ring">
             <div style={styles.idCardHeader}>
               <div style={styles.idCollegeCrestRow}>
-                <div style={styles.crestCircle}>N</div>
+                <div style={styles.crestCircle}>I</div>
                 <div style={styles.idCollegeMeta}>
-                  <h4 style={styles.idCollegeTitle}>NARAYANA EDUCATIONAL INSTITUTIONS</h4>
+                  <h4 style={styles.idCollegeTitle}>INSPIRE JUNIOR COLLEGE</h4>
                   <span style={styles.idCollegeSub}>Residential Campus Portal</span>
                 </div>
               </div>

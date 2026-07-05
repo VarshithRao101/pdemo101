@@ -92,7 +92,7 @@ export const AdminDashboardView: React.FC = () => {
             <div>
               <span style={styles.greetingText}>Good Morning,</span>
               <h2 style={styles.parentWelcomeTitle}>Dr. Ramesh Kumar</h2>
-              <p style={styles.childMetaText}>Principal • <strong>Narayana College</strong></p>
+              <p style={styles.childMetaText}>Principal • <strong>Inspire Junior College</strong></p>
             </div>
           </div>
           

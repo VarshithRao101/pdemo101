@@ -501,8 +501,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: 'var(--bg-primary)',
   },
   appBar: {
-    height: '72px',
-    padding: '0 20px',
+    height: 'calc(72px + var(--safe-area-top))',
+    paddingTop: 'var(--safe-area-top)',
+    paddingLeft: '20px',
+    paddingRight: '20px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -510,7 +512,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
-    zIndex: 100,
+    zIndex: 1000,
   },
   appBarTitle: {
     fontSize: '17px',

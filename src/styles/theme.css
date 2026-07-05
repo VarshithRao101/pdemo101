@@ -56,18 +56,18 @@
 
   /* Card Colors */
   --card-bg: #FFFFFF;
-  --card-border: rgba(15, 23, 42, 0.08);
+  --card-border: #0F172A;
 
   /* Glass Colors */
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-bg-hover: rgba(15, 23, 42, 0.04);
-  --glass-border: rgba(15, 23, 42, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-bg-hover: rgba(15, 23, 42, 0.05);
+  --glass-border: #0F172A;
   --glass-shadow: rgba(15, 23, 42, 0.04);
 
   /* Shadows */
-  --shadow-sm: 0 4px 10px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 8px 20px rgba(15, 23, 42, 0.06);
-  --shadow-lg: 0 16px 36px rgba(15, 23, 42, 0.08);
+  --shadow-sm: 3px 3px 0px #0F172A;
+  --shadow-md: 5px 5px 0px #0F172A;
+  --shadow-lg: 8px 8px 0px #0F172A;
 
   /* Background Gradient */
   --bg-gradient-overlay: radial-gradient(circle at top left, rgba(59, 130, 246, 0.06), transparent 25%), radial-gradient(circle at 70% 20%, rgba(251, 191, 36, 0.05), transparent 18%), radial-gradient(circle at bottom right, rgba(239, 68, 68, 0.05), transparent 22%);
@@ -88,19 +88,19 @@
   --white: #FFFFFF;
 
   /* Card Colors */
-  --card-bg: rgba(255, 255, 255, 0.05);
-  --card-border: rgba(255, 255, 255, 0.1);
+  --card-bg: #0F172A;
+  --card-border: #64748B;
 
   /* Glass Colors */
-  --glass-bg: rgba(10, 16, 32, 0.72);
-  --glass-bg-hover: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --glass-shadow: rgba(0, 0, 0, 0.28);
+  --glass-bg: #0A1020;
+  --glass-bg-hover: rgba(255, 255, 255, 0.05);
+  --glass-border: #64748B;
+  --glass-shadow: rgba(0, 0, 0, 0.25);
 
   /* Shadows */
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.45);
+  --shadow-sm: 3px 3px 0px #64748B;
+  --shadow-md: 5px 5px 0px #64748B;
+  --shadow-lg: 8px 8px 0px #64748B;
 
   /* Background Gradient */
   --bg-gradient-overlay: radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 25%), radial-gradient(circle at 70% 20%, rgba(251, 191, 36, 0.12), transparent 18%), radial-gradient(circle at bottom right, rgba(239, 68, 68, 0.10), transparent 22%);

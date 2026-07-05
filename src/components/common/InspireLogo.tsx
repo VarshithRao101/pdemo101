@@ -10,27 +10,26 @@ export const InspireLogo: React.FC<InspireLogoProps> = ({ size = 'md', style }) 
   const isLg = size === 'lg';
   const crestSize = isLg ? 48 : isSm ? 28 : 42;
   const brandFontSize = isLg ? '22px' : isSm ? '14px' : '20px';
-  const subFontSize = isLg ? '9px' : isSm ? '7px' : '8px';
+  const subFontSize = isLg ? '10px' : isSm ? '8px' : '9px';
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: isSm ? '8px' : '10px', ...style }}>
-      {/* Narayana Circular Crest */}
+      {/* Golden Shield Crest with I */}
       <div style={{
         width: crestSize,
         height: crestSize,
         borderRadius: '50%',
-        background: '#FFFFFF',
-        border: '1.5px solid #0B56A4',
+        background: 'rgba(212, 175, 55, 0.08)',
+        border: '2px solid var(--royal-gold)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         boxShadow: 'var(--shadow-sm)',
         flexShrink: 0,
       }}>
-        <svg width={crestSize * 0.7} height={crestSize * 0.7} viewBox="0 0 32 32" fill="none">
-          <circle cx="16" cy="16" r="14" stroke="#0B56A4" strokeWidth="1.5" />
-          <path d="M10 22V10l12 12V10" stroke="#F15C22" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M7 24s4.5-1.5 9-1.5 9 1.5 9 1.5" stroke="#0B56A4" strokeWidth="1.5" strokeLinecap="round" />
+        <svg width={crestSize * 0.6} height={crestSize * 0.6} viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <text x="12" y="16" fontSize="11" fontWeight="900" textAnchor="middle" fill="var(--royal-gold)" stroke="none" fontFamily="var(--font-family)">I</text>
         </svg>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
@@ -41,23 +40,24 @@ export const InspireLogo: React.FC<InspireLogoProps> = ({ size = 'md', style }) 
           lineHeight: 1.1,
           letterSpacing: '0.02em',
           textTransform: 'uppercase',
-          color: '#0B56A4',
+          color: 'var(--dark-charcoal)',
         }}>
-          NARAYANA
+          INSPIRE
         </h2>
         <span style={{
           fontSize: subFontSize,
-          color: '#F15C22',
+          color: 'var(--royal-gold)',
           fontWeight: 800,
           margin: 0,
           textTransform: 'uppercase',
           letterSpacing: '0.04em',
           lineHeight: 1.1,
         }}>
-          Educational Institutions
+          Junior College
         </span>
       </div>
     </div>
   );
 };
+
 

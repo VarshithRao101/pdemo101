@@ -146,7 +146,7 @@ interface AcademicsViewProps {
 }
 
 export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
-  const { academicsTab, setActiveTab } = useNavigation();
+  const { academicsTab, setActiveTab, isMobile, setIsDrawerOpen } = useNavigation();
 
   // --- Animation States ---
   const [attendanceOffset, setAttendanceOffset] = useState(283);
@@ -1031,11 +1031,36 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
       {/* Sticky App Header */}
       <header style={styles.header}>
         <div style={styles.titleRow}>
-          <button onClick={handleBack} style={styles.backBtn} className="press-interactive">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
+          {onClose ? (
+            <button onClick={handleBack} style={styles.backBtn} className="press-interactive">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+          ) : (
+            isMobile && (
+              <button
+                onClick={() => setIsDrawerOpen(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--dark-charcoal)',
+                  cursor: 'pointer',
+                  padding: '4px 12px 4px 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                className="press-interactive"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
+            )
+          )}
           <div>
             <h1 style={styles.title}>
               {academicsTab === 'attendance' 

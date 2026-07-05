@@ -835,8 +835,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     zIndex: 0,
   },
   appBar: {
-    height: '72px',
-    padding: '0 24px',
+    height: 'calc(72px + var(--safe-area-top))',
+    paddingTop: 'var(--safe-area-top)',
+    paddingLeft: '24px',
+    paddingRight: '24px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -844,7 +846,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
-    zIndex: 100,
+    zIndex: 1000,
   },
   menuBurgerBtn: {
     background: 'none',
