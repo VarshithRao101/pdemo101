@@ -8,7 +8,6 @@ import { AcademicsView } from './AcademicsView';
 import { UpdatesView } from './UpdatesView';
 import { ProfileView } from './ProfileView';
 import { InspireLogo } from '../components/common/InspireLogo';
-import heroBackground from '../assets/hero.png';
 
 // --- PREMIUM SVG ICONS ---
 const SearchIcon = () => (
@@ -132,7 +131,7 @@ export const DashboardView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const { setAcademicsTab } = useNavigation();
+  const { setAcademicsTab, theme, setThemeMode, setIsDrawerOpen, isMobile } = useNavigation();
 
   // Poll state variables
   const [selectedPollOption, setSelectedPollOption] = useState<string | null>(null);
@@ -595,17 +594,59 @@ export const DashboardView: React.FC = () => {
       <div style={styles.backgroundVisual} className="anim-float" />
       {/* Top Glass App Bar with Inspire Logo */}
       <header style={styles.appBar}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {isMobile && (
+            <button
+              onClick={() => setIsDrawerOpen(true)}
+              style={styles.menuBurgerBtn}
+              className="press-interactive"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+          )}
           <InspireLogo size="md" />
         </div>
 
-        <button onClick={() => setSubPage('notifications')} style={styles.appBarBtn} className="press-interactive">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-          <div style={styles.badge} className="pulse-badge">3</div>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Theme Toggle Button */}
+          <button
+            onClick={() => setThemeMode(theme === 'light' ? 'Dark' : 'Light')}
+            style={styles.appBarBtn}
+            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            className="press-interactive"
+          >
+            {theme === 'light' ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            )}
+          </button>
+
+          {/* Notifications Button */}
+          <button onClick={() => setSubPage('notifications')} style={styles.appBarBtn} className="press-interactive">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <div style={styles.badge} className="pulse-badge">3</div>
+          </button>
+        </div>
       </header>
 
       {/* Main Scroll Content */}
@@ -628,14 +669,14 @@ export const DashboardView: React.FC = () => {
         <GlassCard hoverable={false} style={styles.welcomeCard}>
           <div style={styles.welcomeLeft}>
             <div style={styles.userAvatarContainer} className="glass-gold-ring" onClick={() => setSubPage('profile')}>
-              <div style={styles.userAvatar}>VR</div>
+              <div style={styles.userAvatar}>PM</div>
             </div>
             <div style={styles.welcomeDetails} onClick={() => setSubPage('profile')}>
-              <span style={styles.greetingText}>Good Morning,</span>
-              <h2 style={styles.studentName}>Varshith Rao</h2>
+              <span style={styles.greetingText}>Good Evening,</span>
+              <h2 style={styles.studentName}>Polsani Manoneeth Rao</h2>
               <div style={styles.detailsRow}>
                 <span style={styles.detailLabel}>ID:</span>
-                <span style={styles.detailVal}>IJC240145</span>
+                <span style={styles.detailVal}>2421604</span>
               </div>
             </div>
           </div>
@@ -746,14 +787,14 @@ export const DashboardView: React.FC = () => {
                     ...styles.gridIcon,
                     backgroundColor: item.iconBg,
                     color: item.iconColor,
-                    boxShadow: `0 16px 28px ${item.iconBg.replace('0.16', '0.08')}`
+                    boxShadow: `0 8px 16px ${item.iconBg.replace('0.16', '0.08')}`
                   }}
                   className="glass-gold-ring"
                 >
                   <item.Icon />
                 </div>
                 <h3 style={{ ...styles.gridTitle, color: item.iconColor }}>{item.label}</h3>
-                <span style={{ ...styles.gridSubtitle, color: '#475569' }}>{item.sub}</span>
+                <span style={{ ...styles.gridSubtitle, color: 'var(--muted-gray)' }}>{item.sub}</span>
               </GlassCard>
             ))}
           </div>
@@ -779,35 +820,41 @@ export const DashboardView: React.FC = () => {
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
     position: 'relative',
-    minHeight: '100vh',
-    backgroundColor: '#F8FAFC',
-    backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.96), rgba(240,248,255,0.92) 45%, rgba(254,240,242,0.95)), url(${heroBackground})`,
+    height: '100vh',
+    backgroundColor: 'var(--bg-primary)',
+    backgroundImage: `var(--bg-gradient-overlay)`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    overflow: 'visible',
+    overflowY: 'auto',
   },
   backgroundVisual: {
     position: 'absolute',
     inset: 0,
-    background: 'radial-gradient(circle at top left, rgba(59,130,246,0.16), transparent 24%), radial-gradient(circle at bottom right, rgba(251,191,36,0.12), transparent 18%), radial-gradient(circle at center right, rgba(239,68,68,0.10), transparent 22%)',
+    background: 'none',
     pointerEvents: 'none',
     zIndex: 0,
   },
   appBar: {
     height: '72px',
     padding: '0 24px',
-    paddingTop: '8px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    background: 'rgba(250, 250, 250, 0.90)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-    borderBottom: '1px solid rgba(212,175,55,0.12)',
+    background: 'var(--glass-bg)',
+    borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
     zIndex: 100,
-    marginTop: '8px',
+  },
+  menuBurgerBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'var(--dark-charcoal)',
+    cursor: 'pointer',
+    padding: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   appBarBtn: {
     background: 'none',
@@ -825,15 +872,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     flexDirection: 'column',
     gap: '24px',
+    paddingBottom: '40px',
   },
   searchBarTrigger: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '12px 16px',
-    backgroundColor: 'rgba(255, 255, 255, 0.65)',
-    border: '1.5px solid rgba(255, 255, 255, 0.7)',
-    borderRadius: '16px',
+    backgroundColor: 'var(--card-bg)',
+    border: '1.5px solid var(--card-border)',
+    borderRadius: 'var(--radius-sm)',
     cursor: 'pointer',
     boxShadow: 'var(--shadow-sm)',
   },
@@ -852,10 +900,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.55)',
-    border: '1.5px solid rgba(255, 255, 255, 0.7)',
+    backgroundColor: 'var(--card-bg)',
+    border: '1.5px solid var(--card-border)',
     boxShadow: 'var(--shadow-md)',
-    borderRadius: '24px',
+    borderRadius: 'var(--radius-lg)',
   },
   welcomeLeft: {
     display: 'flex',
@@ -1005,14 +1053,14 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   gridCard: {
     padding: '20px 12px',
-    borderRadius: '24px',
+    borderRadius: 'var(--radius-lg)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     textAlign: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    border: '1px solid rgba(255, 255, 255, 0.8)',
-    boxShadow: '0 18px 32px rgba(15, 23, 42, 0.08)',
+    backgroundColor: 'var(--card-bg)',
+    border: '1.5px solid var(--card-border)',
+    boxShadow: 'var(--shadow-sm)',
     position: 'relative',
     overflow: 'hidden',
     minHeight: '152px',

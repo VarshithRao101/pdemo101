@@ -494,19 +494,20 @@ export const HostelLifeView: React.FC<HostelLifeViewProps> = ({ onClose }) => {
   );
 };
 
-// ─── STYLES ───────────────────────────────────────────────────────────────────
 const styles: { [key: string]: React.CSSProperties } = {
-  container: { backgroundColor: '#FAFAFA' },
+  container: {
+    height: '100vh',
+    overflowY: 'auto',
+    backgroundColor: 'var(--bg-primary)',
+  },
   appBar: {
-    height: '60px',
+    height: '72px',
     padding: '0 20px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    background: 'rgba(250,250,250,0.90)',
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
-    borderBottom: '1px solid rgba(212,175,55,0.15)',
+    background: 'var(--glass-bg)',
+    borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
     zIndex: 100,

@@ -13,7 +13,7 @@
 
 html, body {
   background-color: var(--bg-primary);
-  background-image: radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 25%), radial-gradient(circle at 70% 20%, rgba(251, 191, 36, 0.12), transparent 18%), radial-gradient(circle at bottom right, rgba(239, 68, 68, 0.10), transparent 22%);
+  background-image: var(--bg-gradient-overlay);
   color: var(--dark-charcoal);
   font-family: var(--font-family);
   height: 100%;

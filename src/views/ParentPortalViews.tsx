@@ -69,11 +69,11 @@ export const ParentDashboardView: React.FC = () => {
       {/* Top Banner Parent Login Details */}
       <header style={styles.header}>
         <div style={styles.parentWelcomeRow}>
-          <div style={styles.avatarMini}>RR</div>
+          <div style={styles.avatarMini}>SR</div>
           <div>
             <span style={styles.greetingText}>Good Morning,</span>
-            <h2 style={styles.parentWelcomeTitle}>Mr. Rajesh Rao</h2>
-            <p style={styles.childMetaText}>Parent of <strong>Varshith Rao</strong> (ID: IJC240145)</p>
+            <h2 style={styles.parentWelcomeTitle}>Mr. Sridhar Rao</h2>
+            <p style={styles.childMetaText}>Parent of <strong>Polsani Manoneeth Rao</strong> (ID: 2421604)</p>
           </div>
         </div>
       </header>
@@ -233,14 +233,14 @@ export const ParentDashboardView: React.FC = () => {
         <div style={styles.modalOverlay} onClick={() => setShowGatePass(false)} className="anim-fade-in">
           <div style={styles.gatePassSheet} onClick={(e) => e.stopPropagation()} className="glass-panel-heavy">
             <h3 style={styles.modalTitle}>Hostel Leave Outing Pass</h3>
-            <span style={styles.childMetaText}>Student ID: IJC240145</span>
+            <span style={styles.childMetaText}>Student ID: 2421604</span>
             <div style={{ margin: '20px 0' }} className="anim-pulse-gold">
               <QrCodeIllustration />
             </div>
             <div style={styles.gateDetails}>
               <div style={styles.gateRow}>
                 <span>Student:</span>
-                <strong>Varshith Rao</strong>
+                <strong>Polsani Manoneeth Rao</strong>
               </div>
               <div style={styles.gateRow}>
                 <span>Approved Leave:</span>
@@ -579,11 +579,11 @@ export const ParentProfileView: React.FC = () => {
             </div>
             <div style={styles.metaRow}>
               <span>Email:</span>
-              <strong>rajesh.rao@gmail.com</strong>
+              <strong>sridhar.rao@gmail.com</strong>
             </div>
             <div style={styles.metaRow}>
               <span>Linked Student:</span>
-              <strong>Varshith Rao (MPC Section A)</strong>
+              <strong>Polsani Manoneeth Rao (MPC Section A)</strong>
             </div>
           </div>
         </GlassCard>
@@ -698,15 +698,14 @@ export const ParentProfileView: React.FC = () => {
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    backgroundColor: '#FAFAFA',
-    minHeight: '100vh',
+    height: '100vh',
+    overflowY: 'auto',
+    backgroundColor: 'var(--bg-primary)',
   },
   header: {
     padding: 'calc(24px + var(--safe-area-top)) 24px 16px 24px',
-    background: 'rgba(250, 250, 250, 0.85)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-    borderBottom: '1px solid rgba(0, 0, 0, 0.03)',
+    background: 'var(--glass-bg)',
+    borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
     zIndex: 10,
@@ -1186,14 +1185,14 @@ const styles: { [key: string]: React.CSSProperties } = {
   gatePassSheet: {
     width: '90%',
     maxWidth: '340px',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: '24px',
+    backgroundColor: 'var(--bg-secondary)',
+    borderRadius: 'var(--radius-lg)',
     padding: '24px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
-    border: '1px solid rgba(255, 255, 255, 0.8)',
+    boxShadow: 'var(--shadow-md)',
+    border: '1.5px solid var(--card-border)',
     textAlign: 'center',
   },
   modalActions: {

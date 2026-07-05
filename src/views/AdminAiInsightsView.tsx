@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
+import { useNavigation } from '../context/NavigationContext';
 
 export const AdminAiInsightsView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const { theme, setThemeMode } = useNavigation();
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 600);
@@ -38,9 +40,45 @@ export const AdminAiInsightsView: React.FC = () => {
             <h1 style={styles.title}>AI Campus Intelligence</h1>
             <p style={styles.subtitle}>Smart Insights for Better Campus Decisions</p>
           </div>
-          <div style={styles.aiStatusCard} className="glass-panel">
-            <span style={styles.aiStatusDot} className="anim-pulse-gold">●</span>
-            <span style={styles.aiStatusText}>AI Status: Active</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={styles.aiStatusCard} className="glass-panel">
+              <span style={styles.aiStatusDot} className="anim-pulse-gold">●</span>
+              <span style={styles.aiStatusText}>AI Status: Active</span>
+            </div>
+            
+            <button
+              onClick={() => setThemeMode(theme === 'light' ? 'Dark' : 'Light')}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--dark-charcoal)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '8px',
+              }}
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+              className="press-interactive"
+            >
+              {theme === 'light' ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
       </header>
@@ -255,7 +293,7 @@ export const AdminAiInsightsView: React.FC = () => {
             <GlassCard hoverable={false} style={styles.scrollItemCard}>
               <div style={styles.scrollItemHeader}>
                 <span style={styles.medalIcon}></span>
-                <strong>Varshith Rao</strong>
+                <strong>Polsani Manoneeth Rao</strong>
               </div>
               <span style={styles.scrollItemMeta}>Percentage: 94% | Attendance: 95%</span>
             </GlassCard>
@@ -345,16 +383,15 @@ export const AdminAiInsightsView: React.FC = () => {
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    backgroundColor: '#070B1B',
-    minHeight: '100vh',
-    backgroundImage: 'radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 28%), radial-gradient(circle at bottom right, rgba(251, 191, 36, 0.1), transparent 22%)',
+    height: '100vh',
+    overflowY: 'auto',
+    backgroundColor: 'var(--bg-primary)',
+    backgroundImage: 'var(--bg-gradient-overlay)',
   },
   header: {
     padding: 'calc(24px + var(--safe-area-top)) 24px 16px 24px',
-    background: 'rgba(8, 12, 30, 0.88)',
-    backdropFilter: 'blur(22px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(22px) saturate(180%)',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+    background: 'var(--glass-bg)',
+    borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
     zIndex: 10,

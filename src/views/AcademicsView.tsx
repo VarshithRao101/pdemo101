@@ -1160,14 +1160,14 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    backgroundColor: '#FAFAFA',
+    height: '100vh',
+    overflowY: 'auto',
+    backgroundColor: 'var(--bg-primary)',
   },
   header: {
     padding: 'calc(24px + var(--safe-area-top)) 24px 16px 24px',
-    background: 'rgba(250, 250, 250, 0.85)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-    borderBottom: '1px solid rgba(0, 0, 0, 0.03)',
+    background: 'var(--glass-bg)',
+    borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
     zIndex: 10,
@@ -1697,15 +1697,13 @@ const styles: { [key: string]: React.CSSProperties } = {
   bottomSheet: {
     width: '100%',
     maxWidth: '480px',
-    backgroundColor: 'rgba(250, 250, 250, 0.96)',
-    backdropFilter: 'blur(30px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-    borderTopLeftRadius: '28px',
-    borderTopRightRadius: '28px',
-    border: '1.5px solid rgba(255,255,255,0.8)',
+    backgroundColor: 'var(--bg-secondary)',
+    borderTopLeftRadius: 'var(--radius-lg)',
+    borderTopRightRadius: 'var(--radius-lg)',
+    border: '1.5px solid var(--card-border)',
     borderBottom: 'none',
     padding: '10px 24px 34px 24px',
-    boxShadow: '0 -10px 40px rgba(0,0,0,0.08)',
+    boxShadow: 'var(--shadow-lg)',
   },
   modalGrabHandle: {
     width: '36px',

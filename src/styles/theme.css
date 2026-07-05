@@ -1,11 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
+/* Default Theme Definitions (re-mappable via classes) */
 :root {
-  /* Core Background */
-  --bg-primary: #060817;
-  --bg-secondary: #141C2B;
-  --bg-surface: rgba(255, 255, 255, 0.12);
-  --bg-surface-strong: rgba(255, 255, 255, 0.18);
+  /* Typography */
+  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Curved Boundaries - Rounded Corners */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-full: 9999px;
 
   /* Brand Palette */
   --brand-red: #EF4444;
@@ -20,41 +33,6 @@
   --royal-gold: #D4AF37;
   --royal-gold-rgb: 212, 175, 55;
 
-  /* Text */
-  --dark-charcoal: #F8FAFC;
-  --muted-gray: #CBD5E1;
-  --light-gray: #E2E8F0;
-  --white: #FFFFFF;
-
-  /* Glass Colors */
-  --glass-bg: rgba(15, 23, 42, 0.72);
-  --glass-bg-hover: rgba(255, 255, 255, 0.16);
-  --glass-border: rgba(255, 255, 255, 0.18);
-  --glass-shadow: rgba(0, 0, 0, 0.24);
-
-  /* Typography */
-  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-
-  /* Spacing */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-
-  /* Border Radius */
-  --radius-xs: 6px;
-  --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
-  --radius-xl: 32px;
-  --radius-full: 9999px;
-
-  /* Shadows */
-  --shadow-sm: 0 8px 22px rgba(0, 0, 0, 0.18);
-  --shadow-md: 0 18px 48px rgba(0, 0, 0, 0.22);
-  --shadow-lg: 0 28px 72px rgba(0, 0, 0, 0.28);
-
   /* Gradients */
   --brand-gradient: linear-gradient(135deg, #3B82F6 0%, #FBBF24 45%, #EF4444 100%);
   --brand-gradient-soft: linear-gradient(180deg, rgba(59,130,246,0.22) 0%, rgba(251,191,36,0.14) 50%, rgba(239,68,68,0.1) 100%);
@@ -62,3 +40,70 @@
   --safe-area-top: 0px;
   --safe-area-bottom: 0px;
 }
+
+/* Light Theme Variables */
+.light-theme, :root:not(.dark-theme) {
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #FFFFFF;
+  --bg-surface: rgba(15, 23, 42, 0.04);
+  --bg-surface-strong: rgba(15, 23, 42, 0.08);
+
+  /* Text Colors */
+  --dark-charcoal: #0F172A;
+  --muted-gray: #475569;
+  --light-gray: #E2E8F0;
+  --white: #FFFFFF;
+
+  /* Card Colors */
+  --card-bg: #FFFFFF;
+  --card-border: rgba(15, 23, 42, 0.08);
+
+  /* Glass Colors */
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-bg-hover: rgba(15, 23, 42, 0.04);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --glass-shadow: rgba(15, 23, 42, 0.04);
+
+  /* Shadows */
+  --shadow-sm: 0 4px 10px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 8px 20px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 16px 36px rgba(15, 23, 42, 0.08);
+
+  /* Background Gradient */
+  --bg-gradient-overlay: radial-gradient(circle at top left, rgba(59, 130, 246, 0.06), transparent 25%), radial-gradient(circle at 70% 20%, rgba(251, 191, 36, 0.05), transparent 18%), radial-gradient(circle at bottom right, rgba(239, 68, 68, 0.05), transparent 22%);
+  --sidebar-border: rgba(15, 23, 42, 0.06);
+}
+
+/* Dark Theme Variables */
+.dark-theme {
+  --bg-primary: #070B19;
+  --bg-secondary: #0F172A;
+  --bg-surface: rgba(255, 255, 255, 0.08);
+  --bg-surface-strong: rgba(255, 255, 255, 0.14);
+
+  /* Text Colors */
+  --dark-charcoal: #F8FAFC;
+  --muted-gray: #94A3B8;
+  --light-gray: #334155;
+  --white: #FFFFFF;
+
+  /* Card Colors */
+  --card-bg: rgba(255, 255, 255, 0.05);
+  --card-border: rgba(255, 255, 255, 0.1);
+
+  /* Glass Colors */
+  --glass-bg: rgba(10, 16, 32, 0.72);
+  --glass-bg-hover: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-shadow: rgba(0, 0, 0, 0.28);
+
+  /* Shadows */
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.45);
+
+  /* Background Gradient */
+  --bg-gradient-overlay: radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 25%), radial-gradient(circle at 70% 20%, rgba(251, 191, 36, 0.12), transparent 18%), radial-gradient(circle at bottom right, rgba(239, 68, 68, 0.10), transparent 22%);
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+}
+

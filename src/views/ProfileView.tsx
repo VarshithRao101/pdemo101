@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
+import { useNavigation } from '../context/NavigationContext';
 
 // --- PROFILE UI ICONS ---
 const CallIcon = () => (
@@ -93,7 +94,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
   const [activePanel, setActivePanel] = useState<string | null>(null);
 
   // Settings mock state values
-  const [themeMode, setThemeMode] = useState<'Light' | 'Dark' | 'System'>('Light');
+  const { themeMode, setThemeMode } = useNavigation();
   const [selectedLang, setSelectedLang] = useState<'English' | 'Telugu' | 'Hindi'>('English');
   const [notifPreferences, setNotifPreferences] = useState({
     announcements: true,
@@ -190,10 +191,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
         {/* PROFILE HERO CARD */}
         <GlassCard hoverable={false} style={styles.heroCard} className="anim-scale-in">
           <div style={styles.heroHeaderRow}>
-            <div style={styles.heroAvatar} className="glass-gold-ring anim-scale-in">VR</div>
+            <div style={styles.heroAvatar} className="glass-gold-ring anim-scale-in">PM</div>
             <div style={styles.heroStudentInfo}>
-              <h2 style={styles.studentName}>Varshith Rao</h2>
-              <span style={styles.studentID}>ID: IJC240145</span>
+              <h2 style={styles.studentName}>Polsani Manoneeth Rao</h2>
+              <span style={styles.studentID}>ID: 2421604</span>
               <span style={styles.statusBadge}>● Active Student</span>
             </div>
           </div>
@@ -223,9 +224,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
           <GlassCard hoverable={false} style={styles.idCard} className="glass-gold-ring">
             <div style={styles.idCardHeader}>
               <div style={styles.idCollegeCrestRow}>
-                <div style={styles.crestCircle}>IJC</div>
+                <div style={styles.crestCircle}>N</div>
                 <div style={styles.idCollegeMeta}>
-                  <h4 style={styles.idCollegeTitle}>INSPIRE JUNIOR COLLEGE</h4>
+                  <h4 style={styles.idCollegeTitle}>NARAYANA EDUCATIONAL INSTITUTIONS</h4>
                   <span style={styles.idCollegeSub}>Residential Campus Portal</span>
                 </div>
               </div>
@@ -233,15 +234,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
 
             <div style={styles.idDetailsContainer}>
               <div style={styles.idDetailsRow}>
-                <div style={styles.idCardPhoto}>VR</div>
+                <div style={styles.idCardPhoto}>PM</div>
                 <div style={styles.idCardTextGrid}>
                   <div style={styles.idCardItem}>
                     <span style={styles.idCardLabel}>STUDENT NAME</span>
-                    <span style={styles.idCardVal}>Varshith Rao</span>
+                    <span style={styles.idCardVal}>Polsani Manoneeth Rao</span>
                   </div>
                   <div style={styles.idCardItem}>
                     <span style={styles.idCardLabel}>STUDENT ID</span>
-                    <span style={styles.idCardVal}>IJC240145</span>
+                    <span style={styles.idCardVal}>2421604</span>
                   </div>
                   <div style={styles.idCardItem}>
                     <span style={styles.idCardLabel}>COURSE & YEAR</span>
@@ -694,10 +695,8 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   header: {
     padding: 'calc(24px + var(--safe-area-top)) 24px 16px 24px',
-    background: 'rgba(250, 250, 250, 0.85)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-    borderBottom: '1px solid rgba(0, 0, 0, 0.03)',
+    background: 'var(--glass-bg)',
+    borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
     zIndex: 10,

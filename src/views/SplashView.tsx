@@ -32,43 +32,25 @@ export const SplashView: React.FC<SplashViewProps> = ({ onComplete }) => {
       }}
     >
       <div style={styles.centerContent}>
-        {/* College Logo - Circular Glass Container with Gold Gradient Border */}
+        {/* Narayana Logo Crest */}
         <div style={styles.logoContainer} className="glass-panel anim-scale-logo">
-          <div style={styles.logoCrest} className="glass-gold-ring">
-            <svg
-              width="44"
-              height="44"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="url(#goldGradientLogo)"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <defs>
-                <linearGradient id="goldGradientLogo" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#E5C158" />
-                  <stop offset="50%" stopColor="#C5A880" />
-                  <stop offset="100%" stopColor="#B38F4D" />
-                </linearGradient>
-              </defs>
-              {/* Premium Shield Crest */}
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              <path d="M12 6v10" />
-              <path d="M9 9h6" />
-              <path d="M9 12h6" />
+          <div style={styles.logoCrest}>
+            <svg width="56" height="56" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="14" stroke="#0B56A4" strokeWidth="1.5" />
+              <path d="M10 22V10l12 12V10" stroke="#F15C22" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M7 24s4.5-1.5 9-1.5 9 1.5 9 1.5" stroke="#0B56A4" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </div>
         </div>
-
+ 
         {/* College Name & Subtitle */}
         <div className="anim-slide-up stagger-1" style={styles.textContainer}>
-          <h1 style={styles.collegeName}>Inspire</h1>
-          <h2 style={styles.collegeNameSub}>Junior College</h2>
+          <h1 style={styles.collegeName}>NARAYANA</h1>
+          <h2 style={styles.collegeNameSub}>Educational Institutions</h2>
           <p style={styles.subtitle}>Residential Campus Portal</p>
         </div>
       </div>
-
+ 
       {/* Powered by Creds */}
       <footer className="anim-fade-in stagger-3" style={styles.footer}>
         <span style={styles.poweredText}>Powered by</span>
@@ -77,7 +59,7 @@ export const SplashView: React.FC<SplashViewProps> = ({ onComplete }) => {
     </div>
   );
 };
-
+ 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
     width: '100%',
@@ -86,7 +68,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: 'column',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: 'var(--bg-primary)',
     padding: '40px 24px',
     position: 'absolute',
     top: 0,

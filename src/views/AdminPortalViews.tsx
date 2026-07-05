@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
+import { useNavigation } from '../context/NavigationContext';
 
 // --- SHARED CLOSE ICON ---
 const CloseIcon = () => (
@@ -14,6 +15,7 @@ export const AdminDashboardView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeOverlay, setActiveOverlay] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const { theme, setThemeMode } = useNavigation();
 
   // Student management state
   const [students] = useState([
@@ -84,13 +86,49 @@ export const AdminDashboardView: React.FC = () => {
     <div style={styles.container} className="anim-slide-up">
       {/* Top Banner Admin Credentials */}
       <header style={styles.header}>
-        <div style={styles.parentWelcomeRow}>
-          <div style={styles.avatarMini}>DK</div>
-          <div>
-            <span style={styles.greetingText}>Good Morning,</span>
-            <h2 style={styles.parentWelcomeTitle}>Dr. Ramesh Kumar</h2>
-            <p style={styles.childMetaText}>Principal • <strong>Inspire Junior College</strong></p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div style={styles.parentWelcomeRow}>
+            <div style={styles.avatarMini}>DK</div>
+            <div>
+              <span style={styles.greetingText}>Good Morning,</span>
+              <h2 style={styles.parentWelcomeTitle}>Dr. Ramesh Kumar</h2>
+              <p style={styles.childMetaText}>Principal • <strong>Narayana College</strong></p>
+            </div>
           </div>
+          
+          <button
+            onClick={() => setThemeMode(theme === 'light' ? 'Dark' : 'Light')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--dark-charcoal)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '8px',
+            }}
+            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            className="press-interactive"
+          >
+            {theme === 'light' ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            )}
+          </button>
         </div>
       </header>
 
@@ -519,6 +557,7 @@ export const AdminManagementView: React.FC = () => {
 export const AdminReportsView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const { theme, setThemeMode } = useNavigation();
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 600);
@@ -546,8 +585,45 @@ export const AdminReportsView: React.FC = () => {
   return (
     <div style={styles.container} className="anim-slide-up">
       <header style={styles.header}>
-        <h1 style={styles.title}>College Ledger Reports</h1>
-        <p style={styles.subtitle}>Compile and download institution report cards</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div>
+            <h1 style={styles.title}>College Ledger Reports</h1>
+            <p style={styles.subtitle}>Compile and download institution report cards</p>
+          </div>
+          <button
+            onClick={() => setThemeMode(theme === 'light' ? 'Dark' : 'Light')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--dark-charcoal)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '8px',
+            }}
+            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            className="press-interactive"
+          >
+            {theme === 'light' ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            )}
+          </button>
+        </div>
       </header>
 
       <main style={{ ...styles.content, paddingBottom: '40px' }}>
@@ -577,6 +653,7 @@ export const AdminReportsView: React.FC = () => {
 export const AdminProfileView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const { theme, setThemeMode } = useNavigation();
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 600);
@@ -607,8 +684,45 @@ export const AdminProfileView: React.FC = () => {
   return (
     <div style={styles.container} className="anim-slide-up">
       <header style={styles.header}>
-        <h1 style={styles.title}>Principal Account</h1>
-        <p style={styles.subtitle}>Manage administrator profile & audit records</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div>
+            <h1 style={styles.title}>Principal Account</h1>
+            <p style={styles.subtitle}>Manage administrator profile & audit records</p>
+          </div>
+          <button
+            onClick={() => setThemeMode(theme === 'light' ? 'Dark' : 'Light')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--dark-charcoal)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '8px',
+            }}
+            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            className="press-interactive"
+          >
+            {theme === 'light' ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            )}
+          </button>
+        </div>
       </header>
 
       <main style={{ ...styles.content, paddingBottom: '40px' }}>
@@ -678,16 +792,15 @@ export const AdminProfileView: React.FC = () => {
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    backgroundColor: '#070B1B',
-    minHeight: '100vh',
-    backgroundImage: 'radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 24%), radial-gradient(circle at bottom left, rgba(251, 191, 36, 0.12), transparent 20%)',
+    height: '100vh',
+    overflowY: 'auto',
+    backgroundColor: 'var(--bg-primary)',
+    backgroundImage: 'var(--bg-gradient-overlay)',
   },
   header: {
     padding: 'calc(24px + var(--safe-area-top)) 24px 16px 24px',
-    background: 'rgba(8, 12, 30, 0.88)',
-    backdropFilter: 'blur(22px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(22px) saturate(180%)',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+    background: 'var(--glass-bg)',
+    borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
     zIndex: 10,
@@ -907,13 +1020,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: '92%',
     maxWidth: '420px',
     maxHeight: '84vh',
-    backgroundColor: 'rgba(10, 16, 32, 0.96)',
-    borderRadius: '28px',
+    backgroundColor: 'var(--bg-secondary)',
+    borderRadius: 'var(--radius-lg)',
     padding: '24px',
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '0 18px 48px rgba(0, 0, 0, 0.32)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    boxShadow: 'var(--shadow-lg)',
+    border: '1.5px solid var(--card-border)',
   },
   overlayHeader: {
     display: 'flex',
@@ -1145,14 +1258,14 @@ const styles: { [key: string]: React.CSSProperties } = {
   gatePassSheet: {
     width: '90%',
     maxWidth: '340px',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: '24px',
+    backgroundColor: 'var(--bg-secondary)',
+    borderRadius: 'var(--radius-lg)',
     padding: '24px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
-    border: '1px solid rgba(255, 255, 255, 0.8)',
+    boxShadow: 'var(--shadow-md)',
+    border: '1.5px solid var(--card-border)',
     textAlign: 'center',
   },
   modalActions: {
