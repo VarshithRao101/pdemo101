@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { InspireLogo } from '../components/common/InspireLogo';
 
 interface SplashViewProps {
   onComplete: () => void;
@@ -8,15 +9,14 @@ export const SplashView: React.FC<SplashViewProps> = ({ onComplete }) => {
   const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
-    // Play splash for 1.2 seconds, then start exit animation
+    // Play splash for 3.5 seconds, then start exit animation (4 seconds total duration)
     const exitTimer = setTimeout(() => {
       setIsExiting(true);
-    }, 1500);
+    }, 3500);
 
-    // Complete transition after exit animation finishes (500ms duration)
     const completeTimer = setTimeout(() => {
       onComplete();
-    }, 2000);
+    }, 4000);
 
     return () => {
       clearTimeout(exitTimer);
@@ -32,22 +32,7 @@ export const SplashView: React.FC<SplashViewProps> = ({ onComplete }) => {
       }}
     >
       <div style={styles.centerContent}>
-        {/* Inspire Logo Crest */}
-        <div style={styles.logoContainer} className="glass-panel anim-scale-logo">
-          <div style={styles.logoCrest}>
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              <text x="12" y="16" fontSize="11" fontWeight="900" textAnchor="middle" fill="var(--royal-gold)" stroke="none" fontFamily="var(--font-family)">I</text>
-            </svg>
-          </div>
-        </div>
- 
-        {/* College Name & Subtitle */}
-        <div className="anim-slide-up stagger-1" style={styles.textContainer}>
-          <h1 style={styles.collegeName}>INSPIRE</h1>
-          <h2 style={styles.collegeNameSub}>Junior College</h2>
-          <p style={styles.subtitle}>Residential Campus Portal</p>
-        </div>
+        <InspireLogo size="lg" />
       </div>
  
       {/* Powered by Creds */}

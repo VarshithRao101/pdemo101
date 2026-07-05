@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
+import { InspireLogo } from '../components/common/InspireLogo';
 
 interface PinViewProps {
   onComplete: () => void;
@@ -122,9 +123,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
 
         {/* Main Title Section */}
         <div style={styles.titleSection}>
-          <h1 style={styles.welcomeTitle}>
-            {portalRole === 'student' ? 'Inspire Junior College' : 'Welcome Back'}
-          </h1>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+            <InspireLogo size="lg" />
+          </div>
           <p style={styles.subtitle}>
             {portalRole === 'student'
               ? 'Student Portal'

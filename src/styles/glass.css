@@ -1,22 +1,31 @@
 .glass-panel {
   background: var(--card-bg);
-  border: 2px solid var(--card-border);
+  border: 1.5px solid var(--card-border);
   box-shadow: var(--shadow-sm);
+}
+.neo-2d .glass-panel {
+  border: 2px solid var(--card-border);
 }
 
 .glass-panel-heavy {
   background: var(--bg-secondary);
-  border: 2px solid var(--card-border);
+  border: 1.5px solid var(--card-border);
   box-shadow: var(--shadow-md);
+}
+.neo-2d .glass-panel-heavy {
+  border: 2px solid var(--card-border);
 }
 
 .glass-card-interactive {
   background: var(--card-bg);
-  border: 2px solid var(--card-border);
+  border: 1.5px solid var(--card-border);
   box-shadow: var(--shadow-sm);
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s, border-color 0.2s;
   position: relative;
   overflow: hidden;
+}
+.neo-2d .glass-card-interactive {
+  border: 2px solid var(--card-border);
 }
 
 .glass-card-interactive::after {
@@ -51,7 +60,7 @@
 
 .glass-input {
   background: var(--bg-secondary);
-  border: 2px solid var(--card-border);
+  border: 1.5px solid var(--card-border);
   color: var(--dark-charcoal);
   border-radius: var(--radius-sm);
   padding: 12px 16px;
@@ -60,6 +69,9 @@
   font-weight: 500;
   outline: none;
   transition: all 0.2s ease;
+}
+.neo-2d .glass-input {
+  border: 2px solid var(--card-border);
 }
 
 .glass-input::placeholder {

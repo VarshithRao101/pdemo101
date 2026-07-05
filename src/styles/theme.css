@@ -37,8 +37,8 @@
   --brand-gradient: linear-gradient(135deg, #3B82F6 0%, #FBBF24 45%, #EF4444 100%);
   --brand-gradient-soft: linear-gradient(180deg, rgba(59,130,246,0.22) 0%, rgba(251,191,36,0.14) 50%, rgba(239,68,68,0.1) 100%);
 
-  --safe-area-top: 0px;
-  --safe-area-bottom: 0px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Light Theme Variables */
@@ -56,18 +56,18 @@
 
   /* Card Colors */
   --card-bg: #FFFFFF;
-  --card-border: #0F172A;
+  --card-border: rgba(15, 23, 42, 0.08);
 
   /* Glass Colors */
-  --glass-bg: rgba(255, 255, 255, 0.95);
-  --glass-bg-hover: rgba(15, 23, 42, 0.05);
-  --glass-border: #0F172A;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-bg-hover: rgba(15, 23, 42, 0.04);
+  --glass-border: rgba(15, 23, 42, 0.08);
   --glass-shadow: rgba(15, 23, 42, 0.04);
 
   /* Shadows */
-  --shadow-sm: 3px 3px 0px #0F172A;
-  --shadow-md: 5px 5px 0px #0F172A;
-  --shadow-lg: 8px 8px 0px #0F172A;
+  --shadow-sm: 0 4px 10px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 8px 20px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 16px 36px rgba(15, 23, 42, 0.08);
 
   /* Background Gradient */
   --bg-gradient-overlay: radial-gradient(circle at top left, rgba(59, 130, 246, 0.06), transparent 25%), radial-gradient(circle at 70% 20%, rgba(251, 191, 36, 0.05), transparent 18%), radial-gradient(circle at bottom right, rgba(239, 68, 68, 0.05), transparent 22%);
@@ -88,22 +88,44 @@
   --white: #FFFFFF;
 
   /* Card Colors */
-  --card-bg: #0F172A;
-  --card-border: #64748B;
+  --card-bg: rgba(255, 255, 255, 0.05);
+  --card-border: rgba(255, 255, 255, 0.1);
 
   /* Glass Colors */
-  --glass-bg: #0A1020;
-  --glass-bg-hover: rgba(255, 255, 255, 0.05);
-  --glass-border: #64748B;
-  --glass-shadow: rgba(0, 0, 0, 0.25);
+  --glass-bg: rgba(10, 16, 32, 0.72);
+  --glass-bg-hover: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-shadow: rgba(0, 0, 0, 0.28);
 
   /* Shadows */
-  --shadow-sm: 3px 3px 0px #64748B;
-  --shadow-md: 5px 5px 0px #64748B;
-  --shadow-lg: 8px 8px 0px #64748B;
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.45);
 
   /* Background Gradient */
   --bg-gradient-overlay: radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 25%), radial-gradient(circle at 70% 20%, rgba(251, 191, 36, 0.12), transparent 18%), radial-gradient(circle at bottom right, rgba(239, 68, 68, 0.10), transparent 22%);
   --sidebar-border: rgba(255, 255, 255, 0.1);
+}
+
+/* Neo 2D Aesthetics Overrides - Activated only after authentication */
+.neo-2d, .neo-2d.light-theme, .neo-2d :root:not(.dark-theme), .neo-2d:not(.dark-theme) {
+  --card-border: #0F172A;
+  --glass-border: #0F172A;
+  --shadow-sm: 3.5px 3.5px 0px #0F172A;
+  --shadow-md: 5.5px 5.5px 0px #0F172A;
+  --shadow-lg: 8px 8px 0px #0F172A;
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-bg-hover: rgba(15, 23, 42, 0.05);
+}
+
+.neo-2d.dark-theme, .neo-2d .dark-theme {
+  --card-bg: #0F172A;
+  --card-border: #64748B;
+  --glass-bg: #0A1020;
+  --glass-border: #64748B;
+  --glass-bg-hover: rgba(255, 255, 255, 0.05);
+  --shadow-sm: 3.5px 3.5px 0px #64748B;
+  --shadow-md: 5.5px 5.5px 0px #64748B;
+  --shadow-lg: 8px 8px 0px #64748B;
 }
 

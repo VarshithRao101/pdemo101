@@ -33,6 +33,16 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (flowStage === 'authenticated') {
+      document.body.classList.add('neo-2d');
+      document.documentElement.classList.add('neo-2d');
+    } else {
+      document.body.classList.remove('neo-2d');
+      document.documentElement.classList.remove('neo-2d');
+    }
+  }, [flowStage]);
+
   const renderActiveView = () => {
     if (portalRole === 'faculty') {
       switch (activeTab) {

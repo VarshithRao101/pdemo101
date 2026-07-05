@@ -592,55 +592,63 @@ export const DashboardView: React.FC = () => {
   return (
     <div className="view-container anim-slide-up" style={styles.container}>
       <div style={styles.backgroundVisual} className="anim-float" />
-      {/* Top Glass App Bar with Inspire Logo */}
+      {/* Top Glass App Bar with Centered Inspire Logo */}
       <header style={styles.appBar}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Left Side: Hamburger Menu Button */}
+        <div style={{ width: '40px', display: 'flex', justifyContent: 'flex-start' }}>
           {isMobile && (
             <button
               onClick={() => setIsDrawerOpen(true)}
               style={styles.menuBurgerBtn}
               className="press-interactive"
+              aria-label="Open navigation menu"
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--dark-charcoal)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12" />
                 <line x1="3" y1="6" x2="21" y2="6" />
                 <line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
           )}
+        </div>
+
+        {/* Center: Centered Logo */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <InspireLogo size="md" />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Theme Toggle Button */}
-          <button
-            onClick={() => setThemeMode(theme === 'light' ? 'Dark' : 'Light')}
-            style={styles.appBarBtn}
-            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
-            className="press-interactive"
-          >
-            {theme === 'light' ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5" />
-                <line x1="12" y1="1" x2="12" y2="3" />
-                <line x1="12" y1="21" x2="12" y2="23" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="1" y1="12" x2="3" y2="12" />
-                <line x1="21" y1="12" x2="23" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-              </svg>
-            )}
-          </button>
+        {/* Right Side: Bell Icon & Desktop Theme Toggle */}
+        <div style={{ width: '40px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' }}>
+          {!isMobile && (
+            <button
+              onClick={() => setThemeMode(theme === 'light' ? 'Dark' : 'Light')}
+              style={styles.appBarBtn}
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+              className="press-interactive"
+            >
+              {theme === 'light' ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              )}
+            </button>
+          )}
 
-          {/* Notifications Button */}
-          <button onClick={() => setSubPage('notifications')} style={styles.appBarBtn} className="press-interactive">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <button onClick={() => setSubPage('notifications')} style={styles.appBarBtn} className="press-interactive" aria-label="Notifications">
+            {/* Flat yellow bell icon */}
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#FBBF24" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
