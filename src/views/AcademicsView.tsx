@@ -1195,7 +1195,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
-    zIndex: 10,
+    zIndex: 1000,
     display: 'flex',
     flexDirection: 'column',
     gap: '16px',

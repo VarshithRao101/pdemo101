@@ -587,11 +587,120 @@ export const DashboardView: React.FC = () => {
     );
   }
 
+  const renderBackgroundDesign = () => {
+    return (
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        zIndex: 0,
+        opacity: 0.95
+      }}>
+        {/* Retro Outline Grid */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage: 'linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px)',
+          backgroundSize: '30px 30px',
+        }} />
+
+        {/* Floating Colorful Neo-Brutalist Circles with Thick Outlines */}
+        <div style={{
+          position: 'absolute',
+          top: '12%',
+          left: '-40px',
+          width: '120px',
+          height: '120px',
+          borderRadius: '50%',
+          backgroundColor: '#3B82F6',
+          border: '2.5px solid var(--card-border)',
+          boxShadow: '6px 6px 0px var(--card-border)',
+          opacity: 0.15,
+        }} />
+
+        <div style={{
+          position: 'absolute',
+          top: '35%',
+          right: '-50px',
+          width: '140px',
+          height: '140px',
+          borderRadius: '50%',
+          backgroundColor: '#EF4444',
+          border: '2.5px solid var(--card-border)',
+          boxShadow: '6px 6px 0px var(--card-border)',
+          opacity: 0.12,
+        }} />
+
+        <div style={{
+          position: 'absolute',
+          bottom: '15%',
+          left: '10%',
+          width: '90px',
+          height: '90px',
+          borderRadius: '16px',
+          backgroundColor: '#FBBF24',
+          border: '2.5px solid var(--card-border)',
+          boxShadow: '6px 6px 0px var(--card-border)',
+          transform: 'rotate(15deg)',
+          opacity: 0.15,
+        }} />
+
+        <div style={{
+          position: 'absolute',
+          bottom: '28%',
+          right: '8%',
+          width: '70px',
+          height: '70px',
+          borderRadius: '50%',
+          backgroundColor: '#22C55E',
+          border: '2px solid var(--card-border)',
+          boxShadow: '4px 4px 0px var(--card-border)',
+          opacity: 0.15,
+        }} />
+
+        {/* Dynamic Colorful Gradient Mesh Blobs */}
+        <div style={{
+          position: 'absolute',
+          top: '-10%',
+          right: '15%',
+          width: '350px',
+          height: '350px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(251,191,36,0.2) 0%, transparent 70%)',
+          filter: 'blur(40px)',
+        }} />
+
+        <div style={{
+          position: 'absolute',
+          bottom: '10%',
+          left: '-5%',
+          width: '400px',
+          height: '400px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 70%)',
+          filter: 'blur(50px)',
+        }} />
+
+        <div style={{
+          position: 'absolute',
+          top: '40%',
+          left: '30%',
+          width: '300px',
+          height: '300px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(239,68,68,0.12) 0%, transparent 75%)',
+          filter: 'blur(45px)',
+        }} />
+      </div>
+    );
+  };
+
   const activeSmartCard = smartCards[annIndex];
 
   return (
     <div className="view-container anim-slide-up" style={styles.container}>
-      <div style={styles.backgroundVisual} className="anim-float" />
+      {renderBackgroundDesign()}
       {/* Top Glass App Bar with Centered Inspire Logo */}
       <header style={styles.appBar}>
         {/* Left Side: Hamburger Menu Button */}
@@ -843,8 +952,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     zIndex: 0,
   },
   appBar: {
-    height: 'calc(72px + var(--safe-area-top))',
-    paddingTop: 'var(--safe-area-top)',
+    height: 'calc(100px + var(--safe-area-top))',
+    paddingTop: 'calc(24px + var(--safe-area-top))',
     paddingLeft: '24px',
     paddingRight: '24px',
     display: 'flex',

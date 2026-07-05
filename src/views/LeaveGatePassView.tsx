@@ -904,8 +904,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: 'var(--bg-primary)',
   },
   appBar: {
-    height: 'calc(72px + var(--safe-area-top))',
-    paddingTop: 'var(--safe-area-top)',
+    height: 'calc(100px + var(--safe-area-top))',
+    paddingTop: 'calc(24px + var(--safe-area-top))',
     paddingLeft: '24px',
     paddingRight: '24px',
     display: 'flex',
