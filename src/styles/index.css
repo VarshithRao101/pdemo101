@@ -114,3 +114,32 @@ p {
   }
 }
 
+/* ─── GLOBAL ROUNDED CORNERS OVERRIDE ─────────────────────────────────────── */
+/* Ensures zero sharp edges anywhere in the app — all interactive
+   elements and cards always inherit the design-system border-radius. */
+
+button, input, textarea, select {
+  border-radius: var(--radius-sm);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  border-radius: var(--radius-xs);
+}
+
+/* Any element that has a very small hardcoded borderRadius (legacy) 
+   gets bumped to a comfortable soft rounded default */
+.shimmer-item {
+  border-radius: var(--radius-xs) !important;
+}
+
+/* Make all modal / overlay panels use large rounded corners */
+.modal-overlay > *,
+[class*="modal"] > div:first-child {
+  border-radius: var(--radius-xl) !important;
+}
+
+/* Bottom navigation bar — full top-left/top-right pill rounding */
+.floating-bottom-nav {
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
