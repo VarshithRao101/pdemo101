@@ -1,0 +1,115 @@
+@import './theme.css';
+@import './glass.css';
+@import './animations.css';
+
+/* Global resets & body configurations */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent; /* Disable tap highlight box on mobile */
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11"; /* Clean OpenType rendering */
+}
+
+html, body {
+  background-color: var(--bg-primary);
+  color: var(--dark-charcoal);
+  font-family: var(--font-family);
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* Container scrolls, not body (simulating mobile app) */
+  font-size: 16px;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Typography styles */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--dark-charcoal);
+}
+
+h1 {
+  font-size: 28px;
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+p {
+  color: var(--muted-gray);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+/* Hide default scrollbars and use premium Notion/macOS styles for views */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Utilities */
+.text-gold-gradient {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.semibold {
+  font-weight: 600;
+}
+
+.medium {
+  font-weight: 500;
+}
+
+.bold {
+  font-weight: 700;
+}
+
+/* Active touch feedback */
+.active-dim:active {
+  opacity: 0.7;
+  transform: scale(0.97);
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .view-container {
+    padding-bottom: 32px !important; /* Sidebar layout doesn't need space for bottom navigation bar */
+  }
+}
+
