@@ -269,7 +269,7 @@ export const DashboardView: React.FC = () => {
     { type: 'leave', label: 'Gate Pass', sub: 'Apply Outing Pass', Icon: GatePassIconSvg, hasBadge: true, bgColor: 'linear-gradient(135deg, rgba(234,179,8,0.18), rgba(251,191,36,0.08))', iconBg: 'rgba(234,179,8,0.18)', iconColor: '#B45309' },
     { type: 'events', label: 'Events & Gallery', sub: 'Campus Activities', Icon: EventsIconSvg, bgColor: 'linear-gradient(135deg, rgba(249,115,22,0.16), rgba(251,191,36,0.06))', iconBg: 'rgba(249,115,22,0.16)', iconColor: '#C2410C' },
     { type: 'bus', label: 'Bus Tracking', sub: 'Transit Routes', Icon: BusTrackingIconSvg, bgColor: 'linear-gradient(135deg, rgba(14,165,233,0.14), rgba(59,130,246,0.06))', iconBg: 'rgba(14,165,233,0.14)', iconColor: '#0EA5E9' },
-    { type: 'assignments', label: 'Time Table', sub: 'Weekly Schedule', Icon: AssignmentsIconSvg, bgColor: 'linear-gradient(135deg, rgba(234,88,12,0.16), rgba(251,146,60,0.06))', iconBg: 'rgba(234,88,12,0.16)', iconColor: '#C2410C' }
+    { type: 'assignments', label: 'Assignments', sub: 'Task Tracker', Icon: AssignmentsIconSvg, bgColor: 'linear-gradient(135deg, rgba(234,88,12,0.16), rgba(251,146,60,0.06))', iconBg: 'rgba(234,88,12,0.16)', iconColor: '#C2410C' }
   ];
 
   const searchSuggestions = [
@@ -324,6 +324,210 @@ export const DashboardView: React.FC = () => {
   }
   if (subPage === 'profile') {
     return <ProfileView onClose={() => setSubPage('grid')} />;
+  }
+
+  // Assignments Page (Time Table replacement)
+  if (subPage === 'assignments') {
+    return (
+      <div className="view-container anim-slide-up" style={{
+        ...styles.container,
+        backgroundColor: theme === 'light' ? '#F5F3FF' : '#1E1B4B',
+        backgroundImage: `
+          radial-gradient(circle at 10% 15%, rgba(139, 92, 246, 0.15) 0%, transparent 45%),
+          radial-gradient(circle at 90% 85%, rgba(167, 139, 250, 0.12) 0%, transparent 45%),
+          repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(139, 92, 246, 0.02) 20px, rgba(139, 92, 246, 0.02) 22px)
+        `
+      }}>
+        <header style={{
+          ...styles.appBar,
+          background: 'transparent',
+          borderBottom: '1.5px solid rgba(139, 92, 246, 0.15)',
+        }}>
+          <button onClick={() => setSubPage('grid')} style={styles.backBtn} className="press-interactive">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <h2 style={{ fontSize: '17px', fontWeight: 850, color: theme === 'light' ? '#4c1d95' : '#c084fc' }}>My Assignments</h2>
+          <div style={{ width: 28 }} />
+        </header>
+
+        <main style={{ ...styles.content, paddingBottom: '40px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Decorative Stat Widget */}
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+          }}>
+            <div style={{
+              flex: 1,
+              padding: '14px',
+              borderRadius: '16px',
+              border: '2.5px solid #8B5CF6',
+              backgroundColor: theme === 'light' ? '#fff' : '#2D1B54',
+              boxShadow: '3px 3px 0px #8B5CF6',
+              textAlign: 'center'
+            }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Pending</span>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#8B5CF6', marginTop: '2px' }}>02</div>
+            </div>
+            <div style={{
+              flex: 1,
+              padding: '14px',
+              borderRadius: '16px',
+              border: '2.5px solid #10B981',
+              backgroundColor: theme === 'light' ? '#fff' : '#142E24',
+              boxShadow: '3px 3px 0px #10B981',
+              textAlign: 'center'
+            }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Completed</span>
+              <div style={{ fontSize: '26px', fontWeight: 900, color: '#10B981', marginTop: '2px' }}>18</div>
+            </div>
+          </div>
+
+          <h3 style={{ fontSize: '15px', fontWeight: 850, margin: '8px 0 0 0', textAlign: 'left', color: 'var(--dark-charcoal)' }}>Active Assignments</h3>
+
+          {/* Decorative List of Assignments */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {[
+              {
+                subject: 'Physics • Section XI',
+                title: 'Calculus in Kinematics Homework Sheet',
+                desc: 'Solve limiting velocity equations 1 to 15. Show work.',
+                due: 'Due Tomorrow',
+                status: 'Urgent',
+                color: '#EF4444',
+                bg: theme === 'light' ? '#FEF2F2' : '#3B0F0F'
+              },
+              {
+                subject: 'Chemistry • XII-CO',
+                title: 'Aromatic Compounds Nomenclature Exercise',
+                desc: 'Draw structure sheets and label functional rings.',
+                due: 'Due in 3 days',
+                status: 'Normal',
+                color: '#F59E0B',
+                bg: theme === 'light' ? '#FFFBEB' : '#3B240F'
+              }
+            ].map((task, idx) => (
+              <div key={idx} style={{
+                borderRadius: '16px',
+                border: `2px solid ${task.color}`,
+                backgroundColor: task.bg,
+                padding: '16px',
+                boxShadow: `3px 3px 0px ${task.color}`,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                textAlign: 'left'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '10px', fontWeight: 800, color: task.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{task.subject}</span>
+                  <span style={{
+                    fontSize: '9px',
+                    fontWeight: 900,
+                    color: '#fff',
+                    backgroundColor: task.color,
+                    padding: '2px 8px',
+                    borderRadius: '6px'
+                  }}>{task.status}</span>
+                </div>
+                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{task.title}</h4>
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted-gray)' }}>{task.desc}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={task.color} strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: task.color }}>{task.due}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Stunning 2D graphic empty decoration at bottom representing study tools */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            marginTop: '12px',
+            padding: '24px 16px',
+            borderRadius: '16px',
+            border: '2px dashed rgba(139, 92, 246, 0.25)',
+            backgroundColor: 'rgba(255,255,255,0.3)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            {/* Compass, Ruler, Notebook CSS vector graphics */}
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '12px' }}>
+              {/* CSS Vector Notebook */}
+              <div style={{
+                width: '32px',
+                height: '42px',
+                borderRadius: '4px',
+                border: '2.5px solid #8B5CF6',
+                backgroundColor: '#EDE9FE',
+                position: 'relative',
+                transform: 'rotate(-8deg)',
+                display: 'flex',
+                flexDirection: 'column',
+                padding: '4px',
+                gap: '3px'
+              }}>
+                <div style={{ height: '3px', width: '8px', backgroundColor: '#8B5CF6', borderRadius: '1px' }} />
+                <div style={{ height: '2px', backgroundColor: 'rgba(139, 92, 246, 0.3)', width: '100%' }} />
+                <div style={{ height: '2px', backgroundColor: 'rgba(139, 92, 246, 0.3)', width: '80%' }} />
+                <div style={{ height: '2px', backgroundColor: 'rgba(139, 92, 246, 0.3)', width: '90%' }} />
+              </div>
+
+              {/* CSS Vector Ruler */}
+              <div style={{
+                width: '12px',
+                height: '46px',
+                borderRadius: '2px',
+                border: '2.5px solid #10B981',
+                backgroundColor: '#D1FAE5',
+                position: 'relative',
+                transform: 'rotate(15deg) translateY(-4px)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                padding: '4px 0',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ width: '4px', height: '1.5px', backgroundColor: '#10B981' }} />
+                <div style={{ width: '2px', height: '1.5px', backgroundColor: '#10B981' }} />
+                <div style={{ width: '4px', height: '1.5px', backgroundColor: '#10B981' }} />
+                <div style={{ width: '2px', height: '1.5px', backgroundColor: '#10B981' }} />
+                <div style={{ width: '4px', height: '1.5px', backgroundColor: '#10B981' }} />
+              </div>
+
+              {/* CSS Vector Pencil */}
+              <div style={{
+                width: '8px',
+                height: '42px',
+                border: '2px solid #F59E0B',
+                backgroundColor: '#FEF3C7',
+                transform: 'rotate(-25deg)',
+                position: 'relative',
+                borderRadius: '1px'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '-8px',
+                  left: '-2px',
+                  width: '0',
+                  height: '0',
+                  borderLeft: '4px solid transparent',
+                  borderRight: '4px solid transparent',
+                  borderBottom: '6px solid #D97706'
+                }} />
+              </div>
+            </div>
+            <span style={{ fontSize: '13px', fontWeight: 800, color: '#6D28D9' }}>Academic Desk Organized</span>
+            <span style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', textAlign: 'center' }}>You are on track! No overdue assignments.</span>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   // Opinion Poll Modal page

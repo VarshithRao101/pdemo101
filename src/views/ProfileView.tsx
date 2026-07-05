@@ -94,7 +94,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
   const [activePanel, setActivePanel] = useState<string | null>(null);
 
   // Settings mock state values
-  const { themeMode, setThemeMode, setActiveTab } = useNavigation();
+  const { themeMode, setThemeMode, setActiveTab, theme } = useNavigation();
+
+  const customBackgroundStyle: React.CSSProperties = {
+    ...styles.container,
+    backgroundColor: theme === 'light' ? '#FAFAFA' : '#0B0F19',
+    backgroundImage: `
+      radial-gradient(circle at 50% 30%, rgba(212, 175, 55, 0.08) 0%, transparent 60%),
+      radial-gradient(circle at 10% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 40%),
+      repeating-linear-gradient(0deg, transparent, transparent 24px, rgba(0,0,0,0.015) 24px, rgba(0,0,0,0.015) 25px)
+    `
+  };
   const [selectedLang, setSelectedLang] = useState<'English' | 'Telugu' | 'Hindi'>('English');
   const [notifPreferences, setNotifPreferences] = useState({
     announcements: true,
@@ -143,7 +153,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
 
   if (isLoading) {
     return (
-      <div className="view-container" style={styles.container}>
+      <div className="view-container" style={customBackgroundStyle}>
         <header style={styles.appBar}>
           <div style={{ width: 120, height: 24, borderRadius: 4 }} className="shimmer-item" />
           <div style={{ width: 24, height: 24, borderRadius: '50%' }} className="shimmer-item" />
@@ -159,7 +169,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
   }
 
   return (
-    <div className="view-container anim-slide-up" style={styles.container}>
+    <div className="view-container anim-slide-up" style={customBackgroundStyle}>
       {/* Sticky App Header */}
       <header style={styles.header}>
         <div style={styles.titleRow}>

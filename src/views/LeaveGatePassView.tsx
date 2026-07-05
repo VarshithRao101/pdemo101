@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { PremiumButton } from '../components/common/PremiumButton';
+import { useNavigation } from '../context/NavigationContext';
 
 // --- SVGS & ILLUSTRATIONS ---
 
@@ -89,6 +90,18 @@ interface LeaveGatePassViewProps {
 }
 
 export const LeaveGatePassView: React.FC<LeaveGatePassViewProps> = ({ onClose }) => {
+  const { theme } = useNavigation();
+
+  const customBackgroundStyle: React.CSSProperties = {
+    ...styles.container,
+    backgroundColor: theme === 'light' ? '#FFFDF9' : '#1C160C',
+    backgroundImage: `
+      radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 20% 80%, rgba(212, 175, 55, 0.05) 0%, transparent 50%),
+      repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(212, 175, 55, 0.015) 12px, rgba(212, 175, 55, 0.015) 24px)
+    `
+  };
+
   const [isLoading, setIsLoading] = useState(true);
   const [activeForm, setActiveForm] = useState<'none' | 'home_leave' | 'outing_pass'>('none');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -185,7 +198,7 @@ export const LeaveGatePassView: React.FC<LeaveGatePassViewProps> = ({ onClose })
   // Shimmer skeleton layout renderer
   if (isLoading) {
     return (
-      <div className="view-container" style={styles.container}>
+      <div className="view-container" style={customBackgroundStyle}>
         <header style={styles.appBar}>
           <div style={{ width: 24, height: 24, borderRadius: 4 }} className="shimmer-item" />
           <div style={{ width: 150, height: 20, borderRadius: 4 }} className="shimmer-item" />
@@ -227,7 +240,7 @@ export const LeaveGatePassView: React.FC<LeaveGatePassViewProps> = ({ onClose })
   // Home Leave Apply Form Screen
   if (activeForm === 'home_leave') {
     return (
-      <div className="view-container anim-slide-up" style={styles.container}>
+      <div className="view-container anim-slide-up" style={customBackgroundStyle}>
         <header style={styles.appBar}>
           <button onClick={() => setActiveForm('none')} style={styles.backBtn} className="press-interactive" aria-label="Go back">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -335,7 +348,7 @@ export const LeaveGatePassView: React.FC<LeaveGatePassViewProps> = ({ onClose })
   // Outing Pass Request Screen
   if (activeForm === 'outing_pass') {
     return (
-      <div className="view-container anim-slide-up" style={styles.container}>
+      <div className="view-container anim-slide-up" style={customBackgroundStyle}>
         <header style={styles.appBar}>
           <button onClick={() => setActiveForm('none')} style={styles.backBtn} className="press-interactive" aria-label="Go back">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -430,7 +443,7 @@ export const LeaveGatePassView: React.FC<LeaveGatePassViewProps> = ({ onClose })
   }
 
   return (
-    <div className="view-container anim-slide-up" style={styles.container}>
+    <div className="view-container anim-slide-up" style={customBackgroundStyle}>
       {/* Sticky App Header */}
       <header style={styles.header}>
         <div style={styles.titleRow}>

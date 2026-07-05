@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
+import { useNavigation } from '../context/NavigationContext';
 
 // ─── SVG ICONS ───────────────────────────────────────────────────────────────
 const HomeIcon = () => (
@@ -140,6 +141,18 @@ interface HostelLifeViewProps {
 }
 
 export const HostelLifeView: React.FC<HostelLifeViewProps> = ({ onClose }) => {
+  const { theme } = useNavigation();
+
+  const customBackgroundStyle: React.CSSProperties = {
+    ...styles.container,
+    backgroundColor: theme === 'light' ? '#ECFDF5' : '#062F1F',
+    backgroundImage: `
+      radial-gradient(circle at 10% 30%, rgba(52, 211, 153, 0.12) 0%, transparent 40%),
+      radial-gradient(circle at 90% 70%, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
+      repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(16, 185, 129, 0.02) 20px, rgba(16, 185, 129, 0.02) 21px)
+    `
+  };
+
   const [isLoading, setIsLoading] = useState(true);
   const [showContacts, setShowContacts] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -237,7 +250,7 @@ export const HostelLifeView: React.FC<HostelLifeViewProps> = ({ onClose }) => {
   // ─── LOADING ──────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <div className="view-container" style={styles.container}>
+      <div className="view-container" style={customBackgroundStyle}>
         <header style={styles.appBar}>
           <div style={{ width: 28, height: 28, borderRadius: 14 }} className="shimmer-item" />
           <div style={{ width: 160, height: 18, borderRadius: 4 }} className="shimmer-item" />
@@ -255,7 +268,7 @@ export const HostelLifeView: React.FC<HostelLifeViewProps> = ({ onClose }) => {
   // ─── CONTACTS MODAL ───────────────────────────────────────────────────────
   if (showContacts) {
     return (
-      <div className="view-container anim-slide-up" style={styles.container}>
+      <div className="view-container anim-slide-up" style={customBackgroundStyle}>
         <header style={styles.appBar}>
           <button onClick={() => setShowContacts(false)} style={styles.backBtn} className="press-interactive">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -285,7 +298,7 @@ export const HostelLifeView: React.FC<HostelLifeViewProps> = ({ onClose }) => {
 
   // ─── MAIN VIEW ────────────────────────────────────────────────────────────
   return (
-    <div className="view-container anim-slide-up" style={styles.container}>
+    <div className="view-container anim-slide-up" style={customBackgroundStyle}>
       {/* Header */}
       <header style={styles.appBar}>
         <button onClick={onClose} style={styles.backBtn} className="press-interactive">

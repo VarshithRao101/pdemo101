@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
+import { useNavigation } from '../context/NavigationContext';
 
 // --- ICONS & ILLUSTRATIONS ---
 const SearchIcon = () => (
@@ -80,6 +81,18 @@ interface ContactType {
 }
 
 export const ContactUniversityView: React.FC<ContactUniversityProps> = ({ onClose }) => {
+  const { theme } = useNavigation();
+
+  const customBackgroundStyle: React.CSSProperties = {
+    ...styles.container,
+    backgroundColor: theme === 'light' ? '#F0F9FF' : '#072C40',
+    backgroundImage: `
+      radial-gradient(circle at 10% 20%, rgba(14, 165, 233, 0.1) 0%, transparent 45%),
+      radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.08) 0%, transparent 45%),
+      repeating-linear-gradient(90deg, transparent, transparent 15px, rgba(14, 165, 233, 0.015) 15px, rgba(14, 165, 233, 0.015) 30px)
+    `
+  };
+
   const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -239,7 +252,7 @@ export const ContactUniversityView: React.FC<ContactUniversityProps> = ({ onClos
 
   if (isLoading) {
     return (
-      <div className="view-container" style={styles.container}>
+      <div className="view-container" style={customBackgroundStyle}>
         <header style={styles.appBar}>
           <div style={{ width: 24, height: 24, borderRadius: 4 }} className="shimmer-item" />
           <div style={{ width: 140, height: 20, borderRadius: 4 }} className="shimmer-item" />
@@ -262,7 +275,7 @@ export const ContactUniversityView: React.FC<ContactUniversityProps> = ({ onClos
   // --- MODAL SEARCH OVERLAY ---
   if (showSearchScreen) {
     return (
-      <div className="view-container anim-fade-in" style={styles.container}>
+      <div className="view-container anim-fade-in" style={customBackgroundStyle}>
         <header style={styles.searchHeader}>
           <button
             onClick={() => {
@@ -383,7 +396,7 @@ export const ContactUniversityView: React.FC<ContactUniversityProps> = ({ onClos
   // --- PROFILE DETAIL PAGE VIEW ---
   if (selectedContact !== null) {
     return (
-      <div className="view-container anim-slide-up" style={styles.container}>
+      <div className="view-container anim-slide-up" style={customBackgroundStyle}>
         <header style={styles.appBar}>
           <button onClick={() => setSelectedContact(null)} style={styles.backBtn} className="press-interactive" aria-label="Go back">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -463,7 +476,7 @@ export const ContactUniversityView: React.FC<ContactUniversityProps> = ({ onClos
   }
 
   return (
-    <div className="view-container anim-slide-up" style={styles.container}>
+    <div className="view-container anim-slide-up" style={customBackgroundStyle}>
       {/* Sticky App Header */}
       <header style={styles.header}>
         <div style={styles.titleRow}>

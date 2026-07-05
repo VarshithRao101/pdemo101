@@ -72,7 +72,17 @@ export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('All');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const { isMobile, setIsDrawerOpen } = useNavigation();
+  const { isMobile, setIsDrawerOpen, theme } = useNavigation();
+
+  const customBackgroundStyle: React.CSSProperties = {
+    ...styles.container,
+    backgroundColor: theme === 'light' ? '#F5F3FF' : '#0B0B1E',
+    backgroundImage: `
+      radial-gradient(circle at 10% 10%, rgba(139, 92, 246, 0.1) 0%, transparent 40%),
+      radial-gradient(circle at 90% 90%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+      repeating-linear-gradient(45deg, transparent, transparent 15px, rgba(139, 92, 246, 0.015) 15px, rgba(139, 92, 246, 0.015) 30px)
+    `
+  };
 
   // Simulation Empty State hook
   const [simulateEmpty, setSimulateEmpty] = useState(false);
@@ -179,7 +189,7 @@ export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
 
   if (isLoading) {
     return (
-      <div className="view-container" style={styles.container}>
+      <div className="view-container" style={customBackgroundStyle}>
         <header style={styles.appBar}>
           <div style={{ width: 24, height: 24 }} className="shimmer-item" />
           <div style={{ width: 120, height: 24, borderRadius: 4 }} className="shimmer-item" />
@@ -200,7 +210,7 @@ export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
   }
 
   return (
-    <div className="view-container anim-slide-up" style={styles.container}>
+    <div className="view-container anim-slide-up" style={customBackgroundStyle}>
       {/* Sticky App Header */}
       <header style={styles.header}>
         <div style={styles.titleRow}>

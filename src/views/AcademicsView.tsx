@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { PremiumButton } from '../components/common/PremiumButton';
-import { useNavigation } from '../context/NavigationContext';
+import { useNavigation, type AcademicsTabType } from '../context/NavigationContext';
 
 // --- SHARED ACADEMICS PORTAL ICONS ---
 const PresentIcon = () => (
@@ -146,7 +146,71 @@ interface AcademicsViewProps {
 }
 
 export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
-  const { academicsTab, setActiveTab, isMobile, setIsDrawerOpen } = useNavigation();
+  const { academicsTab, setActiveTab, isMobile, setIsDrawerOpen, theme } = useNavigation();
+
+  const getTabBackgroundStyle = (tab: AcademicsTabType): React.CSSProperties => {
+    const base = {
+      height: '100vh',
+      overflowY: 'auto' as const,
+      position: 'relative' as const,
+      transition: 'all 0.4s ease',
+    };
+
+    switch (tab) {
+      case 'attendance':
+        return {
+          ...base,
+          backgroundColor: theme === 'light' ? '#F0FDFA' : '#0B2521',
+          backgroundImage: `
+            radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.12) 0%, transparent 40%),
+            radial-gradient(circle at 90% 80%, rgba(45, 212, 191, 0.1) 0%, transparent 40%),
+            repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(16, 185, 129, 0.03) 39px, rgba(16, 185, 129, 0.03) 40px),
+            repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(16, 185, 129, 0.03) 39px, rgba(16, 185, 129, 0.03) 40px)
+          `,
+        };
+      case 'results':
+        return {
+          ...base,
+          backgroundColor: theme === 'light' ? '#EFF6FF' : '#0F172A',
+          backgroundImage: `
+            radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+            radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+            repeating-linear-gradient(45deg, transparent, transparent 15px, rgba(59, 130, 246, 0.02) 15px, rgba(59, 130, 246, 0.02) 30px)
+          `,
+        };
+      case 'achievements':
+        return {
+          ...base,
+          backgroundColor: theme === 'light' ? '#FFFDF5' : '#181308',
+          backgroundImage: `
+            radial-gradient(circle at 90% 10%, rgba(212, 175, 55, 0.12) 0%, transparent 50%),
+            radial-gradient(circle at 10% 90%, rgba(212, 175, 55, 0.06) 0%, transparent 50%),
+            repeating-radial-gradient(circle, transparent, transparent 20px, rgba(212, 175, 55, 0.02) 20px, rgba(212, 175, 55, 0.02) 40px)
+          `,
+        };
+      case 'fee':
+        return {
+          ...base,
+          backgroundColor: theme === 'light' ? '#FEF2F2' : '#2A0808',
+          backgroundImage: `
+            radial-gradient(circle at 80% 80%, rgba(239, 68, 68, 0.08) 0%, transparent 40%),
+            radial-gradient(circle at 20% 20%, rgba(239, 68, 68, 0.04) 0%, transparent 45%),
+            repeating-linear-gradient(90deg, transparent, transparent 30px, rgba(239, 68, 68, 0.02) 30px, rgba(239, 68, 68, 0.02) 31px)
+          `,
+        };
+      case 'marks':
+      default:
+        return {
+          ...base,
+          backgroundColor: theme === 'light' ? '#F8FAFC' : '#0F172A',
+          backgroundImage: `
+            radial-gradient(circle at 30% 30%, rgba(74, 144, 217, 0.06) 0%, transparent 50%),
+            radial-gradient(circle at 70% 70%, rgba(212, 175, 55, 0.04) 0%, transparent 50%),
+            repeating-linear-gradient(0deg, transparent, transparent 24px, rgba(0,0,0,0.015) 24px, rgba(0,0,0,0.015) 25px)
+          `,
+        };
+    }
+  };
 
   // --- Animation States ---
   const [attendanceOffset, setAttendanceOffset] = useState(283);
@@ -1133,7 +1197,7 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="view-container anim-slide-up" style={styles.container}>
+    <div className="view-container anim-slide-up" style={getTabBackgroundStyle(academicsTab)}>
       {/* Sticky App Header */}
       <header style={styles.header}>
         <div style={styles.titleRow}>
