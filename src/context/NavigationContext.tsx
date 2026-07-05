@@ -23,7 +23,7 @@ interface NavigationContextType {
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
 
 export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [activeTab, setActiveTabState] = useState<TabType>('dashboard');
   const [academicsTab, setAcademicsTab] = useState<AcademicsTabType>('attendance');
   const [portalRole, setPortalRole] = useState<PortalRoleType>('student');
   const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth < 768);
@@ -32,6 +32,34 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
   });
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+
+  const setActiveTab = (tab: TabType) => {
+    setActiveTabState(tab);
+    if (window.location.hash !== `#/${tab}`) {
+      window.history.pushState(null, '', '#/' + tab);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const hash = window.location.hash.replace('#/', '');
+      if (hash === 'dashboard' || hash === 'academics' || hash === 'updates' || hash === 'profile') {
+        setActiveTabState(hash as TabType);
+      } else {
+        setActiveTabState('dashboard');
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    
+    if (window.location.hash) {
+      handlePopState();
+    } else {
+      window.history.replaceState(null, '', '#/dashboard');
+    }
+    
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {

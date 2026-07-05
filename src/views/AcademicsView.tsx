@@ -842,6 +842,112 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
             </div>
           </GlassCard>
         </section>
+
+        {/* PREVIOUS RESULTS SECTION */}
+        <section style={styles.section} className="anim-slide-up stagger-2">
+          <h3 style={styles.sectionTitle}>Previous Results</h3>
+          <div style={{
+            display: 'flex',
+            gap: '16px',
+            overflowX: 'auto',
+            paddingBottom: '12px',
+            paddingRight: '4px',
+          }} className="drawer-scrollbar">
+            {[
+              {
+                exam: 'Unit Test 2',
+                total: '252',
+                pct: '84%',
+                maths: '88',
+                physics: '82',
+                chemistry: '82',
+                color: '#3B82F6',
+                bg: 'linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(59,130,246,0.01) 100%)',
+              },
+              {
+                exam: 'Unit Test 1',
+                total: '261',
+                pct: '87%',
+                maths: '90',
+                physics: '86',
+                chemistry: '85',
+                color: '#22C55E',
+                bg: 'linear-gradient(135deg, rgba(34,197,94,0.06) 0%, rgba(34,197,94,0.01) 100%)',
+              },
+              {
+                exam: 'Quarterly Exam',
+                total: '248',
+                pct: '82.6%',
+                maths: '85',
+                physics: '80',
+                chemistry: '83',
+                color: '#EAB308',
+                bg: 'linear-gradient(135deg, rgba(234,179,8,0.06) 0%, rgba(234,179,8,0.01) 100%)',
+              },
+              {
+                exam: 'Weekly Test 4',
+                total: '270',
+                pct: '90%',
+                maths: '95',
+                physics: '88',
+                chemistry: '87',
+                color: '#A855F7',
+                bg: 'linear-gradient(135deg, rgba(168,85,247,0.06) 0%, rgba(168,85,247,0.01) 100%)',
+              }
+            ].map((res, i) => (
+              <div key={i} style={{
+                flex: '0 0 280px',
+                padding: '16px',
+                borderRadius: '16px',
+                border: `2.5px solid ${res.color}`,
+                background: res.bg,
+                boxShadow: `3.5px 3.5px 0px ${res.color}`,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                textAlign: 'left'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 850, color: 'var(--dark-charcoal)' }}>{res.exam}</h4>
+                  <span style={{
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    color: res.color,
+                    backgroundColor: `${res.color}15`,
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    border: `1px solid ${res.color}30`
+                  }}>{res.pct}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>Total Score:</span>
+                  <span style={{ fontSize: '18px', fontWeight: 900, color: 'var(--dark-charcoal)' }}>
+                    {res.total} <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--muted-gray)' }}>/ 300</span>
+                  </span>
+                </div>
+
+                <div style={{ height: '1px', backgroundColor: 'var(--card-border)', opacity: 0.1 }} />
+
+                {/* Subject wise Breakdown mini grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  <div style={{ textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: '8px', padding: '6px', border: '1px solid var(--card-border)' }}>
+                    <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Maths</div>
+                    <div style={{ fontSize: '12px', fontWeight: 900, color: 'var(--dark-charcoal)' }}>{res.maths}</div>
+                  </div>
+                  <div style={{ textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: '8px', padding: '6px', border: '1px solid var(--card-border)' }}>
+                    <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Physics</div>
+                    <div style={{ fontSize: '12px', fontWeight: 900, color: 'var(--dark-charcoal)' }}>{res.physics}</div>
+                  </div>
+                  <div style={{ textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: '8px', padding: '6px', border: '1px solid var(--card-border)' }}>
+                    <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Chem</div>
+                    <div style={{ fontSize: '12px', fontWeight: 900, color: 'var(--dark-charcoal)' }}>{res.chemistry}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </>
     );
   };
@@ -1190,7 +1296,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: 'var(--bg-primary)',
   },
   header: {
-    padding: 'calc(24px + var(--safe-area-top)) 24px 16px 24px',
+    padding: 'calc(48px + var(--safe-area-top)) 24px 16px 24px',
     background: 'var(--glass-bg)',
     borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',

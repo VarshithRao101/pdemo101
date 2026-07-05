@@ -781,7 +781,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
             >
               Polsani Manoneeth Rao
             </h3>
-            <span style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>👤 2421604 &gt;</span>
+            <span style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>ID: 2421604 &gt;</span>
             <div style={{
               fontSize: '10px',
               fontWeight: 800,
@@ -892,7 +892,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
             }}
             className="press-interactive"
           >
-            👤 Switch Account
+            Switch Account
           </button>
           <div style={{
             display: 'flex',

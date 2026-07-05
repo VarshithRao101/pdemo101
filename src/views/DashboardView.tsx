@@ -150,6 +150,20 @@ export const DashboardView: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    if (subPage !== 'grid') {
+      window.history.pushState({ isSub: true }, '', `#/${subPage}`);
+    }
+  }, [subPage]);
+
+  useEffect(() => {
+    const handlePopSub = () => {
+      setSubPage('grid');
+    };
+    window.addEventListener('popstate', handlePopSub);
+    return () => window.removeEventListener('popstate', handlePopSub);
+  }, []);
+
   const smartCards = [
     {
       id: 1,
@@ -761,7 +775,13 @@ export const DashboardView: React.FC = () => {
                   className="press-interactive"
                   title="Light Theme"
                 >
-                  ☀️
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="5" fill="currentColor" />
+                    <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                  </svg>
                 </button>
                 <button
                   onClick={() => setThemeMode('Dark')}
@@ -782,7 +802,9 @@ export const DashboardView: React.FC = () => {
                   className="press-interactive"
                   title="Dark Theme"
                 >
-                  🌙
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                  </svg>
                 </button>
               </div>
 
@@ -908,7 +930,7 @@ export const DashboardView: React.FC = () => {
                   S/O <strong style={{ color: 'var(--dark-charcoal)' }}>Sridhar Rao</strong>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--muted-gray)', flexWrap: 'wrap' }}>
-                  <span>🆔 2421604</span>
+                  <span>ID: 2421604</span>
                   <span>•</span>
                   <span>JR/1-PUC/XI - MPC - CO-SUPER CHAINA - 1331</span>
                 </div>
@@ -1132,8 +1154,13 @@ export const DashboardView: React.FC = () => {
               minHeight: '110px'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, opacity: 0.85, textTransform: 'uppercase' }}>Attendance</span>
-                <span style={{ fontSize: '16px' }}>📊</span>
+                <span style={{ display: 'flex', alignItems: 'center', color: '#fff' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="18" y1="20" x2="18" y2="10" />
+                    <line x1="12" y1="20" x2="12" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="14" />
+                  </svg>
+                </span>
               </div>
               <div style={{ textAlign: 'left', marginTop: '12px' }}>
                 <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>92%</h4>
@@ -1159,8 +1186,12 @@ export const DashboardView: React.FC = () => {
               minHeight: '110px'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, opacity: 0.85, textTransform: 'uppercase' }}>Average Score</span>
-                <span style={{ fontSize: '16px' }}>📈</span>
+                <span style={{ display: 'flex', alignItems: 'center', color: '#fff' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                    <polyline points="17 6 23 6 23 12" />
+                  </svg>
+                </span>
               </div>
               <div style={{ textAlign: 'left', marginTop: '12px' }}>
                 <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>84%</h4>
@@ -1186,8 +1217,12 @@ export const DashboardView: React.FC = () => {
               minHeight: '110px'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, opacity: 0.85, textTransform: 'uppercase' }}>Subjects</span>
-                <span style={{ fontSize: '16px' }}>📖</span>
+                <span style={{ display: 'flex', alignItems: 'center', color: '#fff' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  </svg>
+                </span>
               </div>
               <div style={{ textAlign: 'left', marginTop: '12px' }}>
                 <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>03</h4>
@@ -1213,8 +1248,15 @@ export const DashboardView: React.FC = () => {
               minHeight: '110px'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, opacity: 0.85, textTransform: 'uppercase' }}>Class Rank</span>
-                <span style={{ fontSize: '16px' }}>🏆</span>
+                <span style={{ display: 'flex', alignItems: 'center', color: '#fff' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+                    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+                    <path d="M4 22h16" />
+                    <path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34" />
+                    <path d="M12 2a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z" />
+                  </svg>
+                </span>
               </div>
               <div style={{ textAlign: 'left', marginTop: '12px' }}>
                 <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>15<span style={{ fontSize: '14px', fontWeight: 500 }}>/120</span></h4>
@@ -1240,8 +1282,14 @@ export const DashboardView: React.FC = () => {
               minHeight: '110px'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, opacity: 0.85, textTransform: 'uppercase' }}>Upcoming Exam</span>
-                <span style={{ fontSize: '16px' }}>📅</span>
+                <span style={{ display: 'flex', alignItems: 'center', color: '#fff' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                </span>
               </div>
               <div style={{ textAlign: 'left', marginTop: '12px' }}>
                 <h4 style={{ fontSize: '18px', fontWeight: 900, margin: 0, color: '#fff' }}>JEE Main Mock</h4>
@@ -1286,8 +1334,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     zIndex: 0,
   },
   appBar: {
-    height: 'calc(100px + var(--safe-area-top))',
-    paddingTop: 'calc(24px + var(--safe-area-top))',
+    height: 'calc(120px + var(--safe-area-top))',
+    paddingTop: 'calc(48px + var(--safe-area-top))',
     paddingLeft: '24px',
     paddingRight: '24px',
     display: 'flex',
