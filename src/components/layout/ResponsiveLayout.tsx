@@ -1,4 +1,4 @@
-import React, { type ReactNode } from 'react';
+import React, { useState, type ReactNode } from 'react';
 import { useNavigation, type TabType } from '../../context/NavigationContext';
 import { FloatingBottomNav } from './FloatingBottomNav';
 import { InspireLogo } from '../common/InspireLogo';
@@ -70,24 +70,571 @@ const SvgCog = () => (
 );
 
 export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) => {
-  const { isMobile, activeTab, setActiveTab, portalRole, isDrawerOpen, setIsDrawerOpen } = useNavigation();
+  const { isMobile, activeTab, setActiveTab, portalRole, isDrawerOpen, setIsDrawerOpen, theme, setThemeMode } = useNavigation();
+
+  // State hooks for drawer modal views
+  const [showSiblingModal, setShowSiblingModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showSpotlightModal, setShowSpotlightModal] = useState(false);
+  const [showRateModal, setShowRateModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  // Sibling Modal States
+  const [siblingId, setSiblingId] = useState('');
+  const [isLinking, setIsLinking] = useState(false);
+  const [linkedSiblings, setLinkedSiblings] = useState([
+    { name: 'Polsani Rishith Rao', roll: '2421609', branch: 'XI MPC', status: 'Verified' }
+  ]);
+  const [siblingSuccessMsg, setSiblingSuccessMsg] = useState<string | null>(null);
+
+  // Rate App Modal States
+  const [stars, setStars] = useState(0);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+
+  // Settings Modal States
+  const [smsNotif, setSmsNotif] = useState(true);
+  const [biometrics, setBiometrics] = useState(true);
+
+  const handleLinkSibling = () => {
+    if (!siblingId.trim()) return;
+    setIsLinking(true);
+    setTimeout(() => {
+      setIsLinking(false);
+      const newSib = {
+        name: siblingId === '2421609' ? 'Polsani Rishith Rao' : 'Polsani Shravya Rao',
+        roll: siblingId,
+        branch: 'XI BiPC',
+        status: 'Verified'
+      };
+      setLinkedSiblings(prev => [...prev, newSib]);
+      setSiblingSuccessMsg('Sibling profile linked successfully!');
+      setSiblingId('');
+      setTimeout(() => setSiblingSuccessMsg(null), 3000);
+    }, 1200);
+  };
+
+  const handleSubmitFeedback = () => {
+    if (stars === 0) return;
+    setIsSubmittingFeedback(true);
+    setTimeout(() => {
+      setIsSubmittingFeedback(false);
+      setFeedbackSuccess(true);
+      setTimeout(() => {
+        setFeedbackSuccess(false);
+        setStars(0);
+        setFeedbackText('');
+        setShowRateModal(false);
+      }, 2000);
+    }, 1200);
+  };
 
   // Mobile side drawer list items (from Screen 1)
   const drawerMenuItems = [
-    { label: 'Home', type: 'home', icon: <SvgHome />, action: () => setActiveTab('dashboard') },
-    { label: 'Add Sibling', type: 'sibling', icon: <SvgSibling />, action: () => alert('Add Sibling Feature coming soon!') },
-    { label: 'Notifications', type: 'notif', icon: <SvgBell />, action: () => setActiveTab('updates') },
-    { label: 'About Us', type: 'about', icon: <SvgCrest />, action: () => alert('College details and credentials.') },
-    { label: 'Spotlight', type: 'spotlight', icon: <SvgStar />, action: () => alert('Spotlight & Events highlight.') },
-    { label: 'Help & Feedback', type: 'feedback', icon: <SvgQuestion />, action: () => setActiveTab('profile') },
-    { label: 'Rate the App', type: 'rate', icon: <SvgStar />, action: () => alert('Thank you for rating our application!') },
-    { label: 'Contact Us', type: 'contact', icon: <SvgPhone />, action: () => setActiveTab('profile') },
-    { label: 'Settings', type: 'settings', icon: <SvgCog />, action: () => setActiveTab('profile') },
+    { label: 'Home', type: 'home', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
+    { label: 'Add Sibling', type: 'sibling', icon: <SvgSibling />, action: () => { setIsDrawerOpen(false); setShowSiblingModal(true); } },
+    { label: 'Notifications', type: 'notif', icon: <SvgBell />, action: () => { setIsDrawerOpen(false); setActiveTab('updates'); } },
+    { label: 'About Us', type: 'about', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setShowAboutModal(true); } },
+    { label: 'Spotlight', type: 'spotlight', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setShowSpotlightModal(true); } },
+    { label: 'Help & Feedback', type: 'feedback', icon: <SvgQuestion />, action: () => { setIsDrawerOpen(false); setActiveTab('profile'); } },
+    { label: 'Rate the App', type: 'rate', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setShowRateModal(true); } },
+    { label: 'Contact Us', type: 'contact', icon: <SvgPhone />, action: () => { setIsDrawerOpen(false); setActiveTab('profile'); } },
+    { label: 'Settings', type: 'settings', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setShowSettingsModal(true); } },
   ];
+
+  // Helper function to render styled Neo-Brutalist Modal Overlay
+  const renderModal = (title: string, onClose: () => void, content: React.ReactNode) => {
+    return (
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        backdropFilter: 'blur(5px)',
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }} className="anim-fade-in" onClick={onClose}>
+        <div style={{
+          backgroundColor: 'var(--bg-secondary)',
+          border: '2px solid var(--card-border)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-lg)',
+          width: '100%',
+          maxWidth: '420px',
+          maxHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }} className="anim-scale-in" onClick={(e) => e.stopPropagation()}>
+          {/* Header */}
+          <div style={{
+            padding: '16px 20px',
+            borderBottom: '2px solid var(--card-border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'var(--bg-primary)'
+          }}>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 850, color: 'var(--dark-charcoal)' }}>{title}</h3>
+            <button onClick={onClose} style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--dark-charcoal)',
+              fontSize: '18px',
+              fontWeight: 800,
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }} className="press-interactive">✕</button>
+          </div>
+          {/* Content Body */}
+          <div style={{
+            padding: '20px',
+            overflowY: 'auto',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            textAlign: 'left'
+          }}>
+            {content}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Sibling Modal Content
+  const renderSiblingModal = () => renderModal("Link Sibling Profiles", () => setShowSiblingModal(false), (
+    <>
+      <p style={{ fontSize: '12.5px', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45 }}>
+        Link additional student profiles from your family to access unified dashboards and quick switching.
+      </p>
+
+      {/* Linked Sibling Profiles List */}
+      <div>
+        <h4 style={{ fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0' }}>
+          Linked Siblings
+        </h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {linkedSiblings.map((sib, i) => (
+            <div key={i} style={{
+              padding: '12px 14px',
+              borderRadius: '12px',
+              border: '1.5px solid var(--card-border)',
+              backgroundColor: 'var(--bg-primary)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <div>
+                <h5 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{sib.name}</h5>
+                <span style={{ fontSize: '10.5px', color: 'var(--muted-gray)' }}>Roll: {sib.roll} • {sib.branch}</span>
+              </div>
+              <span style={{
+                fontSize: '9px',
+                fontWeight: 800,
+                color: '#2E7D32',
+                backgroundColor: 'rgba(46,125,50,0.08)',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                border: '1px solid rgba(46,125,50,0.15)'
+              }}>
+                {sib.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ height: '1px', backgroundColor: 'var(--card-border)', opacity: 0.1, margin: '4px 0' }} />
+
+      {/* Add Form */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <h4 style={{ fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
+          Add Sibling Profile
+        </h4>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <input
+            type="text"
+            placeholder="Enter Student ID (e.g. 2421609)"
+            value={siblingId}
+            onChange={(e) => setSiblingId(e.target.value)}
+            disabled={isLinking}
+            style={{
+              flex: 1,
+              padding: '10px 14px',
+              borderRadius: '10px',
+              border: '1.5px solid var(--card-border)',
+              backgroundColor: 'var(--bg-primary)',
+              color: 'var(--dark-charcoal)',
+              fontSize: '13px',
+              fontFamily: 'var(--font-family)',
+              outline: 'none'
+            }}
+          />
+          <button
+            onClick={handleLinkSibling}
+            disabled={isLinking || !siblingId.trim()}
+            style={{
+              padding: '10px 16px',
+              borderRadius: '10px',
+              border: '1.5px solid var(--card-border)',
+              backgroundColor: 'var(--royal-gold)',
+              color: '#000',
+              fontWeight: 800,
+              fontSize: '13px',
+              cursor: 'pointer',
+              opacity: (!siblingId.trim() || isLinking) ? 0.6 : 1,
+            }}
+            className="press-interactive"
+          >
+            {isLinking ? 'Linking...' : 'Link'}
+          </button>
+        </div>
+        {siblingSuccessMsg && (
+          <div style={{
+            padding: '8px 12px',
+            borderRadius: '8px',
+            backgroundColor: 'rgba(46,125,50,0.08)',
+            border: '1px solid rgba(46,125,50,0.15)',
+            color: '#2E7D32',
+            fontSize: '11.5px',
+            fontWeight: 700,
+            textAlign: 'center'
+          }}>
+            {siblingSuccessMsg}
+          </div>
+        )}
+      </div>
+    </>
+  ));
+
+  // About Us Modal Content
+  const renderAboutModal = () => renderModal("About Inspire Junior College", () => setShowAboutModal(false), (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+        <InspireLogo size="md" />
+      </div>
+      <p style={{ fontSize: '12.5px', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.5, textAlign: 'center' }}>
+        Inspire Junior College is Hanumakonda's premier institution for IIT-JEE, NEET, and intermediate education, dedicated to training young minds for bright professional careers.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{
+          padding: '12px 14px',
+          borderRadius: '12px',
+          border: '1.5px solid var(--card-border)',
+          backgroundColor: 'var(--bg-primary)',
+        }}>
+          <h5 style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
+            📍 Campus Location
+          </h5>
+          <span style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>
+            Erragattu Gutta, Bheemaram, Hanumakonda, Telangana
+          </span>
+        </div>
+
+        <div style={{
+          padding: '12px 14px',
+          borderRadius: '12px',
+          border: '1.5px solid var(--card-border)',
+          backgroundColor: 'var(--bg-primary)',
+        }}>
+          <h5 style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
+            📞 Contact Numbers
+          </h5>
+          <span style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>
+            +91 7416 380 320 | +91 7416 380 324
+          </span>
+        </div>
+
+        <div style={{
+          padding: '12px 14px',
+          borderRadius: '12px',
+          border: '1.5px solid var(--card-border)',
+          backgroundColor: 'var(--bg-primary)',
+        }}>
+          <h5 style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
+            🌐 Web Portal & Email
+          </h5>
+          <span style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>
+            www.inspirehnk.org <br />
+            inspirehnk@gmail.com
+          </span>
+        </div>
+      </div>
+    </>
+  ));
+
+  // Spotlight Modal Content
+  const renderSpotlightModal = () => renderModal("Campus Spotlight", () => setShowSpotlightModal(false), (
+    <>
+      <p style={{ fontSize: '12.5px', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45 }}>
+        Recent accolades, news updates, and student achievements from Inspire Junior College Hanumakonda.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {[
+          { title: '🥇 JEE Mains Excellence', desc: 'Over 45 students from our Hanumakonda campus secured ranks in the top 1000 in the recent JEE Mains session.', tag: 'Academic' },
+          { title: '🔬 Robotics Exhibition', desc: 'Intermediate science exhibition models for clean energy won 1st place in district evaluations.', tag: 'Science' },
+          { title: '🏆 Inter-College Basketball Gold', desc: 'Inspire Junior College Sports Team won the Inter-District Intermediate Championship finals.', tag: 'Sports' }
+        ].map((item, idx) => (
+          <div key={idx} style={{
+            padding: '14px',
+            borderRadius: '14px',
+            border: '1.5px solid var(--card-border)',
+            backgroundColor: 'var(--bg-primary)',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span style={{
+                fontSize: '8.5px',
+                fontWeight: 800,
+                color: 'var(--royal-gold)',
+                backgroundColor: 'rgba(212,175,55,0.08)',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                border: '1px solid rgba(212,175,55,0.15)'
+              }}>{item.tag}</span>
+            </div>
+            <h4 style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{item.title}</h4>
+            <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--muted-gray)', lineHeight: 1.4 }}>{item.desc}</p>
+          </div>
+        ))}
+      </div>
+    </>
+  ));
+
+  // Rate Modal Content
+  const renderRateModal = () => renderModal("Rate the Portal App", () => setShowRateModal(false), (
+    <>
+      {feedbackSuccess ? (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px 0',
+          textAlign: 'center'
+        }} className="anim-scale-in">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" strokeWidth="2.5" style={{ marginBottom: '12px' }}>
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <h4 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)', margin: '0 0 6px 0' }}>Thank You!</h4>
+          <p style={{ fontSize: '12px', color: 'var(--muted-gray)', margin: 0 }}>Your rating and comments have been securely submitted to help us improve.</p>
+        </div>
+      ) : (
+        <>
+          <p style={{ fontSize: '12.5px', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45, textAlign: 'center' }}>
+            Your feedback helps us make the Inspire Portal better for everyone.
+          </p>
+
+          {/* Star Selection Row */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', padding: '8px 0' }}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                onClick={() => setStars(star)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  color: star <= stars ? '#FBBF24' : '#E2E8F0',
+                  transition: 'transform 0.15s ease'
+                }}
+                className="press-interactive"
+              >
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke={star <= stars ? '#F59E0B' : '#CBD5E1'} strokeWidth="1.5">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              </button>
+            ))}
+          </div>
+
+          {/* Comment input area */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <textarea
+              placeholder="What could we improve? (Optional)"
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              disabled={isSubmittingFeedback}
+              style={{
+                width: '100%',
+                height: '80px',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                border: '1.5px solid var(--card-border)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--dark-charcoal)',
+                fontSize: '12.5px',
+                fontFamily: 'var(--font-family)',
+                resize: 'none',
+                outline: 'none'
+              }}
+            />
+          </div>
+
+          <button
+            onClick={handleSubmitFeedback}
+            disabled={stars === 0 || isSubmittingFeedback}
+            style={{
+              padding: '12px',
+              borderRadius: '12px',
+              border: '2px solid var(--card-border)',
+              backgroundColor: 'var(--royal-gold)',
+              color: '#000',
+              fontWeight: 800,
+              fontSize: '13px',
+              cursor: 'pointer',
+              width: '100%',
+              opacity: (stars === 0 || isSubmittingFeedback) ? 0.6 : 1,
+              marginTop: '4px'
+            }}
+            className="press-interactive"
+          >
+            {isSubmittingFeedback ? 'Submitting...' : 'Submit Review'}
+          </button>
+        </>
+      )}
+    </>
+  ));
+
+  // Settings Modal Content
+  const renderSettingsModal = () => renderModal("Portal Settings", () => setShowSettingsModal(false), (
+    <>
+      <p style={{ fontSize: '12.5px', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45 }}>
+        Customize your experience and security options on the Inspire Residential Portal.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        
+        {/* Dark Mode Toggle */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px 14px',
+          borderRadius: '12px',
+          border: '1.5px solid var(--card-border)',
+          backgroundColor: 'var(--bg-primary)'
+        }}>
+          <div>
+            <h5 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Theme Toggle</h5>
+            <span style={{ fontSize: '10.5px', color: 'var(--muted-gray)' }}>Light / Dark theme toggle</span>
+          </div>
+          <button
+            onClick={() => setThemeMode(theme === 'light' ? 'Dark' : 'Light')}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              border: '1.5px solid var(--card-border)',
+              backgroundColor: 'var(--bg-secondary)',
+              color: 'var(--dark-charcoal)',
+              fontSize: '11px',
+              fontWeight: 800,
+              cursor: 'pointer'
+            }}
+            className="press-interactive"
+          >
+            {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
+          </button>
+        </div>
+
+        {/* SMS Notifications Toggle */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px 14px',
+          borderRadius: '12px',
+          border: '1.5px solid var(--card-border)',
+          backgroundColor: 'var(--bg-primary)'
+        }}>
+          <div>
+            <h5 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>SMS Reminders</h5>
+            <span style={{ fontSize: '10.5px', color: 'var(--muted-gray)' }}>Receive SMS reports for gate pass approvals</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={smsNotif}
+            onChange={(e) => setSmsNotif(e.target.checked)}
+            style={{
+              width: '18px',
+              height: '18px',
+              cursor: 'pointer',
+              accentColor: 'var(--royal-gold)'
+            }}
+          />
+        </div>
+
+        {/* Biometrics Toggle */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px 14px',
+          borderRadius: '12px',
+          border: '1.5px solid var(--card-border)',
+          backgroundColor: 'var(--bg-primary)'
+        }}>
+          <div>
+            <h5 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Fingerprint Sign-in</h5>
+            <span style={{ fontSize: '10.5px', color: 'var(--muted-gray)' }}>Allow biometric pass check at starting view</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={biometrics}
+            onChange={(e) => setBiometrics(e.target.checked)}
+            style={{
+              width: '18px',
+              height: '18px',
+              cursor: 'pointer',
+              accentColor: 'var(--royal-gold)'
+            }}
+          />
+        </div>
+
+        {/* Security PIN Change */}
+        <button
+          onClick={() => alert('PIN reset verification code sent to your father, Sridhar Rao\'s phone: +91 ******0320')}
+          style={{
+            padding: '12px',
+            borderRadius: '12px',
+            border: '2px solid var(--card-border)',
+            backgroundColor: 'var(--bg-secondary)',
+            color: 'var(--dark-charcoal)',
+            fontWeight: 800,
+            fontSize: '12.5px',
+            cursor: 'pointer',
+            width: '100%',
+            marginTop: '4px'
+          }}
+          className="press-interactive"
+        >
+          🔑 Reset Portal Security PIN
+        </button>
+
+      </div>
+    </>
+  ));
 
   if (isMobile) {
     return (
       <div style={styles.mobileWrapper}>
+        {/* Render Active Modals */}
+        {showSiblingModal && renderSiblingModal()}
+        {showAboutModal && renderAboutModal()}
+        {showSpotlightModal && renderSpotlightModal()}
+        {showRateModal && renderRateModal()}
+        {showSettingsModal && renderSettingsModal()}
+
         {/* Left Side Sliding Navigation Drawer (Screen 1 design) */}
         <div style={styles.mobileDrawerContainer}>
           {/* User profile header card */}
@@ -116,7 +663,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
                   key={idx}
                   onClick={() => {
                     item.action();
-                    setIsDrawerOpen(false);
                   }}
                   style={{
                     ...styles.drawerLinkBtn,
