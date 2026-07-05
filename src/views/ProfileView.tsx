@@ -94,7 +94,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
   const [activePanel, setActivePanel] = useState<string | null>(null);
 
   // Settings mock state values
-  const { themeMode, setThemeMode } = useNavigation();
+  const { themeMode, setThemeMode, setActiveTab } = useNavigation();
   const [selectedLang, setSelectedLang] = useState<'English' | 'Telugu' | 'Hindi'>('English');
   const [notifPreferences, setNotifPreferences] = useState({
     announcements: true,
@@ -163,13 +163,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
       {/* Sticky App Header */}
       <header style={styles.header}>
         <div style={styles.titleRow}>
-          {onClose && (
-            <button onClick={onClose} style={styles.backBtn} className="press-interactive">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-          )}
+          <button onClick={onClose || (() => setActiveTab('dashboard'))} style={styles.backBtn} className="press-interactive">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
           <div>
             <h1 style={styles.title}>Profile</h1>
             <p style={styles.subtitle}>Student Information & Digital Identity</p>
@@ -680,18 +678,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: '#FAFAFA',
   },
   appBar: {
-    height: '64px',
-    padding: '0 24px',
+    height: 'calc(72px + var(--safe-area-top))',
+    paddingTop: 'var(--safe-area-top)',
+    paddingLeft: '24px',
+    paddingRight: '24px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    background: 'rgba(250, 250, 250, 0.85)',
-    backdropFilter: 'blur(20px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-    borderBottom: '1px solid rgba(0, 0, 0, 0.03)',
+    background: 'var(--glass-bg)',
+    borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
-    zIndex: 100,
+    zIndex: 1000,
   },
   header: {
     padding: 'calc(24px + var(--safe-area-top)) 24px 16px 24px',
@@ -699,7 +697,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderBottom: '1.5px solid var(--card-border)',
     position: 'sticky',
     top: 0,
-    zIndex: 10,
+    zIndex: 1000,
     display: 'flex',
     flexDirection: 'column',
     gap: '16px',

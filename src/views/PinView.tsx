@@ -524,8 +524,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: '10px',
     height: '10px',
     borderRadius: '50%',
-    background: 'var(--gold-gradient)',
-    boxShadow: '0 2px 6px rgba(212, 175, 55, 0.3)',
+    background: '#000000',
+    boxShadow: 'none',
   },
   bioContainer: {
     display: 'flex',
