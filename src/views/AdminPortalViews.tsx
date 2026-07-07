@@ -6,7 +6,6 @@ import { InspireLogo } from '../components/common/InspireLogo';
 import { apiClient } from '../services/apiClient';
 import { admin1Service } from '../services/admin1Service';
 import { admin2Service } from '../services/admin2Service';
-import * as XLSX from 'xlsx';
 import { onSocketEvent } from '../services/socketClient';
 
 // --- RENDER BACKGROUND DESIGN WITH CUSTOM ACCENT COLOR GLOWS ---
@@ -94,7 +93,8 @@ const renderBackgroundDesign = (colorTheme: 'emerald' | 'gold' | 'sapphire' | 'r
 
 // --- MOCK ROSTERS DATABASES ---
 interface ExpenditureItem {
-  id: string;
+  _id?: string;
+  id?: string;
   category: string;
   amount: number;
   description: string;
@@ -102,7 +102,8 @@ interface ExpenditureItem {
 }
 
 interface WorkerItem {
-  id: string;
+  _id?: string;
+  id?: string;
   name: string;
   role: string;
   salary: number;
@@ -110,6 +111,7 @@ interface WorkerItem {
 }
 
 interface Student {
+  _id?: string;
   admissionNumber: string;
   studentId: string;
   qrId: string;
@@ -136,6 +138,7 @@ interface Student {
 }
 
 interface Teacher {
+  _id?: string;
   id: string;
   name: string;
   subject: string;
@@ -149,11 +152,22 @@ interface Teacher {
 }
 
 interface Bulletin {
-  id: string;
+  _id?: string;
+  id?: string;
   category: 'announcement' | 'gallery' | 'event' | 'circular' | 'notice' | 'holiday';
   title: string;
-  date: string;
+  date?: string;
   content: string;
+}
+
+interface ExamItem {
+  _id?: string;
+  id?: string;
+  name: string;
+  date: string;
+  class: string;
+  status: 'Scheduled' | 'Results Published' | string;
+  resultsPublished: boolean;
 }
 
 const INITIAL_STUDENTS_LIST: Student[] = [
@@ -225,10 +239,6 @@ const getAdminStudents = (): Student[] => {
   return (window as any)._adminStudents;
 };
 
-const setAdminStudents = (s: Student[]) => {
-  (window as any)._adminStudents = s;
-};
-
 const getAdminTeachers = (): Teacher[] => {
   if (!(window as any)._adminTeachers) {
     (window as any)._adminTeachers = INITIAL_TEACHERS_LIST;
@@ -236,19 +246,11 @@ const getAdminTeachers = (): Teacher[] => {
   return (window as any)._adminTeachers;
 };
 
-const setAdminTeachers = (t: Teacher[]) => {
-  (window as any)._adminTeachers = t;
-};
-
 const getAdminBulletins = (): Bulletin[] => {
   if (!(window as any)._adminBulletins) {
     (window as any)._adminBulletins = INITIAL_BULLETINS;
   }
   return (window as any)._adminBulletins;
-};
-
-const setAdminBulletins = (b: Bulletin[]) => {
-  (window as any)._adminBulletins = b;
 };
 
 // --- MOCK ACADEMIC FEES DATABASE ---
@@ -263,10 +265,6 @@ const getMockAcademicFees = () => {
     };
   }
   return (window as any)._adminAcademicFees;
-};
-
-const setMockAcademicFees = (fees: any) => {
-  (window as any)._adminAcademicFees = fees;
 };
 
 // ─── ADMIN DASHBOARD CONTROLLER ───
@@ -312,13 +310,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [editingPubId, setEditingPubId] = useState<string | null>(null);
 
   // Exam list States
-  const [exams, setExams] = useState([
+  const [exams, setExams] = useState<ExamItem[]>([
     { id: 'EX-1', name: 'Quarterly Physics Term', date: '10 Aug 2026', class: 'Junior MPC', status: 'Scheduled', resultsPublished: false },
     { id: 'EX-2', name: 'Half-Yearly Math Exam', date: '24 Sep 2026', class: 'Junior MPC', status: 'Scheduled', resultsPublished: false }
   ]);
   const [newExamName, setNewExamName] = useState('');
   const [newExamDate, setNewExamDate] = useState('');
-  const [newExamClass] = useState('Junior MPC');
 
   // Academic baseline fees state (Locked by default, only once editable)
   const [feeRates, setFeeRates] = useState(getMockAcademicFees);
@@ -342,7 +339,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   // Timetables and sections states
   const [timetable, setTimetable] = useState<any[]>([]);
   const [timetableSection, setTimetableSection] = useState('Section A');
-  const [sectionsData, setSectionsData] = useState<{ sections: string[]; teachers: any[] }>({ sections: [], teachers: [] });
   const [attendanceSummary, setAttendanceSummary] = useState<any[]>([]);
   const [reportsData, setReportsData] = useState<any>(null);
 
@@ -371,15 +367,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [newExpAmt, setNewExpAmt] = useState('');
   const [newExpDesc, setNewExpDesc] = useState('');
 
-  const [lateFeeRate, setLateFeeRate] = useState('50');
-  const [lateFeeGrace, setLateFeeGrace] = useState('5');
-  const [scholarshipSlabs, setScholarshipSlabs] = useState([
-    { minMarks: 285, waiverPct: 50 },
-    { minMarks: 270, waiverPct: 25 },
-    { minMarks: 255, waiverPct: 10 }
-  ]);
-  const [newSlabMarks, setNewSlabMarks] = useState('');
-  const [newSlabWaiver, setNewSlabWaiver] = useState('');
 
   const [workers, setWorkers] = useState<WorkerItem[]>([
     { id: 'WRK01', name: 'Allu Prasad', role: 'Mess Supervisor', salary: 25000, paid: true },
@@ -568,7 +555,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const fetchSections = async () => {
     try {
       const data = await admin1Service.getSections();
-      setSectionsData(data);
       if (data.teachers) {
         setTeachers(data.teachers);
       }
@@ -862,7 +848,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       const nextSections = Array.from(new Set([...editTeacher.assignedSections, assignSec]));
       const nextSubjects = Array.from(new Set([...editTeacher.assignedSubjects, assignSub]));
       
-      const saved = await admin1Service.allocateTeacherDuty(selectedTeacher.id, nextSections, nextSubjects);
+      await admin1Service.allocateTeacherDuty(selectedTeacher.id, nextSections, nextSubjects);
       triggerToast('Duty allocation changes submitted.');
       fetchSections(); // refreshes teachers and sections lists from backend
     } catch (err: any) {
@@ -1446,14 +1432,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     onClick={() => {
                       setNewPubTitle(b.title);
                       setNewPubContent(b.content);
-                      setEditingPubId(b.id);
+                      setEditingPubId(b.id || b._id || null);
                     }}
                     style={styles.actionItemBtn}
                     className="press-interactive"
                   >
                     Edit
                   </button>
-                  <button onClick={() => handleDeleteBulletin(b.id)} style={{ ...styles.actionItemBtn, color: '#D32F2F' }} className="press-interactive">Delete</button>
+                  <button onClick={() => handleDeleteBulletin(b.id || b._id || '')} style={{ ...styles.actionItemBtn, color: '#D32F2F' }} className="press-interactive">Delete</button>
                 </div>
               </div>
             ))}
@@ -1866,13 +1852,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>Scheduled Examinations</h4>
             {exams.map(e => (
-              <div key={e.id} style={styles.receiptRowItem}>
+                <div key={e.id || e._id} style={styles.receiptRowItem}>
                 <div>
                   <strong>{e.name}</strong>
                   <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{e.class} • {e.date} • {e.status}</div>
                 </div>
                 {!e.resultsPublished && (
-                  <button onClick={() => handlePublishResults(e.id)} style={styles.actionItemBtn} className="press-interactive">Submit & Publish Results</button>
+                  <button onClick={() => handlePublishResults(e.id || e._id || '')} style={styles.actionItemBtn} className="press-interactive">Submit & Publish Results</button>
                 )}
               </div>
             ))}
