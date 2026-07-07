@@ -1,7 +1,7 @@
 import appModule from '../server/dist/app.js';
 import dbModule from '../server/dist/config/db.js';
 
-const app = appModule.default ?? appModule;
+const app = appModule.default?.default ?? appModule.default ?? appModule;
 const connectDB = dbModule.connectDB ?? dbModule.default?.connectDB;
 
 let dbReady = null;
