@@ -7,18 +7,8 @@ import { UpdatesView } from './views/UpdatesView';
 import { ProfileView } from './views/ProfileView';
 import { SplashView } from './views/SplashView';
 import { PinView } from './views/PinView';
-import {
-  AdminDashboardView,
-  AdminAcademicsView,
-  AdminUpdatesView,
-  AdminProfileView
-} from './views/AdminPortalViews';
-import {
-  AccountantDashboardView,
-  AccountantAcademicsView,
-  AccountantUpdatesView,
-  AccountantProfileView
-} from './views/AccountantPortalViews';
+import { AdminDashboardView } from './views/AdminPortalViews';
+import { AccountantDashboardView } from './views/AccountantPortalViews';
 
 const AppContent: React.FC = () => {
   const { activeTab, portalRole } = useNavigation();
@@ -45,33 +35,11 @@ const AppContent: React.FC = () => {
 
   const renderActiveView = () => {
     if (portalRole === 'admin') {
-      switch (activeTab) {
-        case 'dashboard':
-          return <AdminDashboardView />;
-        case 'academics':
-          return <AdminAcademicsView />;
-        case 'updates':
-          return <AdminUpdatesView />;
-        case 'profile':
-          return <AdminProfileView />;
-        default:
-          return <AdminDashboardView />;
-      }
+      return <AdminDashboardView />;
     }
 
     if (portalRole === 'accountant') {
-      switch (activeTab) {
-        case 'dashboard':
-          return <AccountantDashboardView />;
-        case 'academics':
-          return <AccountantAcademicsView />;
-        case 'updates':
-          return <AccountantUpdatesView />;
-        case 'profile':
-          return <AccountantProfileView />;
-        default:
-          return <AccountantDashboardView />;
-      }
+      return <AccountantDashboardView />;
     }
 
     switch (activeTab) {

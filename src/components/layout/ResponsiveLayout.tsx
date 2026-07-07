@@ -704,35 +704,34 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           }}
         >
           {children}
-          {portalRole !== 'student' && <FloatingBottomNav />}
+          {portalRole !== 'student' && portalRole !== 'admin' && portalRole !== 'accountant' && <FloatingBottomNav />}
         </div>
       </div>
     );
   }
 
-
-
   return (
     <div style={styles.desktopContainer} className="anim-fade-in">
       {/* Left Sidebar Menu */}
-      <aside style={{
-        width: '260px',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '24px 16px',
-        backgroundColor: '#0c1938', // Dark blue navy from screenshot
-        borderRight: '1px solid rgba(255,255,255,0.08)',
-        zIndex: 100,
-        position: 'relative'
-      }}>
-        {/* User profile header card */}
-        <div style={{
+      {portalRole !== 'admin' && portalRole !== 'accountant' && (
+        <aside style={{
+          width: '260px',
+          height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'flex-start',
-          padding: '20px 8px 8px 8px',
+          padding: '24px 16px',
+          backgroundColor: '#0c1938', // Dark blue navy from screenshot
+          borderRight: '1px solid rgba(255,255,255,0.08)',
+          zIndex: 100,
+          position: 'relative'
         }}>
+          {/* User profile header card */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            padding: '20px 8px 8px 8px',
+          }}>
           {/* Avatar Clickable to Go to Profile */}
           <div
             onClick={() => setActiveTab('profile')}
@@ -918,6 +917,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           </div>
         </div>
       </aside>
+      )}
 
       {/* Main Content Area */}
       <main style={styles.mainContent}>

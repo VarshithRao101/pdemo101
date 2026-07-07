@@ -12,8 +12,12 @@
 }
 
 html, body {
-  background-color: var(--bg-primary);
-  background-image: var(--bg-gradient-overlay);
+  background-color: #070B19 !important;
+  background-image: linear-gradient(rgba(248, 250, 252, 0.8), rgba(255, 255, 255, 0.88)), url('../assets/abstract-vector-background-design-abstract-vector-waves_1055256-327.avif') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
   color: var(--dark-charcoal);
   font-family: var(--font-family);
   height: 100%;
@@ -24,6 +28,25 @@ html, body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body.dark-theme, .dark-theme body, html.dark-theme, .dark-theme {
+  background-image: linear-gradient(rgba(7, 11, 25, 0.82), rgba(15, 23, 42, 0.88)), url('../assets/abstract-vector-background-design-abstract-vector-waves_1055256-327.avif') !important;
+}
+
+/* Semi-transparent view containers for luxury background waves display */
+.view-container,
+.splash-container {
+  background-color: rgba(248, 250, 252, 0.7) !important;
+  background-image: none !important;
+  backdrop-filter: blur(25px) saturate(130%);
+  -webkit-backdrop-filter: blur(25px) saturate(130%);
+}
+
+.dark-theme .view-container,
+.dark-theme .splash-container {
+  background-color: rgba(7, 11, 25, 0.7) !important;
+  background-image: none !important;
 }
 
 #root {
