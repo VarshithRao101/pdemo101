@@ -4,7 +4,8 @@
  * in the Authorization header of all outgoing requests.
  */
 export const getApiBaseUrl = (): string => {
-  return (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/$/, '');
+  const fallbackUrl = import.meta.env.DEV ? 'http://localhost:5000/api' : '/api';
+  return (import.meta.env.VITE_API_BASE_URL || fallbackUrl).replace(/\/$/, '');
 };
 
 export interface ApiError extends Error {

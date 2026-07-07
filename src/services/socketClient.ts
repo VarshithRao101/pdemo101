@@ -97,6 +97,10 @@ const bindSocketLifecycle = () => {
 };
 
 const ensureSocket = () => {
+  if (import.meta.env.PROD && !import.meta.env.VITE_ENABLE_REALTIME) {
+    return null;
+  }
+
   if (!socket) {
     socket = io(getSocketBaseUrl(), {
       autoConnect: false,
@@ -116,6 +120,10 @@ const ensureSocket = () => {
 
 export const connectSocket = (token?: string) => {
   const instance = ensureSocket();
+  if (!instance) {
+    setConnectionState('disconnected');
+    return null;
+  }
   if (token) {
     instance.auth = { token: token.startsWith('Bearer ') ? token : `Bearer ${token}` };
   } else {
@@ -156,6 +164,9 @@ export const useSocketConnectionState = () =>
 
 export const onSocketEvent = (eventName: SocketLiveEventName, handler: SocketHandler) => {
   const instance = ensureSocket();
+  if (!instance) {
+    return () => {};
+  }
   instance.on(eventName, handler);
   return () => {
     instance.off(eventName, handler);
@@ -164,6 +175,9 @@ export const onSocketEvent = (eventName: SocketLiveEventName, handler: SocketHan
 
 export const onceSocketEvent = (eventName: SocketLiveEventName, handler: SocketHandler) => {
   const instance = ensureSocket();
+  if (!instance) {
+    return () => {};
+  }
   instance.once(eventName, handler);
   return () => {
     instance.off(eventName, handler);
@@ -173,4 +187,3 @@ export const onceSocketEvent = (eventName: SocketLiveEventName, handler: SocketH
 export const refreshSocketAuth = () => {
   syncSocketAuth();
 };
-

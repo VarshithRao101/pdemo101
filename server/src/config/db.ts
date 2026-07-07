@@ -1,12 +1,20 @@
 import mongoose from 'mongoose';
 
 export const connectDB = async (): Promise<void> => {
+  if (mongoose.connection.readyState === 1) {
+    return;
+  }
+
+  if (mongoose.connection.readyState === 2) {
+    await mongoose.connection.asPromise();
+    return;
+  }
+
   const uri = process.env.MONGODB_URI;
   const dbName = process.env.MONGODB_DB_NAME || 'jc_erp_demo';
 
   if (!uri) {
-    console.error('CRITICAL ERROR: MONGODB_URI is not defined in environment variables.');
-    process.exit(1);
+    throw new Error('MONGODB_URI is not defined in environment variables.');
   }
 
   try {
@@ -44,6 +52,6 @@ export const connectDB = async (): Promise<void> => {
     }
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
-    process.exit(1);
+    throw error;
   }
 };
