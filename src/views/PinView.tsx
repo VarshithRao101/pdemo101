@@ -7,6 +7,20 @@ interface PinViewProps {
   onComplete: () => void;
 }
 
+// Identifier map: each segment resolves to a different username tried against the backend.
+// The 6-digit PIN entered is the shared secret (password).
+// Segment → default username hint used as the identifier:
+//   student   → 'student'
+//   admin     → 'admin'
+//   accountant→ 'accountant'
+// The backend will match it via User.username, so this is consistent with seed data.
+const SEGMENT_TO_IDENTIFIER: Record<string, string> = {
+  student: 'student',
+  admin1: 'admin1',
+  admin2: 'admin2',
+  accountant: 'accountant',
+};
+
 export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
   const [pin, setPin] = useState<string>('');
   const [isChecking, setIsChecking] = useState(false);
@@ -14,7 +28,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastKeypadIndex, setLastKeypadIndex] = useState<number | null>(null);
   const [bioScanning, setBioScanning] = useState(false);
-  const { isMobile, portalRole, setPortalRole } = useNavigation();
+  const { isMobile, portalRole, setPortalRole, login } = useNavigation();
 
   // Clear toast after 3 seconds
   useEffect(() => {
@@ -38,31 +52,46 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
     }
   };
 
-  const handleConfirm = () => {
-    if (pin.length === 6) {
-      setIsChecking(true);
-      setTimeout(() => {
-        setIsChecking(false);
-        onComplete();
-      }, 700);
-    } else {
-      // Trigger shake error animation
-      setIsError(true);
-      setToastMessage('Please enter a 6-digit PIN');
-      setTimeout(() => setIsError(false), 500);
+  const triggerError = (msg: string) => {
+    setIsError(true);
+    setToastMessage(msg);
+    setTimeout(() => setIsError(false), 500);
+    setPin('');
+  };
+
+  const handleConfirm = async () => {
+    if (pin.length !== 6) {
+      triggerError('Please enter a 6-digit PIN');
+      return;
+    }
+
+    let identifier = SEGMENT_TO_IDENTIFIER[portalRole] || 'student';
+
+    setIsChecking(true);
+
+    try {
+      await login(identifier, pin);
+      // On success: let App.tsx drive the transition via isAuthenticated state
+      onComplete();
+    } catch (err: any) {
+      const msg =
+        err?.status === 429
+          ? 'Too many attempts. Please wait 15 minutes.'
+          : 'Incorrect PIN. Please try again.';
+      triggerError(msg);
+    } finally {
+      setIsChecking(false);
     }
   };
 
   const handleBiometrics = () => {
+    // Biometrics remain as a UI prototype gesture — no real biometric API in browser
     setBioScanning(true);
     setToastMessage('Scanning fingerprint...');
     setTimeout(() => {
       setBioScanning(false);
-      setIsChecking(true);
-      setTimeout(() => {
-        setIsChecking(false);
-        onComplete();
-      }, 500);
+      setIsChecking(false);
+      setToastMessage('Fingerprint login is not yet enabled on this device.');
     }, 1200);
   };
 
@@ -129,8 +158,10 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
           <p style={styles.subtitle}>
             {portalRole === 'student'
               ? 'Student Portal'
-              : portalRole === 'admin'
-              ? 'Admin & Teacher Portal'
+              : portalRole === 'admin1'
+              ? 'Admin 1 (Campus) Portal'
+              : portalRole === 'admin2'
+              ? 'Admin 2 (Finance) Portal'
               : 'Accountant Portal'}
           </p>
 
@@ -141,7 +172,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
             borderRadius: '14px',
             padding: '2px',
             marginTop: '18px',
-            width: '360px',
+            width: '420px',
             marginLeft: 'auto',
             marginRight: 'auto',
             border: '1px solid rgba(0, 0, 0, 0.03)'
@@ -166,7 +197,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
               Student
             </button>
             <button
-              onClick={() => { setPortalRole('admin'); setPin(''); }}
+              onClick={() => { setPortalRole('admin1'); setPin(''); }}
               style={{
                 flex: 1,
                 padding: '10px 0',
@@ -176,13 +207,32 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
                 fontSize: '10px',
                 fontWeight: 800,
                 cursor: 'pointer',
-                backgroundColor: portalRole === 'admin' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                color: portalRole === 'admin' ? '#0F172A' : 'var(--muted-gray)',
-                boxShadow: portalRole === 'admin' ? 'var(--shadow-sm)' : 'none',
+                backgroundColor: portalRole === 'admin1' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                color: portalRole === 'admin1' ? '#0F172A' : 'var(--muted-gray)',
+                boxShadow: portalRole === 'admin1' ? 'var(--shadow-sm)' : 'none',
                 transition: 'all 0.2s ease'
               }}
             >
-              Admin & Teacher
+              Admin 1
+            </button>
+            <button
+              onClick={() => { setPortalRole('admin2'); setPin(''); }}
+              style={{
+                flex: 1,
+                padding: '10px 0',
+                borderRadius: '12px',
+                border: 'none',
+                fontFamily: 'var(--font-family)',
+                fontSize: '10px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                backgroundColor: portalRole === 'admin2' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                color: portalRole === 'admin2' ? '#0F172A' : 'var(--muted-gray)',
+                boxShadow: portalRole === 'admin2' ? 'var(--shadow-sm)' : 'none',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Admin 2
             </button>
             <button
               onClick={() => { setPortalRole('accountant'); setPin(''); }}

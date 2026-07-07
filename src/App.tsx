@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavigationProvider, useNavigation } from './context/NavigationContext';
 import { ResponsiveLayout } from './components/layout/ResponsiveLayout';
 import { DashboardView } from './views/DashboardView';
@@ -11,17 +11,40 @@ import { AdminDashboardView } from './views/AdminPortalViews';
 import { AccountantDashboardView } from './views/AccountantPortalViews';
 
 const AppContent: React.FC = () => {
-  const { activeTab, portalRole } = useNavigation();
+  const { activeTab, portalRole, checkSession, logout, isAuthenticated } = useNavigation();
   const [flowStage, setFlowStage] = useState<'splash' | 'pin' | 'authenticated'>('splash');
+  const sessionChecked = useRef(false);
 
+  // On mount: attempt session recovery during the splash window.
+  // If a valid JWT exists, skip PinView entirely and go straight to 'authenticated'.
+  useEffect(() => {
+    if (sessionChecked.current) return;
+    sessionChecked.current = true;
+
+    checkSession().then((isValid) => {
+      if (isValid) {
+        setFlowStage('authenticated');
+      }
+      // If not valid, SplashView will complete its animation and call onComplete -> 'pin'
+    });
+  }, [checkSession]);
+
+  // Wire global logout so other components (e.g. ProfileView) can call window.logoutUser()
   useEffect(() => {
     (window as any).logoutUser = () => {
-      setFlowStage('pin');
+      logout();
     };
     return () => {
       delete (window as any).logoutUser;
     };
-  }, []);
+  }, [logout]);
+
+  // Clean transition to PIN screen on logout
+  useEffect(() => {
+    if (!isAuthenticated && flowStage === 'authenticated') {
+      setFlowStage('pin');
+    }
+  }, [isAuthenticated, flowStage]);
 
   useEffect(() => {
     if (flowStage === 'authenticated') {
@@ -34,13 +57,19 @@ const AppContent: React.FC = () => {
   }, [flowStage]);
 
   const renderActiveView = () => {
-    if (portalRole === 'admin') {
-      return <AdminDashboardView />;
+    if (portalRole === 'admin1') {
+      return <AdminDashboardView role="admin1" />;
+    }
+
+    if (portalRole === 'admin2') {
+      return <AdminDashboardView role="admin2" />;
     }
 
     if (portalRole === 'accountant') {
       return <AccountantDashboardView />;
     }
+
+
 
     switch (activeTab) {
       case 'dashboard':

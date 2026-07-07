@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
+import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
+import collegeLogo from '../assets/college logo.png';
+import * as accountantService from '../services/accountantService';
+import { onSocketEvent } from '../services/socketClient';
+
 
 // --- RENDER BACKGROUND DESIGN WITH CUSTOM COLOR ACCENT GLOWS ---
 const renderBackgroundDesign = (colorTheme: 'emerald' | 'gold' | 'sapphire' | 'ruby' | 'purple' | 'rose' | 'teal' | 'navy' | 'orange' = 'gold') => {
@@ -98,6 +103,7 @@ interface Receipt {
 }
 
 interface Student {
+  _id?: string;
   admissionNumber: string;
   studentId: string;
   qrId: string;
@@ -114,6 +120,10 @@ interface Student {
   transportStatus: 'College Bus' | 'Self Transport';
   hostelBlock?: string;
   hostelRoom?: string;
+  course?: string;
+  section?: string;
+  branch?: string;
+  rollNumber?: string;
   tuitionFee: number;
   hostelFee: number;
   transportFee: number;
@@ -124,133 +134,6 @@ interface Student {
   receipts: Receipt[];
 }
 
-const INITIAL_STUDENTS: Student[] = [
-  {
-    admissionNumber: 'ADM24001',
-    studentId: 'STU-1001',
-    qrId: 'QR-90382',
-    registrationNumber: 'REG20240918',
-    name: 'Varshith Rao',
-    fatherName: 'Mr. Satish Rao',
-    motherName: 'Mrs. Sandhya Rao',
-    mobile: '9876543210',
-    parentMobile: '9123456789',
-    email: 'varshith.rao@inspire.edu',
-    address: 'Flat 402, Gold Crest Residency, Madhapur, Hyderabad',
-    residentialAddress: 'Hostel Block A, Room 203, Inspire Campus',
-    hostelStatus: 'Resident',
-    transportStatus: 'Self Transport',
-    hostelBlock: 'Block A',
-    hostelRoom: 'Room 203',
-    tuitionFee: 120000,
-    hostelFee: 85000,
-    transportFee: 0,
-    miscellaneousFee: 5000,
-    previousPending: 0,
-    totalPaid: 151000,
-    remainingBalance: 59000,
-    receipts: [
-      { receiptNumber: 'REC-2026-001', date: '12 June 2026', category: 'Tuition Fee Initial', installment: 'Installment 1', amount: 80000, balance: 130000, mode: 'UPI / NetBanking', cashier: 'Mr. Venkatesh' },
-      { receiptNumber: 'REC-2026-002', date: '14 June 2026', category: 'Hostel Fee Initial', installment: 'Installment 1', amount: 71000, balance: 59000, mode: 'Cash Payment', cashier: 'Mr. Venkatesh' }
-    ]
-  },
-  {
-    admissionNumber: 'ADM24002',
-    studentId: 'STU-1002',
-    qrId: 'QR-18294',
-    registrationNumber: 'REG20240801',
-    name: 'Aaditya Varma',
-    fatherName: 'Mr. Vijay Varma',
-    motherName: 'Mrs. Rekha Varma',
-    mobile: '8765432109',
-    parentMobile: '9234567890',
-    email: 'aaditya.varma@inspire.edu',
-    address: 'Plot 12, Road No 4, Jubilee Hills, Hyderabad',
-    residentialAddress: 'Hostel Block B, Room 104, Inspire Campus',
-    hostelStatus: 'Resident',
-    transportStatus: 'Self Transport',
-    hostelBlock: 'Block B',
-    hostelRoom: 'Room 104',
-    tuitionFee: 120000,
-    hostelFee: 85000,
-    transportFee: 0,
-    miscellaneousFee: 5000,
-    previousPending: 10000,
-    totalPaid: 95000,
-    remainingBalance: 115000,
-    receipts: [
-      { receiptNumber: 'REC-2026-003', date: '13 June 2026', category: 'Tuition Fee Partial', installment: 'Installment 1', amount: 60000, balance: 150000, mode: 'Credit Card', cashier: 'Mr. Venkatesh' },
-      { receiptNumber: 'REC-2026-004', date: '18 June 2026', category: 'Previous Arrears Settled', installment: 'Overdue Balance', amount: 35000, balance: 115000, mode: 'UPI / NetBanking', cashier: 'Mr. Venkatesh' }
-    ]
-  },
-  {
-    admissionNumber: 'ADM24003',
-    studentId: 'STU-1003',
-    qrId: 'QR-65123',
-    registrationNumber: 'REG20241011',
-    name: 'Rahul Khanna',
-    fatherName: 'Mr. Satish Khanna',
-    motherName: 'Mrs. Neha Khanna',
-    mobile: '7654321098',
-    parentMobile: '9345678901',
-    email: 'rahul.khanna@inspire.edu',
-    address: 'Flat 101, Elite Residency, Secunderabad',
-    residentialAddress: 'Flat 101, Elite Residency, Secunderabad',
-    hostelStatus: 'Day Scholar',
-    transportStatus: 'College Bus',
-    tuitionFee: 120000,
-    hostelFee: 0,
-    transportFee: 15000,
-    miscellaneousFee: 5000,
-    previousPending: 15000,
-    totalPaid: 80000,
-    remainingBalance: 75000,
-    receipts: [
-      { receiptNumber: 'REC-2026-005', date: '15 June 2026', category: 'Tuition Fee Partial', installment: 'Installment 1', amount: 80000, balance: 75000, mode: 'UPI / NetBanking', cashier: 'Mr. Venkatesh' }
-    ]
-  },
-  {
-    admissionNumber: 'ADM24004',
-    studentId: 'STU-1004',
-    qrId: 'QR-73921',
-    registrationNumber: 'REG20240902',
-    name: 'Sneha Reddy',
-    fatherName: 'Mr. Ramana Reddy',
-    motherName: 'Mrs. Sunitha Reddy',
-    mobile: '6543210987',
-    parentMobile: '9456789012',
-    email: 'sneha.reddy@inspire.edu',
-    address: 'Plot 44, Gachibowli, Hyderabad',
-    residentialAddress: 'Hostel Block C, Room 302, Inspire Campus',
-    hostelStatus: 'Resident',
-    transportStatus: 'Self Transport',
-    hostelBlock: 'Block C',
-    hostelRoom: 'Room 302',
-    tuitionFee: 130000,
-    hostelFee: 85000,
-    transportFee: 0,
-    miscellaneousFee: 5000,
-    previousPending: 0,
-    totalPaid: 100000,
-    remainingBalance: 120000,
-    receipts: [
-      { receiptNumber: 'REC-2026-006', date: '20 June 2026', category: 'Tuition Fee Initial', installment: 'Installment 1', amount: 100000, balance: 120000, mode: 'Demand Draft', cashier: 'Mr. Venkatesh' }
-    ]
-  }
-];
-
-const getMockStudents = (): Student[] => {
-  if (!(window as any)._erpMockStudents) {
-    (window as any)._erpMockStudents = INITIAL_STUDENTS;
-  }
-  return (window as any)._erpMockStudents;
-};
-
-const setMockStudents = (students: Student[]) => {
-  (window as any)._erpMockStudents = students;
-};
-
-// --- MOCK ATTENDANCE RECORDS DATABASE ---
 interface Attendee {
   id: string;
   name: string;
@@ -259,58 +142,65 @@ interface Attendee {
   status: 'present' | 'absent' | 'late' | 'leave';
 }
 
-const INITIAL_ATTENDANCE_ROSTER: Attendee[] = [
-  { id: 'STU-1001', name: 'Varshith Rao', type: 'student', section: 'MPC-A', status: 'present' },
-  { id: 'STU-1002', name: 'Aaditya Varma', type: 'student', section: 'MPC-A', status: 'present' },
-  { id: 'STU-1003', name: 'Rahul Khanna', type: 'student', section: 'MPC-A', status: 'present' },
-  { id: 'STU-1004', name: 'Sneha Reddy', type: 'student', section: 'MPC-A', status: 'absent' },
-  { id: 'STU-1005', name: 'Pooja Hegde', type: 'student', section: 'MPC-B', status: 'present' },
-  { id: 'STU-1006', name: 'Prabhas Kumar', type: 'student', section: 'MPC-B', status: 'present' },
-  { id: 'STU-1007', name: 'Allu Arjun', type: 'student', section: 'BiPC-A', status: 'present' },
-  { id: 'STU-1008', name: 'NTR Rama Rao', type: 'student', section: 'BiPC-A', status: 'late' },
-  { id: 'STU-1009', name: 'Vijay Deverakonda', type: 'student', section: 'CEC-A', status: 'present' },
-  
-  { id: 'FAC-201', name: 'Mr. Ramesh (Physics)', type: 'faculty', status: 'present' },
-  { id: 'FAC-202', name: 'Mrs. Sarada (Chemistry)', type: 'faculty', status: 'present' },
-  { id: 'FAC-203', name: 'Mr. Anand (Maths)', type: 'faculty', status: 'present' },
-  { id: 'FAC-204', name: 'Mrs. Grace (English)', type: 'faculty', status: 'leave' }
-];
-
-const getMockAttendance = (): Attendee[] => {
-  if (!(window as any)._erpMockAttendance) {
-    (window as any)._erpMockAttendance = INITIAL_ATTENDANCE_ROSTER;
-  }
-  return (window as any)._erpMockAttendance;
-};
-
-const setMockAttendance = (roster: Attendee[]) => {
-  (window as any)._erpMockAttendance = roster;
-};
-
-// --- MOCK SETTINGS DB ---
-const getMockSettings = () => {
-  if (!(window as any)._erpMockSettings) {
-    (window as any)._erpMockSettings = {
-      academicYear: '2026-27',
-      installments: '3 Installments',
-      lateFeeRules: '₹100 per day after due date',
-      scholarshipRules: 'Merit: 50% waiver, Sports: 30% waiver',
-      discountRules: 'Sibling: 10% waiver'
-    };
-  }
-  return (window as any)._erpMockSettings;
-};
-
-const setMockSettings = (settings: any) => {
-  (window as any)._erpMockSettings = settings;
-};
 
 // ─── MAIN CONSOLIDATED ACCOUNTANT COCKPIT VIEW ───
+const RECEIPT_INSTITUTION_NAME = 'Inspire Royal Residential Junior College';
+const RECEIPT_INSTITUTION_ADDRESS = '12-4-98, Gold Avenue, Saraswathi Nagar, Vijayawada, Andhra Pradesh 520008';
+
+const numberToReceiptWords = (amount: number) => {
+  const cleanAmount = Math.max(0, Math.floor(amount));
+  if (cleanAmount === 0) return 'Zero Rupees Only';
+
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const twoDigitWords = (value: number) => {
+    if (value === 0) return '';
+    if (value < 10) return ones[value];
+    if (value < 20) return teens[value - 10];
+    const tenPart = tens[Math.floor(value / 10)];
+    const unitPart = value % 10 ? ` ${ones[value % 10]}` : '';
+    return `${tenPart}${unitPart}`;
+  };
+
+  const threeDigitWords = (value: number) => {
+    const hundredPart = Math.floor(value / 100);
+    const remainder = value % 100;
+    const words = [];
+    if (hundredPart) words.push(`${ones[hundredPart]} Hundred`);
+    if (remainder) words.push(twoDigitWords(remainder));
+    return words.join(' ');
+  };
+
+  const crores = Math.floor(cleanAmount / 10000000);
+  const lakhs = Math.floor((cleanAmount % 10000000) / 100000);
+  const thousands = Math.floor((cleanAmount % 100000) / 1000);
+  const hundreds = cleanAmount % 1000;
+  const segments: string[] = [];
+
+  if (crores) segments.push(`${twoDigitWords(crores)} Crore`);
+  if (lakhs) segments.push(`${twoDigitWords(lakhs)} Lakh`);
+  if (thousands) segments.push(`${twoDigitWords(thousands)} Thousand`);
+  if (hundreds) segments.push(threeDigitWords(hundreds));
+
+  return `${segments.join(' ')} Rupees Only`.replace(/\s+/g, ' ').trim();
+};
+
+const escapeHtml = (value: string | number | null | undefined) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 export const AccountantDashboardView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'attendance' | 'reports' | 'late_fees' | 'scholarships' | 'profile' | 'hostel'>('menu');
-  const [students, setStudents] = useState<Student[]>(getMockStudents);
+  const [students, setStudents] = useState<Student[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [livePulseKey, setLivePulseKey] = useState<'students' | 'fees' | 'attendance' | 'hostel' | 'settings' | null>(null);
 
   // Search parameters (Local Edit Buffer state)
   const [searchAdmNo, setSearchAdmNo] = useState('');
@@ -330,7 +220,7 @@ export const AccountantDashboardView: React.FC = () => {
   const [attTab, setAttTab] = useState<'students' | 'faculty' | 'summary'>('students');
   const [selectedSection, setSelectedSection] = useState('MPC-A');
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
-  const [attendanceRoster, setAttendanceRoster] = useState<Attendee[]>(getMockAttendance);
+  const [attendanceRoster, setAttendanceRoster] = useState<Attendee[]>([]);
 
   // Hostel blocks parameters (Moved from admin)
   const [hostelBlocks, setHostelBlocks] = useState({
@@ -338,82 +228,290 @@ export const AccountantDashboardView: React.FC = () => {
     BlockB: { name: 'Block B (Girls)', capacity: 120, occupied: 98 },
     BlockC: { name: 'Block C (Girls)', capacity: 100, occupied: 65 }
   });
+  const [roomsList, setRoomsList] = useState<any[]>([]);
   const [allocateBlock, setAllocateBlock] = useState('Block A');
-  const [allocateRoom, setAllocateRoom] = useState('Room 101');
+  const [allocateRoom, setAllocateRoom] = useState('');
 
   // Settings & Rules parameters
-  const [settings, setSettings] = useState(getMockSettings);
-  const [editSettings, setEditSettings] = useState(getMockSettings);
+  const [settings, setSettings] = useState({
+    academicYear: '2026-27',
+    installments: '3 Installments',
+    lateFeeRules: '',
+    scholarshipRules: '',
+    discountRules: 'Sibling: 10% waiver'
+  });
+  const [editSettings, setEditSettings] = useState({
+    academicYear: '2026-27',
+    installments: '3 Installments',
+    lateFeeRules: '',
+    scholarshipRules: '',
+    discountRules: 'Sibling: 10% waiver'
+  });
+
+  const [dashboardSummary, setDashboardSummary] = useState({
+    collectionToday: 0,
+    pendingCount: 0,
+    pendingAmount: 0,
+    absentCount: 0
+  });
 
   const { theme, setThemeMode } = useNavigation();
 
+  const fetchDashboardSummary = async () => {
+    try {
+      const summary = await accountantService.getDashboardSummary();
+      setDashboardSummary(summary);
+    } catch (err) {
+      console.error('Failed to load dashboard summary:', err);
+    }
+  };
+
+  const fetchAllStudents = async () => {
+    try {
+      const list = await accountantService.searchStudents('');
+      setStudents(list as any);
+    } catch (err) {
+      console.error('Failed to load students:', err);
+    }
+  };
+
+  const fetchAttendanceRoster = async (dateStr: string) => {
+    try {
+      const roster = await accountantService.getAttendance(dateStr);
+      setAttendanceRoster(roster);
+    } catch (err) {
+      console.error('Failed to load attendance roster:', err);
+    }
+  };
+
+  const fetchHostelData = async () => {
+    try {
+      const hostelData = await accountantService.getHostelAdmissions();
+      setHostelBlocks(hostelData.blocks);
+      setRoomsList(hostelData.rooms);
+      // Select first room of the selected block by default if available
+      const blockRooms = hostelData.rooms.filter(r => r.block === allocateBlock);
+      if (blockRooms.length > 0) {
+        setAllocateRoom(blockRooms[0]._id);
+      } else {
+        setAllocateRoom('');
+      }
+    } catch (err) {
+      console.error('Failed to load hostel data:', err);
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const lateData = await accountantService.getLateFees();
+      const schData = await accountantService.getScholarships();
+      const loaded = {
+        academicYear: '2026-27',
+        installments: '3 Installments',
+        lateFeeRules: lateData.lateFeeRules,
+        scholarshipRules: schData.scholarshipRules,
+        discountRules: 'Sibling: 10% waiver'
+      };
+      setSettings(loaded);
+      setEditSettings(loaded);
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    }
+  };
+
+  const refreshWithPulse = async (pulseKey: typeof livePulseKey) => {
+    setLivePulseKey(pulseKey);
+    try {
+      const tasks: Promise<void>[] = [];
+      if (pulseKey === 'students' || pulseKey === 'fees') {
+        tasks.push(fetchDashboardSummary(), fetchAllStudents());
+      }
+      if (pulseKey === 'attendance') {
+        tasks.push(fetchDashboardSummary(), fetchAttendanceRoster(attendanceDate));
+      }
+      if (pulseKey === 'hostel') {
+        tasks.push(fetchHostelData());
+      }
+      if (pulseKey === 'settings') {
+        tasks.push(fetchSettings(), fetchDashboardSummary());
+      }
+      if (tasks.length === 0) {
+        tasks.push(fetchDashboardSummary(), fetchAllStudents());
+      }
+      await Promise.all(tasks);
+    } catch (err) {
+      console.error('Accountant live refresh error:', err);
+    } finally {
+      window.setTimeout(() => setLivePulseKey(null), 1400);
+    }
+  };
+
+  // On mount load dashboard metrics & student list
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
+    const loadInitialData = async () => {
+      setIsLoading(true);
+      await Promise.all([
+        fetchDashboardSummary(),
+        fetchAllStudents()
+      ]);
+      setIsLoading(false);
+    };
+    loadInitialData();
   }, []);
 
-  // Sync states on view sub-navigation
   useEffect(() => {
-    setStudents(getMockStudents());
-    setAttendanceRoster(getMockAttendance());
-    const sets = getMockSettings();
-    setSettings(sets);
-    setEditSettings(sets);
+    const unsubscribers = [
+      onSocketEvent('student:created', () => refreshWithPulse('students')),
+      onSocketEvent('fee:updated', () => refreshWithPulse('fees')),
+      onSocketEvent('attendance:updated', () => refreshWithPulse('attendance')),
+      onSocketEvent('hostel:updated', () => refreshWithPulse('hostel')),
+      onSocketEvent('fee-settings:updated', () => refreshWithPulse('settings')),
+    ];
+
+    return () => {
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
+  }, [attendanceDate]);
+
+  // On subpage navigation load page specific data
+  useEffect(() => {
+    if (activeSubPage === 'menu') {
+      fetchDashboardSummary();
+      fetchAllStudents();
+    } else if (activeSubPage === 'hostel') {
+      fetchHostelData();
+    } else if (activeSubPage === 'attendance') {
+      fetchAttendanceRoster(attendanceDate);
+    } else if (activeSubPage === 'late_fees' || activeSubPage === 'scholarships' || activeSubPage === 'profile') {
+      fetchSettings();
+    }
   }, [activeSubPage]);
+
+  // Refetch attendance when date changes
+  useEffect(() => {
+    if (activeSubPage === 'attendance') {
+      fetchAttendanceRoster(attendanceDate);
+    }
+  }, [attendanceDate]);
+
+  // Sync allocateRoom selection when block changes
+  useEffect(() => {
+    if (roomsList.length > 0) {
+      const blockRooms = roomsList.filter(r => r.block === allocateBlock);
+      if (blockRooms.length > 0) {
+        setAllocateRoom(blockRooms[0]._id);
+      } else {
+        setAllocateRoom('');
+      }
+    }
+  }, [allocateBlock, roomsList]);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleQuickFill = (admNo: string) => {
+  const handleQuickFill = async (admNo: string) => {
     setSearchAdmNo(admNo);
     setFeeCollectAdm(admNo);
     const match = students.find(s => s.admissionNumber === admNo) || null;
-    setSelectedStudent(match);
-    setEditStudent(match ? { ...match } : null);
-    triggerToast(`Loaded ${match?.name}`);
+    if (match && match._id) {
+      setIsLoading(true);
+      try {
+        const fullProfile = await accountantService.getStudentProfile(match._id);
+        setSelectedStudent(fullProfile as any);
+        setEditStudent({ ...fullProfile } as any);
+        triggerToast(`Loaded ${fullProfile.name}`);
+      } catch (err: any) {
+        triggerToast('Failed to load profile.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
   };
 
-  const handleSearchSubmit = () => {
+  const handleSearchSubmit = async () => {
     if (!searchAdmNo) {
       triggerToast('Please type an Admission Number.');
       return;
     }
-    const match = students.find(s => s.admissionNumber.toUpperCase().trim() === searchAdmNo.toUpperCase().trim());
-    if (match) {
-      setSelectedStudent(match);
-      setEditStudent({ ...match });
-      triggerToast('Student loaded.');
-    } else {
-      triggerToast('No student found.');
+    setIsLoading(true);
+    try {
+      const list = await accountantService.searchStudents(searchAdmNo);
+      if (list.length > 0) {
+        const match = list[0];
+        const fullProfile = await accountantService.getStudentProfile(match._id);
+        setSelectedStudent(fullProfile as any);
+        setEditStudent({ ...fullProfile } as any);
+        triggerToast('Student loaded.');
+      } else {
+        triggerToast('No student found.');
+        setSelectedStudent(null);
+        setEditStudent(null);
+      }
+    } catch (err: any) {
+      triggerToast(err.message || 'Error searching student.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleStudentSave = (updated: Student) => {
-    const next = students.map(s => s.admissionNumber === updated.admissionNumber ? updated : s);
-    setStudents(next);
-    setMockStudents(next);
-    setSelectedStudent(updated);
-    setEditStudent({ ...updated });
-    triggerToast('Profile updated and changes submitted successfully.');
+  const handleStudentSave = async (updated: Student) => {
+    if (!updated._id) return;
+    setIsLoading(true);
+    try {
+      const res = await accountantService.updateStudentBio(updated._id, {
+        address: updated.address,
+        hostelStatus: updated.hostelStatus,
+        transportStatus: updated.transportStatus,
+        hostelBlock: updated.hostelBlock,
+        hostelRoom: updated.hostelRoom,
+        residentialAddress: updated.residentialAddress
+      });
+      setSelectedStudent(res as any);
+      setEditStudent({ ...res } as any);
+      setStudents(prev => prev.map(s => s._id === res._id ? (res as any) : s));
+      triggerToast('Profile bio updated successfully.');
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to save changes.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleToggleAttendance = (id: string, newStatus: 'present' | 'absent' | 'late' | 'leave') => {
     const next = attendanceRoster.map(a => a.id === id ? { ...a, status: newStatus } : a);
     setAttendanceRoster(next);
-    setMockAttendance(next);
   };
 
-  const handleSaveAttendance = (type: 'student' | 'faculty') => {
-    triggerToast(`${type === 'student' ? 'Section ' + selectedSection : 'Faculty'} Attendance changes saved for date ${attendanceDate}`);
+  const handleSaveAttendance = async (type: 'student' | 'faculty') => {
+    setIsLoading(true);
+    try {
+      const filtered = attendanceRoster.filter(a => type === 'student' ? a.type === 'student' && a.section === selectedSection : a.type === 'faculty');
+      await accountantService.saveAttendance(attendanceDate, filtered);
+      triggerToast(`${type === 'student' ? 'Section ' + selectedSection : 'Faculty'} Attendance changes saved for date ${attendanceDate}`);
+      fetchDashboardSummary();
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to save attendance.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSettingsSave = () => {
-    setMockSettings(editSettings);
-    setSettings(editSettings);
-    triggerToast('Settings changes submitted and saved successfully.');
-    setActiveSubPage('menu');
+  const handleSettingsSave = async () => {
+    setIsLoading(true);
+    try {
+      await accountantService.updateLateFees(editSettings.lateFeeRules);
+      await accountantService.updateScholarships(editSettings.scholarshipRules);
+      setSettings(editSettings);
+      triggerToast('Settings changes saved successfully.');
+      setActiveSubPage('menu');
+      fetchDashboardSummary();
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to save settings.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -422,8 +520,8 @@ export const AccountantDashboardView: React.FC = () => {
     }
   };
 
-  const handleFeePayment = (type: 'partial' | 'full' | 'collect') => {
-    if (!selectedStudent) return;
+  const handleFeePayment = async (type: 'partial' | 'full' | 'collect') => {
+    if (!selectedStudent || !selectedStudent._id) return;
     let paymentAmount = 0;
     
     if (type === 'full') {
@@ -444,63 +542,48 @@ export const AccountantDashboardView: React.FC = () => {
       return;
     }
 
-    const nextBal = selectedStudent.remainingBalance - paymentAmount;
-    const nextPaid = selectedStudent.totalPaid + paymentAmount;
-    const newReceipt: Receipt = {
-      receiptNumber: `REC-2026-0${selectedStudent.receipts.length + 11}`,
-      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      category: collectCategory,
-      installment: collectInstallment,
-      amount: paymentAmount,
-      balance: nextBal,
-      mode: collectMode,
-      cashier: 'Mr. Venkatesh'
-    };
-
-    const updatedStudent: Student = {
-      ...selectedStudent,
-      totalPaid: nextPaid,
-      remainingBalance: nextBal,
-      receipts: [...selectedStudent.receipts, newReceipt]
-    };
-
-    const nextList = students.map(s => s.admissionNumber === selectedStudent.admissionNumber ? updatedStudent : s);
-    setStudents(nextList);
-    setMockStudents(nextList);
-    setSelectedStudent(updatedStudent);
-    setEditStudent(updatedStudent);
-    setCollectAmount('');
-    triggerToast(`Payment changes submitted: ₹${paymentAmount.toLocaleString('en-IN')} logged.`);
+    setIsLoading(true);
+    try {
+      const res = await accountantService.recordPayment(selectedStudent._id, {
+        amount: paymentAmount,
+        installment: collectInstallment,
+        mode: collectMode,
+        category: collectCategory
+      });
+      
+      const updatedStudent = res.student;
+      setSelectedStudent(updatedStudent as any);
+      setEditStudent(updatedStudent as any);
+      setStudents(prev => prev.map(s => s._id === updatedStudent._id ? (updatedStudent as any) : s));
+      setCollectAmount('');
+      triggerToast(`Payment logged: ₹${paymentAmount.toLocaleString('en-IN')}`);
+      fetchDashboardSummary();
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to submit payment.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Hostel assignment logic
-  const handleAllocateRoom = () => {
-    if (!selectedStudent || !editStudent) {
-      triggerToast('Select a student first.');
+  const handleAllocateRoom = async () => {
+    if (!selectedStudent || !selectedStudent._id || !allocateRoom) {
+      triggerToast('Select a student and room first.');
       return;
     }
-    const updated: Student = {
-      ...editStudent,
-      hostelStatus: 'Resident',
-      hostelBlock: allocateBlock,
-      hostelRoom: allocateRoom,
-      residentialAddress: `${allocateBlock}, ${allocateRoom}, Madhapur Campus`
-    };
-    const next = students.map(s => s.admissionNumber === selectedStudent.admissionNumber ? updated : s);
-    setStudents(next);
-    setMockStudents(next);
-    setSelectedStudent(updated);
-    setEditStudent(updated);
-
-    if (allocateBlock === 'Block A') {
-      setHostelBlocks({ ...hostelBlocks, BlockA: { ...hostelBlocks.BlockA, occupied: hostelBlocks.BlockA.occupied + 1 } });
-    } else if (allocateBlock === 'Block B') {
-      setHostelBlocks({ ...hostelBlocks, BlockB: { ...hostelBlocks.BlockB, occupied: hostelBlocks.BlockB.occupied + 1 } });
-    } else {
-      setHostelBlocks({ ...hostelBlocks, BlockC: { ...hostelBlocks.BlockC, occupied: hostelBlocks.BlockC.occupied + 1 } });
+    setIsLoading(true);
+    try {
+      const res = await accountantService.allocateRoom(allocateRoom, selectedStudent._id);
+      triggerToast('Hostel room allocation changes saved successfully!');
+      fetchHostelData();
+      setSelectedStudent(res.student as any);
+      setEditStudent({ ...res.student } as any);
+      setStudents(prev => prev.map(s => s._id === res.student._id ? (res.student as any) : s));
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to allocate room.');
+    } finally {
+      setIsLoading(false);
     }
-
-    triggerToast(`Hostel room allocation changes submitted successfully!`);
   };
 
   const handleDownloadPDF = (receipt: Receipt, student: Student) => {
@@ -509,68 +592,258 @@ export const AccountantDashboardView: React.FC = () => {
       triggerToast('Popup blocked by browser.');
       return;
     }
+
+    const receiptWords = numberToReceiptWords(receipt.amount);
+    const studentClass = student.course || student.branch || 'Junior College';
+    const studentSection = student.section || 'N/A';
+    const studentRoll = student.rollNumber || student.studentId || student.admissionNumber;
+    const receiptAmount = `Rs. ${receipt.amount.toLocaleString('en-IN')}`;
+    const receiptBalance = `Rs. ${receipt.balance.toLocaleString('en-IN')}`;
     const receiptHtml = `
       <html>
       <head>
-        <title>Receipt ${receipt.receiptNumber}</title>
+        <title>Receipt ${escapeHtml(receipt.receiptNumber)}</title>
         <style>
-          body { font-family: system-ui, sans-serif; padding: 24px; color: #1E293B; background: #f8fafc; }
-          .receipt-box { max-width: 600px; margin: auto; background: #fff; border: 1.5px solid #E2E8F0; border-radius: 16px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-          .header { border-bottom: 2.5px solid #D4AF37; padding-bottom: 12px; margin-bottom: 20px; text-align: center; }
-          .logo { font-size: 20px; font-weight: 900; color: #D4AF37; text-transform: uppercase; letter-spacing: 0.05em; }
-          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-          .item { display: flex; flex-direction: column; }
-          .label { font-size: 10px; text-transform: uppercase; color: #64748B; font-weight: 700; }
-          .value { font-size: 14px; font-weight: 800; margin-top: 2px; }
-          .amount-section { background-color: #FFFDF5; border: 1.5px solid #F3E8C4; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; }
-          .footer { text-align: center; font-size: 11px; color: #94A3B8; margin-top: 30px; }
+          @page { size: A4; margin: 0; }
+          html, body { margin: 0; padding: 0; background: #ffffff; color: #1E293B; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 8mm 9mm 7mm; display: flex; flex-direction: column; gap: 4mm; background: #fff; }
+          .copy { flex: 1 1 0; border: 1.2px solid #E7D39A; border-radius: 14px; padding: 10px 11px 9px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; background: #fffdf8; overflow: hidden; }
+          .copy-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+          .copy-tag { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #8B6A14; font-weight: 900; background: #FFF6DB; border: 1px solid #E7D39A; border-radius: 999px; padding: 4px 8px; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; border-bottom: 1.8px solid #D4AF37; padding-bottom: 7px; }
+          .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+          .brand-logo { width: 34px; height: 34px; object-fit: contain; flex: 0 0 auto; }
+          .brand-copy { min-width: 0; }
+          .brand-name { font-size: 14px; font-weight: 900; color: #8F6A00; text-transform: uppercase; letter-spacing: 0.06em; line-height: 1.05; }
+          .brand-address { font-size: 8.5px; color: #475569; line-height: 1.25; margin-top: 2px; }
+          .receipt-meta { text-align: right; min-width: 110px; }
+          .receipt-title { font-size: 16px; font-weight: 900; color: #1E293B; letter-spacing: 0.12em; text-transform: uppercase; line-height: 1; }
+          .receipt-number { margin-top: 4px; font-size: 9px; font-weight: 800; color: #8B6A14; }
+          .receipt-date { font-size: 8.5px; color: #475569; margin-top: 2px; }
+          .section-title { font-size: 9px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: #8B6A14; margin-bottom: 5px; }
+          .student-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+          .field { display: flex; flex-direction: column; gap: 2px; padding: 5px 6px; border: 1px solid #EADFBF; border-radius: 9px; background: #FFFFFF; }
+          .label { font-size: 8px; text-transform: uppercase; color: #8B6A14; font-weight: 800; letter-spacing: 0.05em; }
+          .value { font-size: 11px; font-weight: 800; color: #1E293B; line-height: 1.2; word-break: break-word; }
+          .amount-wrap { display: flex; gap: 8px; align-items: stretch; }
+          .amount-box { flex: 0 0 47%; background: linear-gradient(180deg, #FFF9E6 0%, #FFF2C7 100%); border: 1.4px solid #D4AF37; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; }
+          .amount-label { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; color: #8B6A14; }
+          .amount-value { font-size: 18px; font-weight: 900; color: #7C5A00; margin-top: 4px; line-height: 1; }
+          .amount-words { flex: 1 1 auto; border: 1.2px solid #EADFBF; border-radius: 12px; padding: 10px; background: #fff; display: flex; flex-direction: column; justify-content: center; }
+          .words-text { font-size: 11px; font-weight: 800; color: #1E293B; line-height: 1.35; }
+          .balance-row { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 9px; color: #475569; }
+          .table-wrap { border: 1.2px solid #EADFBF; border-radius: 12px; overflow: hidden; background: #fff; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { border-bottom: 1px solid #EADFBF; padding: 6px 7px; text-align: left; vertical-align: top; }
+          th { background: #FFF6DB; color: #8B6A14; font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 900; }
+          td { font-size: 10px; color: #1E293B; font-weight: 700; }
+          tr:last-child td { border-bottom: none; }
+          .footer { margin-top: auto; padding-top: 7px; border-top: 1px dashed #D4AF37; display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
+          .footer-note { font-size: 8.5px; color: #475569; line-height: 1.35; max-width: 68%; }
+          .signature { min-width: 24%; text-align: right; }
+          .signature-line { height: 20px; border-bottom: 1px solid #1E293B; margin-bottom: 4px; }
+          .signature-label { font-size: 8px; font-weight: 800; color: #1E293B; text-transform: uppercase; letter-spacing: 0.08em; }
+          .cut-line { border-top: 2px dashed #B88900; margin: 0 4px; }
+          .no-print { display: inline-flex; align-self: center; margin-bottom: 2mm; }
+          .print-btn { padding: 11px 18px; background: linear-gradient(180deg, #F9E6A8 0%, #D4AF37 100%); border: 1px solid #C79A15; border-radius: 12px; color: #1E293B; font-weight: 900; cursor: pointer; box-shadow: 0 4px 12px rgba(212,175,55,0.18); }
+          @media print {
+            .no-print { display: none !important; }
+            .page { padding: 0; gap: 0; }
+            .copy { border-radius: 0; border-left: none; border-right: none; }
+          }
         </style>
       </head>
       <body>
-        <div style="text-align: center; margin-bottom: 20px;">
-          <button onclick="window.print()" style="padding: 12px 24px; background: #D4AF37; border: none; border-radius: 12px; color: #0F172A; font-weight: 800; cursor: pointer; box-shadow: 0 4px 12px rgba(212,175,55,0.25);">
-            Print Receipt Now
-          </button>
-        </div>
-        <div class="receipt-box">
-          <div class="header">
-            <div class="logo">Inspire Junior College</div>
+        <div class="page">
+          <div class="no-print">
+            <button onclick="window.print()" class="print-btn">Print Receipt Now</button>
           </div>
-          <div class="grid">
-            <div class="item"><span class="label">Receipt Number</span><span class="value">${receipt.receiptNumber}</span></div>
-            <div class="item"><span class="label">Payment Date</span><span class="value">${receipt.date}</span></div>
-            <div class="item"><span class="label">Student Name</span><span class="value">${student.name}</span></div>
-            <div class="item"><span class="label">Admission Number</span><span class="value">${student.admissionNumber}</span></div>
-            <div class="item"><span class="label">Fee Category</span><span class="value">${receipt.category}</span></div>
-            <div class="item"><span class="label">Installment</span><span class="value">${receipt.installment}</span></div>
-            <div class="item"><span class="label">Payment Mode</span><span class="value">${receipt.mode}</span></div>
-            <div class="item"><span class="label">Authorized Cashier</span><span class="value">${receipt.cashier}</span></div>
-          </div>
-          <div class="amount-section">
-            <div>
-              <span class="label" style="color: #B45309;">Amount Paid</span>
-              <div class="value" style="font-size: 22px; color: #B45309;">₹${receipt.amount.toLocaleString('en-IN')}</div>
+          <div class="copy">
+            <div class="copy-top">
+              <div class="copy-tag">Parent Copy</div>
+              <div style="width: 68px;"></div>
+            </div>
+            <div class="header">
+              <div class="brand">
+                <img src="${collegeLogo}" alt="Institution Logo" class="brand-logo" />
+                <div class="brand-copy">
+                  <div class="brand-name">${RECEIPT_INSTITUTION_NAME}</div>
+                  <div class="brand-address">${RECEIPT_INSTITUTION_ADDRESS}</div>
+                </div>
+              </div>
+              <div class="receipt-meta">
+                <div class="receipt-title">Payment Receipt</div>
+                <div class="receipt-number">Receipt No. ${escapeHtml(receipt.receiptNumber)}</div>
+                <div class="receipt-date">Date: ${escapeHtml(receipt.date)}</div>
+              </div>
             </div>
             <div>
-              <span class="label">Remaining Balance</span>
-              <div class="value">₹${receipt.balance.toLocaleString('en-IN')}</div>
+              <div class="section-title">Student Details</div>
+              <div class="student-grid">
+                <div class="field"><span class="label">Student Name</span><span class="value">${escapeHtml(student.name)}</span></div>
+                <div class="field"><span class="label">Roll / ID No.</span><span class="value">${escapeHtml(studentRoll)}</span></div>
+                <div class="field"><span class="label">Course / Class</span><span class="value">${escapeHtml(studentClass)}</span></div>
+                <div class="field"><span class="label">Section</span><span class="value">${escapeHtml(studentSection)}</span></div>
+                <div class="field"><span class="label">Mobile</span><span class="value">${escapeHtml(student.mobile)}</span></div>
+                <div class="field"><span class="label">Admission No.</span><span class="value">${escapeHtml(student.admissionNumber)}</span></div>
+              </div>
+            </div>
+            <div class="amount-wrap">
+              <div class="amount-box">
+                <div class="amount-label">Amount Paid</div>
+                <div class="amount-value">${receiptAmount}</div>
+                <div class="balance-row" style="margin-top: 10px;">
+                  <span>Remaining Balance</span>
+                  <strong>${receiptBalance}</strong>
+                </div>
+              </div>
+              <div class="amount-words">
+                <div class="amount-label">Amount in Words</div>
+                <div class="words-text" style="margin-top: 5px;">${escapeHtml(receiptWords)}</div>
+                <div class="balance-row" style="margin-top: 12px;">
+                  <span>Payment Mode</span>
+                  <strong>${escapeHtml(receipt.mode)}</strong>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="section-title">Particulars</div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="width: 42%;">Description</th>
+                      <th style="width: 20%;">Payment Type</th>
+                      <th style="width: 22%;">Reference / Transaction ID</th>
+                      <th style="width: 16%; text-align: right;">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>${escapeHtml(`${receipt.category} - ${receipt.installment}`)}</td>
+                      <td>${escapeHtml(receipt.mode)}</td>
+                      <td>${escapeHtml(receipt.receiptNumber)}</td>
+                      <td style="text-align: right;">${receiptAmount}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="footer">
+              <div class="footer-note">
+                Thank you for your payment. This is a computer-generated receipt.
+                <div style="margin-top: 6px;">Cashier: ${escapeHtml(receipt.cashier)}</div>
+              </div>
+              <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-label">Authorized Signature</div>
+              </div>
             </div>
           </div>
-          <div class="footer">Thank you. Computer Generated Acknowledgment.</div>
+          <div class="cut-line"></div>
+          <div class="copy">
+            <div class="copy-top">
+              <div class="copy-tag">Student Copy</div>
+              <div style="width: 68px;"></div>
+            </div>
+            <div class="header">
+              <div class="brand">
+                <img src="${collegeLogo}" alt="Institution Logo" class="brand-logo" />
+                <div class="brand-copy">
+                  <div class="brand-name">${RECEIPT_INSTITUTION_NAME}</div>
+                  <div class="brand-address">${RECEIPT_INSTITUTION_ADDRESS}</div>
+                </div>
+              </div>
+              <div class="receipt-meta">
+                <div class="receipt-title">Payment Receipt</div>
+                <div class="receipt-number">Receipt No. ${escapeHtml(receipt.receiptNumber)}</div>
+                <div class="receipt-date">Date: ${escapeHtml(receipt.date)}</div>
+              </div>
+            </div>
+            <div>
+              <div class="section-title">Student Details</div>
+              <div class="student-grid">
+                <div class="field"><span class="label">Student Name</span><span class="value">${escapeHtml(student.name)}</span></div>
+                <div class="field"><span class="label">Roll / ID No.</span><span class="value">${escapeHtml(studentRoll)}</span></div>
+                <div class="field"><span class="label">Course / Class</span><span class="value">${escapeHtml(studentClass)}</span></div>
+                <div class="field"><span class="label">Section</span><span class="value">${escapeHtml(studentSection)}</span></div>
+                <div class="field"><span class="label">Mobile</span><span class="value">${escapeHtml(student.mobile)}</span></div>
+                <div class="field"><span class="label">Admission No.</span><span class="value">${escapeHtml(student.admissionNumber)}</span></div>
+              </div>
+            </div>
+            <div class="amount-wrap">
+              <div class="amount-box">
+                <div class="amount-label">Amount Paid</div>
+                <div class="amount-value">${receiptAmount}</div>
+                <div class="balance-row" style="margin-top: 10px;">
+                  <span>Remaining Balance</span>
+                  <strong>${receiptBalance}</strong>
+                </div>
+              </div>
+              <div class="amount-words">
+                <div class="amount-label">Amount in Words</div>
+                <div class="words-text" style="margin-top: 5px;">${escapeHtml(receiptWords)}</div>
+                <div class="balance-row" style="margin-top: 12px;">
+                  <span>Payment Mode</span>
+                  <strong>${escapeHtml(receipt.mode)}</strong>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="section-title">Particulars</div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="width: 42%;">Description</th>
+                      <th style="width: 20%;">Payment Type</th>
+                      <th style="width: 22%;">Reference / Transaction ID</th>
+                      <th style="width: 16%; text-align: right;">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>${escapeHtml(`${receipt.category} - ${receipt.installment}`)}</td>
+                      <td>${escapeHtml(receipt.mode)}</td>
+                      <td>${escapeHtml(receipt.receiptNumber)}</td>
+                      <td style="text-align: right;">${receiptAmount}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="footer">
+              <div class="footer-note">
+                Thank you for your payment. This is a computer-generated receipt.
+                <div style="margin-top: 6px;">Cashier: ${escapeHtml(receipt.cashier)}</div>
+              </div>
+              <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-label">Authorized Signature</div>
+              </div>
+            </div>
+          </div>
         </div>
+        <script>
+          window.addEventListener('load', function () {
+            setTimeout(function () {
+              window.print();
+            }, 250);
+          });
+        </script>
       </body>
       </html>
     `;
     printWindow.document.write(receiptHtml);
     printWindow.document.close();
+    printWindow.focus();
     triggerToast('PDF receipt opened in a new tab.');
   };
 
   // Stats calculations
-  const feeCollectedToday = students.reduce((sum, s) => {
-    return sum + s.receipts.reduce((acc, r) => acc + r.amount, 0);
-  }, 0) - 410000 + 215000;
-  const pendingFeesTotal = students.reduce((sum, s) => sum + s.remainingBalance, 0);
+  const feeCollectedToday = dashboardSummary.collectionToday;
+  const pendingFeesTotal = dashboardSummary.pendingAmount;
 
   if (isLoading) {
     return (
@@ -1198,12 +1471,12 @@ export const AccountantDashboardView: React.FC = () => {
             <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Block A (Boys Block)</span>
               <strong style={styles.metricValue}>{hostelBlocks.BlockA.occupied} / {hostelBlocks.BlockA.capacity}</strong>
-              <span style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Occupancy Rate: 80.0%</span>
+              <span style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Occupancy Rate: {hostelBlocks.BlockA.capacity > 0 ? ((hostelBlocks.BlockA.occupied / hostelBlocks.BlockA.capacity) * 100).toFixed(1) : 0}%</span>
             </div>
             <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Block B (Girls Block)</span>
               <strong style={styles.metricValue}>{hostelBlocks.BlockB.occupied} / {hostelBlocks.BlockB.capacity}</strong>
-              <span style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Occupancy Rate: 81.6%</span>
+              <span style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Occupancy Rate: {hostelBlocks.BlockB.capacity > 0 ? ((hostelBlocks.BlockB.occupied / hostelBlocks.BlockB.capacity) * 100).toFixed(1) : 0}%</span>
             </div>
           </div>
 
@@ -1243,10 +1516,10 @@ export const AccountantDashboardView: React.FC = () => {
                     <div style={{ flex: 1 }}>
                       <label style={styles.formLabel}>Select Room</label>
                       <select value={allocateRoom} onChange={(e) => setAllocateRoom(e.target.value)} style={styles.selectInput}>
-                        <option value="Room 101">Room 101</option>
-                        <option value="Room 102">Room 102</option>
-                        <option value="Room 203">Room 203</option>
-                        <option value="Room 302">Room 302</option>
+                        <option value="">-- Select Room --</option>
+                        {roomsList.filter(r => r.block === allocateBlock).map(r => (
+                          <option key={r._id} value={r._id}>{r.roomNumber} ({r.occupants.length}/{r.capacity} occupied)</option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -1372,6 +1645,7 @@ export const AccountantDashboardView: React.FC = () => {
               <p style={styles.childMetaText}>Bursar Ledger Terminal</p>
             </div>
           </div>
+          <LiveConnectionIndicator compact />
           {/* VERY VISIBLE LOGO BRANDING */}
           <div style={{ paddingRight: '8px' }}>
             <InspireLogo size="md" />
@@ -1383,24 +1657,24 @@ export const AccountantDashboardView: React.FC = () => {
         {/* Top Summary Metrics Cards */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={styles.metricsGrid}>
-            <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
+            <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey === 'students' || livePulseKey === 'fees' ? 'anim-pulse-gold' : ''}`}>
               <span style={styles.metricLabel}>Total Fee Collected Today</span>
               <strong style={{ ...styles.metricValue, color: '#10B981' }}>₹{feeCollectedToday.toLocaleString('en-IN')}</strong>
             </GlassCard>
-            <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
+            <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey === 'students' || livePulseKey === 'fees' ? 'anim-pulse-gold' : ''}`}>
               <span style={styles.metricLabel}>Pending Fees Total</span>
               <strong style={{ ...styles.metricValue, color: '#EF4444' }}>₹{pendingFeesTotal.toLocaleString('en-IN')}</strong>
             </GlassCard>
           </div>
 
           <div style={styles.metricsGrid}>
-            <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
+            <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey === 'attendance' ? 'anim-pulse-gold' : ''}`}>
               <span style={styles.metricLabel}>Students Present Today</span>
-              <strong style={styles.metricValue}>2,735</strong>
+              <strong style={styles.metricValue}>{Math.max(0, students.length - dashboardSummary.absentCount)}</strong>
             </GlassCard>
-            <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
+            <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey === 'attendance' ? 'anim-pulse-gold' : ''}`}>
               <span style={styles.metricLabel}>Students Absent Today</span>
-              <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>111</strong>
+              <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>{dashboardSummary.absentCount}</strong>
             </GlassCard>
           </div>
         </section>

@@ -1,0 +1,160 @@
+import { apiClient } from './apiClient';
+
+export interface FeeSettings {
+  _id?: string;
+  tuition: number;
+  hostel: number;
+  transport: number;
+  misc: number;
+  isLocked: boolean;
+  academicYear: string;
+  installments: string;
+  lateFeeRules?: string;
+  scholarshipRules?: string;
+  discountRules?: string;
+}
+
+export interface ExpenditureItem {
+  _id?: string;
+  id?: string; // fallback for mock compatibility
+  category: string;
+  amount: number;
+  description: string;
+  date: string;
+}
+
+export interface WorkerItem {
+  _id?: string;
+  id?: string; // fallback for mock compatibility
+  workerName: string;
+  name?: string; // alias for mock compatibility
+  role: string;
+  amount: number;
+  salary?: number; // alias for mock compatibility
+  monthPeriod: string;
+  paid: boolean;
+}
+
+export interface StaffSalaryItem {
+  _id?: string;
+  id: string; // FAC-xxx
+  name: string;
+  subject: string;
+  salary: number;
+  salaryStatus?: 'paid' | 'pending';
+  salaryPaymentDate?: string;
+  status: 'Active' | 'Inactive';
+}
+
+export interface FeeBreakdown {
+  baseFee: number;
+  tuitionFee: number;
+  hostelFee: number;
+  transportFee: number;
+  miscFee: number;
+  previousPending: number;
+  scholarshipCategory: string;
+  scholarshipPct: number;
+  scholarshipDeduction: number;
+  individualOverrideDeduction: number;
+  tuitionWaiver: number;
+  hostelWaiver: number;
+  transportWaiver: number;
+  miscWaiver: number;
+  totalPaid: number;
+  remainingBalance: number;
+}
+
+export const admin2Service = {
+  // 1. Baseline Fee Settings
+  async getFeeSettings(): Promise<FeeSettings> {
+    const res = await apiClient.get<{ status: string; data: FeeSettings }>('/admin2/fee-settings');
+    return res.data;
+  },
+
+  async updateFeeSettings(settingsData: Partial<FeeSettings>): Promise<FeeSettings> {
+    const res = await apiClient.patch<{ status: string; data: FeeSettings }>('/admin2/fee-settings', settingsData);
+    return res.data;
+  },
+
+  // 2. Student Fee Overrides & Breakdown
+  async applyFeeOverride(studentId: string, waiverData: { tuitionWaiver: number; hostelWaiver: number; transportWaiver: number; miscWaiver: number }): Promise<any> {
+    const res = await apiClient.patch<any>(`/admin2/students/${studentId}/fee-override`, waiverData);
+    return res;
+  },
+
+  async getFeeBreakdown(studentId: string): Promise<FeeBreakdown> {
+    const res = await apiClient.get<{ status: string; data: FeeBreakdown }>(`/admin2/students/${studentId}/fee-breakdown`);
+    return res.data;
+  },
+
+  // 3. Expenditure Tracker CRUD
+  async getExpenditures(): Promise<ExpenditureItem[]> {
+    const res = await apiClient.get<{ status: string; data: ExpenditureItem[] }>('/admin2/expenditure');
+    return res.data;
+  },
+
+  async createExpenditure(expData: { category: string; amount: number; description: string; date?: string }): Promise<ExpenditureItem> {
+    const res = await apiClient.post<{ status: string; data: ExpenditureItem }>('/admin2/expenditure', expData);
+    return res.data;
+  },
+
+  async updateExpenditure(id: string, expData: Partial<ExpenditureItem>): Promise<ExpenditureItem> {
+    const res = await apiClient.patch<{ status: string; data: ExpenditureItem }>(`/admin2/expenditure/${id}`, expData);
+    return res.data;
+  },
+
+  async deleteExpenditure(id: string): Promise<any> {
+    const res = await apiClient.request<any>(`/admin2/expenditure/${id}`, { method: 'DELETE' });
+    return res;
+  },
+
+  // 4. Worker Payments CRUD
+  async getWorkerPayments(): Promise<WorkerItem[]> {
+    const res = await apiClient.get<{ status: string; data: WorkerItem[] }>('/admin2/worker-payments');
+    return res.data;
+  },
+
+  async createWorkerPayment(workerData: { workerName: string; role: string; amount: number; monthPeriod: string; paid?: boolean }): Promise<WorkerItem> {
+    const res = await apiClient.post<{ status: string; data: WorkerItem }>('/admin2/worker-payments', workerData);
+    return res.data;
+  },
+
+  async updateWorkerPayment(id: string, workerData: Partial<WorkerItem>): Promise<WorkerItem> {
+    const res = await apiClient.patch<{ status: string; data: WorkerItem }>(`/admin2/worker-payments/${id}`, workerData);
+    return res.data;
+  },
+
+  async deleteWorkerPayment(id: string): Promise<any> {
+    const res = await apiClient.request<any>(`/admin2/worker-payments/${id}`, { method: 'DELETE' });
+    return res;
+  },
+
+  // 5. Staff Salaries status
+  async getStaffSalaries(): Promise<StaffSalaryItem[]> {
+    const res = await apiClient.get<{ status: string; data: StaffSalaryItem[] }>('/admin2/staff-salaries');
+    return res.data;
+  },
+
+  async toggleStaffSalary(teacherId: string): Promise<any> {
+    const res = await apiClient.patch<any>(`/admin2/staff-salaries/${teacherId}`);
+    return res;
+  },
+
+  // 6. Enrollment Stats
+  async getEnrollmentStats(): Promise<any[]> {
+    const res = await apiClient.get<{ status: string; data: any[] }>('/admin2/enrollment-stats');
+    return res.data;
+  },
+
+  // 7. Late Fees & Scholarships (Consolidated Read-Only visibility)
+  async getLateFeesSettings(): Promise<{ lateFeeRules: string }> {
+    const res = await apiClient.get<{ status: string; data: { lateFeeRules: string } }>('/admin2/late-fees-settings');
+    return res.data;
+  },
+
+  async getScholarships(): Promise<{ scholarshipRules: string }> {
+    const res = await apiClient.get<{ status: string; data: { scholarshipRules: string } }>('/admin2/scholarships');
+    return res.data;
+  }
+};

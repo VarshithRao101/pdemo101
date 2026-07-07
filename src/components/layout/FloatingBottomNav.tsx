@@ -10,7 +10,7 @@ import {
 export const FloatingBottomNav: React.FC = () => {
   const { activeTab, setActiveTab, portalRole } = useNavigation();
 
-  const tabs: { type: TabType; label: string; Icon: React.ComponentType<any> }[] = portalRole === 'admin' ? [
+  const tabs: { type: TabType; label: string; Icon: React.ComponentType<any> }[] = (portalRole === 'admin1' || portalRole === 'admin2') ? [
     { type: 'dashboard', label: 'Dashboard', Icon: DashboardIcon },
     { type: 'academics', label: 'Management', Icon: AcademicsIcon },
     { type: 'updates', label: 'Reports', Icon: UpdatesIcon },

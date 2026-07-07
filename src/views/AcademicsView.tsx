@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { PremiumButton } from '../components/common/PremiumButton';
+import { ErrorState } from '../components/common/FeedbackStates';
 import { useNavigation, type AcademicsTabType } from '../context/NavigationContext';
+import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
+import {
+  fetchMyAcademics, fetchMyFees,
+  type AcademicsData, type FeesData
+} from '../services/studentService';
+import { onSocketEvent } from '../services/socketClient';
 
 // --- SHARED ACADEMICS PORTAL ICONS ---
 const PresentIcon = () => (
@@ -212,6 +219,12 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
     }
   };
 
+  // --- Live Data State ---
+  const [academicsData, setAcademicsData] = useState<AcademicsData | null>(null);
+  const [feesData, setFeesData] = useState<FeesData | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
+
   // --- Animation States ---
   const [attendanceOffset, setAttendanceOffset] = useState(283);
   const [marksOffset, setMarksOffset] = useState(283);
@@ -229,6 +242,49 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
 
   // --- Success Toast states ---
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [livePulseTab, setLivePulseTab] = useState<AcademicsTabType | 'hostel' | null>(null);
+
+  // Fetch academics + fees data once on mount
+  useEffect(() => {
+    Promise.all([fetchMyAcademics(), fetchMyFees()])
+      .then(([acad, fees]) => {
+        setAcademicsData(acad);
+        setFeesData(fees);
+        setDataLoading(false);
+      })
+      .catch(err => {
+        console.error('AcademicsView fetch error:', err);
+        setDataError(err?.message || 'Failed to load academic data.');
+        setDataLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    const refreshAcademicsData = async (pulseTab: AcademicsTabType | 'hostel') => {
+      setLivePulseTab(pulseTab);
+      try {
+        const [acad, fees] = await Promise.all([fetchMyAcademics(), fetchMyFees()]);
+        setAcademicsData(acad);
+        setFeesData(fees);
+        setDataError(null);
+      } catch (err) {
+        console.error('AcademicsView live refresh error:', err);
+      } finally {
+        window.setTimeout(() => setLivePulseTab(null), 1400);
+      }
+    };
+
+    const unsubscribers = [
+      onSocketEvent('attendance:updated', () => refreshAcademicsData('attendance')),
+      onSocketEvent('exam-results:updated', () => refreshAcademicsData('results')),
+      onSocketEvent('fee:updated', () => refreshAcademicsData('fee')),
+      onSocketEvent('hostel:updated', () => refreshAcademicsData('hostel')),
+    ];
+
+    return () => {
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
+  }, []);
 
   // Trigger animations and loaders on tab change
   useEffect(() => {
@@ -247,7 +303,30 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
       setBarsAnimated(true);
 
       const offsetTimer = setTimeout(() => {
-        setResultsOffset(16.96); // 94% overall results
+        const allResults = academicsData?.examResults ?? [];
+        const resultsBySubject: Record<string, { scores: number[]; maxMarksList: number[]; subject: string }> = {};
+        for (const r of allResults) {
+          const s = typeof r.score === 'number' ? r.score : parseFloat(r.score);
+          const m = typeof r.maxMarks === 'number' ? r.maxMarks : parseFloat((r as any).maxMarks || '300');
+          if (!resultsBySubject[r.subject]) {
+            resultsBySubject[r.subject] = { subject: r.subject, scores: [], maxMarksList: [] };
+          }
+          if (!isNaN(s)) {
+            resultsBySubject[r.subject].scores.push(s);
+            resultsBySubject[r.subject].maxMarksList.push(isNaN(m) ? 300 : m);
+          }
+        }
+        const mpcCumulative = Object.values(resultsBySubject).slice(0, 5).map((r) => {
+          const avgScore = r.scores.length > 0 ? Math.round(r.scores.reduce((a, b) => a + b, 0) / r.scores.length) : 0;
+          return { score: avgScore };
+        });
+        const cumulativeTotal = mpcCumulative.length > 0
+          ? Math.round(mpcCumulative.reduce((a, b) => a + b.score, 0) / mpcCumulative.length)
+          : 0;
+
+        const percentage = cumulativeTotal / 300;
+        const targetOffset = 282.7 * (1 - Math.min(Math.max(percentage, 0), 1));
+        setResultsOffset(targetOffset);
       }, 150);
 
       return () => {
@@ -279,7 +358,7 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
       clearTimeout(timer1);
       clearTimeout(timer2);
     };
-  }, [academicsTab]);
+  }, [academicsTab, academicsData]);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -296,7 +375,13 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
     }
   };
 
-  // --- ATTENDANCE METRICS DATA ---
+  // --- ATTENDANCE METRICS DATA (live computed) ---
+  // Overall % from real records; per-subject stays static (no subject field in schema)
+  const liveAttendancePct = academicsData?.attendance?.attendancePct ?? 95;
+  const liveAttendanceTotal = academicsData?.attendance?.total ?? 0;
+  const liveAttendancePresent = academicsData?.attendance?.present ?? 0;
+
+  // Monthly breakdown stays static (AttendanceRecord has no month grouping in schema)
   const monthlyStats = [
     { month: 'January', pct: 96 },
     { month: 'February', pct: 94 },
@@ -306,6 +391,7 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
     { month: 'June', pct: 97 }
   ];
 
+  // Per-subject attendance — static (no subject field on AttendanceRecord)
   const subjectsAttendance = [
     { name: 'Mathematics', pct: 96 },
     { name: 'Physics', pct: 94 },
@@ -315,48 +401,79 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
     { name: 'Computer Science', pct: 100 }
   ];
 
-  const attendanceHistory = [
+  // Live recent attendance history (last 5 records)
+  const attendanceHistory = (academicsData?.attendance?.records ?? [])
+    .slice(0, 5)
+    .map(r => {
+      const d = new Date(r.date);
+      const label = !isNaN(d.getTime())
+        ? d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })
+        : r.date;
+      const capitalized = r.status.charAt(0).toUpperCase() + r.status.slice(1);
+      const color = r.status === 'present' ? '#2E7D32' : r.status === 'absent' ? '#D32F2F' : '#6E6E73';
+      const icon = r.status === 'present' || r.status === 'late' ? PresentIcon : r.status === 'absent' ? AbsentIcon : LeaveIcon;
+      return { day: label, status: capitalized, color, isIcon: icon };
+    });
+
+  // Fallback if no records yet
+  const displayAttendanceHistory = attendanceHistory.length > 0 ? attendanceHistory : [
     { day: 'Today', status: 'Present', color: '#2E7D32', isIcon: PresentIcon },
-    { day: 'Yesterday', status: 'Present', color: '#2E7D32', isIcon: PresentIcon },
-    { day: 'Monday', status: 'Absent', color: '#D32F2F', isIcon: AbsentIcon },
-    { day: 'Sunday', status: 'Holiday', color: '#6E6E73', isIcon: LeaveIcon },
-    { day: 'Saturday', status: 'Present', color: '#2E7D32', isIcon: PresentIcon }
+    { day: 'Yesterday', status: 'Present', color: '#2E7D32', isIcon: PresentIcon }
   ];
 
-  // --- MARKS METRICS DATA ---
-  const examStats = [
-    { name: 'Unit Test - 1', status: 'Completed', avg: '91%', date: '10 July', upcoming: false },
-    { name: 'Unit Test - 2', status: 'Completed', avg: '94%', date: '28 July', upcoming: false },
-    { name: 'Monthly Test', status: 'Completed', avg: '93%', date: '15 Aug', upcoming: false },
-    { name: 'Quarterly Exam', status: 'Upcoming', avg: '--', date: '20 Sept', upcoming: true }
-  ];
+  // --- MARKS METRICS DATA (live computed) ---
+  // Group exam results by testTitle for the exam stats list
+  const byTestTitle = academicsData?.byTestTitle ?? {};
+  const examStats = Object.entries(byTestTitle).map(([testTitle, entries]) => {
+    const scores = entries.map(e => ({
+      score: typeof e.score === 'number' ? e.score : parseFloat(e.score),
+      maxMarks: typeof e.maxMarks === 'number' ? e.maxMarks : parseFloat((e as any).maxMarks || '300')
+    })).filter(n => !isNaN(n.score) && !isNaN(n.maxMarks));
+    const avgPct = scores.length > 0
+      ? Math.round(scores.reduce((a, b) => a + (b.score / b.maxMarks) * 100, 0) / scores.length)
+      : null;
+    return {
+      name: testTitle,
+      status: 'Completed',
+      avg: avgPct !== null ? `${avgPct}%` : 'N/A',
+      date: entries[0]?.date ?? '',
+      upcoming: false
+    };
+  });
 
-  const subjectsMarks = [
-    { name: 'Mathematics', score: '95', max: '100', pct: 95 },
-    { name: 'Physics', score: '92', max: '100', pct: 92 },
-    { name: 'Chemistry', score: '96', max: '100', pct: 96 },
-    { name: 'English', score: '88', max: '100', pct: 88 },
-    { name: 'Computer Science', score: '99', max: '100', pct: 99 }
-  ];
+  // Per-subject marks from the LATEST exam's results
+  const subjectsMarks = Object.entries(byTestTitle).length > 0
+    ? (Object.values(byTestTitle)[0] ?? []).map(e => {
+        const score = typeof e.score === 'number' ? e.score : parseFloat(e.score);
+        const maxMarks = typeof e.maxMarks === 'number' ? e.maxMarks : parseFloat((e as any).maxMarks || '300');
+        const pct = !isNaN(score) && !isNaN(maxMarks) ? Math.round((score / maxMarks) * 100) : 0;
+        return { name: e.subject, score: score.toString(), max: maxMarks.toString(), pct };
+      })
+    : [
+        { name: 'Mathematics', score: '285', max: '300', pct: 95 },
+        { name: 'Physics', score: '276', max: '300', pct: 92 },
+        { name: 'Chemistry', score: '288', max: '300', pct: 96 },
+        { name: 'English', score: '264', max: '300', pct: 88 }
+      ];
 
-  const marksHistory = [
-    { exam: 'Unit Test 1', score: '91%', isIcon: ExamCompletedIcon },
-    { exam: 'Monthly Exam', score: '93%', isIcon: ExamCompletedIcon },
-    { exam: 'Half Yearly', score: '95%', isIcon: ExamCompletedIcon },
-    { exam: 'Pre Final', score: 'Upcoming', isIcon: ExamUpcomingIcon }
-  ];
+  const marksHistory = examStats.length > 0
+    ? examStats.map(es => ({ exam: es.name, score: es.avg, isIcon: ExamCompletedIcon }))
+    : [{ exam: 'No results yet', score: '--', isIcon: ExamUpcomingIcon }];
 
-  // --- FEE PORTAL DATA ---
-  const installmentHistory = [
-    { name: 'Installment 1', amount: '₹60,000', status: 'Paid', date: '10 Jun 2026', badgeColor: 'rgba(46, 125, 50, 0.1)', textColor: '#2E7D32' },
-    { name: 'Installment 2', amount: '₹60,000', status: 'Paid', date: '10 Jul 2026', badgeColor: 'rgba(46, 125, 50, 0.1)', textColor: '#2E7D32' },
-    { name: 'Installment 3', amount: '₹60,000', status: 'Pending', date: '15 Aug 2026', badgeColor: 'rgba(212, 175, 55, 0.1)', textColor: 'var(--royal-gold)' }
-  ];
+  // --- FEE PORTAL DATA (live computed) ---
+  const installmentHistory = (feesData?.payments ?? []).map(p => ({
+    name: `${p.installment} — ${p.category}`,
+    amount: `₹${p.amount.toLocaleString('en-IN')}`,
+    status: 'Paid',
+    date: p.date,
+    badgeColor: 'rgba(46, 125, 50, 0.1)',
+    textColor: '#2E7D32'
+  }));
 
   const feeTimeline = [
-    { category: 'Admission Fee', status: 'Paid', color: '#2E7D32', isIcon: ExamCompletedIcon },
-    { category: 'Hostel Fee', status: 'Paid', color: '#2E7D32', isIcon: ExamCompletedIcon },
-    { category: 'Academic Fee', status: 'Pending', color: 'var(--royal-gold)', isIcon: ExamUpcomingIcon }
+    { category: 'Tuition Fee', status: feesData && feesData.breakdown.tuitionFee > 0 ? 'Configured' : 'Pending', color: '#2E7D32', isIcon: ExamCompletedIcon },
+    { category: 'Hostel Fee', status: feesData && feesData.breakdown.hostelFee > 0 ? 'Configured' : 'N/A', color: '#2E7D32', isIcon: ExamCompletedIcon },
+    { category: 'Pending Balance', status: feesData && feesData.remainingBalance > 0 ? `₹${feesData.remainingBalance.toLocaleString('en-IN')}` : 'Cleared', color: feesData && feesData.remainingBalance > 0 ? 'var(--royal-gold)' : '#2E7D32', isIcon: feesData && feesData.remainingBalance > 0 ? ExamUpcomingIcon : ExamCompletedIcon }
   ];
 
   const paymentOptions = [
@@ -365,21 +482,39 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
     { name: 'College Office', sub: 'Available', status: 'Enabled', Icon: OfficeIcon }
   ];
 
-  // --- RESULTS PORTAL DATA (JEE MAINS — MPC) ---
-  const mpcCumulative = [
-    { name: 'Maths', score: 86, max: 100, color: '#4A90D9' },
-    { name: 'Physics', score: 82, max: 100, color: 'var(--royal-gold)' },
-    { name: 'Chemistry', score: 79, max: 100, color: '#7E57C2' },
-  ];
-  const cumulativeTotal = mpcCumulative.reduce((a, b) => a + b.score, 0); // 247
+  // --- RESULTS PORTAL DATA (live ExamResult[] — no GPA, per user requirement) ---
+  const allResults = academicsData?.examResults ?? [];
+  // Group by subject for bar chart display
+  const resultsBySubject: Record<string, { scores: number[]; maxMarksList: number[]; subject: string }> = {};
+  for (const r of allResults) {
+    const s = typeof r.score === 'number' ? r.score : parseFloat(r.score);
+    const m = typeof r.maxMarks === 'number' ? r.maxMarks : parseFloat((r as any).maxMarks || '300');
+    if (!resultsBySubject[r.subject]) {
+      resultsBySubject[r.subject] = { subject: r.subject, scores: [], maxMarksList: [] };
+    }
+    if (!isNaN(s)) {
+      resultsBySubject[r.subject].scores.push(s);
+      resultsBySubject[r.subject].maxMarksList.push(isNaN(m) ? 300 : m);
+    }
+  }
+  const subjectColors = ['#4A90D9', 'var(--royal-gold)', '#7E57C2', '#2E7D32', '#D32F2F'];
+  const mpcCumulative = Object.values(resultsBySubject).slice(0, 5).map((r, i) => {
+    const avgScore = r.scores.length > 0 ? Math.round(r.scores.reduce((a, b) => a + b, 0) / r.scores.length) : 0;
+    const avgMax = r.maxMarksList.length > 0 ? Math.round(r.maxMarksList.reduce((a, b) => a + b, 0) / r.maxMarksList.length) : 300;
+    return {
+      name: r.subject,
+      score: avgScore,
+      max: avgMax,
+      color: subjectColors[i % subjectColors.length]
+    };
+  });
+  const cumulativeTotal = mpcCumulative.length > 0
+    ? Math.round(mpcCumulative.reduce((a, b) => a + b.score, 0) / mpcCumulative.length)
+    : 0;
 
-  const lastExamData = [
-    { name: 'Mathematics', score: 86, max: 100 },
-    { name: 'Physics', score: 82, max: 100 },
-    { name: 'Chemistry', score: 79, max: 100 },
-  ];
+  const lastExamData = mpcCumulative.map(m => ({ name: m.name, score: m.score, max: m.max }));
 
-  // --- ACHIEVEMENTS & CERTIFICATES DATA ---
+  // --- ACHIEVEMENTS & CERTIFICATES DATA (static — no schema backing) ---
   const categoryCounts = [
     { name: 'Academic', count: 8, Icon: AcademicCategoryIcon },
     { name: 'Sports', count: 3, Icon: SportsCategoryIcon },
@@ -412,6 +547,51 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
     { milestone: 'Final Examination', status: 'Completed', color: '#2E7D32' }
   ];
 
+  // --- DATA LOADING / ERROR GATES (rendered before sub-views) ---
+  if (dataLoading) {
+    return (
+      <div style={getTabBackgroundStyle(academicsTab)} className="view-container">
+        <header style={styles.appBar}>
+          <div style={{ width: 28, height: 28, borderRadius: 8 }} className="shimmer-item" />
+          <div style={{ width: 140, height: 20, borderRadius: 4 }} className="shimmer-item" />
+          <div style={{ width: 28, height: 28, borderRadius: 8 }} className="shimmer-item" />
+        </header>
+        <div style={styles.content}>
+          <div style={{ height: 180, borderRadius: 'var(--radius-lg)' }} className="shimmer-item" />
+          <div style={{ height: 120, borderRadius: 'var(--radius-md)' }} className="shimmer-item" />
+          <div style={{ height: 80, borderRadius: 'var(--radius-md)' }} className="shimmer-item" />
+        </div>
+      </div>
+    );
+  }
+
+  if (dataError) {
+    return (
+      <div style={getTabBackgroundStyle(academicsTab)} className="view-container">
+        <header style={styles.appBar}>
+          <button onClick={handleBack} style={styles.backBtn} className="press-interactive">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <h2 style={{ fontSize: '16px', fontWeight: 800 }}>Academics</h2>
+          <div style={{ width: 28 }} />
+        </header>
+        <div style={styles.content}>
+          <ErrorState
+            title="Failed to Load Academic Data"
+            message={dataError}
+            onRetry={() => {
+              setDataError(null);
+              setDataLoading(true);
+              Promise.all([fetchMyAcademics(), fetchMyFees()])
+                .then(([acad, fees]) => { setAcademicsData(acad); setFeesData(fees); setDataLoading(false); })
+                .catch(e => { setDataError(e?.message || 'Retry failed'); setDataLoading(false); });
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // --- SUB-VIEW RENDERS ---
 
   // 1. Attendance View
@@ -419,12 +599,12 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
     return (
       <>
         {/* Overall summary glass card */}
-        <GlassCard hoverable={false} style={styles.summaryCard} className="anim-scale-in">
+        <GlassCard hoverable={false} style={styles.summaryCard} className={`anim-scale-in ${livePulseTab ? 'anim-pulse-gold' : ''}`}>
           <div style={styles.summaryDetails}>
             <span style={styles.summaryLabel}>Overall Attendance</span>
-            <h2 style={styles.summaryPct}>95%</h2>
-            <span style={styles.summaryText}>Excellent Attendance</span>
-            <p style={styles.motivationalQuote}>Keep maintaining above 90% attendance.</p>
+            <h2 style={styles.summaryPct}>{liveAttendancePct}%</h2>
+            <span style={styles.summaryText}>{liveAttendancePct >= 90 ? 'Excellent Attendance' : liveAttendancePct >= 75 ? 'Good Attendance' : 'Attendance Needs Improvement'}</span>
+            <p style={styles.motivationalQuote}>{liveAttendanceTotal > 0 ? `${liveAttendancePresent} / ${liveAttendanceTotal} days attended.` : 'Keep maintaining above 90% attendance.'}</p>
           </div>
 
           <div style={styles.ringWrapper}>
@@ -455,7 +635,7 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
             <div style={{ ...styles.statIconCircle, backgroundColor: 'rgba(46, 125, 50, 0.1)' }}>
               <PresentIcon />
             </div>
-            <span style={styles.statVal}>210</span>
+            <span style={styles.statVal}>{liveAttendancePresent}</span>
             <span style={styles.statLabel}>Present</span>
           </GlassCard>
 
@@ -463,7 +643,7 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
             <div style={{ ...styles.statIconCircle, backgroundColor: 'rgba(211, 47, 47, 0.1)' }}>
               <AbsentIcon />
             </div>
-            <span style={styles.statVal}>12</span>
+            <span style={styles.statVal}>{liveAttendanceTotal - liveAttendancePresent}</span>
             <span style={styles.statLabel}>Absent</span>
           </GlassCard>
 
@@ -471,8 +651,8 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
             <div style={{ ...styles.statIconCircle, backgroundColor: 'rgba(212, 175, 55, 0.1)' }}>
               <LeaveIcon />
             </div>
-            <span style={styles.statVal}>8</span>
-            <span style={styles.statLabel}>Leave</span>
+            <span style={styles.statVal}>{liveAttendanceTotal}</span>
+            <span style={styles.statLabel}>Total Days</span>
           </GlassCard>
         </section>
 
@@ -533,7 +713,7 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
           <h3 style={styles.sectionTitle}>Attendance History</h3>
           <div style={styles.timelineContainer}>
             <div style={styles.timelineLine} />
-            {attendanceHistory.map((hist, idx) => {
+            {displayAttendanceHistory.map((hist, idx) => {
               const IconComp = hist.isIcon;
               return (
                 <div key={idx} style={styles.timelineItem}>
@@ -570,7 +750,7 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
     return (
       <>
         {/* Overall Marks status circular ring card */}
-        <GlassCard hoverable={false} style={styles.summaryCard} className="anim-scale-in">
+          <GlassCard hoverable={false} style={styles.summaryCard} className={`anim-scale-in ${livePulseTab ? 'anim-pulse-gold' : ''}`}>
           <div style={styles.summaryDetails}>
             <span style={styles.summaryLabel}>Term 1 Average</span>
             <h2 style={styles.summaryPct}>92%</h2>
@@ -695,12 +875,16 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
 
 
             {/* Outstandings hero card */}
-            <GlassCard hoverable={false} style={styles.summaryCard} className="anim-scale-in">
+            <GlassCard hoverable={false} style={styles.summaryCard} className={`anim-scale-in ${livePulseTab ? 'anim-pulse-gold' : ''}`}>
               <div style={styles.summaryDetails}>
-                <span style={styles.summaryLabel}>Outstanding Fee</span>
-                <h2 style={styles.summaryPct}>₹60,000</h2>
-                <span style={{ ...styles.summaryText, color: '#D32F2F' }}>Due Date: 15 August 2026</span>
-                <p style={styles.motivationalQuote}>A late penalty of 2% applies post-due.</p>
+                <span style={styles.summaryLabel}>Outstanding Balance</span>
+                <h2 style={styles.summaryPct}>{feesData ? `₹${feesData.remainingBalance.toLocaleString('en-IN')}` : '—'}</h2>
+                <span style={{ ...styles.summaryText, color: feesData && feesData.remainingBalance > 0 ? '#D32F2F' : '#2E7D32' }}>
+                  {feesData && feesData.remainingBalance > 0 ? 'Amount Pending' : 'Fees Cleared'}
+                </span>
+                <p style={styles.motivationalQuote}>
+                  {feesData ? `Total Paid: ₹${feesData.totalPaid.toLocaleString('en-IN')} of ₹${feesData.totalFee.toLocaleString('en-IN')}` : 'Loading fee data...'}
+                </p>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -790,7 +974,7 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
     return (
       <>
         {/* Hero: Cumulative Score */}
-        <GlassCard hoverable={false} style={{ ...styles.summaryCard, flexDirection: 'column', alignItems: 'stretch', gap: 0 }} className="anim-scale-in">
+        <GlassCard hoverable={false} style={{ ...styles.summaryCard, flexDirection: 'column', alignItems: 'stretch', gap: 0 }} className={`anim-scale-in ${livePulseTab ? 'anim-pulse-gold' : ''}`}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={styles.summaryDetails}>
               <span style={styles.summaryLabel}>Cumulative Score — JEE Mains</span>
@@ -1021,7 +1205,7 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
     return (
       <>
         {/* Top summary card */}
-        <GlassCard hoverable={false} style={styles.summaryCard} className="anim-scale-in">
+        <GlassCard hoverable={false} style={styles.summaryCard} className={`anim-scale-in ${livePulseTab ? 'anim-pulse-gold' : ''}`}>
           <div style={styles.summaryDetails}>
             <span style={styles.summaryLabel}>Student Excellence</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 18px', marginTop: '12px' }}>
@@ -1255,6 +1439,7 @@ export const AcademicsView: React.FC<AcademicsViewProps> = ({ onClose }) => {
                 : 'Verified student badges and award certificates'}
             </p>
           </div>
+          <LiveConnectionIndicator compact />
           <button
             onClick={() => triggerToast('Generating academic print report pdf...')}
             style={styles.downloadIconBtn}

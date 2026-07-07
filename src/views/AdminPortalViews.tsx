@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
+import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
+import { apiClient } from '../services/apiClient';
+import { admin1Service } from '../services/admin1Service';
+import { admin2Service } from '../services/admin2Service';
+import * as XLSX from 'xlsx';
+import { onSocketEvent } from '../services/socketClient';
 
 // --- RENDER BACKGROUND DESIGN WITH CUSTOM ACCENT COLOR GLOWS ---
 const renderBackgroundDesign = (colorTheme: 'emerald' | 'gold' | 'sapphire' | 'ruby' | 'purple' | 'rose' | 'teal' | 'navy' | 'cyan' | 'orange' | 'indigo' | 'violet' = 'gold') => {
@@ -87,6 +93,22 @@ const renderBackgroundDesign = (colorTheme: 'emerald' | 'gold' | 'sapphire' | 'r
 };
 
 // --- MOCK ROSTERS DATABASES ---
+interface ExpenditureItem {
+  id: string;
+  category: string;
+  amount: number;
+  description: string;
+  date: string;
+}
+
+interface WorkerItem {
+  id: string;
+  name: string;
+  role: string;
+  salary: number;
+  paid: boolean;
+}
+
 interface Student {
   admissionNumber: string;
   studentId: string;
@@ -248,10 +270,11 @@ const setMockAcademicFees = (fees: any) => {
 };
 
 // ─── ADMIN DASHBOARD CONTROLLER ───
-export const AdminDashboardView: React.FC = () => {
+export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ role = 'admin1' }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [activePage, setActivePage] = useState<string>('menu');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [livePulseKey, setLivePulseKey] = useState<'students' | 'attendance' | 'bulletins' | 'fees' | 'finance' | null>(null);
 
   // States
   const [students, setStudents] = useState<Student[]>(getAdminStudents);
@@ -316,9 +339,126 @@ export const AdminDashboardView: React.FC = () => {
     holidayList: 'Independence Day: 15 Aug, Dushera Holidays: 10-18 Oct'
   });
 
+  // Timetables and sections states
+  const [timetable, setTimetable] = useState<any[]>([]);
+  const [timetableSection, setTimetableSection] = useState('Section A');
+  const [sectionsData, setSectionsData] = useState<{ sections: string[]; teachers: any[] }>({ sections: [], teachers: [] });
+  const [attendanceSummary, setAttendanceSummary] = useState<any[]>([]);
+  const [reportsData, setReportsData] = useState<any>(null);
+
+  // Manual timetable scheduling states
+  const [newSlotDay, setNewSlotDay] = useState('Monday');
+  const [newSlotPeriod, setNewSlotPeriod] = useState('');
+  const [newSlotSubject, setNewSlotSubject] = useState('');
+  const [newSlotTeacher, setNewSlotTeacher] = useState('');
+
   // Selected files for Timetable & Results
   const [timetableFile, setTimetableFile] = useState<File | null>(null);
   const [resultsFile, setResultsFile] = useState<File | null>(null);
+
+  const [timetableUploadStatus, setTimetableUploadStatus] = useState<any>(null);
+  const [timetableUploading, setTimetableUploading] = useState(false);
+  const [examUploadStatus, setExamUploadStatus] = useState<any>(null);
+  const [examUploading, setExamUploading] = useState(false);
+
+  // --- ADMIN 2 FINANCE & Overheads States ---
+  const [expenditures, setExpenditures] = useState<ExpenditureItem[]>([
+    { id: 'EXP001', category: 'Mess & Food', amount: 85000, description: 'Weekly groceries & milk supply', date: '2026-07-01' },
+    { id: 'EXP002', category: 'Maintenance', amount: 24000, description: 'Hostel block water pump repair', date: '2026-07-03' },
+    { id: 'EXP003', category: 'Utilities', amount: 48000, description: 'Internet broadband monthly payment', date: '2026-07-05' },
+  ]);
+  const [newExpCat, setNewExpCat] = useState('Utilities');
+  const [newExpAmt, setNewExpAmt] = useState('');
+  const [newExpDesc, setNewExpDesc] = useState('');
+
+  const [lateFeeRate, setLateFeeRate] = useState('50');
+  const [lateFeeGrace, setLateFeeGrace] = useState('5');
+  const [scholarshipSlabs, setScholarshipSlabs] = useState([
+    { minMarks: 285, waiverPct: 50 },
+    { minMarks: 270, waiverPct: 25 },
+    { minMarks: 255, waiverPct: 10 }
+  ]);
+  const [newSlabMarks, setNewSlabMarks] = useState('');
+  const [newSlabWaiver, setNewSlabWaiver] = useState('');
+
+  const [workers, setWorkers] = useState<WorkerItem[]>([
+    { id: 'WRK01', name: 'Allu Prasad', role: 'Mess Supervisor', salary: 25000, paid: true },
+    { id: 'WRK02', name: 'NTR Goud', role: 'Gardener & Landscaper', salary: 18000, paid: true },
+    { id: 'WRK03', name: 'Prabhas Raju', role: 'Campus Security Lead', salary: 22000, paid: false },
+    { id: 'WRK04', name: 'Pooja Hegde', role: 'Hostel Block Warden', salary: 30000, paid: true },
+    { id: 'WRK05', name: 'Vijay Deverakonda', role: 'Mess Assistant', salary: 15000, paid: false }
+  ]);
+
+  const [feeEditSearch, setFeeEditSearch] = useState('');
+  const [selectedFeeStudent, setSelectedFeeStudent] = useState<Student | null>(null);
+  const [editTuitionWaiver, setEditTuitionWaiver] = useState('0');
+  const [editHostelWaiver, setEditHostelWaiver] = useState('0');
+  const [editTransportWaiver, setEditTransportWaiver] = useState('0');
+  const [editMiscWaiver, setEditMiscWaiver] = useState('0');
+
+  // ── Admin2 Live Wiring State ──
+  const [feeBreakdownData, setFeeBreakdownData] = useState<any>(null);
+  const [lateFeeRulesText, setLateFeeRulesText] = useState('Loading...');
+  const [scholarshipRulesText, setScholarshipRulesText] = useState('Loading...');
+  const [newWorkerName, setNewWorkerName] = useState('');
+  const [newWorkerRole, setNewWorkerRole] = useState('');
+  const [newWorkerWage, setNewWorkerWage] = useState('');
+  const [newWorkerPeriod, setNewWorkerPeriod] = useState('July 2026');
+  const [enrollmentStats, setEnrollmentStats] = useState<any[]>([]);
+
+  // ── Admin2 Fetch Helpers ──
+  const fetchFeeSettings = async () => {
+    try {
+      const data = await admin2Service.getFeeSettings();
+      setFeeRates(data);
+    } catch (err: any) { triggerToast(err.message || 'Failed to load fee settings.'); }
+  };
+
+  const fetchExpenditures = async () => {
+    try {
+      const data = await admin2Service.getExpenditures();
+      setExpenditures(data);
+    } catch (err: any) { triggerToast(err.message || 'Failed to load expenditures.'); }
+  };
+
+  const fetchWorkerPayments = async () => {
+    try {
+      const data = await admin2Service.getWorkerPayments();
+      const mapped = data.map((w: any) => ({
+        ...w,
+        name: w.workerName || w.name,
+        salary: w.amount || w.salary,
+        id: w._id || w.id,
+      }));
+      setWorkers(mapped);
+    } catch (err: any) { triggerToast(err.message || 'Failed to load worker payments.'); }
+  };
+
+  const fetchStaffSalaries = async () => {
+    try {
+      const data = await admin2Service.getStaffSalaries();
+      setTeachers(data as any);
+    } catch (err: any) { triggerToast(err.message || 'Failed to load staff salaries.'); }
+  };
+
+  const fetchEnrollmentStats = async () => {
+    try {
+      const data = await admin2Service.getEnrollmentStats();
+      setEnrollmentStats(data);
+    } catch (err: any) { triggerToast(err.message || 'Failed to load enrollment stats.'); }
+  };
+
+  const fetchLateScholarships = async () => {
+    try {
+      const [lateRes, scholRes] = await Promise.all([
+        admin2Service.getLateFeesSettings(),
+        admin2Service.getScholarships(),
+      ]);
+      setLateFeeRulesText(lateRes.lateFeeRules || 'Not configured');
+      setScholarshipRulesText(scholRes.scholarshipRules || 'Not configured');
+    } catch (err: any) { triggerToast(err.message || 'Failed to load late fee/scholarship settings.'); }
+  };
+
 
   const handleUploadTimetable = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -328,13 +468,29 @@ export const AdminDashboardView: React.FC = () => {
     }
   };
 
-  const submitTimetable = () => {
+  const submitTimetable = async () => {
     if (!timetableFile) {
       triggerToast('Please select a timetable file first.');
       return;
     }
-    triggerToast(`Timetable file '${timetableFile.name}' uploaded and parsed successfully!`);
-    setTimetableFile(null);
+    setTimetableUploading(true);
+    setTimetableUploadStatus(null);
+    try {
+      const res = await admin1Service.uploadTimetable(timetableSection, timetableFile);
+      if (res.status === 'success') {
+        setTimetableUploadStatus(res.data);
+        triggerToast(`Timetable processed! Succeeded: ${res.data.succeeded}, Failed: ${res.data.failed}`);
+        setTimetableFile(null);
+        fetchTimetable(timetableSection);
+      } else {
+        triggerToast(res.message || 'Failed to upload timetable.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      triggerToast(err.message || 'Error processing spreadsheet.');
+    } finally {
+      setTimetableUploading(false);
+    }
   };
 
   const handleUploadResults = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -345,23 +501,137 @@ export const AdminDashboardView: React.FC = () => {
     }
   };
 
-  const submitResults = () => {
+  const submitResults = async () => {
     if (!resultsFile) {
       triggerToast('Please select a CSV or Excel results sheet first.');
       return;
     }
-    const mockExamName = resultsFile.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
-    const newExam = {
-      id: `EX-${exams.length + 1}`,
-      name: mockExamName || 'Imported Excel Results',
-      date: 'Today',
-      class: 'Junior MPC',
-      status: 'Results Published',
-      resultsPublished: true
-    };
-    setExams([newExam, ...exams]);
-    triggerToast(`Successfully parsed and split '${resultsFile.name}'. Imported student rows & published grades!`);
-    setResultsFile(null);
+    setExamUploading(true);
+    setExamUploadStatus(null);
+    try {
+      const mockExamName = resultsFile.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
+      const formattedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      const res = await admin1Service.uploadExamResults(resultsFile, mockExamName, formattedDate);
+      if (res.status === 'success') {
+        setExamUploadStatus(res.data);
+        triggerToast(`Results processed! Succeeded: ${res.data.succeeded}, Failed: ${res.data.failed}`);
+        setResultsFile(null);
+        fetchExams();
+      } else {
+        triggerToast(res.message || 'Failed to upload results.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      triggerToast(err.message || 'Error processing exam results sheet.');
+    } finally {
+      setExamUploading(false);
+    }
+  };
+
+  const fetchStudents = async (query = '') => {
+    try {
+      const data = await admin1Service.getStudents(query);
+      setStudents(data);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to load students.');
+    }
+  };
+
+  const fetchBulletins = async () => {
+    try {
+      const data = await admin1Service.getBulletins();
+      setBulletins(data);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to load bulletins.');
+    }
+  };
+
+  const fetchExams = async () => {
+    try {
+      const data = await admin1Service.getExams();
+      setExams(data);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to load exams.');
+    }
+  };
+
+  const fetchTimetable = async (sec: string) => {
+    try {
+      const data = await admin1Service.getTimetable(sec);
+      setTimetable(data);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to load timetable.');
+    }
+  };
+
+  const fetchSections = async () => {
+    try {
+      const data = await admin1Service.getSections();
+      setSectionsData(data);
+      if (data.teachers) {
+        setTeachers(data.teachers);
+      }
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to load sections.');
+    }
+  };
+
+  const fetchAttendanceSummary = async () => {
+    try {
+      const data = await admin1Service.getAttendanceSummary();
+      setAttendanceSummary(data);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to load attendance summary.');
+    }
+  };
+
+  const fetchReports = async () => {
+    try {
+      const data = await admin1Service.getReports();
+      setReportsData(data);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to load reports.');
+    }
+  };
+
+  const refreshCurrentPage = async (pulseKey: typeof livePulseKey) => {
+    setLivePulseKey(pulseKey);
+    try {
+      if (activePage === 'students' || activePage === 'teachers' || activePage === 'sections' || activePage === 'fee_editor') {
+        await Promise.all([fetchStudents(), fetchSections()]);
+      } else if (activePage === 'publishing') {
+        await fetchBulletins();
+      } else if (activePage === 'exams') {
+        await Promise.all([fetchExams(), fetchStudents()]);
+      } else if (activePage === 'classes') {
+        await Promise.all([fetchTimetable(timetableSection), fetchSections()]);
+      } else if (activePage === 'attendance') {
+        await fetchAttendanceSummary();
+      } else if (activePage === 'reports') {
+        await fetchReports();
+      } else if (activePage === 'academic_fees') {
+        await fetchFeeSettings();
+      } else if (activePage === 'late_scholarships') {
+        await fetchLateScholarships();
+      } else if (activePage === 'expenditure') {
+        await fetchExpenditures();
+      } else if (activePage === 'salary_status') {
+        await fetchStaffSalaries();
+      } else if (activePage === 'worker_payments') {
+        await fetchWorkerPayments();
+      } else if (activePage === 'enrollment_stats') {
+        await fetchEnrollmentStats();
+      } else if (pulseKey === 'finance' || pulseKey === 'fees') {
+        await Promise.all([fetchFeeSettings(), fetchStudents()]);
+      } else if (pulseKey === 'bulletins') {
+        await fetchBulletins();
+      }
+    } catch (err: any) {
+      triggerToast(err.message || 'Live refresh failed.');
+    } finally {
+      window.setTimeout(() => setLivePulseKey(null), 1400);
+    }
   };
 
   const { theme, setThemeMode } = useNavigation();
@@ -371,13 +641,57 @@ export const AdminDashboardView: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Sync state variables
   useEffect(() => {
-    setStudents(getAdminStudents());
-    setTeachers(getAdminTeachers());
-    setBulletins(getAdminBulletins());
-    setFeeRates(getMockAcademicFees());
-  }, [activePage]);
+    const unsubscribers = [
+      onSocketEvent('student:created', () => refreshCurrentPage('students')),
+      onSocketEvent('attendance:updated', () => refreshCurrentPage('attendance')),
+      onSocketEvent('bulletin:updated', () => refreshCurrentPage('bulletins')),
+      onSocketEvent('fee:updated', () => refreshCurrentPage('fees')),
+      onSocketEvent('fee-settings:updated', () => refreshCurrentPage('finance')),
+      onSocketEvent('hostel:updated', () => refreshCurrentPage('students')),
+    ];
+
+    return () => {
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
+  }, [activePage, role, timetableSection]);
+
+  // Sync state variables with database records
+  useEffect(() => {
+    if (activePage === 'students' || activePage === 'teachers') {
+      fetchStudents();
+      fetchSections(); // sets teachers list
+    } else if (activePage === 'publishing') {
+      fetchBulletins();
+    } else if (activePage === 'exams') {
+      fetchExams();
+      fetchStudents(); // used for results preview/allocations check
+    } else if (activePage === 'classes') {
+      fetchTimetable(timetableSection);
+      fetchSections(); // loads teachers
+    } else if (activePage === 'sections') {
+      fetchSections();
+      fetchStudents();
+    } else if (activePage === 'attendance') {
+      fetchAttendanceSummary();
+    } else if (activePage === 'reports') {
+      fetchReports();
+    } else if (activePage === 'academic_fees') {
+      fetchFeeSettings();
+    } else if (activePage === 'fee_editor') {
+      fetchStudents();
+    } else if (activePage === 'late_scholarships') {
+      fetchLateScholarships();
+    } else if (activePage === 'expenditure') {
+      fetchExpenditures();
+    } else if (activePage === 'salary_status') {
+      fetchStaffSalaries();
+    } else if (activePage === 'worker_payments') {
+      fetchWorkerPayments();
+    } else if (activePage === 'enrollment_stats') {
+      fetchEnrollmentStats();
+    }
+  }, [activePage, timetableSection]);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -406,30 +720,41 @@ export const AdminDashboardView: React.FC = () => {
     }
   };
 
-  const handleStudentSave = (updated: Student) => {
-    const next = students.map(s => s.admissionNumber === updated.admissionNumber ? updated : s);
-    setStudents(next);
-    setAdminStudents(next);
-    setSelectedStudent(updated);
-    setEditStudent({ ...updated });
-    triggerToast('Student profile details submitted and saved.');
+  const handleStudentSave = async (updated: Student) => {
+    if (!updated._id) return;
+    try {
+      const saved = await admin1Service.updateStudent(updated._id, updated);
+      const next = students.map(s => s._id === saved._id ? saved : s);
+      setStudents(next);
+      setSelectedStudent(saved);
+      setEditStudent({ ...saved });
+      triggerToast('Student profile details submitted and saved to database.');
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to save student details.');
+    }
   };
 
-  const handleTeacherSave = (updated: Teacher) => {
-    const next = teachers.map(t => t.id === updated.id ? updated : t);
-    setTeachers(next);
-    setAdminTeachers(next);
-    setSelectedTeacher(updated);
-    setEditTeacher({ ...updated });
-    triggerToast('Teacher credentials submitted and saved.');
+  const handleTeacherSave = async (updated: Teacher) => {
+    try {
+      const saved = await admin1Service.updateTeacher(updated.id, updated);
+      const next = teachers.map(t => t.id === saved.id ? saved : t);
+      setTeachers(next);
+      setSelectedTeacher(saved);
+      setEditTeacher({ ...saved });
+      triggerToast('Teacher credentials submitted and saved to database.');
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to save teacher details.');
+    }
   };
 
-  const handleRegisterStudent = () => {
+  const handleRegisterStudent = async () => {
     if (!newStuName || !newStuFather || !newStuMobile) {
       triggerToast('Please complete all basic fields.');
       return;
     }
     const newAdm = `ADM2400${students.length + 1}`;
+    const secLetter = newStuSec.replace('Section ', '').trim();
+    const nextRollNum = `24${newStuCourse}${secLetter}${100 + students.length + 1}`;
     const newStu: Student = {
       admissionNumber: newAdm,
       studentId: `STU-10${10 + students.length}`,
@@ -440,7 +765,7 @@ export const AdminDashboardView: React.FC = () => {
       motherName: 'Mrs. Devika Rao',
       mobile: newStuMobile,
       parentMobile: newStuMobile,
-      email: `${newStuName.toLowerCase().replace(' ', '')}@inspire.edu`,
+      email: `${newStuName.toLowerCase().replace(/ /g, '')}@inspire.edu`,
       address: 'Madhapur Campus, Hyderabad',
       residentialAddress: 'Day Scholar',
       hostelStatus: 'Day Scholar',
@@ -448,26 +773,57 @@ export const AdminDashboardView: React.FC = () => {
       course: newStuCourse,
       section: newStuSec,
       branch: 'Madhapur',
-      rollNumber: `24${newStuCourse}0${students.length + 1}`,
+      rollNumber: nextRollNum,
       status: 'Active',
       documents: ['10th Marksheet.pdf', 'Aadhaar Card.pdf']
     };
 
-    const next = [...students, newStu];
-    setStudents(next);
-    setAdminStudents(next);
-    setNewStuName('');
-    setNewStuFather('');
-    setNewStuMobile('');
-    triggerToast(`Student ${newStuName} registration changes submitted: ${newAdm}`);
+    try {
+      const response = await apiClient.post('/admin/students', newStu);
+      if (response && response.status === 'success') {
+        const pin = response.credential.pin;
+        newStu.tempPassword = pin;
+        const next = [...students, newStu];
+        setStudents(next);
+        // NOTE: We deliberately do NOT patch window._erpMockStudents or any other
+        // window-global here. The student is persisted in MongoDB (Student + User
+        // documents created by the backend). The Accountant Portal will pick up
+        // newly provisioned students when it is live-wired to the DB in Prompt 8.
+        // Until then, a newly registered student will NOT appear in Accountant
+        // search results — this is an expected, documented temporary gap, not a
+        // bug to work around with in-memory globals.
+        setNewStuName('');
+        setNewStuFather('');
+        setNewStuMobile('');
+        triggerToast(`Student registered! PIN: ${pin}`);
+      } else {
+        triggerToast('Failed to register student on the backend.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      triggerToast(err.message || 'Error during backend registration.');
+    }
   };
 
-  const handleDeactivateStudent = () => {
-    if (!selectedStudent || !editStudent) return;
-    const newStatus = selectedStudent.status === 'Active' ? 'Inactive' : 'Active';
-    const updated = { ...editStudent, status: newStatus as any };
-    handleStudentSave(updated);
-    triggerToast(`Account status updated to ${newStatus}.`);
+  const handleDeactivateStudent = async () => {
+    if (!selectedStudent || !editStudent || !selectedStudent._id) return;
+    try {
+      const isDeactivating = selectedStudent.status === 'Active';
+      if (isDeactivating) {
+        await admin1Service.deactivateStudent(selectedStudent._id);
+        const updated = { ...selectedStudent, status: 'Inactive' as any };
+        const next = students.map(s => s._id === selectedStudent._id ? updated : s);
+        setStudents(next);
+        setSelectedStudent(updated);
+        setEditStudent({ ...updated });
+        triggerToast('Student account soft-deactivated successfully.');
+      } else {
+        const updated = { ...selectedStudent, status: 'Active' as any };
+        await handleStudentSave(updated);
+      }
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to update student status.');
+    }
   };
 
   const handleResetPassword = () => {
@@ -477,106 +833,140 @@ export const AdminDashboardView: React.FC = () => {
     triggerToast(`Password reset successfully.`);
   };
 
-  const handleAddTeacher = () => {
+  const handleAddTeacher = async () => {
     if (!newFacName || !newFacSal) {
       triggerToast('Please enter faculty details.');
       return;
     }
     const newId = `FAC-20${teachers.length + 1}`;
-    const newT: Teacher = {
-      id: newId,
-      name: newFacName,
-      subject: newFacSub,
-      mobile: '9000000000',
-      salary: parseFloat(newFacSal),
-      assignedClasses: ['Junior MPC'],
-      assignedSections: ['Section A'],
-      assignedSubjects: [newFacSub],
-      status: 'Active'
-    };
-
-    const next = [...teachers, newT];
-    setTeachers(next);
-    setAdminTeachers(next);
-    setNewFacName('');
-    setNewFacSal('');
-    triggerToast(`Teacher ${newFacName} registration changes submitted!`);
+    try {
+      const saved = await admin1Service.createTeacher({
+        id: newId,
+        name: newFacName,
+        subject: newFacSub,
+        salary: parseFloat(newFacSal),
+        mobile: '9000000000'
+      });
+      setTeachers([...teachers, saved]);
+      setNewFacName('');
+      setNewFacSal('');
+      triggerToast(`Teacher ${newFacName} registered successfully!`);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to register teacher.');
+    }
   };
 
-  const handleAssignTeacherDuty = () => {
+  const handleAssignTeacherDuty = async () => {
     if (!selectedTeacher || !editTeacher) return;
-    const updated: Teacher = {
-      ...editTeacher,
-      assignedClasses: Array.from(new Set([...editTeacher.assignedClasses, assignClass])),
-      assignedSections: Array.from(new Set([...editTeacher.assignedSections, assignSec])),
-      assignedSubjects: Array.from(new Set([...editTeacher.assignedSubjects, assignSub]))
-    };
-    const next = teachers.map(t => t.id === selectedTeacher.id ? updated : t);
-    setTeachers(next);
-    setAdminTeachers(next);
-    setSelectedTeacher(updated);
-    setEditTeacher(updated);
-    triggerToast('Duty allocation changes submitted.');
+    try {
+      const nextSections = Array.from(new Set([...editTeacher.assignedSections, assignSec]));
+      const nextSubjects = Array.from(new Set([...editTeacher.assignedSubjects, assignSub]));
+      
+      const saved = await admin1Service.allocateTeacherDuty(selectedTeacher.id, nextSections, nextSubjects);
+      triggerToast('Duty allocation changes submitted.');
+      fetchSections(); // refreshes teachers and sections lists from backend
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to assign teacher duty.');
+    }
   };
 
-  const handlePublishBulletin = () => {
+  const handlePublishBulletin = async () => {
     if (!newPubTitle || !newPubContent) {
       triggerToast('Bulletin must contain Title and Body.');
       return;
     }
 
-    if (editingPubId) {
-      const next = bulletins.map(b => b.id === editingPubId ? { ...b, title: newPubTitle, content: newPubContent } : b);
-      setBulletins(next);
-      setAdminBulletins(next);
-      setEditingPubId(null);
-      triggerToast('Notice edits submitted and published.');
-    } else {
-      const newB: Bulletin = {
-        id: `BUL-0${bulletins.length + 1}`,
-        category: pubCat,
-        title: newPubTitle,
-        date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        content: newPubContent
-      };
-      const next = [...bulletins, newB];
-      setBulletins(next);
-      setAdminBulletins(next);
-      triggerToast('Broadcast notice changes submitted!');
+    try {
+      if (editingPubId) {
+        await admin1Service.updateBulletin(editingPubId, { title: newPubTitle, content: newPubContent, category: pubCat });
+        setEditingPubId(null);
+        triggerToast('Notice edits submitted and published.');
+      } else {
+        await admin1Service.createBulletin({
+          category: pubCat,
+          title: newPubTitle,
+          content: newPubContent
+        });
+        triggerToast('Broadcast notice changes submitted!');
+      }
+      setNewPubTitle('');
+      setNewPubContent('');
+      fetchBulletins(); // refreshes bulletins from backend
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to publish bulletin.');
     }
-    setNewPubTitle('');
-    setNewPubContent('');
   };
 
-  const handleDeleteBulletin = (id: string) => {
-    const next = bulletins.filter(b => b.id !== id);
-    setBulletins(next);
-    setAdminBulletins(next);
-    triggerToast('Notice deleted.');
+  const handleDeleteBulletin = async (id: string) => {
+    try {
+      await admin1Service.deleteBulletin(id);
+      triggerToast('Notice deleted.');
+      fetchBulletins();
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to delete bulletin.');
+    }
   };
 
-  const handleScheduleExam = () => {
+  const handleScheduleExam = async () => {
     if (!newExamName || !newExamDate) {
       triggerToast('Exam scheduling fields must be completed.');
       return;
     }
-    const newEx = {
-      id: `EX-${exams.length + 1}`,
-      name: newExamName,
-      date: newExamDate,
-      class: newExamClass,
-      status: 'Scheduled',
-      resultsPublished: false
-    };
-    setExams([...exams, newEx]);
-    setNewExamName('');
-    setNewExamDate('');
-    triggerToast(`Exam ${newExamName} scheduling changes submitted.`);
+    try {
+      await admin1Service.scheduleExam(newExamName, newExamDate);
+      setNewExamName('');
+      setNewExamDate('');
+      triggerToast(`Exam ${newExamName} scheduling changes submitted.`);
+      fetchExams();
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to schedule exam.');
+    }
   };
 
-  const handlePublishResults = (id: string) => {
-    setExams(exams.map(e => e.id === id ? { ...e, resultsPublished: true, status: 'Results Published' } : e));
-    triggerToast('Exam results published and broadcasted to Parent apps!');
+  const handlePublishResults = async (id: string) => {
+    try {
+      // Find the exam by id to get its name
+      const exam = exams.find(e => e._id === id || e.id === id);
+      if (!exam) return;
+      await apiClient.patch(`/admin1/exams/${exam._id || exam.id}`, { status: 'Results Published', resultsPublished: true });
+      triggerToast('Exam results published and broadcasted to Student portal!');
+      fetchExams();
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to publish exam results.');
+    }
+  };
+
+  const handleCreateTimetableSlot = async () => {
+    if (!newSlotPeriod || !newSlotSubject || !newSlotTeacher) {
+      triggerToast('Please complete all timetable slot fields.');
+      return;
+    }
+    try {
+      await admin1Service.createTimetableEntry({
+        section: timetableSection,
+        day: newSlotDay,
+        period: newSlotPeriod,
+        subject: newSlotSubject,
+        teacherId: newSlotTeacher
+      });
+      setNewSlotPeriod('');
+      setNewSlotSubject('');
+      setNewSlotTeacher('');
+      triggerToast('Timetable entry created.');
+      fetchTimetable(timetableSection);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to create timetable slot.');
+    }
+  };
+
+  const handleDeleteTimetableSlot = async (id: string) => {
+    try {
+      await admin1Service.deleteTimetableEntry(id);
+      triggerToast('Timetable entry deleted.');
+      fetchTimetable(timetableSection);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to delete timetable slot.');
+    }
   };
 
   const handleAddCalendar = () => {
@@ -590,11 +980,14 @@ export const AdminDashboardView: React.FC = () => {
     triggerToast('Academic Calendar timeline additions submitted.');
   };
 
-  const handleSaveAcademicFees = () => {
-    const next = { ...feeRates, isLocked: true };
-    setFeeRates(next);
-    setMockAcademicFees(next);
-    triggerToast('Academic baseline fees finalized and LOCKED successfully.');
+  const handleSaveAcademicFees = async () => {
+    try {
+      const saved = await admin2Service.updateFeeSettings({ ...feeRates, isLocked: true });
+      setFeeRates(saved);
+      triggerToast('Academic baseline fees finalized and LOCKED successfully.');
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to save fee settings.');
+    }
   };
 
   const handleLogout = () => {
@@ -1095,7 +1488,7 @@ export const AdminDashboardView: React.FC = () => {
           }} className="press-interactive">
             <input
               type="file"
-              accept=".csv, .xlsx, .xls, .pdf"
+              accept=".csv, .xlsx, .xls"
               style={{ display: 'none' }}
               onChange={handleUploadTimetable}
             />
@@ -1105,9 +1498,13 @@ export const AdminDashboardView: React.FC = () => {
             </svg>
             <h4 style={{ ...styles.sectionSubtitle, margin: '8px 0 4px 0' }}>Upload Timetable File</h4>
             <p style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>
-              {timetableFile ? `📄 Selected: ${timetableFile.name}` : 'Click here or drag & drop Excel/PDF sheets to upload weekly classes timetables.'}
+              {timetableFile ? `📄 Selected: ${timetableFile.name}` : 'Click here or drag & drop CSV/Excel sheet to upload weekly classes timetables.'}
             </p>
-            {timetableFile && (
+            {timetableUploading ? (
+              <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--royal-gold)', fontWeight: 700 }}>
+                ⏳ Uploading and parsing timetable on backend...
+              </div>
+            ) : timetableFile && (
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -1120,6 +1517,128 @@ export const AdminDashboardView: React.FC = () => {
               </button>
             )}
           </label>
+
+          {timetableUploadStatus && (
+            <div style={{
+              ...styles.readOnlyBlock,
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '12px',
+              padding: '16px',
+              marginTop: '12px',
+              fontSize: '12px',
+              backgroundColor: 'rgba(0, 0, 0, 0.2)'
+            }}>
+              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, color: 'var(--royal-gold)' }}>Upload Summary Results</h4>
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
+                <div>Total Rows: <strong>{timetableUploadStatus.total}</strong></div>
+                <div style={{ color: '#2E7D32' }}>Succeeded: <strong>{timetableUploadStatus.succeeded}</strong></div>
+                <div style={{ color: '#D32F2F' }}>Failed: <strong>{timetableUploadStatus.failed}</strong></div>
+              </div>
+              {timetableUploadStatus.errors && timetableUploadStatus.errors.length > 0 && (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontWeight: 700, color: '#D32F2F', marginBottom: '4px' }}>Errors Checklist:</div>
+                  <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: '4px' }}>
+                    {timetableUploadStatus.errors.map((err: any, idx: number) => (
+                      <div key={idx} style={{ padding: '6px 8px', borderRadius: '6px', backgroundColor: 'rgba(211,47,47,0.1)', borderLeft: '3px solid #D32F2F' }}>
+                        Row {err.row}: {err.reason}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* MANUAL TIMETABLE MANAGER */}
+          <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
+            <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Manual Timetable Entry Manager</h4>
+            
+            {/* Section Select Dropdown */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '12px' }}>
+              <label style={styles.formLabel}>Active Section</label>
+              <select
+                value={timetableSection}
+                onChange={(e) => setTimetableSection(e.target.value)}
+                style={styles.selectInput}
+              >
+                <option value="Section A">Section A</option>
+                <option value="Section B">Section B</option>
+                <option value="Section C">Section C</option>
+              </select>
+            </div>
+
+            {/* List of current slots */}
+            <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800 }}>Timetable Slots List ({timetable.length}):</span>
+              {timetable.length > 0 ? (
+                timetable.map((slot: any) => (
+                  <div key={slot._id} style={{ ...styles.receiptRowItem, padding: '4px 8px', fontSize: '11px' }}>
+                    <div>
+                      <strong>{slot.day} - {slot.period}</strong>
+                      <div style={{ color: 'var(--muted-gray)', fontSize: '10px' }}>{slot.subject} ({slot.teacher?.name || 'Unknown Teacher'})</div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteTimetableSlot(slot._id)}
+                      style={{ padding: '2px 6px', backgroundColor: '#EF4444', color: '#FFF', border: 'none', borderRadius: '4px', fontSize: '9px', cursor: 'pointer' }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div style={{ fontSize: '11px', color: 'var(--muted-gray)', textAlign: 'center', padding: '12px' }}>No entries found for this section.</div>
+              )}
+            </div>
+
+            {/* Add manual slot fields */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800 }}>Create New Slot Entry:</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Day</label>
+                  <select value={newSlotDay} onChange={(e) => setNewSlotDay(e.target.value)} style={styles.selectInput}>
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Period Slot</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 09:00 AM - 10:00 AM"
+                    value={newSlotPeriod}
+                    onChange={(e) => setNewSlotPeriod(e.target.value)}
+                    style={styles.textInputBox}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Subject</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Physics"
+                    value={newSlotSubject}
+                    onChange={(e) => setNewSlotSubject(e.target.value)}
+                    style={styles.textInputBox}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Teacher In-Charge</label>
+                  <select value={newSlotTeacher} onChange={(e) => setNewSlotTeacher(e.target.value)} style={styles.selectInput}>
+                    <option value="">-- Choose Teacher --</option>
+                    {teachers.map(t => (
+                      <option key={t.id || t._id} value={t._id}>{t.name} ({t.subject})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <button onClick={handleCreateTimetableSlot} style={{ ...styles.saveSubmitBtn, marginTop: '8px' }} className="press-interactive">Save Timetable Slot</button>
+            </div>
+          </div>
 
           <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
             <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Register Calendar Event</h4>
@@ -1286,7 +1805,11 @@ export const AdminDashboardView: React.FC = () => {
             <p style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>
               {resultsFile ? `📄 Selected: ${resultsFile.name}` : 'Click here or drag & drop CSV/Excel results sheet to upload & parse student grades.'}
             </p>
-            {resultsFile && (
+            {examUploading ? (
+              <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--royal-gold)', fontWeight: 700 }}>
+                ⏳ Uploading and parsing results on backend...
+              </div>
+            ) : resultsFile && (
               <button
                 onClick={(e) => {
                   e.preventDefault();
@@ -1299,6 +1822,37 @@ export const AdminDashboardView: React.FC = () => {
               </button>
             )}
           </label>
+
+          {examUploadStatus && (
+            <div style={{
+              ...styles.readOnlyBlock,
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '12px',
+              padding: '16px',
+              marginTop: '12px',
+              fontSize: '12px',
+              backgroundColor: 'rgba(0, 0, 0, 0.2)'
+            }}>
+              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, color: 'var(--royal-gold)' }}>Upload Summary Results</h4>
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
+                <div>Total Rows: <strong>{examUploadStatus.total}</strong></div>
+                <div style={{ color: '#2E7D32' }}>Succeeded: <strong>{examUploadStatus.succeeded}</strong></div>
+                <div style={{ color: '#D32F2F' }}>Failed: <strong>{examUploadStatus.failed}</strong></div>
+              </div>
+              {examUploadStatus.errors && examUploadStatus.errors.length > 0 && (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontWeight: 700, color: '#D32F2F', marginBottom: '4px' }}>Errors Checklist:</div>
+                  <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: '4px' }}>
+                    {examUploadStatus.errors.map((err: any, idx: number) => (
+                      <div key={idx} style={{ padding: '6px 8px', borderRadius: '6px', backgroundColor: 'rgba(211,47,47,0.1)', borderLeft: '3px solid #D32F2F' }}>
+                        Row {err.row}: {err.rollNumber ? `[Roll: ${err.rollNumber}] ` : ''}{err.reason}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
             <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Schedule New Exam</h4>
@@ -1345,8 +1899,18 @@ export const AdminDashboardView: React.FC = () => {
     );
   }
 
-  // ─── SUBPAGE 7: ACADEMIC FEES (New module replacing Hostel) ───
+  // ─── SUBPAGE 7: ACADEMIC FEES (Admin 2 only) ───
+  // FRONTEND ROUTE GUARD: even if admin1 manipulates client-side state to set
+  // activePage='academic_fees', this guard redirects them back to the menu
+  // immediately. The backend independently enforces this via admin2Guard (403).
   if (activePage === 'academic_fees') {
+    if (role !== 'admin2') {
+      // Silently redirect — admin1 has no module card for this page
+      // and should never reach here through normal navigation.
+      setActivePage('menu');
+      return null;
+    }
+
     return (
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('orange')}
@@ -1438,6 +2002,9 @@ export const AdminDashboardView: React.FC = () => {
 
   // ─── SUBPAGE 8: REPORTS COMPILER ───
   if (activePage === 'reports') {
+    const reportSections = reportsData?.enrollmentBySection || [];
+    const reportCourses = reportsData?.enrollmentByCourse || [];
+
     return (
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('cyan')}
@@ -1450,7 +2017,43 @@ export const AdminDashboardView: React.FC = () => {
         </header>
 
         <main style={styles.content}>
+          {/* LIVE DATA AGGREGATIONS */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', zIndex: 1, marginBottom: '16px' }}>
+            <div style={styles.readOnlyBlock}>
+              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Enrollment by Section</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                {reportSections.length > 0 ? (
+                  reportSections.map((item: any, idx: number) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '3px' }}>
+                      <span>{item.section}</span>
+                      <strong style={{ color: 'var(--royal-gold)' }}>{item.count} Students</strong>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>No student sections records.</div>
+                )}
+              </div>
+            </div>
+
+            <div style={styles.readOnlyBlock}>
+              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Enrollment by Course</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                {reportCourses.length > 0 ? (
+                  reportCourses.map((item: any, idx: number) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '3px' }}>
+                      <span>{item.course}</span>
+                      <strong style={{ color: 'var(--royal-gold)' }}>{item.count} Enrolled</strong>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>No student course records.</div>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
+            <h4 style={styles.sectionSubtitle}>Standard Exportable Documents</h4>
             {[
               { name: 'Student Enrollment Registry Report', format: 'PDF Document (.pdf)' },
               { name: 'Roster Attendance Log sheets (Weekly)', format: 'Excel Sheet (.xlsx)' },
@@ -1473,6 +2076,14 @@ export const AdminDashboardView: React.FC = () => {
 
   // ─── SUBPAGE 9: ATTENDANCE DASHBOARD ───
   if (activePage === 'attendance') {
+    const totals = (attendanceSummary as any)?.totals || {
+      studentsPresent: 2735,
+      studentsAbsent: 111,
+      facultyPresent: 180,
+      facultyAbsent: 6
+    };
+    const sectionsList = (attendanceSummary as any)?.sections || [];
+
     return (
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('indigo')}
@@ -1488,30 +2099,41 @@ export const AdminDashboardView: React.FC = () => {
           <div style={{ ...styles.metricsGrid, zIndex: 1 }}>
             <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Students Present</span>
-              <strong style={{ ...styles.metricValue, color: '#10B981' }}>2,735</strong>
+              <strong style={{ ...styles.metricValue, color: '#10B981' }}>{totals.studentsPresent.toLocaleString()}</strong>
             </div>
             <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Students Absent</span>
-              <strong style={{ ...styles.metricValue, color: '#EF4444' }}>111</strong>
+              <strong style={{ ...styles.metricValue, color: '#EF4444' }}>{totals.studentsAbsent.toLocaleString()}</strong>
             </div>
           </div>
           <div style={{ ...styles.metricsGrid, zIndex: 1 }}>
             <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Faculty Present</span>
-              <strong style={styles.metricValue}>180</strong>
+              <strong style={styles.metricValue}>{totals.facultyPresent.toLocaleString()}</strong>
             </div>
             <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Faculty on Leave</span>
-              <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>6</strong>
+              <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>{totals.facultyAbsent.toLocaleString()}</strong>
             </div>
           </div>
 
           <h4 style={styles.sectionSubtitle}>Section-wise Attendance Summary</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
-            <div style={styles.receiptRowItem}><span>MPC - Section A</span><strong>96.2% Present</strong></div>
-            <div style={styles.receiptRowItem}><span>MPC - Section B</span><strong>92.4% Present</strong></div>
-            <div style={styles.receiptRowItem}><span>BiPC - Section A</span><strong>94.8% Present</strong></div>
-            <div style={styles.receiptRowItem}><span>CEC - Section A</span><strong>98.0% Present</strong></div>
+            {sectionsList.length > 0 ? (
+              sectionsList.map((sec: any, idx: number) => (
+                <div key={idx} style={styles.receiptRowItem}>
+                  <span>{sec.section}</span>
+                  <strong>{sec.ratio}% Present</strong>
+                </div>
+              ))
+            ) : (
+              <>
+                <div style={styles.receiptRowItem}><span>MPC - Section A</span><strong>96.2% Present</strong></div>
+                <div style={styles.receiptRowItem}><span>MPC - Section B</span><strong>92.4% Present</strong></div>
+                <div style={styles.receiptRowItem}><span>BiPC - Section A</span><strong>94.8% Present</strong></div>
+                <div style={styles.receiptRowItem}><span>CEC - Section A</span><strong>98.0% Present</strong></div>
+              </>
+            )}
           </div>
         </main>
       </div>
@@ -1579,6 +2201,415 @@ export const AdminDashboardView: React.FC = () => {
     );
   }
 
+  // ─── SUBPAGE 12: STUDENT FEE EDITOR (Admin 2) ───
+  if (activePage === 'fee_editor') {
+    const handleFeeSearch = async () => {
+      const match = students.find(s =>
+        s.admissionNumber.toUpperCase().trim() === feeEditSearch.toUpperCase().trim() ||
+        s.rollNumber.toUpperCase().trim() === feeEditSearch.toUpperCase().trim()
+      );
+      if (match && match._id) {
+        try {
+          const breakdown = await admin2Service.getFeeBreakdown(match._id);
+          setSelectedFeeStudent(match);
+          setFeeBreakdownData(breakdown);
+          setEditTuitionWaiver(String(breakdown.tuitionWaiver));
+          setEditHostelWaiver(String(breakdown.hostelWaiver));
+          setEditTransportWaiver(String(breakdown.transportWaiver));
+          setEditMiscWaiver(String(breakdown.miscWaiver));
+          triggerToast(`Loaded fee record for ${match.name}`);
+        } catch (err: any) {
+          triggerToast(err.message || 'Failed to load student fee breakdown.');
+        }
+      } else {
+        setSelectedFeeStudent(null);
+        setFeeBreakdownData(null);
+        triggerToast('Student not found.');
+      }
+    };
+
+    const handleApplyWaivers = async () => {
+      if (!selectedFeeStudent || !selectedFeeStudent._id) return;
+      try {
+        const res = await admin2Service.applyFeeOverride(selectedFeeStudent._id, {
+          tuitionWaiver: Number(editTuitionWaiver) || 0,
+          hostelWaiver: Number(editHostelWaiver) || 0,
+          transportWaiver: Number(editTransportWaiver) || 0,
+          miscWaiver: Number(editMiscWaiver) || 0,
+        });
+        if (res.status === 'success') {
+          const breakdown = await admin2Service.getFeeBreakdown(selectedFeeStudent._id);
+          setFeeBreakdownData(breakdown);
+          triggerToast(`Fee waivers applied for ${selectedFeeStudent.name}.`);
+        } else {
+          triggerToast(res.message || 'Failed to apply waivers.');
+        }
+      } catch (err: any) {
+        triggerToast(err.message || 'Failed to save fee waivers.');
+      }
+    };
+
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('orange')}
+        <header style={styles.header}>
+          <button onClick={() => { setActivePage('menu'); setSelectedFeeStudent(null); setFeeBreakdownData(null); }} style={styles.backArrowBtn} className="press-interactive">← Back to Finance Cockpit</button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Student Fee Editor</h1>
+          <p style={styles.subtitle}>Apply individual tuition, hostel & misc waivers per student</p>
+        </header>
+        <main style={styles.content}>
+          <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
+            <h4 style={styles.sectionSubtitle}>Search Student</h4>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+              <input type="text" placeholder="Admission No or Roll No" value={feeEditSearch} onChange={(e) => setFeeEditSearch(e.target.value)} style={{ ...styles.textInputBox, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && handleFeeSearch()} />
+              <button onClick={handleFeeSearch} style={{ ...styles.saveSubmitBtn, marginTop: 0, padding: '12px 20px' }} className="press-interactive">Search</button>
+            </div>
+          </GlassCard>
+          {selectedFeeStudent && (
+            <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
+              <h4 style={styles.sectionSubtitle}>{selectedFeeStudent.name} — {selectedFeeStudent.admissionNumber}</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+                {[['Tuition Waiver (₹)', editTuitionWaiver, setEditTuitionWaiver], ['Hostel Waiver (₹)', editHostelWaiver, setEditHostelWaiver], ['Transport Waiver (₹)', editTransportWaiver, setEditTransportWaiver], ['Misc Waiver (₹)', editMiscWaiver, setEditMiscWaiver]].map(([label, val, setter]: any) => (
+                  <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>{label}</label>
+                    <input type="number" min="0" value={val} onChange={(e) => setter(e.target.value)} style={styles.textInputBox} />
+                  </div>
+                ))}
+              </div>
+              <button onClick={handleApplyWaivers} style={{ ...styles.saveSubmitBtn, marginTop: '16px' }} className="press-interactive">Apply Waivers</button>
+            </GlassCard>
+          )}
+          {feeBreakdownData && (
+            <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
+              <h4 style={styles.sectionSubtitle}>Fee Ledger Breakdown</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                <div style={styles.metaRow}><span>Base Tuition Fee</span><strong>₹{(feeBreakdownData.tuitionFee||0).toLocaleString('en-IN')}</strong></div>
+                {feeBreakdownData.hostelFee > 0 && <div style={styles.metaRow}><span>Base Hostel Fee</span><strong>₹{feeBreakdownData.hostelFee.toLocaleString('en-IN')}</strong></div>}
+                {feeBreakdownData.transportFee > 0 && <div style={styles.metaRow}><span>Base Transport Fee</span><strong>₹{feeBreakdownData.transportFee.toLocaleString('en-IN')}</strong></div>}
+                {feeBreakdownData.miscFee > 0 && <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>₹{feeBreakdownData.miscFee.toLocaleString('en-IN')}</strong></div>}
+                {feeBreakdownData.previousPending > 0 && <div style={styles.metaRow}><span>Previous Pending</span><strong>₹{feeBreakdownData.previousPending.toLocaleString('en-IN')}</strong></div>}
+                <div style={{ ...styles.metaRow, borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '6px' }}><span><strong>Total Base Fee</strong></span><strong>₹{(feeBreakdownData.baseFee||0).toLocaleString('en-IN')}</strong></div>
+                {feeBreakdownData.scholarshipDeduction > 0 && (
+                  <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
+                    <span>Scholarship ({feeBreakdownData.scholarshipCategory}: {feeBreakdownData.scholarshipPct}%)</span>
+                    <strong>- ₹{feeBreakdownData.scholarshipDeduction.toLocaleString('en-IN')}</strong>
+                  </div>
+                )}
+                {feeBreakdownData.individualOverrideDeduction > 0 && (
+                  <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
+                    <span>Individual Waivers</span>
+                    <strong>- ₹{feeBreakdownData.individualOverrideDeduction.toLocaleString('en-IN')}</strong>
+                  </div>
+                )}
+                <div style={{ ...styles.metaRow, color: '#D32F2F', borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '6px' }}><span>Total Paid</span><strong>- ₹{(feeBreakdownData.totalPaid||0).toLocaleString('en-IN')}</strong></div>
+                <div style={{ ...styles.metaRow, backgroundColor: 'rgba(212,175,55,0.08)', padding: '10px', borderRadius: '10px', marginTop: '6px' }}>
+                  <span style={{ fontWeight: 800, color: 'var(--royal-gold)' }}>Remaining Balance</span>
+                  <strong style={{ fontSize: '15px', color: 'var(--royal-gold)', fontWeight: 900 }}>₹{(feeBreakdownData.remainingBalance||0).toLocaleString('en-IN')}</strong>
+                </div>
+              </div>
+            </GlassCard>
+          )}
+        </main>
+      </div>
+    );
+  }
+
+  // ─── SUBPAGE 13: LATE FEES & SCHOLARSHIPS (Admin 2) ───
+  if (activePage === 'late_scholarships') {
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('ruby')}
+        <header style={styles.header}>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">← Back to Finance Cockpit</button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Late Fees & Scholarships</h1>
+          <p style={styles.subtitle}>View active penalty rates and merit scholarship policies</p>
+        </header>
+        <main style={styles.content}>
+          <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
+            <h4 style={styles.sectionSubtitle}>Late Fee Policy</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+              <div style={styles.metaRow}><span>Current Overdue Policy</span><strong>{lateFeeRulesText}</strong></div>
+            </div>
+            <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '10px', fontStyle: 'italic' }}>ⓘ Late Fee policies are managed and updated by the Accountant Portal.</p>
+          </GlassCard>
+          <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
+            <h4 style={styles.sectionSubtitle}>Scholarship Merit Policy</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+              <div style={styles.metaRow}><span>Active Rules</span><strong>{scholarshipRulesText}</strong></div>
+            </div>
+            <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '10px', fontStyle: 'italic' }}>ⓘ Scholarship slabs are configured and maintained by the Accountant Portal.</p>
+          </GlassCard>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── SUBPAGE 14: EXPENDITURE TRACKER (Admin 2) ───
+  if (activePage === 'expenditure') {
+    const handleLogExpenditure = async () => {
+      if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; }
+      try {
+        const saved = await admin2Service.createExpenditure({ category: newExpCat, amount: Number(newExpAmt), description: newExpDesc });
+        setExpenditures([saved, ...expenditures]);
+        setNewExpAmt(''); setNewExpDesc('');
+        triggerToast('Expenditure logged successfully.');
+      } catch (err: any) { triggerToast(err.message || 'Failed to log expenditure.'); }
+    };
+    const handleDeleteExpenditure = async (exp: ExpenditureItem) => {
+      const id = exp._id || exp.id;
+      if (!id) return;
+      try {
+        await admin2Service.deleteExpenditure(id);
+        setExpenditures(expenditures.filter(e => (e._id || e.id) !== id));
+        triggerToast('Expenditure deleted.');
+      } catch (err: any) { triggerToast(err.message || 'Failed to delete expenditure.'); }
+    };
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('teal')}
+        <header style={styles.header}>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">← Back to Finance Cockpit</button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Expenditure Tracker</h1>
+          <p style={styles.subtitle}>Log and monitor institutional expenses by category</p>
+        </header>
+        <main style={styles.content}>
+          <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
+            <h4 style={styles.sectionSubtitle}>Log New Expenditure</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={styles.formLabel}>Category</label>
+                <select value={newExpCat} onChange={(e) => setNewExpCat(e.target.value)} style={styles.selectInput}>
+                  {['Utilities', 'Mess & Food', 'Maintenance', 'Salaries', 'Transport', 'Stationery', 'Medical', 'Events', 'Other'].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={styles.formLabel}>Amount (₹)</label>
+                <input type="number" min="0" value={newExpAmt} onChange={(e) => setNewExpAmt(e.target.value)} style={styles.textInputBox} placeholder="e.g. 12000" />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: '1 / -1' }}>
+                <label style={styles.formLabel}>Description</label>
+                <input type="text" value={newExpDesc} onChange={(e) => setNewExpDesc(e.target.value)} style={styles.textInputBox} placeholder="Brief description of the expense" />
+              </div>
+            </div>
+            <button onClick={handleLogExpenditure} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">Log Expenditure</button>
+          </GlassCard>
+          <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
+            <h4 style={styles.sectionSubtitle}>Recent Entries — Total: ₹{expenditures.reduce((s, e) => s + e.amount, 0).toLocaleString('en-IN')}</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+              {expenditures.map((exp, i) => (
+                <div key={exp._id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: '1.5px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{exp.category} — {exp.description}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{typeof exp.date === 'string' ? exp.date.split('T')[0] : exp.date}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <strong style={{ fontSize: '14px', color: '#EF4444' }}>₹{exp.amount.toLocaleString('en-IN')}</strong>
+                    <button onClick={() => handleDeleteExpenditure(exp)} style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── SUBPAGE 15: STAFF SALARY STATUS (Admin 2) ───
+  if (activePage === 'salary_status') {
+    const teacherList: any[] = teachers;
+    const handleToggleSalary = async (t: any) => {
+      const teacherId = t.id || t._id;
+      if (!teacherId) return;
+      try {
+        await admin2Service.toggleStaffSalary(teacherId);
+        await fetchStaffSalaries();
+        triggerToast('Salary status toggled.');
+      } catch (err: any) { triggerToast(err.message || 'Failed to toggle.'); }
+    };
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('sapphire')}
+        <header style={styles.header}>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">← Back to Finance Cockpit</button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Staff & Teacher Salary Status</h1>
+          <p style={styles.subtitle}>View teacher roster and toggle salary disbursement status</p>
+        </header>
+        <main style={styles.content}>
+          <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Faculty Roster — {teacherList.length} Members</h4>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981', backgroundColor: 'rgba(16,185,129,0.08)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)' }}>
+                Total: ₹{teacherList.reduce((s, t) => s + (t.salary||0), 0).toLocaleString('en-IN')} / mo
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {teacherList.map((t, i) => (
+                <div key={t.id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: '1.5px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{t.name}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{t.subject} • {t.assignedClasses?.[0] || 'Unassigned'}</div>
+                  </div>
+                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                    <strong style={{ fontSize: '14px', color: 'var(--royal-gold)' }}>₹{(t.salary||0).toLocaleString('en-IN')}</strong>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '10px', color: t.salaryStatus === 'paid' ? '#10B981' : '#EF4444', fontWeight: 700 }}>
+                        {t.salaryStatus === 'paid' ? `✓ Paid${t.salaryPaymentDate ? ` (${t.salaryPaymentDate})` : ''}` : '● Pending'}
+                      </span>
+                      <button onClick={() => handleToggleSalary(t)} style={{ fontSize: '9px', padding: '3px 8px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(0,0,0,0.06)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }} className="press-interactive">Toggle</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── SUBPAGE 16: WORKER PAYMENT DETAILS (Admin 2) ───
+  if (activePage === 'worker_payments') {
+    const handleAddWorker = async () => {
+      if (!newWorkerName || !newWorkerRole || !newWorkerWage) { triggerToast('Please fill in name, role and wage.'); return; }
+      try {
+        const saved = await admin2Service.createWorkerPayment({ workerName: newWorkerName, role: newWorkerRole, amount: Number(newWorkerWage), monthPeriod: newWorkerPeriod, paid: false });
+        const mapped = { ...saved, name: saved.workerName, salary: saved.amount, id: saved._id };
+        setWorkers([mapped, ...workers]);
+        setNewWorkerName(''); setNewWorkerRole(''); setNewWorkerWage('');
+        triggerToast('Worker entry added.');
+      } catch (err: any) { triggerToast(err.message || 'Failed to add worker.'); }
+    };
+    const handleToggleWorker = async (w: any) => {
+      if (!w._id) return;
+      try {
+        const updated = await admin2Service.updateWorkerPayment(w._id, { paid: !w.paid });
+        setWorkers(workers.map(ww => ww._id === w._id ? { ...updated, name: updated.workerName, salary: updated.amount, id: updated._id } : ww));
+        triggerToast(`${w.workerName || w.name} marked ${!w.paid ? 'Paid' : 'Pending'}.`);
+      } catch (err: any) { triggerToast(err.message || 'Failed to update.'); }
+    };
+    const handleDeleteWorker = async (w: any) => {
+      if (!w._id) return;
+      try {
+        await admin2Service.deleteWorkerPayment(w._id);
+        setWorkers(workers.filter(ww => ww._id !== w._id));
+        triggerToast('Worker entry deleted.');
+      } catch (err: any) { triggerToast(err.message || 'Failed to delete.'); }
+    };
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('emerald')}
+        <header style={styles.header}>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">← Back to Finance Cockpit</button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Worker Payment Details</h1>
+          <p style={styles.subtitle}>Manage and record non-teaching staff payroll for the month</p>
+        </header>
+        <main style={styles.content}>
+          <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
+            <h4 style={styles.sectionSubtitle}>Add Worker Entry</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Name</label><input type="text" value={newWorkerName} onChange={(e) => setNewWorkerName(e.target.value)} style={styles.textInputBox} placeholder="e.g. Ramesh Kumar" /></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Role</label><input type="text" value={newWorkerRole} onChange={(e) => setNewWorkerRole(e.target.value)} style={styles.textInputBox} placeholder="e.g. Plumber" /></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Monthly Wage (₹)</label><input type="number" min="0" value={newWorkerWage} onChange={(e) => setNewWorkerWage(e.target.value)} style={styles.textInputBox} placeholder="e.g. 15000" /></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Period</label><input type="text" value={newWorkerPeriod} onChange={(e) => setNewWorkerPeriod(e.target.value)} style={styles.textInputBox} placeholder="e.g. July 2026" /></div>
+            </div>
+            <button onClick={handleAddWorker} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">Add Worker Entry</button>
+          </GlassCard>
+          <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Workers — {workers.length} Staff</h4>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--royal-gold)', backgroundColor: 'rgba(251,191,36,0.08)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(251,191,36,0.2)' }}>Pending: {workers.filter(w => !w.paid).length}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {workers.map((w: any, i) => (
+                <div key={w._id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: `1.5px solid ${w.paid ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, backgroundColor: w.paid ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{w.workerName || w.name}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{w.role} • {w.monthPeriod} • ₹{(w.amount || w.salary || 0).toLocaleString('en-IN')}/mo</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button onClick={() => handleToggleWorker(w)} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', backgroundColor: w.paid ? 'rgba(16,185,129,0.12)' : 'var(--royal-gold)', color: w.paid ? '#10B981' : '#000', fontWeight: 800, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }} className="press-interactive">{w.paid ? '✓ Paid' : 'Mark Paid'}</button>
+                    <button onClick={() => handleDeleteWorker(w)} style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── SUBPAGE 17: YEARLY ENROLLMENT STATS (Admin 2) ───
+  if (activePage === 'enrollment_stats') {
+    const yearData = [
+      { year: '2022-23', mpc: 480, bipc: 360, cec: 120 },
+      { year: '2023-24', mpc: 520, bipc: 390, cec: 140 },
+      { year: '2024-25', mpc: 580, bipc: 420, cec: 160 },
+      { year: '2025-26', mpc: 640, bipc: 450, cec: 180 },
+      { year: '2026-27', mpc: 680, bipc: 460, cec: 200 },
+    ];
+    // Overlay real DB stats for any matching year
+    enrollmentStats.forEach(stat => {
+      const idx = yearData.findIndex(y => y.year === stat.academicYear);
+      if (idx !== -1) yearData[idx] = { year: stat.academicYear, mpc: stat.mpc || 0, bipc: stat.bipc || 0, cec: stat.cec || 0 };
+    });
+    const activeYear = yearData.find(y => y.year === '2026-27') || { mpc: 0, bipc: 0, cec: 0 };
+    const liveTotal = activeYear.mpc + activeYear.bipc + activeYear.cec;
+    const maxTotal = Math.max(...yearData.map(d => d.mpc + d.bipc + d.cec));
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('violet')}
+        <header style={styles.header}>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">← Back to Finance Cockpit</button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Yearly Enrollment Stats</h1>
+          <p style={styles.subtitle}>Academic year-wise admission trends across MPC, BiPC & CEC</p>
+        </header>
+        <main style={styles.content}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', zIndex: 1 }}>
+            {[
+              { label: 'Total Enrolled (2026-27)', value: liveTotal.toLocaleString('en-IN'), sub: 'Live database count', color: '#10B981' },
+              { label: 'MPC Stream', value: activeYear.mpc.toLocaleString('en-IN'), sub: 'Engineering intake', color: 'var(--royal-gold)' },
+              { label: 'BiPC Stream', value: activeYear.bipc.toLocaleString('en-IN'), sub: 'Medical intake', color: '#3B82F6' },
+              { label: 'CEC Stream', value: activeYear.cec.toLocaleString('en-IN'), sub: 'Commerce intake', color: '#8B5CF6' },
+            ].map((metric, i) => (
+              <GlassCard key={i} hoverable={false} style={{ padding: '16px', textAlign: 'center' }}>
+                <div style={{ fontSize: '10.5px', color: 'var(--muted-gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{metric.label}</div>
+                <div style={{ fontSize: '28px', fontWeight: 900, color: metric.color, marginTop: '6px', lineHeight: 1 }}>{metric.value}</div>
+                <div style={{ fontSize: '10.5px', color: 'var(--muted-gray)', marginTop: '6px' }}>{metric.sub}</div>
+              </GlassCard>
+            ))}
+          </div>
+          <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
+            <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, marginBottom: '16px' }}>5-Year Enrollment Trends</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {yearData.map((d, i) => {
+                const total = d.mpc + d.bipc + d.cec;
+                const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
+                return (
+                  <div key={i}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--dark-charcoal)' }}>{d.year}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--royal-gold)' }}>{total.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div style={{ height: '8px', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, borderRadius: '4px', background: 'linear-gradient(90deg, var(--royal-gold), #F97316)', transition: 'width 0.5s ease' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                      {[['MPC', d.mpc, '#10B981'], ['BiPC', d.bipc, '#3B82F6'], ['CEC', d.cec, '#8B5CF6']].map(([name, val, color]: any) => (
+                        <span key={name} style={{ fontSize: '10px', color, fontWeight: 700 }}>{name}: {val}</span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </GlassCard>
+        </main>
+      </div>
+    );
+  }
+
   // ─── SUBPAGE 11: ADMIN PROFILE BIO ───
   if (activePage === 'profile') {
     return (
@@ -1618,13 +2649,14 @@ export const AdminDashboardView: React.FC = () => {
       <header style={styles.header}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', zIndex: 1 }}>
           <div style={styles.parentWelcomeRow}>
-            <div style={styles.avatarMini}>AD</div>
+            <div style={styles.avatarMini}>{role === 'admin1' ? 'A1' : 'A2'}</div>
             <div>
-              <span style={styles.greetingText}>Inspire ERP Control,</span>
-              <h2 style={styles.parentWelcomeTitle}>Dean Consolidated Cockpit</h2>
-              <p style={styles.childMetaText}>Principal General Administrator</p>
+              <span style={styles.greetingText}>{role === 'admin1' ? 'Campus Operations,' : 'Finance & Staff Operations,'}</span>
+              <h2 style={styles.parentWelcomeTitle}>{role === 'admin1' ? 'Admin 1 Cockpit' : 'Admin 2 Finance Cockpit'}</h2>
+              <p style={styles.childMetaText}>{role === 'admin1' ? 'Campus Operations Administrator' : 'Finance & Staff Operations Administrator'}</p>
             </div>
           </div>
+          <LiveConnectionIndicator compact />
           {/* VERY VISIBLE LOGO BRANDING */}
           <div style={{ paddingRight: '8px' }}>
             <InspireLogo size="md" />
@@ -1633,42 +2665,69 @@ export const AdminDashboardView: React.FC = () => {
       </header>
 
       <main style={{ ...styles.content, zIndex: 1 }}>
-        {/* SUMMARY STATS ROW 1 & 2 */}
+        {/* SUMMARY STATS - role-conditional */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          
-          {/* Row 1: Students */}
-          <div style={styles.metricsGrid}>
-            <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-              <span style={styles.metricLabel}>Total Students Present Today</span>
-              <strong style={{ ...styles.metricValue, color: '#10B981' }}>2,735</strong>
-              <span style={styles.metricSub}>96.1% Attendance Rate</span>
-            </GlassCard>
-            <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-              <span style={styles.metricLabel}>Total Students Absent Today</span>
-              <strong style={{ ...styles.metricValue, color: '#EF4444' }}>111</strong>
-              <span style={styles.metricSub}>3.9% Absent</span>
-            </GlassCard>
-          </div>
-
-          {/* Row 2: Faculty */}
-          <div style={styles.metricsGrid}>
-            <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-              <span style={styles.metricLabel}>Total Faculty Present Today</span>
-              <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>180</strong>
-              <span style={styles.metricSub}>96.8% Present</span>
-            </GlassCard>
-            <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-              <span style={styles.metricLabel}>Total Faculty on Leave Today</span>
-              <strong style={styles.metricValue}>6</strong>
-              <span style={styles.metricSub}>3.2% Leave Rate</span>
-            </GlassCard>
-          </div>
-
+          {role === 'admin1' ? (
+            <>
+              <div style={styles.metricsGrid}>
+                <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
+                  <span style={styles.metricLabel}>Total Students Present Today</span>
+                  <strong style={{ ...styles.metricValue, color: '#10B981' }}>2,735</strong>
+                  <span style={styles.metricSub}>96.1% Attendance Rate</span>
+                </GlassCard>
+                <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
+                  <span style={styles.metricLabel}>Total Students Absent Today</span>
+                  <strong style={{ ...styles.metricValue, color: '#EF4444' }}>111</strong>
+                  <span style={styles.metricSub}>3.9% Absent</span>
+                </GlassCard>
+              </div>
+              <div style={styles.metricsGrid}>
+                <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
+                  <span style={styles.metricLabel}>Total Faculty Present Today</span>
+                  <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>180</strong>
+                  <span style={styles.metricSub}>96.8% Present</span>
+                </GlassCard>
+                <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
+                  <span style={styles.metricLabel}>Faculty on Leave Today</span>
+                  <strong style={styles.metricValue}>6</strong>
+                  <span style={styles.metricSub}>3.2% Leave Rate</span>
+                </GlassCard>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={styles.metricsGrid}>
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
+                  <span style={styles.metricLabel}>Monthly Fee Collected</span>
+                  <strong style={{ ...styles.metricValue, color: '#10B981' }}>₹48.2L</strong>
+                  <span style={styles.metricSub}>92.4% of target</span>
+                </GlassCard>
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
+                  <span style={styles.metricLabel}>Monthly Expenditure</span>
+                  <strong style={{ ...styles.metricValue, color: '#EF4444' }}>₹15.7L</strong>
+                  <span style={styles.metricSub}>Jul 2026 Total</span>
+                </GlassCard>
+              </div>
+              <div style={styles.metricsGrid}>
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
+                  <span style={styles.metricLabel}>Fee Defaulters</span>
+                  <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>38</strong>
+                  <span style={styles.metricSub}>Pending since Term 1</span>
+                </GlassCard>
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
+                  <span style={styles.metricLabel}>Worker Payments Pending</span>
+                  <strong style={styles.metricValue}>{workers.filter(w => !w.paid).length}</strong>
+                  <span style={styles.metricSub}>Awaiting approval</span>
+                </GlassCard>
+              </div>
+            </>
+          )}
         </section>
 
-        {/* 12 Mosaic Grid of Cards with Unique Glowing Colors Backgrounds */}
+        {/* Module Grid — role-conditional */}
         <section style={styles.section}>
-          <h3 style={styles.sectionTitle}>Administrative Modules</h3>
+          <h3 style={styles.sectionTitle}>{role === 'admin1' ? 'Campus Operations Modules' : 'Finance & Staff Modules'}</h3>
+          {role === 'admin1' ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
             
             {/* 1. Students */}
@@ -1796,26 +2855,6 @@ export const AdminDashboardView: React.FC = () => {
               <p style={styles.moduleDesc}>Schedule tests term, publish grades lists.</p>
             </div>
 
-            {/* 7. Academic Fees (New module!) */}
-            <div
-              onClick={() => setActivePage('academic_fees')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.09) 0%, rgba(249, 115, 22, 0.02) 100%)',
-                border: '1.5px solid rgba(249, 115, 22, 0.3)',
-                boxShadow: '0 4px 14px rgba(249, 115, 22, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(249, 115, 22, 0.08)', border: '1px solid rgba(249, 115, 22, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.5">
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <line x1="12" y1="4" x2="12" y2="20" />
-                </svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Academic Fees</h4>
-              <p style={styles.moduleDesc}>Configure term baseline fees per academic year.</p>
-            </div>
 
             {/* 8. Reports */}
             <div
@@ -1925,6 +2964,68 @@ export const AdminDashboardView: React.FC = () => {
             </div>
 
           </div>
+          ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+
+            {/* A2-1. Academic Fees */}
+            <div onClick={() => setActivePage('academic_fees')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(249,115,22,0.09) 0%, rgba(249,115,22,0.02) 100%)', border: '1.5px solid rgba(249,115,22,0.3)', boxShadow: '0 4px 14px rgba(249,115,22,0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.5"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg></div>
+              <h4 style={styles.moduleTitle}>Academic Fees</h4>
+              <p style={styles.moduleDesc}>Lock and configure baseline term fees per year.</p>
+            </div>
+
+            {/* A2-2. Student Fee Editor */}
+            <div onClick={() => setActivePage('fee_editor')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(16,185,129,0.09) 0%, rgba(16,185,129,0.02) 100%)', border: '1.5px solid rgba(16,185,129,0.3)', boxShadow: '0 4px 14px rgba(16,185,129,0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+              <h4 style={styles.moduleTitle}>Student Fee Editor</h4>
+              <p style={styles.moduleDesc}>Apply individual waivers & edit student fee structures.</p>
+            </div>
+
+            {/* A2-3. Late Fees & Scholarships */}
+            <div onClick={() => setActivePage('late_scholarships')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(239,68,68,0.09) 0%, rgba(239,68,68,0.02) 100%)', border: '1.5px solid rgba(239,68,68,0.3)', boxShadow: '0 4px 14px rgba(239,68,68,0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2"/><path d="M12 6v6l4 2"/></svg></div>
+              <h4 style={styles.moduleTitle}>Late Fees & Scholarships</h4>
+              <p style={styles.moduleDesc}>Set penalty rates and merit scholarship slabs.</p>
+            </div>
+
+            {/* A2-4. Expenditure Tracker */}
+            <div onClick={() => setActivePage('expenditure')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(20,184,166,0.09) 0%, rgba(20,184,166,0.02) 100%)', border: '1.5px solid rgba(20,184,166,0.3)', boxShadow: '0 4px 14px rgba(20,184,166,0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+              <h4 style={styles.moduleTitle}>Expenditure Tracker</h4>
+              <p style={styles.moduleDesc}>Log and monitor all institutional expenses by category.</p>
+            </div>
+
+            {/* A2-5. Staff Salary Status */}
+            <div onClick={() => setActivePage('salary_status')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(59,130,246,0.09) 0%, rgba(59,130,246,0.02) 100%)', border: '1.5px solid rgba(59,130,246,0.3)', boxShadow: '0 4px 14px rgba(59,130,246,0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+              <h4 style={styles.moduleTitle}>Staff Salary Status</h4>
+              <p style={styles.moduleDesc}>View faculty roster and monthly salary disbursements.</p>
+            </div>
+
+            {/* A2-6. Worker Payment Details */}
+            <div onClick={() => setActivePage('worker_payments')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(139,92,246,0.09) 0%, rgba(139,92,246,0.02) 100%)', border: '1.5px solid rgba(139,92,246,0.3)', boxShadow: '0 4px 14px rgba(139,92,246,0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+              <h4 style={styles.moduleTitle}>Worker Payments</h4>
+              <p style={styles.moduleDesc}>Record and mark non-teaching staff payroll payouts.</p>
+            </div>
+
+            {/* A2-7. Yearly Enrollment Stats */}
+            <div onClick={() => setActivePage('enrollment_stats')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(99,102,241,0.09) 0%, rgba(99,102,241,0.02) 100%)', border: '1.5px solid rgba(99,102,241,0.3)', boxShadow: '0 4px 14px rgba(99,102,241,0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+              <h4 style={styles.moduleTitle}>Yearly Enrollment Stats</h4>
+              <p style={styles.moduleDesc}>5-year admission trend charts across all streams.</p>
+            </div>
+
+            {/* A2-8. Profile */}
+            <div onClick={() => setActivePage('profile')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(30,41,59,0.09) 0%, rgba(30,41,59,0.02) 100%)', border: '1.5px solid rgba(30,41,59,0.3)', boxShadow: '0 4px 14px rgba(30,41,59,0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(30,41,59,0.08)', border: '1px solid rgba(30,41,59,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E293B" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+              <h4 style={styles.moduleTitle}>Finance Admin Profile</h4>
+              <p style={styles.moduleDesc}>Review Finance Administrator access and credentials.</p>
+            </div>
+
+          </div>
+          )}
+
         </section>
 
         {/* Terminate Session Trigger at the bottom of the page */}

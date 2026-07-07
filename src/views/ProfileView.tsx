@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
+import { ErrorState } from '../components/common/FeedbackStates';
 import { useNavigation } from '../context/NavigationContext';
+import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
+import { fetchMyProfile, getInitials, type StudentProfile } from '../services/studentService';
+import { onSocketEvent } from '../services/socketClient';
 
 // --- PROFILE UI ICONS ---
 const CallIcon = () => (
@@ -87,8 +91,11 @@ interface ProfileViewProps {
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showLogoutSheet, setShowLogoutSheet] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [livePulse, setLivePulse] = useState(false);
 
   // Active settings sheets state: 'settings_menu' | 'contacts_menu' | 'appearance' | 'language' | 'notifications' | 'security' | null
   const [activePanel, setActivePanel] = useState<string | null>(null);
@@ -122,10 +129,41 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
   });
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
+    fetchMyProfile()
+      .then(data => {
+        setProfile(data);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error('Profile fetch error:', err);
+        setFetchError(err?.message || 'Failed to load profile. Check your connection.');
+        setIsLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    const refreshProfile = async () => {
+      setLivePulse(true);
+      try {
+        const data = await fetchMyProfile();
+        setProfile(data);
+        setFetchError(null);
+      } catch (err) {
+        console.error('ProfileView live refresh error:', err);
+      } finally {
+        window.setTimeout(() => setLivePulse(false), 1400);
+      }
+    };
+
+    const unsubscribers = [
+      onSocketEvent('hostel:updated', refreshProfile),
+      onSocketEvent('fee:updated', refreshProfile),
+      onSocketEvent('attendance:updated', refreshProfile),
+    ];
+
+    return () => {
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
   }, []);
 
   const triggerToast = (msg: string) => {
@@ -168,6 +206,39 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
     );
   }
 
+  if (fetchError) {
+    return (
+      <div className="view-container" style={customBackgroundStyle}>
+        <header style={styles.appBar}>
+          <button onClick={onClose || (() => setActiveTab('dashboard'))} style={styles.backBtn} className="press-interactive">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <h1 style={styles.title}>Profile</h1>
+          <div style={{ width: 28 }} />
+        </header>
+        <div style={styles.content}>
+          <ErrorState
+            title="Failed to Load Profile"
+            message={fetchError}
+            onRetry={() => { setFetchError(null); setIsLoading(true); fetchMyProfile().then(d => { setProfile(d); setIsLoading(false); }).catch(e => { setFetchError(e?.message || 'Retry failed'); setIsLoading(false); }); }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Derive display values from live profile (fallback to empty strings if null)
+  const p = profile;
+  const studentName = p?.name || '—';
+  const studentRollId = p?.rollNumber || '—';
+  const studentInitials = p ? getInitials(p.name) : '??';
+  const studentCourse = p?.course || '—';
+  const hostelBlock = p?.hostelBlock ? `Block ${p.hostelBlock} (Boys Wing)` : (p?.hostelStatus === 'Day Scholar' ? 'Day Scholar' : '—');
+  const hostelRoom = p?.hostelRoom || '—';
+  const fatherName = p?.fatherName || '—';
+  const parentMobile = p?.parentMobile || '—';
+  const studentStatus = p?.status || 'Active';
+
   return (
     <div className="view-container anim-slide-up" style={customBackgroundStyle}>
       {/* Sticky App Header */}
@@ -182,6 +253,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
             <h1 style={styles.title}>Profile</h1>
             <p style={styles.subtitle}>Student Information & Digital Identity</p>
           </div>
+          <LiveConnectionIndicator compact />
           <button
             onClick={() => triggerToast('Edit profile triggers are prototype only.')}
             style={styles.headerIconBtn}
@@ -197,13 +269,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
       <main style={styles.content}>
 
         {/* PROFILE HERO CARD */}
-        <GlassCard hoverable={false} style={styles.heroCard} className="anim-scale-in">
+        <GlassCard hoverable={false} style={styles.heroCard} className={`anim-scale-in ${livePulse ? 'anim-pulse-gold' : ''}`}>
           <div style={styles.heroHeaderRow}>
-            <div style={styles.heroAvatar} className="glass-gold-ring anim-scale-in">PM</div>
+            <div style={styles.heroAvatar} className="glass-gold-ring anim-scale-in">{studentInitials}</div>
             <div style={styles.heroStudentInfo}>
-              <h2 style={styles.studentName}>Polsani Manoneeth Rao</h2>
-              <span style={styles.studentID}>ID: 2421604</span>
-              <span style={styles.statusBadge}>● Active Student</span>
+              <h2 style={styles.studentName}>{studentName}</h2>
+              <span style={styles.studentID}>Roll: {studentRollId}</span>
+              <span style={styles.statusBadge}>● {studentStatus} Student</span>
             </div>
           </div>
 
@@ -212,7 +284,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
           <div style={styles.heroMetaGrid}>
             <div style={styles.metaRow}>
               <span style={styles.metaLabelText}>Course:</span>
-              <span style={styles.metaValText}>MPC (Maths, Physics, Chemistry)</span>
+              <span style={styles.metaValText}>{studentCourse}</span>
             </div>
             <div style={styles.metaRow}>
               <span style={styles.metaLabelText}>Academic Year:</span>
@@ -220,7 +292,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
             </div>
             <div style={styles.metaRow}>
               <span style={styles.metaLabelText}>Hostel Boarding:</span>
-              <span style={styles.metaValText}>Block A • Room A-203</span>
+              <span style={styles.metaValText}>{hostelBlock} • {hostelRoom}</span>
             </div>
           </div>
         </GlassCard>
@@ -229,7 +301,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
         <section style={styles.section} className="anim-slide-up stagger-1">
           <h3 style={styles.sectionTitle}>Digital ID Card</h3>
           
-          <GlassCard hoverable={false} style={styles.idCard} className="glass-gold-ring">
+          <GlassCard hoverable={false} style={styles.idCard} className={`glass-gold-ring ${livePulse ? 'anim-pulse-gold' : ''}`}>
             <div style={styles.idCardHeader}>
               <div style={styles.idCollegeCrestRow}>
                 <div style={styles.crestCircle}>I</div>
@@ -242,19 +314,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
 
             <div style={styles.idDetailsContainer}>
               <div style={styles.idDetailsRow}>
-                <div style={styles.idCardPhoto}>PM</div>
+                <div style={styles.idCardPhoto}>{studentInitials}</div>
                 <div style={styles.idCardTextGrid}>
                   <div style={styles.idCardItem}>
                     <span style={styles.idCardLabel}>STUDENT NAME</span>
-                    <span style={styles.idCardVal}>Polsani Manoneeth Rao</span>
+                    <span style={styles.idCardVal}>{studentName}</span>
                   </div>
                   <div style={styles.idCardItem}>
-                    <span style={styles.idCardLabel}>STUDENT ID</span>
-                    <span style={styles.idCardVal}>2421604</span>
+                    <span style={styles.idCardLabel}>ROLL NO.</span>
+                    <span style={styles.idCardVal}>{studentRollId}</span>
                   </div>
                   <div style={styles.idCardItem}>
                     <span style={styles.idCardLabel}>COURSE & YEAR</span>
-                    <span style={styles.idCardVal}>MPC • 2026-2027</span>
+                    <span style={styles.idCardVal}>{studentCourse} • 2026-2027</span>
                   </div>
                 </div>
               </div>
@@ -263,11 +335,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
                 <div style={styles.idCardContacts}>
                   <div style={styles.idCardContactItem}>
                     <span style={styles.idCardLabel}>PARENT / GUARDIAN</span>
-                    <span style={styles.idCardVal}>Raman Rao</span>
+                    <span style={styles.idCardVal}>{fatherName}</span>
                   </div>
                   <div style={styles.idCardContactItem}>
                     <span style={styles.idCardLabel}>EMERGENCY CONTACT</span>
-                    <span style={styles.idCardVal}>+91 98480 22338</span>
+                    <span style={styles.idCardVal}>{parentMobile}</span>
                   </div>
                 </div>
                 <div style={styles.idQrWrapper} className="anim-pulse-gold">
@@ -289,11 +361,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onClose }) => {
           <GlassCard hoverable={false} style={styles.infoSheetCard}>
             <div style={styles.infoSheetItem}>
               <span style={styles.sheetLabel}>Hostel Block</span>
-              <span style={styles.sheetVal}>Block A (Boys Wing)</span>
+              <span style={styles.sheetVal}>{hostelBlock}</span>
             </div>
             <div style={styles.infoSheetItem}>
               <span style={styles.sheetLabel}>Room Number</span>
-              <span style={styles.sheetVal}>A-203</span>
+              <span style={styles.sheetVal}>{hostelRoom}</span>
             </div>
             <div style={styles.infoSheetItem}>
               <span style={styles.sheetLabel}>Room Mentor</span>

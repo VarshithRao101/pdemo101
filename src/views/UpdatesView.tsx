@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
+import { ErrorState } from '../components/common/FeedbackStates';
 import { useNavigation } from '../context/NavigationContext';
+import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
+import { fetchBulletins, type Bulletin } from '../services/studentService';
+import { onSocketEvent } from '../services/socketClient';
 
 // --- ANNOUNCEMENT CATEGORY ICONS ---
 const AcademicsAnnouncementIcon = () => (
@@ -35,14 +39,6 @@ const HolidayAnnouncementIcon = () => (
   </svg>
 );
 
-const EmergencyAnnouncementIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D32F2F" strokeWidth="2">
-    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-    <line x1="12" y1="9" x2="12" y2="13" />
-    <line x1="12" y1="17" x2="12.01" y2="17" />
-  </svg>
-);
-
 const SearchIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="8" />
@@ -70,8 +66,11 @@ interface UpdatesViewProps {
 
 export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [bulletins, setBulletins] = useState<Bulletin[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState('All');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [livePulse, setLivePulse] = useState(false);
   const { isMobile, setIsDrawerOpen, theme } = useNavigation();
 
   const customBackgroundStyle: React.CSSProperties = {
@@ -88,10 +87,34 @@ export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
   const [simulateEmpty, setSimulateEmpty] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
+    fetchBulletins()
+      .then(data => {
+        setBulletins(data);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error('Bulletins fetch error:', err);
+        setFetchError(err?.message || 'Failed to load announcements.');
+        setIsLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    const refreshBulletins = async () => {
+      setLivePulse(true);
+      try {
+        const data = await fetchBulletins();
+        setBulletins(data);
+        setFetchError(null);
+      } catch (err) {
+        console.error('UpdatesView live refresh error:', err);
+      } finally {
+        window.setTimeout(() => setLivePulse(false), 1400);
+      }
+    };
+
+    const unsubscribe = onSocketEvent('bulletin:updated', refreshBulletins);
+    return () => unsubscribe();
   }, []);
 
   const triggerToast = (msg: string) => {
@@ -99,93 +122,71 @@ export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Map bulletin category → icon component and priority colour
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'event': return EventAnnouncementIcon;
+      case 'holiday': return HolidayAnnouncementIcon;
+      case 'circular':
+      case 'notice':
+      case 'announcement': return AcademicsAnnouncementIcon;
+      default: return HostelAnnouncementIcon;
+    }
+  };
+
+  const getCategoryPriorityColor = (category: string) => {
+    if (category === 'notice') return 'rgba(211, 47, 47, 0.25)'; // treat notice as emergency-like
+    if (category === 'event') return 'rgba(0, 0, 0, 0.05)';
+    if (category === 'holiday') return 'rgba(0, 0, 0, 0.05)';
+    return 'rgba(212, 175, 55, 0.3)';
+  };
+
+  // Map DB category to the filter chip value strings
+  const categoryToFilter: Record<string, string> = {
+    announcement: 'Announcement',
+    circular: 'Academics',
+    notice: 'Emergency',
+    event: 'Event',
+    holiday: 'Holiday',
+    gallery: 'Event',
+  };
+
+  // Build the live feed from API data
+  const announcementFeed = bulletins.map((b, idx) => ({
+    id: idx + 1,
+    category: categoryToFilter[b.category] || 'Announcement',
+    badgeText: b.category.charAt(0).toUpperCase() + b.category.slice(1),
+    title: b.title,
+    desc: b.content,
+    date: b.date,
+    time: '',
+    priorityColor: getCategoryPriorityColor(b.category),
+    Icon: getCategoryIcon(b.category),
+  }));
+
+  // Upcoming events — from bulletins with category 'event'
+  const upcomingEvents = bulletins
+    .filter(b => b.category === 'event')
+    .map(b => ({ title: b.title, date: b.date, desc: b.content }));
+
+  // Holiday list — from bulletins with category 'holiday'
+  const holidayList = bulletins
+    .filter(b => b.category === 'holiday')
+    .map(b => ({ title: b.title, date: b.date, desc: b.content }));
+
+  const filteredFeed = activeFilter === 'All'
+    ? announcementFeed
+    : announcementFeed.filter(ann => ann.category === activeFilter);
+
   const filterChips = [
     { label: 'All', value: 'All' },
     { label: 'Announcements', value: 'Announcement' },
     { label: 'Academics', value: 'Academics' },
     { label: 'Hostel', value: 'Hostel' },
-    { label: 'Examinations', value: 'Examinations' },
     { label: 'Events', value: 'Event' },
     { label: 'Holidays', value: 'Holiday' },
     { label: 'Emergency', value: 'Emergency' }
   ];
-
-  // Dummy announcements list
-  const announcementFeed = [
-    {
-      id: 1,
-      category: 'Academics',
-      badgeText: 'Academics',
-      title: 'Term-1 Examination Schedules Out',
-      desc: 'The complete date sheet for final Term-1 examinations is published. Practical lab evaluations begin from 18 July.',
-      date: '12 July',
-      time: '10:30 AM',
-      priorityColor: 'rgba(212, 175, 55, 0.3)',
-      Icon: AcademicsAnnouncementIcon
-    },
-    {
-      id: 2,
-      category: 'Hostel',
-      badgeText: 'Hostel',
-      title: 'Home Leave requests portal open',
-      desc: 'Home Leave applications are now open for the upcoming festival weekend. Submit requests before Friday.',
-      date: '11 July',
-      time: '02:00 PM',
-      priorityColor: 'rgba(0, 0, 0, 0.05)',
-      Icon: HostelAnnouncementIcon
-    },
-    {
-      id: 3,
-      category: 'Event',
-      badgeText: 'Event',
-      title: 'Science Exhibition Registration',
-      desc: 'Science Exhibition Registration started. Limited project booths available, coordinate with labs.',
-      date: '10 July',
-      time: '11:00 AM',
-      priorityColor: 'rgba(0, 0, 0, 0.05)',
-      Icon: EventAnnouncementIcon
-    },
-    {
-      id: 4,
-      category: 'Holiday',
-      badgeText: 'Holiday',
-      title: 'College Holiday - Bakrid',
-      desc: 'The campus administration declares a general holiday on Bakrid. Hostel services will run on Sunday routines.',
-      date: '08 July',
-      time: '08:00 AM',
-      priorityColor: 'rgba(0, 0, 0, 0.05)',
-      Icon: HolidayAnnouncementIcon
-    },
-    {
-      id: 5,
-      category: 'Emergency',
-      badgeText: 'Emergency',
-      title: 'Heavy Rain Alert & Safety Warning',
-      desc: 'Heavy rain warnings issued. Parents are requested to avoid unnecessary visits to campus today.',
-      date: '05 July',
-      time: '07:30 AM',
-      priorityColor: 'rgba(211, 47, 47, 0.25)',
-      Icon: EmergencyAnnouncementIcon
-    }
-  ];
-
-  // Upcoming events
-  const upcomingEvents = [
-    { title: 'Alumni Guest Talk', date: '14 July 2026', desc: 'Expert session on IIT Preparation strategy by Varun Rao, IIT Madras Alumni.' },
-    { title: 'Science Exhibition', date: '18 July 2026', desc: 'Inspire Innovation Summit 2026. Student working models presentation.' },
-    { title: 'Inter-House Sports Meet', date: '25 July 2026', desc: 'Annual sports meet registrations opening for tracks and chess.' }
-  ];
-
-  // Holiday list
-  const holidayList = [
-    { title: 'Bakrid Holiday', date: '17 June 2026', desc: 'Gazetted General Holiday declaration.' },
-    { title: 'Muharram Holiday', date: '17 July 2026', desc: 'Campus closed for non-hostel borders.' },
-    { title: 'Independence Day', date: '15 Aug 2026', desc: 'National Flag hoisting event followed by sweets distribution.' }
-  ];
-
-  const filteredFeed = activeFilter === 'All' 
-    ? announcementFeed 
-    : announcementFeed.filter(ann => ann.category === activeFilter);
 
   if (isLoading) {
     return (
@@ -203,7 +204,31 @@ export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
               <div key={idx} style={{ width: 80, height: 32, borderRadius: 16 }} className="shimmer-item" />
             ))}
           </div>
+
           <div style={{ height: 160, borderRadius: 'var(--radius-md)' }} className="shimmer-item" />
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="view-container" style={customBackgroundStyle}>
+        <header style={styles.appBar}>
+          {onClose && (
+            <button onClick={onClose} style={styles.backBtn} className="press-interactive">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+            </button>
+          )}
+          <h1 style={styles.title}>Updates</h1>
+          <div style={{ width: 28 }} />
+        </header>
+        <div style={styles.content}>
+          <ErrorState
+            title="Failed to Load Announcements"
+            message={fetchError}
+            onRetry={() => { setFetchError(null); setIsLoading(true); fetchBulletins().then(d => { setBulletins(d); setIsLoading(false); }).catch(e => { setFetchError(e?.message || 'Retry failed'); setIsLoading(false); }); }}
+          />
         </div>
       </div>
     );
@@ -249,6 +274,7 @@ export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
             <p style={styles.subtitle}>Stay informed with the latest announcements</p>
           </div>
           <div style={styles.headerActions}>
+            <LiveConnectionIndicator compact />
             <button
               onClick={() => triggerToast('Search portal under construct.')}
               style={styles.headerIconBtn}
@@ -273,7 +299,7 @@ export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
       <main style={styles.content}>
 
         {/* Top Priority Alert (Hero Card) */}
-        <GlassCard hoverable={false} style={styles.heroCard} className="anim-scale-in anim-pulse-gold">
+        <GlassCard hoverable={false} style={styles.heroCard} className={`anim-scale-in ${livePulse ? 'anim-pulse-gold' : ''}`}>
           <div style={styles.heroDetails}>
             <div style={styles.alertBadgeRow}>
               <span style={styles.alertIcon}></span>
@@ -346,7 +372,7 @@ export const UpdatesView: React.FC<UpdatesViewProps> = ({ onClose }) => {
               </p>
             </GlassCard>
           ) : (
-            <div style={styles.feedList}>
+            <div style={styles.feedList} className={livePulse ? 'anim-pulse-gold' : ''}>
               {filteredFeed.map((ann) => {
                 const CategoryIcon = ann.Icon;
                 return (

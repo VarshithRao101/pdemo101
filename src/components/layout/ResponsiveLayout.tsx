@@ -1,7 +1,7 @@
 import React, { useState, type ReactNode } from 'react';
-import { useNavigation } from '../../context/NavigationContext';
-import { FloatingBottomNav } from './FloatingBottomNav';
 import { InspireLogo } from '../common/InspireLogo';
+import { LiveConnectionIndicator } from '../common/LiveConnectionIndicator';
+import { useNavigation } from '../../context/NavigationContext';
 
 interface ResponsiveLayoutProps {
   children: ReactNode;
@@ -15,14 +15,7 @@ const SvgHome = () => (
   </svg>
 );
 
-const SvgSibling = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-    <circle cx="8.5" cy="7" r="4" />
-    <line x1="20" y1="8" x2="20" y2="14" />
-    <line x1="17" y1="11" x2="23" y2="11" />
-  </svg>
-);
+
 
 const SvgBell = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -67,19 +60,10 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   const { isMobile, activeTab, setActiveTab, portalRole, isDrawerOpen, setIsDrawerOpen, theme, setThemeMode } = useNavigation();
 
   // State hooks for drawer modal views
-  const [showSiblingModal, setShowSiblingModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showSpotlightModal, setShowSpotlightModal] = useState(false);
   const [showRateModal, setShowRateModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-
-  // Sibling Modal States
-  const [siblingId, setSiblingId] = useState('');
-  const [isLinking, setIsLinking] = useState(false);
-  const [linkedSiblings, setLinkedSiblings] = useState([
-    { name: 'Polsani Rishith Rao', roll: '2421609', branch: 'XI MPC', status: 'Verified' }
-  ]);
-  const [siblingSuccessMsg, setSiblingSuccessMsg] = useState<string | null>(null);
 
   // Rate App Modal States
   const [stars, setStars] = useState(0);
@@ -91,23 +75,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   const [smsNotif, setSmsNotif] = useState(true);
   const [biometrics, setBiometrics] = useState(true);
 
-  const handleLinkSibling = () => {
-    if (!siblingId.trim()) return;
-    setIsLinking(true);
-    setTimeout(() => {
-      setIsLinking(false);
-      const newSib = {
-        name: siblingId === '2421609' ? 'Polsani Rishith Rao' : 'Polsani Shravya Rao',
-        roll: siblingId,
-        branch: 'XI BiPC',
-        status: 'Verified'
-      };
-      setLinkedSiblings(prev => [...prev, newSib]);
-      setSiblingSuccessMsg('Sibling profile linked successfully!');
-      setSiblingId('');
-      setTimeout(() => setSiblingSuccessMsg(null), 3000);
-    }, 1200);
-  };
+
 
   const handleSubmitFeedback = () => {
     if (stars === 0) return;
@@ -127,7 +95,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   // Mobile side drawer list items (from Screen 1)
   const drawerMenuItems = [
     { label: 'Home', type: 'home', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
-    { label: 'Add Sibling', type: 'sibling', icon: <SvgSibling />, action: () => { setIsDrawerOpen(false); setShowSiblingModal(true); } },
     { label: 'Notifications', type: 'notif', icon: <SvgBell />, action: () => { setIsDrawerOpen(false); setActiveTab('updates'); } },
     { label: 'About Us', type: 'about', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setShowAboutModal(true); } },
     { label: 'Spotlight', type: 'spotlight', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setShowSpotlightModal(true); } },
@@ -203,111 +170,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
     );
   };
 
-  // Sibling Modal Content
-  const renderSiblingModal = () => renderModal("Link Sibling Profiles", () => setShowSiblingModal(false), (
-    <>
-      <p style={{ fontSize: '12.5px', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45 }}>
-        Link additional student profiles from your family to access unified dashboards and quick switching.
-      </p>
 
-      {/* Linked Sibling Profiles List */}
-      <div>
-        <h4 style={{ fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px 0' }}>
-          Linked Siblings
-        </h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {linkedSiblings.map((sib, i) => (
-            <div key={i} style={{
-              padding: '12px 14px',
-              borderRadius: '12px',
-              border: '1.5px solid var(--card-border)',
-              backgroundColor: 'var(--bg-primary)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <div>
-                <h5 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{sib.name}</h5>
-                <span style={{ fontSize: '10.5px', color: 'var(--muted-gray)' }}>Roll: {sib.roll} • {sib.branch}</span>
-              </div>
-              <span style={{
-                fontSize: '9px',
-                fontWeight: 800,
-                color: '#2E7D32',
-                backgroundColor: 'rgba(46,125,50,0.08)',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                border: '1px solid rgba(46,125,50,0.15)'
-              }}>
-                {sib.status}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ height: '1px', backgroundColor: 'var(--card-border)', opacity: 0.1, margin: '4px 0' }} />
-
-      {/* Add Form */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <h4 style={{ fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
-          Add Sibling Profile
-        </h4>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <input
-            type="text"
-            placeholder="Enter Student ID (e.g. 2421609)"
-            value={siblingId}
-            onChange={(e) => setSiblingId(e.target.value)}
-            disabled={isLinking}
-            style={{
-              flex: 1,
-              padding: '10px 14px',
-              borderRadius: '10px',
-              border: '1.5px solid var(--card-border)',
-              backgroundColor: 'var(--bg-primary)',
-              color: 'var(--dark-charcoal)',
-              fontSize: '13px',
-              fontFamily: 'var(--font-family)',
-              outline: 'none'
-            }}
-          />
-          <button
-            onClick={handleLinkSibling}
-            disabled={isLinking || !siblingId.trim()}
-            style={{
-              padding: '10px 16px',
-              borderRadius: '10px',
-              border: '1.5px solid var(--card-border)',
-              backgroundColor: 'var(--royal-gold)',
-              color: '#000',
-              fontWeight: 800,
-              fontSize: '13px',
-              cursor: 'pointer',
-              opacity: (!siblingId.trim() || isLinking) ? 0.6 : 1,
-            }}
-            className="press-interactive"
-          >
-            {isLinking ? 'Linking...' : 'Link'}
-          </button>
-        </div>
-        {siblingSuccessMsg && (
-          <div style={{
-            padding: '8px 12px',
-            borderRadius: '8px',
-            backgroundColor: 'rgba(46,125,50,0.08)',
-            border: '1px solid rgba(46,125,50,0.15)',
-            color: '#2E7D32',
-            fontSize: '11.5px',
-            fontWeight: 700,
-            textAlign: 'center'
-          }}>
-            {siblingSuccessMsg}
-          </div>
-        )}
-      </div>
-    </>
-  ));
 
   // About Us Modal Content
   const renderAboutModal = () => renderModal("About Inspire Junior College", () => setShowAboutModal(false), (
@@ -623,7 +486,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
     return (
       <div style={styles.mobileWrapper}>
         {/* Render Active Modals */}
-        {showSiblingModal && renderSiblingModal()}
         {showAboutModal && renderAboutModal()}
         {showSpotlightModal && renderSpotlightModal()}
         {showRateModal && renderRateModal()}
@@ -640,6 +502,9 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               <h3 style={styles.drawerProfileName}>Polsani Manoneeth Rao</h3>
               <span style={styles.drawerProfileMeta}>👤 2421604 &gt;</span>
               <div style={styles.drawerBrandText}>INSPIRE JUNIOR COLLEGE</div>
+              <div style={{ marginTop: '10px' }}>
+                <LiveConnectionIndicator compact />
+              </div>
             </div>
           </div>
 
@@ -704,7 +569,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           }}
         >
           {children}
-          {portalRole !== 'student' && portalRole !== 'admin' && portalRole !== 'accountant' && <FloatingBottomNav />}
         </div>
       </div>
     );
@@ -713,7 +577,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   return (
     <div style={styles.desktopContainer} className="anim-fade-in">
       {/* Left Sidebar Menu */}
-      {portalRole !== 'admin' && portalRole !== 'accountant' && (
+      {portalRole !== 'admin1' && portalRole !== 'admin2' && portalRole !== 'accountant' && (
         <aside style={{
           width: '260px',
           height: '100%',
@@ -791,6 +655,9 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
             }}>
               INSPIRE JUNIOR COLLEGE
             </div>
+            <div style={{ marginTop: '10px' }}>
+              <LiveConnectionIndicator compact />
+            </div>
           </div>
         </div>
 
@@ -807,7 +674,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
         }} className="drawer-scrollbar">
           {[
             { label: 'Home', type: 'home', icon: <SvgHome />, action: () => setActiveTab('dashboard') },
-            { label: 'Add Sibling', type: 'sibling', icon: <SvgSibling />, action: () => setShowSiblingModal(true) },
             { label: 'Notifications', type: 'notif', icon: <SvgBell />, action: () => setActiveTab('updates'), badge: 5 },
             { label: 'About Us', type: 'about', icon: <SvgCrest />, action: () => setShowAboutModal(true) },
             { label: 'Spotlight', type: 'spotlight', icon: <SvgStar />, action: () => setShowSpotlightModal(true) },
@@ -922,7 +788,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
       {/* Main Content Area */}
       <main style={styles.mainContent}>
         {/* Render Modals on Desktop */}
-        {showSiblingModal && renderSiblingModal()}
         {showAboutModal && renderAboutModal()}
         {showSpotlightModal && renderSpotlightModal()}
         {showRateModal && renderRateModal()}
@@ -1176,7 +1041,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '12px',
-    fontWeight: '700',
+    fontWeight: 700,
     color: 'var(--dark-charcoal)',
     boxShadow: 'var(--shadow-sm)',
   },
@@ -1186,7 +1051,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   userName: {
     fontSize: '13px',
-    fontWeight: '600',
+    fontWeight: 600,
     color: 'var(--dark-charcoal)',
   },
   userRole: {

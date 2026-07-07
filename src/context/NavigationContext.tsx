@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { apiClient } from '../services/apiClient';
+import { connectSocket, disconnectSocket } from '../services/socketClient';
 
 export type TabType = 'dashboard' | 'academics' | 'updates' | 'profile';
 export type AcademicsTabType = 'attendance' | 'marks' | 'fee' | 'results' | 'achievements';
-export type PortalRoleType = 'student' | 'admin' | 'accountant';
+export type PortalRoleType = 'student' | 'admin1' | 'admin2' | 'accountant';
 export type ThemeModeType = 'Light' | 'Dark' | 'System';
 
 interface NavigationContextType {
@@ -18,6 +20,14 @@ interface NavigationContextType {
   theme: 'light' | 'dark';
   isDrawerOpen: boolean;
   setIsDrawerOpen: (isOpen: boolean) => void;
+  
+  // Auth state & methods
+  user: any;
+  isAuthenticated: boolean;
+  isAuthLoading: boolean;
+  login: (identifier: string, pin: string) => Promise<any>;
+  logout: () => void;
+  checkSession: () => Promise<boolean>;
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
@@ -33,10 +43,98 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
+  // Auth states
+  const [user, setUser] = useState<any>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+
   const setActiveTab = (tab: TabType) => {
     setActiveTabState(tab);
     if (window.location.hash !== `#/${tab}`) {
       window.history.pushState(null, '', '#/' + tab);
+    }
+  };
+
+  const login = async (identifier: string, pin: string) => {
+    setIsAuthLoading(true);
+    try {
+      const response = await apiClient.post('/auth/login', {
+        identifier,
+        password: pin,
+      });
+
+      const { token, user: userData } = response;
+      sessionStorage.setItem('auth_token', token);
+      connectSocket(token);
+      setUser(userData);
+      setIsAuthenticated(true);
+
+      // Map backend role to frontend portalRole
+      if (userData.role === 'admin1') {
+        setPortalRole('admin1');
+      } else if (userData.role === 'admin2') {
+        setPortalRole('admin2');
+      } else if (userData.role === 'accountant') {
+        setPortalRole('accountant');
+      } else {
+        setPortalRole('student');
+      }
+
+      return userData;
+    } catch (error) {
+      console.error('Login action failed:', error);
+      throw error;
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const logout = () => {
+    sessionStorage.removeItem('auth_token');
+    disconnectSocket();
+    setUser(null);
+    setIsAuthenticated(false);
+    setPortalRole('student');
+  };
+
+  const checkSession = async (): Promise<boolean> => {
+    const token = sessionStorage.getItem('auth_token');
+    if (!token) {
+      setIsAuthLoading(false);
+      setIsAuthenticated(false);
+      setUser(null);
+      return false;
+    }
+
+    setIsAuthLoading(true);
+    try {
+      const response = await apiClient.get('/auth/me');
+      const { user: userData } = response;
+      
+      setUser(userData);
+      setIsAuthenticated(true);
+      connectSocket(token);
+
+      if (userData.role === 'admin1') {
+        setPortalRole('admin1');
+      } else if (userData.role === 'admin2') {
+        setPortalRole('admin2');
+      } else if (userData.role === 'accountant') {
+        setPortalRole('accountant');
+      } else {
+        setPortalRole('student');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Session restore failed, clearing token:', error);
+      sessionStorage.removeItem('auth_token');
+      disconnectSocket();
+      setIsAuthenticated(false);
+      setUser(null);
+      return false;
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
@@ -112,7 +210,13 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
       setThemeMode,
       theme,
       isDrawerOpen,
-      setIsDrawerOpen
+      setIsDrawerOpen,
+      user,
+      isAuthenticated,
+      isAuthLoading,
+      login,
+      logout,
+      checkSession
     }}>
       {children}
     </NavigationContext.Provider>
@@ -126,4 +230,3 @@ export const useNavigation = (): NavigationContextType => {
   }
   return context;
 };
-

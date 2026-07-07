@@ -8,6 +8,12 @@ import { AcademicsView } from './AcademicsView';
 import { UpdatesView } from './UpdatesView';
 import { ProfileView } from './ProfileView';
 import { InspireLogo } from '../components/common/InspireLogo';
+import {
+  fetchMyProfile, fetchMyFees, fetchMyAcademics, fetchBulletins,
+  getInitials, formatRupees,
+  type StudentProfile, type FeesData, type AcademicsData, type Bulletin
+} from '../services/studentService';
+import { onSocketEvent } from '../services/socketClient';
 
 // --- PREMIUM SVG ICONS ---
 const SearchIcon = () => (
@@ -123,14 +129,20 @@ const InfoSvg = () => (
 );
 
 type SubPageType = 'grid' | 'attendance' | 'marks' | 'fee' | 'assignments' | 'exams' | 'results' | 'achievements' | 'certificates' | 'leave' | 'contact' | 'hostel' | 'events' | 'announcements' | 'notifications' | 'poll' | 'bus' | 'profile';
+type LivePulseKey = 'fee' | 'attendance' | 'results' | 'bulletin' | 'hostel' | null;
 
 export const DashboardView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [feesData, setFeesData] = useState<FeesData | null>(null);
+  const [academicsData, setAcademicsData] = useState<AcademicsData | null>(null);
+  const [bulletins, setBulletins] = useState<Bulletin[]>([]);
   const [annIndex, setAnnIndex] = useState(0);
   const [subPage, setSubPage] = useState<SubPageType>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [livePulseKey, setLivePulseKey] = useState<LivePulseKey>(null);
   const { setAcademicsTab, theme, setThemeMode, setIsDrawerOpen, isMobile, setActiveTab } = useNavigation();
 
   // Poll state variables
@@ -144,10 +156,59 @@ export const DashboardView: React.FC = () => {
   });
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 600);
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    // Fetch live profile + fee + academics + bulletins for dashboard updates (silent — fallbacks are used)
+    Promise.all([
+      fetchMyProfile(),
+      fetchMyFees(),
+      fetchMyAcademics(),
+      fetchBulletins()
+    ])
+      .then(([prof, fees, acad, bulls]) => {
+        setProfile(prof);
+        setFeesData(fees);
+        setAcademicsData(acad);
+        setBulletins(bulls);
+      })
+      .catch((err) => {
+        console.error('Dashboard data fetch error:', err);
+      });
     return () => clearTimeout(timer);
+  }, []);
+
+  const refreshDashboardData = async (pulseKey: LivePulseKey = null) => {
+    try {
+      const [prof, fees, acad, bulls] = await Promise.all([
+        fetchMyProfile(),
+        fetchMyFees(),
+        fetchMyAcademics(),
+        fetchBulletins()
+      ]);
+      setProfile(prof);
+      setFeesData(fees);
+      setAcademicsData(acad);
+      setBulletins(bulls);
+      if (pulseKey) {
+        setLivePulseKey(pulseKey);
+        window.setTimeout(() => setLivePulseKey(null), 1200);
+      }
+    } catch (err) {
+      console.error('Dashboard data fetch error:', err);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribers = [
+      onSocketEvent('fee:updated', () => refreshDashboardData('fee')),
+      onSocketEvent('attendance:updated', () => refreshDashboardData('attendance')),
+      onSocketEvent('exam-results:updated', () => refreshDashboardData('results')),
+      onSocketEvent('hostel:updated', () => refreshDashboardData('hostel')),
+      onSocketEvent('bulletin:updated', () => refreshDashboardData('bulletin')),
+    ];
+
+    return () => {
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+    };
   }, []);
 
   useEffect(() => {
@@ -164,16 +225,35 @@ export const DashboardView: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopSub);
   }, []);
 
+  const studentName = profile?.name || 'Polsani Manoneeth Rao';
+  const studentInitials = profile ? getInitials(profile.name) : 'PM';
+  const fatherName = profile?.fatherName || 'Sridhar Rao';
+  const studentIdVal = profile?.studentId || '2421604';
+  const courseDetails = profile?.course || 'JR/1-PUC/XI - MPC - CO-SUPER CHAINA - 1331';
+
+  const liveAttendancePct = academicsData?.attendance?.attendancePct ?? 92;
+  const scores = (academicsData?.examResults ?? []).map(r => ({
+    score: typeof r.score === 'number' ? r.score : parseFloat(r.score),
+    maxMarks: typeof r.maxMarks === 'number' ? r.maxMarks : parseFloat((r as any).maxMarks || '300')
+  })).filter(n => !isNaN(n.score) && !isNaN(n.maxMarks));
+  const overallMarksPct = scores.length > 0
+    ? Math.round(scores.reduce((a, b) => a + (b.score / b.maxMarks) * 100, 0) / scores.length)
+    : 84;
+
+  const remainingFee = feesData ? feesData.remainingBalance : 60000;
+  const isFeePending = remainingFee > 0;
+  const firstBulletinTitle = bulletins.length > 0 ? bulletins[0].title : 'Science Exhibition registration closes tomorrow.';
+
   const smartCards = [
     {
       id: 1,
       type: 'fee',
-      icon: <AlertTriangleSvg />,
-      title: 'Fee Pending',
-      desc: '₹60,000 due before 15 August 2026.',
-      actionLabel: 'View Fees',
-      color: 'rgba(211,47,47,0.06)',
-      borderColor: 'rgba(211,47,47,0.25)',
+      icon: isFeePending ? <AlertTriangleSvg /> : <InfoSvg />,
+      title: isFeePending ? 'Fee Pending' : 'Fees Cleared',
+      desc: isFeePending ? `${formatRupees(remainingFee)} due before 15 August 2026.` : 'All outstanding fee installments are cleared.',
+      actionLabel: isFeePending ? 'View Fees' : 'View Ledger',
+      color: isFeePending ? 'rgba(211,47,47,0.06)' : 'rgba(46,125,50,0.06)',
+      borderColor: isFeePending ? 'rgba(211,47,47,0.25)' : 'rgba(46,125,50,0.25)',
       onClick: () => {
         setAcademicsTab('fee');
         setSubPage('fee');
@@ -211,7 +291,7 @@ export const DashboardView: React.FC = () => {
       type: 'announcements',
       icon: <InfoSvg />,
       title: 'New Announcement',
-      desc: 'Science Exhibition registration closes tomorrow.',
+      desc: firstBulletinTitle,
       actionLabel: 'Read notice',
       color: 'rgba(33,150,243,0.06)',
       borderColor: 'rgba(33,150,243,0.25)',
@@ -915,6 +995,7 @@ export const DashboardView: React.FC = () => {
   };
 
   const activeSmartCard = smartCards[annIndex];
+  const pulseGridType = livePulseKey === 'bulletin' ? 'announcements' : livePulseKey;
 
   return (
     <div className="view-container anim-slide-up" style={styles.container}>
@@ -1075,7 +1156,7 @@ export const DashboardView: React.FC = () => {
                 className="press-interactive"
                 title="My Profile"
               >
-                PM
+                {studentInitials}
               </button>
             </>
           ) : (
@@ -1125,18 +1206,18 @@ export const DashboardView: React.FC = () => {
                 fontWeight: 800,
                 border: '2px solid var(--card-border)'
               }}>
-                PM
+                {studentInitials}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
                 <span style={{ fontSize: '14px', color: 'var(--muted-gray)' }}>Good evening,</span>
-                <h2 style={{ fontSize: '22px', fontWeight: 850, color: '#3B82F6', margin: 0 }}>Polsani Manoneeth Rao</h2>
+                <h2 style={{ fontSize: '22px', fontWeight: 850, color: '#3B82F6', margin: 0 }}>{studentName}</h2>
                 <div style={{ fontSize: '13px', color: 'var(--muted-gray)' }}>
-                  S/O <strong style={{ color: 'var(--dark-charcoal)' }}>Sridhar Rao</strong>
+                  S/O <strong style={{ color: 'var(--dark-charcoal)' }}>{fatherName}</strong>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--muted-gray)', flexWrap: 'wrap' }}>
-                  <span>ID: 2421604</span>
+                  <span>ID: {studentIdVal}</span>
                   <span>•</span>
-                  <span>JR/1-PUC/XI - MPC - CO-SUPER CHAINA - 1331</span>
+                  <span>{courseDetails}</span>
                 </div>
                 <div style={{
                   marginTop: '8px',
@@ -1165,9 +1246,11 @@ export const DashboardView: React.FC = () => {
                   }}>NEW</span>
                 </div>
                 <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--dark-charcoal)', margin: '0 0 6px 0', textAlign: 'left' }}>
-                  Check out what's new at Inspire Junior College.
+                  {bulletins.length > 0 ? bulletins[0].title : 'Check out what\'s new at Inspire Junior College.'}
                 </h3>
-                <span style={{ fontSize: '12px', color: 'var(--muted-gray)', display: 'block', textAlign: 'left' }}>5th July, 2026</span>
+                <span style={{ fontSize: '12px', color: 'var(--muted-gray)', display: 'block', textAlign: 'left' }}>
+                  {bulletins.length > 0 ? bulletins[0].date : '5th July, 2026'}
+                </span>
               </div>
               <button
                 onClick={() => setSubPage('notifications')}
@@ -1194,14 +1277,14 @@ export const DashboardView: React.FC = () => {
           <GlassCard hoverable={false} style={styles.welcomeCard}>
             <div style={styles.welcomeLeft}>
               <div style={styles.userAvatarContainer} className="glass-gold-ring" onClick={() => setSubPage('profile')}>
-                <div style={styles.userAvatar}>PM</div>
+                <div style={styles.userAvatar}>{studentInitials}</div>
               </div>
               <div style={styles.welcomeDetails} onClick={() => setSubPage('profile')}>
                 <span style={styles.greetingText}>Good Evening,</span>
-                <h2 style={styles.studentName}>Polsani Manoneeth Rao</h2>
+                <h2 style={styles.studentName}>{studentName}</h2>
                 <div style={styles.detailsRow}>
                   <span style={styles.detailLabel}>ID:</span>
-                  <span style={styles.detailVal}>2421604</span>
+                  <span style={styles.detailVal}>{studentIdVal}</span>
                 </div>
               </div>
             </div>
@@ -1247,7 +1330,7 @@ export const DashboardView: React.FC = () => {
               backgroundColor: activeSmartCard.color,
               borderColor: activeSmartCard.borderColor
             }}
-            className="anim-fade-in"
+            className={`anim-fade-in ${livePulseKey ? 'anim-pulse-gold' : ''}`}
           >
             <div style={styles.smartCardHeader}>
               <div style={styles.smartEmojiWrapper}>
@@ -1306,7 +1389,7 @@ export const DashboardView: React.FC = () => {
                   borderColor: item.iconBg,
                   animationDelay: `${idx * 40}ms`
                 }}
-                className="stagger-anim"
+                className={`stagger-anim ${pulseGridType === item.type ? 'anim-pulse-gold' : ''}`}
               >
                 {item.hasBadge && (
                   <div style={styles.newBadge}>New</div>
@@ -1367,7 +1450,7 @@ export const DashboardView: React.FC = () => {
                 </span>
               </div>
               <div style={{ textAlign: 'left', marginTop: '12px' }}>
-                <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>92%</h4>
+                <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>{liveAttendancePct}%</h4>
                 <span style={{ fontSize: '11px', opacity: 0.8 }}>This Month</span>
               </div>
             </div>
@@ -1398,7 +1481,7 @@ export const DashboardView: React.FC = () => {
                 </span>
               </div>
               <div style={{ textAlign: 'left', marginTop: '12px' }}>
-                <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>84%</h4>
+                <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>{overallMarksPct}%</h4>
                 <span style={{ fontSize: '11px', opacity: 0.8 }}>In All Subjects</span>
               </div>
             </div>
