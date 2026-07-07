@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, type ReactNode }
 
 export type TabType = 'dashboard' | 'academics' | 'updates' | 'profile';
 export type AcademicsTabType = 'attendance' | 'marks' | 'fee' | 'results' | 'achievements';
-export type PortalRoleType = 'student' | 'faculty' | 'admin';
+export type PortalRoleType = 'student' | 'admin' | 'accountant';
 export type ThemeModeType = 'Light' | 'Dark' | 'System';
 
 interface NavigationContextType {

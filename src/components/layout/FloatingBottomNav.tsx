@@ -15,10 +15,10 @@ export const FloatingBottomNav: React.FC = () => {
     { type: 'academics', label: 'Management', Icon: AcademicsIcon },
     { type: 'updates', label: 'Reports', Icon: UpdatesIcon },
     { type: 'profile', label: 'Profile', Icon: ProfileIcon },
-  ] : portalRole === 'faculty' ? [
+  ] : portalRole === 'accountant' ? [
     { type: 'dashboard', label: 'Dashboard', Icon: DashboardIcon },
-    { type: 'academics', label: 'Classes', Icon: AcademicsIcon },
-    { type: 'updates', label: 'Broadcaster', Icon: UpdatesIcon },
+    { type: 'academics', label: 'Fees', Icon: AcademicsIcon },
+    { type: 'updates', label: 'Updates', Icon: UpdatesIcon },
     { type: 'profile', label: 'Profile', Icon: ProfileIcon },
   ] : [
     { type: 'dashboard', label: 'Dashboard', Icon: DashboardIcon },

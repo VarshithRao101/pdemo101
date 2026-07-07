@@ -129,9 +129,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
           <p style={styles.subtitle}>
             {portalRole === 'student'
               ? 'Student Portal'
-              : portalRole === 'faculty'
-              ? 'Teacher Portal'
-              : 'Admin Portal'}
+              : portalRole === 'admin'
+              ? 'Admin & Teacher Portal'
+              : 'Accountant Portal'}
           </p>
 
           {/* Role selector Segment */}
@@ -166,25 +166,6 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
               Student
             </button>
             <button
-              onClick={() => { setPortalRole('faculty'); setPin(''); }}
-              style={{
-                flex: 1,
-                padding: '10px 0',
-                borderRadius: '12px',
-                border: 'none',
-                fontFamily: 'var(--font-family)',
-                fontSize: '10px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                backgroundColor: portalRole === 'faculty' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                color: portalRole === 'faculty' ? '#0F172A' : 'var(--muted-gray)',
-                boxShadow: portalRole === 'faculty' ? 'var(--shadow-sm)' : 'none',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              Teacher
-            </button>
-            <button
               onClick={() => { setPortalRole('admin'); setPin(''); }}
               style={{
                 flex: 1,
@@ -201,7 +182,26 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
                 transition: 'all 0.2s ease'
               }}
             >
-              Admin
+              Admin & Teacher
+            </button>
+            <button
+              onClick={() => { setPortalRole('accountant'); setPin(''); }}
+              style={{
+                flex: 1,
+                padding: '10px 0',
+                borderRadius: '12px',
+                border: 'none',
+                fontFamily: 'var(--font-family)',
+                fontSize: '10px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                backgroundColor: portalRole === 'accountant' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                color: portalRole === 'accountant' ? '#0F172A' : 'var(--muted-gray)',
+                boxShadow: portalRole === 'accountant' ? 'var(--shadow-sm)' : 'none',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Accountant
             </button>
           </div>
         </div>

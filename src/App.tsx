@@ -8,17 +8,17 @@ import { ProfileView } from './views/ProfileView';
 import { SplashView } from './views/SplashView';
 import { PinView } from './views/PinView';
 import {
-  FacultyDashboardView,
-  FacultyClassesView,
-  FacultyUpdatesView,
-  FacultyProfileView
-} from './views/FacultyPortalViews';
-import {
   AdminDashboardView,
-  AdminReportsView,
+  AdminAcademicsView,
+  AdminUpdatesView,
   AdminProfileView
 } from './views/AdminPortalViews';
-import { AdminAiInsightsView } from './views/AdminAiInsightsView';
+import {
+  AccountantDashboardView,
+  AccountantAcademicsView,
+  AccountantUpdatesView,
+  AccountantProfileView
+} from './views/AccountantPortalViews';
 
 const AppContent: React.FC = () => {
   const { activeTab, portalRole } = useNavigation();
@@ -44,33 +44,33 @@ const AppContent: React.FC = () => {
   }, [flowStage]);
 
   const renderActiveView = () => {
-    if (portalRole === 'faculty') {
-      switch (activeTab) {
-        case 'dashboard':
-          return <FacultyDashboardView />;
-        case 'academics':
-          return <FacultyClassesView />;
-        case 'updates':
-          return <FacultyUpdatesView />;
-        case 'profile':
-          return <FacultyProfileView />;
-        default:
-          return <FacultyDashboardView />;
-      }
-    }
-
     if (portalRole === 'admin') {
       switch (activeTab) {
         case 'dashboard':
           return <AdminDashboardView />;
         case 'academics':
-          return <AdminAiInsightsView />;
+          return <AdminAcademicsView />;
         case 'updates':
-          return <AdminReportsView />;
+          return <AdminUpdatesView />;
         case 'profile':
           return <AdminProfileView />;
         default:
           return <AdminDashboardView />;
+      }
+    }
+
+    if (portalRole === 'accountant') {
+      switch (activeTab) {
+        case 'dashboard':
+          return <AccountantDashboardView />;
+        case 'academics':
+          return <AccountantAcademicsView />;
+        case 'updates':
+          return <AccountantUpdatesView />;
+        case 'profile':
+          return <AccountantProfileView />;
+        default:
+          return <AccountantDashboardView />;
       }
     }
 
