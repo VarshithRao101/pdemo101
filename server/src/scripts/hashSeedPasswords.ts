@@ -25,7 +25,7 @@ const migrate = async () => {
 
     for (const user of users) {
       // Map usernames to their respective PIN secrets
-      let plainTextPin = '123456';
+      let plainTextPin = '111111';
 
       console.log(`Hashing PIN "${plainTextPin}" for user "${user.username}" (role: ${user.role})...`);
       

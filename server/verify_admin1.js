@@ -31,7 +31,7 @@ async function runTests() {
 
   // ─── TEST 1: Login as admin1 ──────────────────────────────────────────────
   console.log('[TEST 1] Logging in as admin1...');
-  const loginRes = await apiFetch('/auth/login', 'POST', { identifier: 'admin1', password: '123456' });
+  const loginRes = await apiFetch('/auth/login', 'POST', { identifier: 'admin1', password: '111111' });
   if (loginRes.status !== 200 || !loginRes.data.token) {
     console.error('❌  Login failed:', loginRes.data);
     process.exit(1);
@@ -168,7 +168,7 @@ async function runTests() {
 
   // ─── TEST 9: Cross-portal - Student Academics shows uploaded scores ───────
   console.log('[TEST 9] Logging in as student to verify exam score appears in Student Portal academics...');
-  const stuLoginRes = await apiFetch('/auth/login', 'POST', { identifier: student.rollNumber, password: '123456' });
+  const stuLoginRes = await apiFetch('/auth/login', 'POST', { identifier: student.rollNumber, password: '111111' });
   if (stuLoginRes.status !== 200 || !stuLoginRes.data.token) {
     console.error('❌  Student login failed:', stuLoginRes.data);
     process.exit(1);

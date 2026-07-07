@@ -35,7 +35,7 @@ const login = async (identifier: string, password: string): Promise<LoginRespons
 };
 
 const loginWithFallback = async (identifier: string) => {
-  const attempts = ['123456', 'demo1234'];
+  const attempts = ['111111'];
   let lastError: unknown = null;
 
   for (const password of attempts) {

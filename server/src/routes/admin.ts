@@ -100,8 +100,8 @@ router.post('/students', ...adminGuard, async (req: Request, res: Response) => {
 
     const student = await Student.create(studentData);
 
-    // 3. Auto-provision credentials (generate 6-digit PIN)
-    const pinVal = Math.floor(Math.random() * 900000 + 100000).toString();
+    // 3. Auto-provision credentials (shared demo PIN)
+    const pinVal = '111111';
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(pinVal, salt);
 

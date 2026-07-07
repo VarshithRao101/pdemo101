@@ -601,7 +601,7 @@ const seed = async () => {
     }
 
     // 8. Seed Users & Print Credentials
-    const demoPassword = 'demo1234';
+    const demoPassword = '111111';
     const usersToSeed = [
       { username: 'admin1', role: 'admin1' as const },
       { username: 'admin2', role: 'admin2' as const },

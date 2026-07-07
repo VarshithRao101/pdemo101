@@ -24,7 +24,7 @@ async function runTests() {
 
   // ─── LOGIN FOR PORTALS ──────────────────────────────────────────────
   console.log('[LOGIN] Logging in as admin2...');
-  const loginA2 = await apiFetch('/auth/login', 'POST', { identifier: 'admin2', password: '123456' });
+  const loginA2 = await apiFetch('/auth/login', 'POST', { identifier: 'admin2', password: '111111' });
   if (loginA2.status !== 200 || !loginA2.data.token) {
     console.error('❌ Admin2 login failed:', loginA2.data);
     process.exit(1);
@@ -34,7 +34,7 @@ async function runTests() {
   console.log('✅ Logged in as Admin2.\n');
 
   console.log('[LOGIN] Logging in as accountant...');
-  const loginAc = await apiFetch('/auth/login', 'POST', { identifier: 'accountant', password: '123456' });
+  const loginAc = await apiFetch('/auth/login', 'POST', { identifier: 'accountant', password: '111111' });
   if (loginAc.status !== 200 || !loginAc.data.token) {
     console.error('❌ Accountant login failed:', loginAc.data);
     process.exit(1);
@@ -44,7 +44,7 @@ async function runTests() {
   console.log('✅ Logged in as Accountant.\n');
 
   console.log('[LOGIN] Logging in as student (canonical user)...');
-  const loginStu = await apiFetch('/auth/login', 'POST', { identifier: 'student', password: '123456' });
+  const loginStu = await apiFetch('/auth/login', 'POST', { identifier: 'student', password: '111111' });
   if (loginStu.status !== 200 || !loginStu.data.token) {
     console.error('❌ Student login failed:', loginStu.data);
     process.exit(1);
