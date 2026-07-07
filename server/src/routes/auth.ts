@@ -8,10 +8,10 @@ import { authenticateJWT, AuthRequest } from '../middleware/authenticate';
 
 const router = Router();
 
-// Brute-force protection: Max 5 login attempts per 15 minutes per IP
+// Brute-force protection: demo-safe ceiling for shared testing sessions.
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
