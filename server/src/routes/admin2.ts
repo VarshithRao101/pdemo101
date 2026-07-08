@@ -83,6 +83,37 @@ router.patch('/fee-settings', ...admin2Guard, async (req: Request, res: Response
       await settings.save();
     }
 
+    // Propagate the updated baseline fees to the entire students database
+    const newTuition = settings.tuition;
+    const newHostel = settings.hostel;
+    const newTransport = settings.transport;
+    const newMisc = settings.misc;
+
+    const studentsList = await Student.find({});
+    for (const student of studentsList) {
+      student.tuitionFee = newTuition;
+      student.hostelFee = student.hostelStatus === 'Resident' ? newHostel : 0;
+      student.transportFee = student.transportStatus === 'College Bus' ? newTransport : 0;
+      student.miscellaneousFee = newMisc;
+
+      // Recompute remainingBalance based on complete order of operations
+      const baseFee = student.tuitionFee + student.hostelFee + student.transportFee + student.miscellaneousFee + student.previousPending;
+      const pct = getScholarshipPct(settings.scholarshipRules || '', student.scholarshipCategory || 'None');
+      const policyDeduction = Math.round(student.tuitionFee * (pct / 100));
+      const totalOverride = (student.tuitionWaiver || 0) + (student.hostelWaiver || 0) + (student.transportWaiver || 0) + (student.miscWaiver || 0);
+
+      let remaining = baseFee - policyDeduction - totalOverride - student.totalPaid;
+      if (remaining < 0) remaining = 0;
+
+      student.remainingBalance = remaining;
+      await student.save();
+
+      emitToStudent(String(student._id), 'fee:updated', {
+        type: 'fee:updated',
+        studentId: String(student._id)
+      });
+    }
+
     emitToRole('accountant', 'fee-settings:updated', {
       type: 'fee-settings:updated'
     });

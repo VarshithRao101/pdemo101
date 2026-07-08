@@ -319,6 +319,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   // Academic baseline fees state (Locked by default, only once editable)
   const [feeRates, setFeeRates] = useState(getMockAcademicFees);
+  const [isEditingFees, setIsEditingFees] = useState(false);
 
   // Calendars logs
   const [calendarEvents, setCalendarEvents] = useState([
@@ -970,9 +971,21 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     try {
       const saved = await admin2Service.updateFeeSettings({ ...feeRates, isLocked: true });
       setFeeRates(saved);
-      triggerToast('Academic baseline fees finalized and LOCKED successfully.');
+      setIsEditingFees(false);
+      triggerToast('Academic baseline fees finalized, LOCKED, and propagated to database successfully.');
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save fee settings.');
+    }
+  };
+
+  const handleUnlockFees = async () => {
+    try {
+      const saved = await admin2Service.updateFeeSettings({ isLocked: false });
+      setFeeRates(saved);
+      setIsEditingFees(true);
+      triggerToast('Academic baseline fees unlocked for editing.');
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to unlock fee settings.');
     }
   };
 
@@ -1901,27 +1914,27 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('orange')}
         <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
+          <button onClick={() => { setActivePage('menu'); setIsEditingFees(false); }} style={styles.backArrowBtn} className="press-interactive">
             ← Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Academic Fees per Year</h1>
-          <p style={styles.subtitle}>Configure base fees parameters. Locked by default once submitted.</p>
+          <p style={styles.subtitle}>Configure base fees parameters. Modifying updates all student records in the database.</p>
         </header>
 
         <main style={styles.content}>
-          <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
+          <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Term Fees structure</h4>
               <span style={{
                 fontSize: '10px',
                 fontWeight: 800,
-                color: feeRates.isLocked ? '#EF4444' : 'var(--royal-gold)',
-                backgroundColor: feeRates.isLocked ? 'rgba(239,68,68,0.06)' : 'rgba(212,175,55,0.06)',
-                border: `1.5px solid ${feeRates.isLocked ? '#EF4444' : 'var(--royal-gold)'}`,
+                color: (feeRates.isLocked && !isEditingFees) ? '#EF4444' : 'var(--royal-gold)',
+                backgroundColor: (feeRates.isLocked && !isEditingFees) ? 'rgba(239,68,68,0.06)' : 'rgba(212,175,55,0.06)',
+                border: `1.5px solid ${(feeRates.isLocked && !isEditingFees) ? '#EF4444' : 'var(--royal-gold)'}`,
                 padding: '4px 8px',
                 borderRadius: '8px'
               }}>
-                {feeRates.isLocked ? '🔒 Locked - Fee rates finalized' : '⚠️ Only once editable'}
+                {(feeRates.isLocked && !isEditingFees) ? '🔒 Locked - Fee rates finalized' : '✏️ Editing Mode - Active'}
               </span>
             </div>
 
@@ -1930,10 +1943,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <label style={styles.formLabel}>Tuition Fee (₹)</label>
                 <input
                   type="number"
-                  disabled={feeRates.isLocked}
+                  disabled={feeRates.isLocked && !isEditingFees}
                   value={feeRates.tuition}
                   onChange={(e) => setFeeRates({ ...feeRates, tuition: parseFloat(e.target.value) || 0 })}
-                  style={{ ...styles.textInputBox, opacity: feeRates.isLocked ? 0.6 : 1 }}
+                  style={{ ...styles.textInputBox, opacity: (feeRates.isLocked && !isEditingFees) ? 0.6 : 1 }}
                 />
               </div>
 
@@ -1941,10 +1954,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <label style={styles.formLabel}>Hostel Admission Fee (₹)</label>
                 <input
                   type="number"
-                  disabled={feeRates.isLocked}
+                  disabled={feeRates.isLocked && !isEditingFees}
                   value={feeRates.hostel}
                   onChange={(e) => setFeeRates({ ...feeRates, hostel: parseFloat(e.target.value) || 0 })}
-                  style={{ ...styles.textInputBox, opacity: feeRates.isLocked ? 0.6 : 1 }}
+                  style={{ ...styles.textInputBox, opacity: (feeRates.isLocked && !isEditingFees) ? 0.6 : 1 }}
                 />
               </div>
 
@@ -1952,10 +1965,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <label style={styles.formLabel}>Transport Fee (₹)</label>
                 <input
                   type="number"
-                  disabled={feeRates.isLocked}
+                  disabled={feeRates.isLocked && !isEditingFees}
                   value={feeRates.transport}
                   onChange={(e) => setFeeRates({ ...feeRates, transport: parseFloat(e.target.value) || 0 })}
-                  style={{ ...styles.textInputBox, opacity: feeRates.isLocked ? 0.6 : 1 }}
+                  style={{ ...styles.textInputBox, opacity: (feeRates.isLocked && !isEditingFees) ? 0.6 : 1 }}
                 />
               </div>
 
@@ -1963,24 +1976,44 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <label style={styles.formLabel}>Miscellaneous Fee (₹)</label>
                 <input
                   type="number"
-                  disabled={feeRates.isLocked}
+                  disabled={feeRates.isLocked && !isEditingFees}
                   value={feeRates.misc}
                   onChange={(e) => setFeeRates({ ...feeRates, misc: parseFloat(e.target.value) || 0 })}
-                  style={{ ...styles.textInputBox, opacity: feeRates.isLocked ? 0.6 : 1 }}
+                  style={{ ...styles.textInputBox, opacity: (feeRates.isLocked && !isEditingFees) ? 0.6 : 1 }}
                 />
               </div>
             </div>
 
-            {!feeRates.isLocked && (
+            {feeRates.isLocked && !isEditingFees ? (
               <button 
-                onClick={handleSaveAcademicFees} 
-                style={{ ...styles.saveSubmitBtn, marginTop: '16px' }} 
+                onClick={handleUnlockFees} 
+                style={{ ...styles.saveSubmitBtn, marginTop: '16px', backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)' }} 
                 className="press-interactive"
               >
-                Lock & Save Academic Fees Rates
+                🔓 Unlock & Modify Fee Rates
               </button>
+            ) : (
+              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                <button 
+                  onClick={handleSaveAcademicFees} 
+                  style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: '#10B981', color: '#fff' }} 
+                  className="press-interactive"
+                >
+                  Save & Propagate Rates
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsEditingFees(false);
+                    fetchFeeSettings();
+                  }} 
+                  style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} 
+                  className="press-interactive"
+                >
+                  Cancel
+                </button>
+              </div>
             )}
-          </div>
+          </GlassCard>
         </main>
       </div>
     );
