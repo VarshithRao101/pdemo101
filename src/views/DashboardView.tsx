@@ -1343,11 +1343,11 @@ export const DashboardView: React.FC = () => {
           scrollbarWidth: 'none' as any,
         }}>
           {[
-            { emoji: '💰', label: 'Fees', onClick: () => { setAcademicsTab('fee'); setSubPage('fee'); } },
-            { emoji: '📅', label: 'Schedule', onClick: () => { setAcademicsTab('marks'); setSubPage('marks'); } },
-            { emoji: '🚪', label: 'Gate Pass', onClick: () => setSubPage('leave') },
-            { emoji: '📢', label: 'Notices', onClick: () => setSubPage('announcements') },
-            { emoji: '📊', label: 'Results', onClick: () => { setAcademicsTab('results'); setSubPage('results'); } },
+            { emoji: '', label: 'Fees', onClick: () => { setAcademicsTab('fee'); setSubPage('fee'); } },
+            { emoji: '', label: 'Schedule', onClick: () => { setAcademicsTab('marks'); setSubPage('marks'); } },
+            { emoji: '', label: 'Gate Pass', onClick: () => setSubPage('leave') },
+            { emoji: '', label: 'Notices', onClick: () => setSubPage('announcements') },
+            { emoji: '', label: 'Results', onClick: () => { setAcademicsTab('results'); setSubPage('results'); } },
           ].map((action, i) => (
             <button
               key={action.label}

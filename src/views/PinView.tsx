@@ -155,18 +155,18 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, hideRoleSelector }
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
             <InspireLogo size="lg" />
           </div>
-          <p style={styles.subtitle}>
+          <p style={{ ...styles.subtitle, color: portalRole === 'student' ? '#000' : styles.subtitle.color }}>
             {portalRole === 'student'
-              ? '🎓 Student Portal Login'
+              ? 'Student Portal Login'
               : portalRole === 'admin1'
-              ? '🏛 Admin 1 (Rector) Login'
+              ? 'Admin 1 (Rector) Login'
               : portalRole === 'admin2'
-              ? '🏫 Admin 2 (Campus Principal) Login'
+              ? 'Admin 2 (Campus Principal) Login'
               : portalRole === 'admin3'
-              ? '📚 Admin 3 (Academics) Login'
+              ? 'Admin 3 (Academics) Login'
               : portalRole === 'accountant'
-              ? '💼 Accountant Login'
-              : '🔐 Portal Login'}
+              ? 'Accountant Login'
+              : 'Portal Login'}
           </p>
 
           {/* Role selector Segment */}
@@ -408,18 +408,18 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, hideRoleSelector }
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
             <InspireLogo size="lg" />
           </div>
-          <p style={styles.subtitle}>
+          <p style={{ ...styles.subtitle, color: portalRole === 'student' ? '#000' : styles.subtitle.color }}>
             {portalRole === 'student'
-              ? '🎓 Student Portal'
+              ? 'Student Portal'
               : portalRole === 'admin1'
-              ? '🏛 Admin 1 (Rector) Portal'
+              ? 'Admin 1 (Rector) Portal'
               : portalRole === 'admin2'
-              ? '🏫 Admin 2 (Campus Principal) Portal'
+              ? 'Admin 2 (Campus Principal) Portal'
               : portalRole === 'admin3'
-              ? '📚 Admin 3 (Academic & Publishing) Portal'
+              ? 'Admin 3 (Academic & Publishing) Portal'
               : portalRole === 'accountant'
-              ? '💼 Accountant Portal'
-              : '🔐 Authenticator Portal'}
+              ? 'Accountant Portal'
+              : 'Authenticator Portal'}
           </p>
           <p style={{ fontSize: '11px', color: 'var(--muted-gray)', fontWeight: 500, marginTop: '2px', opacity: 0.8 }}>
             Enter your 6-digit access PIN
