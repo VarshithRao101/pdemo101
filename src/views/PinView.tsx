@@ -32,7 +32,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, hideRoleSelector }
   const [isError, setIsError] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastKeypadIndex, setLastKeypadIndex] = useState<number | null>(null);
-  const [bioScanning, setBioScanning] = useState(false);
+  // biometric scanning state removed (not used directly here)
   const { isMobile, portalRole, setPortalRole, login } = useNavigation();
 
   const [userId, setUserId] = useState<string>('');
@@ -97,11 +97,10 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, hideRoleSelector }
   };
 
   const handleBiometrics = () => {
-    // Biometrics remain as a UI prototype gesture — no real biometric API in browser
-    setBioScanning(true);
+    // Biometrics remain as a UI prototype gesture — use checking + toast
+    setIsChecking(true);
     setToastMessage('Scanning fingerprint...');
     setTimeout(() => {
-      setBioScanning(false);
       setIsChecking(false);
       setToastMessage('Fingerprint login is not yet enabled on this device.');
     }, 1200);
@@ -112,39 +111,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, hideRoleSelector }
     setToastMessage('PIN reset link sent to your registered mobile number');
   };
 
-  // Helper to render PIN boxes
-  const renderPinBoxes = () => {
-    const boxes = [];
-    for (let i = 0; i < 6; i++) {
-      const isFilled = i < pin.length;
-      const isActive = i === pin.length;
-      const hasJustEntered = i === lastKeypadIndex;
-
-      boxes.push(
-        <div
-          key={i}
-          className={`glass-panel ${hasJustEntered ? 'anim-pin-pop' : ''}`}
-          style={{
-            ...styles.pinBox,
-            borderColor: isActive
-              ? 'var(--royal-gold)'
-              : isFilled
-              ? 'rgba(212, 175, 55, 0.4)'
-              : 'rgba(255, 255, 255, 0.4)',
-            boxShadow: isActive
-              ? '0 0 12px rgba(212, 175, 55, 0.25), inset 0 1px 0 rgba(255,255,255,0.4)'
-              : 'var(--shadow-sm)',
-            transform: hasJustEntered ? 'scale(1.05)' : 'scale(1)',
-          }}
-        >
-          {isFilled && (
-            <div style={styles.pinDot} />
-          )}
-        </div>
-      );
-    }
-    return boxes;
-  };
+  // PIN boxes are now rendered by the shared `PinEntry` component.
 
   // Shared credentials layout page
   const renderCredentialsContent = () => {
