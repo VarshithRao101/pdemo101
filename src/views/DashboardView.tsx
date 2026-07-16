@@ -145,6 +145,15 @@ export const DashboardView: React.FC = () => {
   const [livePulseKey, setLivePulseKey] = useState<LivePulseKey>(null);
   const { setAcademicsTab, theme, setThemeMode, setIsDrawerOpen, isMobile, setActiveTab } = useNavigation();
 
+  // Dynamic greeting based on time of day
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+  const greeting = getGreeting();
+
   // Poll state variables
   const [selectedPollOption, setSelectedPollOption] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
@@ -1191,7 +1200,6 @@ export const DashboardView: React.FC = () => {
         {/* WELCOME BLOCK: Split side-by-side on desktop, single card on mobile */}
         {!isMobile ? (
           <div style={{ display: 'flex', gap: '20px', marginBottom: '8px' }}>
-            {/* Left Card: Welcome / Profile details */}
             <GlassCard hoverable={false} style={{ flex: 3, display: 'flex', alignItems: 'center', gap: '24px', padding: '24px' }}>
               <div style={{
                 width: '80px',
@@ -1209,7 +1217,7 @@ export const DashboardView: React.FC = () => {
                 {studentInitials}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-                <span style={{ fontSize: '14px', color: 'var(--muted-gray)' }}>Good evening,</span>
+                <span style={{ fontSize: '14px', color: 'var(--muted-gray)' }}>{greeting},</span>
                 <h2 style={{ fontSize: '22px', fontWeight: 850, color: '#3B82F6', margin: 0 }}>{studentName}</h2>
                 <div style={{ fontSize: '13px', color: 'var(--muted-gray)' }}>
                   S/O <strong style={{ color: 'var(--dark-charcoal)' }}>{fatherName}</strong>
@@ -1230,7 +1238,6 @@ export const DashboardView: React.FC = () => {
               </div>
             </GlassCard>
 
-            {/* Right Card: News Carousel Highlights */}
             <GlassCard hoverable={false} style={{ flex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -1246,7 +1253,7 @@ export const DashboardView: React.FC = () => {
                   }}>NEW</span>
                 </div>
                 <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--dark-charcoal)', margin: '0 0 6px 0', textAlign: 'left' }}>
-                  {bulletins.length > 0 ? bulletins[0].title : 'Check out what\'s new at Inspire Junior College.'}
+                  {bulletins.length > 0 ? bulletins[0].title : "Check out what's new at Inspire Junior College."}
                 </h3>
                 <span style={{ fontSize: '12px', color: 'var(--muted-gray)', display: 'block', textAlign: 'left' }}>
                   {bulletins.length > 0 ? bulletins[0].date : '5th July, 2026'}
@@ -1280,7 +1287,7 @@ export const DashboardView: React.FC = () => {
                 <div style={styles.userAvatar}>{studentInitials}</div>
               </div>
               <div style={styles.welcomeDetails} onClick={() => setSubPage('profile')}>
-                <span style={styles.greetingText}>Good Evening,</span>
+                <span style={styles.greetingText}>{greeting},</span>
                 <h2 style={styles.studentName}>{studentName}</h2>
                 <div style={styles.detailsRow}>
                   <span style={styles.detailLabel}>ID:</span>
@@ -1304,6 +1311,70 @@ export const DashboardView: React.FC = () => {
             </div>
           </GlassCard>
         )}
+
+        {/* METRIC CARDS */}
+        <section style={styles.section} className="anim-slide-up stagger-1">
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(1, 1fr)' : 'repeat(3, 1fr)', gap: '14px' }}>
+            <GlassCard hoverable={false} style={styles.metricCard}>
+              <span style={styles.metricLabel}>Attendance</span>
+              <strong style={styles.metricValue}>{liveAttendancePct}%</strong>
+              <span style={styles.metricDesc}>Current attendance rate</span>
+            </GlassCard>
+            <GlassCard hoverable={false} style={styles.metricCard}>
+              <span style={styles.metricLabel}>Average Score</span>
+              <strong style={styles.metricValue}>{overallMarksPct}%</strong>
+              <span style={styles.metricDesc}>Latest exam performance</span>
+            </GlassCard>
+            <GlassCard hoverable={false} style={styles.metricCard}>
+              <span style={styles.metricLabel}>Fee Balance</span>
+              <strong style={styles.metricValue}>{formatRupees(remainingFee)}</strong>
+              <span style={styles.metricDesc}>{isFeePending ? 'Pending payment due' : 'No dues remaining'}</span>
+            </GlassCard>
+          </div>
+        </section>
+
+        {/* QUICK ACTION STRIP */}
+        <div style={{
+          display: 'flex',
+          gap: '10px',
+          overflowX: 'auto',
+          paddingBottom: '2px',
+          WebkitOverflowScrolling: 'touch' as any,
+          scrollbarWidth: 'none' as any,
+        }}>
+          {[
+            { emoji: '💰', label: 'Fees', onClick: () => { setAcademicsTab('fee'); setSubPage('fee'); } },
+            { emoji: '📅', label: 'Schedule', onClick: () => { setAcademicsTab('marks'); setSubPage('marks'); } },
+            { emoji: '🚪', label: 'Gate Pass', onClick: () => setSubPage('leave') },
+            { emoji: '📢', label: 'Notices', onClick: () => setSubPage('announcements') },
+            { emoji: '📊', label: 'Results', onClick: () => { setAcademicsTab('results'); setSubPage('results'); } },
+          ].map((action, i) => (
+            <button
+              key={action.label}
+              onClick={action.onClick}
+              className={`press-interactive anim-slide-in-left stagger-${i + 1}`}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '10px 16px',
+                borderRadius: '14px',
+                border: '1.5px solid var(--card-border)',
+                background: 'var(--card-bg)',
+                boxShadow: 'var(--shadow-sm)',
+                whiteSpace: 'nowrap',
+                minWidth: '64px',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-family)',
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: '20px', lineHeight: 1 }}>{action.emoji}</span>
+              <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--dark-charcoal)', letterSpacing: '0.01em' }}>{action.label}</span>
+            </button>
+          ))}
+        </div>
 
         {/* SMART DASHBOARD SYSTEM (ROTATING CAROUSEL) */}
         <section style={styles.section} className="anim-scale-in">
@@ -1387,202 +1458,45 @@ export const DashboardView: React.FC = () => {
                   ...styles.gridCard,
                   background: item.bgColor,
                   borderColor: item.iconBg,
-                  animationDelay: `${idx * 40}ms`
+                  animationDelay: `${idx * 40}ms`,
+                  minWidth: '180px',
+                  borderRadius: '16px',
+                  border: '2px solid var(--card-border)',
+                  color: '#FFFFFF',
+                  padding: '16px 20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: 'var(--shadow-sm)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  minHeight: '110px'
                 }}
                 className={`stagger-anim ${pulseGridType === item.type ? 'anim-pulse-gold' : ''}`}
               >
-                {item.hasBadge && (
-                  <div style={styles.newBadge}>New</div>
-                )}
-                <div
-                  style={{
-                    ...styles.gridIcon,
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     backgroundColor: item.iconBg,
-                    color: item.iconColor,
-                    boxShadow: `0 8px 16px ${item.iconBg.replace('0.16', '0.08')}`
-                  }}
-                  className="glass-gold-ring"
-                >
-                  <item.Icon />
+                    color: item.iconColor
+                  }}>
+                    <item.Icon />
+                  </div>
+                  {item.hasBadge && (
+                    <span style={styles.newBadge}>NEW</span>
+                  )}
                 </div>
-                <h3 style={{ ...styles.gridTitle, color: item.iconColor }}>{item.label}</h3>
-                {isMobile && (
-                  <span style={{ ...styles.gridSubtitle, color: 'var(--muted-gray)' }}>{item.sub}</span>
-                )}
+                <div style={{ textAlign: 'left', marginTop: '12px' }}>
+                  <h4 style={{ fontSize: '15px', fontWeight: 800, margin: 0, color: '#fff' }}>{item.label}</h4>
+                  <span style={{ fontSize: '11px', opacity: 0.9 }}>{item.sub}</span>
+                </div>
               </GlassCard>
             ))}
-          </div>
-        </section>
-
-        {/* QUICK OVERVIEW BLOCK */}
-        <section style={styles.section} className="anim-slide-up stagger-2">
-          <h3 style={styles.sectionTitle}>Quick Overview</h3>
-          <div style={{
-            display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            gap: '16px',
-            flexWrap: 'wrap'
-          }}>
-            {/* Card 1: Attendance */}
-            <div style={{
-              flex: 1,
-              minWidth: '180px',
-              borderRadius: '16px',
-              border: '2px solid var(--card-border)',
-              background: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%)',
-              color: '#FFFFFF',
-              padding: '16px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              boxShadow: 'var(--shadow-sm)',
-              position: 'relative',
-              overflow: 'hidden',
-              minHeight: '110px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ display: 'flex', alignItems: 'center', color: '#fff' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="18" y1="20" x2="18" y2="10" />
-                    <line x1="12" y1="20" x2="12" y2="4" />
-                    <line x1="6" y1="20" x2="6" y2="14" />
-                  </svg>
-                </span>
-              </div>
-              <div style={{ textAlign: 'left', marginTop: '12px' }}>
-                <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>{liveAttendancePct}%</h4>
-                <span style={{ fontSize: '11px', opacity: 0.8 }}>This Month</span>
-              </div>
-            </div>
-
-            {/* Card 2: Average Score */}
-            <div style={{
-              flex: 1,
-              minWidth: '180px',
-              borderRadius: '16px',
-              border: '2px solid var(--card-border)',
-              background: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)',
-              color: '#FFFFFF',
-              padding: '16px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              boxShadow: 'var(--shadow-sm)',
-              position: 'relative',
-              overflow: 'hidden',
-              minHeight: '110px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ display: 'flex', alignItems: 'center', color: '#fff' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                    <polyline points="17 6 23 6 23 12" />
-                  </svg>
-                </span>
-              </div>
-              <div style={{ textAlign: 'left', marginTop: '12px' }}>
-                <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>{overallMarksPct}%</h4>
-                <span style={{ fontSize: '11px', opacity: 0.8 }}>In All Subjects</span>
-              </div>
-            </div>
-
-            {/* Card 3: Subjects */}
-            <div style={{
-              flex: 1,
-              minWidth: '180px',
-              borderRadius: '16px',
-              border: '2px solid var(--card-border)',
-              background: 'linear-gradient(135deg, #9A3412 0%, #F97316 100%)',
-              color: '#FFFFFF',
-              padding: '16px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              boxShadow: 'var(--shadow-sm)',
-              position: 'relative',
-              overflow: 'hidden',
-              minHeight: '110px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ display: 'flex', alignItems: 'center', color: '#fff' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                  </svg>
-                </span>
-              </div>
-              <div style={{ textAlign: 'left', marginTop: '12px' }}>
-                <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>03</h4>
-                <span style={{ fontSize: '11px', opacity: 0.8 }}>Active Subjects</span>
-              </div>
-            </div>
-
-            {/* Card 4: Class Rank */}
-            <div style={{
-              flex: 1,
-              minWidth: '180px',
-              borderRadius: '16px',
-              border: '2px solid var(--card-border)',
-              background: 'linear-gradient(135deg, #5B21B6 0%, #8B5CF6 100%)',
-              color: '#FFFFFF',
-              padding: '16px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              boxShadow: 'var(--shadow-sm)',
-              position: 'relative',
-              overflow: 'hidden',
-              minHeight: '110px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ display: 'flex', alignItems: 'center', color: '#fff' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-                    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-                    <path d="M4 22h16" />
-                    <path d="M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34" />
-                    <path d="M12 2a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z" />
-                  </svg>
-                </span>
-              </div>
-              <div style={{ textAlign: 'left', marginTop: '12px' }}>
-                <h4 style={{ fontSize: '24px', fontWeight: 900, margin: 0, color: '#fff' }}>15<span style={{ fontSize: '14px', fontWeight: 500 }}>/120</span></h4>
-                <span style={{ fontSize: '11px', opacity: 0.8 }}>In Class</span>
-              </div>
-            </div>
-
-            {/* Card 5: Upcoming Exam */}
-            <div style={{
-              flex: 1,
-              minWidth: '180px',
-              borderRadius: '16px',
-              border: '2px solid var(--card-border)',
-              background: 'linear-gradient(135deg, #991B1B 0%, #EF4444 100%)',
-              color: '#FFFFFF',
-              padding: '16px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              boxShadow: 'var(--shadow-sm)',
-              position: 'relative',
-              overflow: 'hidden',
-              minHeight: '110px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ display: 'flex', alignItems: 'center', color: '#fff' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                    <line x1="16" y1="2" x2="16" y2="6" />
-                    <line x1="8" y1="2" x2="8" y2="6" />
-                    <line x1="3" y1="10" x2="21" y2="10" />
-                  </svg>
-                </span>
-              </div>
-              <div style={{ textAlign: 'left', marginTop: '12px' }}>
-                <h4 style={{ fontSize: '18px', fontWeight: 900, margin: 0, color: '#fff' }}>JEE Main Mock</h4>
-                <span style={{ fontSize: '11px', opacity: 0.8 }}>12 Days Left</span>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -1833,6 +1747,31 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 700,
     cursor: 'pointer',
     alignSelf: 'flex-end',
+  },
+  metricCard: {
+    padding: '18px 20px',
+    borderRadius: '20px',
+    backgroundColor: 'var(--card-bg)',
+    border: '1.5px solid var(--card-border)',
+    boxShadow: 'var(--shadow-sm)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  metricLabel: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: 'var(--muted-gray)',
+  },
+  metricValue: {
+    fontSize: '28px',
+    fontWeight: 850,
+    color: 'var(--dark-charcoal)',
+  },
+  metricDesc: {
+    fontSize: '11px',
+    color: 'var(--muted-gray)',
+    lineHeight: '1.4',
   },
   grid: {
     display: 'grid',

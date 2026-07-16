@@ -78,10 +78,17 @@ router.post('/students', ...adminGuard, async (req: Request, res: Response) => {
       });
     }
 
-    const resolvedTuition = tuitionFee === undefined ? 120000 : (tuitionFee as number);
-    const resolvedHostel = hostelFee === undefined ? (isResident ? 85000 : 0) : (hostelFee as number);
-    const resolvedTransport = transportFee === undefined ? (isBus ? 15000 : 0) : (transportFee as number);
-    const resolvedMisc = miscellaneousFee === undefined ? 5000 : (miscellaneousFee as number);
+    const feeSettings = await AcademicFeeSettings.findOne().sort({ createdAt: -1 }) || {
+      tuition: 120000,
+      hostel: 85000,
+      transport: 15000,
+      misc: 5000
+    };
+
+    const resolvedTuition = tuitionFee === undefined ? feeSettings.tuition : (tuitionFee as number);
+    const resolvedHostel = hostelFee === undefined ? (isResident ? feeSettings.hostel : 0) : (hostelFee as number);
+    const resolvedTransport = transportFee === undefined ? (isBus ? feeSettings.transport : 0) : (transportFee as number);
+    const resolvedMisc = miscellaneousFee === undefined ? feeSettings.misc : (miscellaneousFee as number);
     const resolvedPending = previousPending === undefined ? 0 : (previousPending as number);
     const resolvedPaid = totalPaid === undefined ? 0 : (totalPaid as number);
 
@@ -110,7 +117,9 @@ router.post('/students', ...adminGuard, async (req: Request, res: Response) => {
       passwordHash,
       role: 'student',
       profileId: student._id,
-      profileModel: 'Student'
+      profileModel: 'Student',
+      backupCode: Math.floor(100000 + Math.random() * 900000).toString(),
+      usedBackupCodes: []
     });
 
     console.log(`[PROVISION] Auto-created login for student "${student.name}" | Roll: ${student.rollNumber} | PIN: ${pinVal}`);

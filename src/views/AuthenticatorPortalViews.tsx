@@ -1,0 +1,965 @@
+import React, { useState, useEffect } from 'react';
+import { GlassCard } from '../components/common/GlassCard';
+import { useNavigation } from '../context/NavigationContext';
+import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
+import { InspireLogo } from '../components/common/InspireLogo';
+import { authenticatorService } from '../services/authenticatorService';
+import type { 
+  SecurityKeyInfo, 
+  BackupCodeInfo, 
+  AccountInfo, 
+  AuthenticatorStats 
+} from '../services/authenticatorService';
+
+export const AuthenticatorDashboardView: React.FC = () => {
+  const { logout, activeTab: globalActiveTab, setActiveTab: setGlobalActiveTab } = useNavigation();
+  const [toast, setToast] = useState<string | null>(null);
+  
+  // Tab control
+  const activeTab = (globalActiveTab === 'keys' || globalActiveTab === 'backup_codes' || globalActiveTab === 'accounts') 
+    ? globalActiveTab 
+    : 'dashboard';
+
+  const setActiveTab = (tab: 'dashboard' | 'keys' | 'backup_codes' | 'accounts') => {
+    setGlobalActiveTab(tab);
+  };
+
+  // Backend state
+  const [keys, setKeys] = useState<SecurityKeyInfo[]>([]);
+  const [backupCodes, setBackupCodes] = useState<BackupCodeInfo[]>([]);
+  const [accounts, setAccounts] = useState<AccountInfo[]>([]);
+  const [stats, setStats] = useState<AuthenticatorStats>({
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalStaff: 0,
+    activeDevices: 0
+  });
+
+  // Countdown timer for daily keys expiration
+  const [timeRemaining, setTimeRemaining] = useState<string>('');
+
+  // Searches & Modals
+  const [studentSearch, setStudentSearch] = useState<string>('');
+  
+  // Password reset state
+  const [resetUsername, setResetUsername] = useState<string>('');
+  const [resetBackupCode, setResetBackupCode] = useState<string>('');
+  const [resetNewPassword, setResetNewPassword] = useState<string>('');
+
+  // Account creation/edit state
+  const [accountUsername, setAccountUsername] = useState<string>('');
+  const [accountRole, setAccountRole] = useState<'admin1' | 'admin2' | 'admin3' | 'accountant'>('accountant');
+  const [accountPassword, setAccountPassword] = useState<string>('');
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+  const [accountName, setAccountName] = useState<string>('');
+  const [accountEmail, setAccountEmail] = useState<string>('');
+  const [accountMobile, setAccountMobile] = useState<string>('');
+  const [accountDepartment, setAccountDepartment] = useState<string>('');
+
+  // Trigger Toast Notification
+  const triggerToast = (msg: string) => {
+    setToast(msg);
+  };
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Load Initial Data
+  const loadData = async () => {
+    try {
+      const [keysRes, codesRes, accountsRes, statsRes] = await Promise.all([
+        authenticatorService.getKeys(),
+        authenticatorService.getBackupCodes(),
+        authenticatorService.getAccounts(),
+        authenticatorService.getStats()
+      ]);
+      setKeys(keysRes);
+      setBackupCodes(codesRes);
+      setAccounts(accountsRes);
+      setStats(statsRes);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to sync authenticator data.');
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    // Poll stats and keys every 15 seconds to keep dashboard alive
+    const pollInterval = setInterval(() => {
+      loadData();
+    }, 15000);
+    return () => clearInterval(pollInterval);
+  }, []);
+
+  // Compute countdown timer to midnight
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const midnight = new Date();
+      midnight.setHours(23, 59, 59, 999);
+      
+      const diffMs = midnight.getTime() - now.getTime();
+      if (diffMs <= 0) {
+        setTimeRemaining('00h 00m 00s');
+        loadData(); // reload keys
+        return;
+      }
+
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+      const hStr = String(hours).padStart(2, '0');
+      const mStr = String(minutes).padStart(2, '0');
+      const sStr = String(seconds).padStart(2, '0');
+
+      setTimeRemaining(`${hStr}h ${mStr}m ${sStr}s`);
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Password reset via backup code
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetUsername || !resetBackupCode || !resetNewPassword) {
+      triggerToast('All credentials reset fields are required.');
+      return;
+    }
+
+    try {
+      const res = await authenticatorService.resetPassword({
+        username: resetUsername,
+        backupCode: resetBackupCode,
+        password: resetNewPassword
+      });
+      triggerToast(`Password reset! Next Backup Code: ${res.nextBackupCode}`);
+      setResetUsername('');
+      setResetBackupCode('');
+      setResetNewPassword('');
+      loadData(); // refresh codes list
+    } catch (err: any) {
+      triggerToast(err.message || 'Password reset failed.');
+    }
+  };
+
+  // Create/Update Admin & Accountant Accounts
+  const handleSaveAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accountUsername || (!editingAccountId && !accountPassword)) {
+      triggerToast(editingAccountId ? 'Username is required.' : 'Username and password are required.');
+      return;
+    }
+
+    try {
+      if (editingAccountId) {
+        await authenticatorService.updateAccount(editingAccountId, {
+          username: accountUsername,
+          name: accountName,
+          email: accountEmail,
+          mobile: accountMobile,
+          department: accountDepartment
+        });
+        triggerToast('Staff account updated successfully.');
+      } else {
+        const u = await authenticatorService.createAccount({
+          username: accountUsername,
+          role: accountRole,
+          password: accountPassword,
+          name: accountName,
+          email: accountEmail,
+          mobile: accountMobile,
+          department: accountDepartment
+        });
+        triggerToast(`Created login for ${u.role}. Backup code: ${u.backupCode}`);
+      }
+      setAccountUsername('');
+      setAccountPassword('');
+      setAccountName('');
+      setAccountEmail('');
+      setAccountMobile('');
+      setAccountDepartment('');
+      setEditingAccountId(null);
+      loadData(); // reload
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to save account.');
+    }
+  };
+
+  // Delete staff account
+  const handleDeleteAccount = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this staff account?')) return;
+    try {
+      await authenticatorService.deleteAccount(id);
+      triggerToast('Staff account deleted successfully.');
+      loadData();
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to delete account.');
+    }
+  };
+
+  const filteredBackupCodes = backupCodes.filter(
+    c => c.username.toLowerCase().includes(studentSearch.toLowerCase()) || 
+         c.name.toLowerCase().includes(studentSearch.toLowerCase())
+  );
+
+  return (
+    <div style={styles.container} className="anim-slide-up neo-2d light-theme">
+      {/* Background design */}
+      <div style={styles.bgOverlay} />
+
+      {/* Top Header */}
+      <header style={styles.header}>
+        <div style={styles.headerContent}>
+          <div style={styles.branding}>
+            <div style={styles.avatar}>AU</div>
+            <div>
+              <span style={styles.meta}>Credential & Secure Access</span>
+              <h2 style={styles.title}>Authenticator Dashboard</h2>
+              <p style={styles.subtitle}>Institution-wide security override & authorization gateway</p>
+            </div>
+          </div>
+          <LiveConnectionIndicator compact />
+          <div style={{ paddingRight: '8px' }}>
+            <InspireLogo size="md" />
+          </div>
+        </div>
+      </header>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div style={styles.toast}>
+          {toast}
+        </div>
+      )}
+
+      {/* Main Grid */}
+      <main style={styles.main}>
+        {/* Navigation Tabs */}
+        <div style={styles.tabsContainer}>
+          {(['dashboard', 'keys', 'backup_codes', 'accounts'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                ...styles.tabButton,
+                backgroundColor: activeTab === tab ? 'var(--royal-gold)' : 'transparent',
+                color: activeTab === tab ? 'var(--white)' : 'var(--muted-gray)',
+                borderColor: activeTab === tab ? 'var(--royal-gold)' : 'var(--card-border)'
+              }}
+              className="press-interactive"
+            >
+              {tab === 'dashboard' && 'Dashboard Overview'}
+              {tab === 'keys' && 'Security Keys (OTP)'}
+              {tab === 'backup_codes' && 'User Backup Codes'}
+              {tab === 'accounts' && 'Account Control'}
+            </button>
+          ))}
+        </div>
+
+        {/* ─── TAB 1: DASHBOARD OVERVIEW ─── */}
+        {activeTab === 'dashboard' && (
+          <section className="anim-fade-in">
+            {/* Security Metrics */}
+            <div style={styles.metricsGrid}>
+              <GlassCard hoverable={false} style={styles.metricCard}>
+                <span style={styles.metricLabel}>Security Shield Status</span>
+                <strong style={{ ...styles.metricValue, color: '#10B981' }}>ACTIVE</strong>
+                <span style={styles.metricSub}>256-bit encryption verified</span>
+              </GlassCard>
+              <GlassCard hoverable={false} style={styles.metricCard}>
+                <span style={styles.metricLabel}>Active Web Sessions</span>
+                <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>
+                  {stats.activeDevices}
+                </strong>
+                <span style={styles.metricSub}>Live console connection count</span>
+              </GlassCard>
+              <GlassCard hoverable={false} style={styles.metricCard}>
+                <span style={styles.metricLabel}>System Threat Index</span>
+                <strong style={{ ...styles.metricValue, color: '#10B981' }}>0.0%</strong>
+                <span style={styles.metricSub}>No security violations logged</span>
+              </GlassCard>
+            </div>
+
+            <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+              <GlassCard hoverable={false} style={{ padding: '20px' }}>
+                <h4 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', borderBottom: '1.5px solid var(--card-border)', paddingBottom: '8px' }}>Active System Profiles</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={styles.profileStatItem}>
+                    <span>Active Student Profiles:</span>
+                    <strong>{stats.totalStudents}</strong>
+                  </div>
+                  <div style={styles.profileStatItem}>
+                    <span>Active Faculty Profiles:</span>
+                    <strong>{stats.totalTeachers}</strong>
+                  </div>
+                  <div style={styles.profileStatItem}>
+                    <span>Authorized Admins & Staff:</span>
+                    <strong>{stats.totalStaff}</strong>
+                  </div>
+                </div>
+              </GlassCard>
+
+              <GlassCard hoverable={false} style={{ padding: '20px' }}>
+                <h4 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', borderBottom: '1.5px solid var(--card-border)', paddingBottom: '8px' }}>Active Security Shield System</h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--muted-gray)', lineHeight: '1.5', margin: 0 }}>
+                  This dashboard enforces dynamic OTP access control across the institution. The keys shown in the "Security Keys" tab refresh automatically every day.
+                </p>
+                <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+                  <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#10B981' }}>Daily Rotation Synchronization Active</span>
+                </div>
+              </GlassCard>
+            </div>
+          </section>
+        )}
+
+        {/* ─── TAB 2: SECURITY KEYS (OTP) ─── */}
+        {activeTab === 'keys' && (
+          <section className="anim-fade-in">
+            <div style={styles.otpHeader}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.3rem' }}>Dynamic Security OTP Keys</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--muted-gray)' }}>Keys generated automatically for daily operations override authorization.</p>
+              </div>
+              <div style={styles.timerBlock}>
+                <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: '800' }}>ROTATION COUNTDOWN</span>
+                <strong style={styles.timerVal}>{timeRemaining}</strong>
+              </div>
+            </div>
+
+            <div style={styles.keysGrid}>
+              {keys.map((k) => (
+                <GlassCard key={k.role} hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>
+                    {k.role === 'accountant' && 'OPTION 3: ACCOUNTANTS'}
+                    {k.role === 'admin2' && 'OPTION 4: ADMIN 2'}
+                    {k.role === 'admin1' && 'OPTION 5: MAIN ADMIN (ADMIN 1)'}
+                    {k.role === 'admin3' && 'OPTION 6: ACADEMICS (ADMIN 3)'}
+                  </span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{k.key}</strong>
+                  </div>
+                  <div style={styles.keyDesc}>
+                    {k.role === 'accountant' && 'Required for: bio editing, fee collection, hostel registration.'}
+                    {k.role === 'admin2' && 'Required for: fee override, staff salary update, expenditures, worker payments.'}
+                    {k.role === 'admin1' && 'Required for: student details edit, faculty salary payment, student fee waiver, campus logs.'}
+                    {k.role === 'admin3' && 'Required for: timetables upload, exam results upload, announcements schedule.'}
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ─── TAB 3: USER BACKUP CODES ─── */}
+        {activeTab === 'backup_codes' && (
+          <section className="anim-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px' }}>
+            {/* Backup Codes Search */}
+            <div>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                <input
+                  type="text"
+                  placeholder="Search students or faculty by name or ID..."
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                  style={styles.formInput}
+                />
+              </div>
+
+              <div style={styles.backupCodesList}>
+                {filteredBackupCodes.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#64748B', padding: '20px' }}>No student/faculty records match search.</p>
+                ) : (
+                  filteredBackupCodes.map((c) => (
+                    <GlassCard key={c.username} hoverable={false} style={styles.backupCodeCard}>
+                      <div>
+                        <strong style={{ fontSize: '1rem' }}>{c.name}</strong>
+                        <div style={{ fontSize: '0.8rem', color: '#94A3B8', marginTop: '2px' }}>
+                          ID: <span style={{ color: 'var(--royal-gold)', fontWeight: 700 }}>{c.username.toUpperCase()}</span> • Role: {c.role.toUpperCase()}
+                        </div>
+                      </div>
+                      <div style={styles.backupCodeValBlock}>
+                        <span style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: '800' }}>BACKUP CODE</span>
+                        <strong style={styles.backupCodeVal}>{c.backupCode}</strong>
+                      </div>
+                    </GlassCard>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Password Reset Console */}
+            <GlassCard hoverable={false} style={{ padding: '20px', height: 'fit-content' }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '1.05rem', borderBottom: '1.5px solid var(--card-border)', paddingBottom: '8px' }}>Password Recovery Desk</h4>
+              <p style={{ fontSize: '0.8rem', color: 'var(--muted-gray)', lineHeight: '1.4', margin: '0 0 16px 0' }}>
+                Verify backup code to reset student passcode. Re-generates a new backup code upon submission.
+              </p>
+
+              <form onSubmit={handleResetPassword} style={styles.resetForm}>
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>User Roll / ID Card</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. STU-2421604"
+                    value={resetUsername}
+                    onChange={(e) => setResetUsername(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Verify Backup Code</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 123456"
+                    value={resetBackupCode}
+                    onChange={(e) => setResetBackupCode(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>New Login PIN (6-digits)</label>
+                  <input
+                    type="password"
+                    placeholder="e.g. 111111"
+                    maxLength={6}
+                    value={resetNewPassword}
+                    onChange={(e) => setResetNewPassword(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+
+                <button type="submit" style={styles.resetSubmitBtn} className="press-interactive">
+                  Submit & Set Password
+                </button>
+              </form>
+            </GlassCard>
+          </section>
+        )}
+
+        {/* ─── TAB 4: ACCOUNT CONTROL ─── */}
+        {activeTab === 'accounts' && (
+          <section className="anim-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px' }}>
+            {/* Accounts Listing */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h3 style={{ margin: '0 0 4px 0', fontSize: '1.2rem' }}>Staff Login Accounts Control</h3>
+              <div style={styles.accountsGrid}>
+                {accounts.map((acc) => (
+                  <GlassCard
+                    key={acc._id}
+                    hoverable={true}
+                    onClick={() => {
+                      setEditingAccountId(acc._id);
+                      setAccountUsername(acc.username);
+                      setAccountRole(acc.role);
+                      setAccountPassword('');
+                      setAccountName(acc.name || '');
+                      setAccountEmail(acc.email || '');
+                      setAccountMobile(acc.mobile || '');
+                      setAccountDepartment(acc.department || '');
+                      triggerToast(`Loaded credentials for ${acc.username}`);
+                    }}
+                    style={{
+                      ...styles.accountCard,
+                      cursor: 'pointer',
+                      border: editingAccountId === acc._id ? '1.5px solid var(--royal-gold)' : '1.5px solid var(--card-border)',
+                      boxShadow: editingAccountId === acc._id ? '0 0 10px rgba(212, 175, 55, 0.15)' : 'none',
+                      transition: 'all 0.2s ease',
+                      flexDirection: 'row' as const,
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <strong style={{ fontSize: '1.05rem', color: 'var(--dark-charcoal)' }}>{acc.name || 'Unnamed Staff'}</strong>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--muted-gray)' }}>@{acc.username}</span>
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--dark-charcoal)', marginTop: '6px', display: 'flex', flexWrap: 'wrap' as const, gap: '8px' }}>
+                        <span>Role: <strong style={{ textTransform: 'uppercase', color: 'var(--royal-gold)' }}>{acc.role}</strong></span>
+                        {acc.department && <span>• Dept: <strong>{acc.department}</strong></span>}
+                        {acc.email && <span>• Email: <strong>{acc.email}</strong></span>}
+                        {acc.mobile && <span>• Mobile: <strong>{acc.mobile}</strong></span>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', marginLeft: '12px' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteAccount(acc._id);
+                        }}
+                        style={styles.deleteBtn}
+                        className="press-interactive"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </GlassCard>
+                ))}
+              </div>
+            </div>
+
+            {/* Account Form */}
+            <GlassCard hoverable={false} style={{ padding: '20px', height: 'fit-content' }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '1.05rem', borderBottom: '1.5px solid var(--card-border)', paddingBottom: '8px' }}>
+                {editingAccountId ? 'Edit Credentials' : 'Provision Staff Account'}
+              </h4>
+
+              <form onSubmit={handleSaveAccount} style={styles.resetForm}>
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Login ID / Username</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. admin1"
+                    value={accountUsername}
+                    onChange={(e) => setAccountUsername(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Full Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Mr. Varshith Rao"
+                    value={accountName}
+                    onChange={(e) => setAccountName(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. email@inspirehnk.org"
+                    value={accountEmail}
+                    onChange={(e) => setAccountEmail(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Mobile Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. +91 9988776655"
+                    value={accountMobile}
+                    onChange={(e) => setAccountMobile(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Department / Designation</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Campus Administration"
+                    value={accountDepartment}
+                    onChange={(e) => setAccountDepartment(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Portal Role Access {editingAccountId && ' (Cannot modify)'}</label>
+                  <select
+                    value={accountRole}
+                    onChange={(e: any) => setAccountRole(e.target.value)}
+                    style={{ ...styles.formSelect, opacity: editingAccountId ? 0.6 : 1, cursor: editingAccountId ? 'not-allowed' : 'pointer' }}
+                    disabled={!!editingAccountId}
+                  >
+                    <option value="admin1">Admin 1 (Rector Operations)</option>
+                    <option value="admin2">Admin 2 (Campus Principal)</option>
+                    <option value="admin3">Admin 3 (Academics & Exam Desk)</option>
+                    <option value="accountant">Accountant</option>
+                  </select>
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>
+                    {editingAccountId ? 'Password (Cannot edit here)' : 'Login PIN / Password'}
+                  </label>
+                  <input
+                    type="password"
+                    placeholder={editingAccountId ? "Password edit disabled" : "e.g. 111111"}
+                    value={accountPassword}
+                    onChange={(e) => setAccountPassword(e.target.value)}
+                    style={{ ...styles.formInput, opacity: editingAccountId ? 0.6 : 1, cursor: editingAccountId ? 'not-allowed' : 'text' }}
+                    disabled={!!editingAccountId}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button type="submit" style={styles.resetSubmitBtn} className="press-interactive">
+                    {editingAccountId ? 'Update Details' : 'Provision Account'}
+                  </button>
+                  {editingAccountId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingAccountId(null);
+                        setAccountUsername('');
+                        setAccountPassword('');
+                        setAccountName('');
+                        setAccountEmail('');
+                        setAccountMobile('');
+                        setAccountDepartment('');
+                      }}
+                      style={styles.cancelBtn}
+                      className="press-interactive"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
+            </GlassCard>
+          </section>
+        )}
+
+        {/* Terminate Session */}
+        <button onClick={logout} style={styles.logoutBtn}>
+          Terminate Authenticator Session
+        </button>
+      </main>
+    </div>
+  );
+};
+
+const styles = {
+  container: {
+    width: '100%',
+    height: '100%',
+    display: 'flex' as const,
+    flexDirection: 'column' as const,
+    backgroundColor: 'transparent',
+    color: 'var(--dark-charcoal)',
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflowY: 'auto' as const,
+    paddingBottom: '40px'
+  },
+  bgOverlay: {
+    position: 'absolute' as const,
+    inset: 0,
+    background: 'var(--bg-gradient-overlay)',
+    zIndex: 0,
+    pointerEvents: 'none' as const
+  },
+  header: {
+    padding: '30px 24px',
+    borderBottom: '1.5px solid var(--card-border)',
+    background: 'var(--glass-bg)',
+    position: 'relative' as const,
+    zIndex: 1
+  },
+  headerContent: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    maxWidth: '1200px',
+    margin: '0 auto',
+    width: '100%'
+  },
+  branding: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px'
+  },
+  avatar: {
+    width: '50px',
+    height: '50px',
+    borderRadius: '16px',
+    background: 'var(--gold-gradient)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: '850',
+    fontSize: '1.2rem',
+    color: 'var(--white)',
+    boxShadow: '0 4px 14px rgba(212, 175, 55, 0.3)'
+  },
+  meta: {
+    fontSize: '0.8rem',
+    fontWeight: '800',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.1em',
+    color: 'var(--royal-gold)'
+  },
+  title: {
+    fontSize: '1.6rem',
+    fontWeight: '850',
+    letterSpacing: '-0.02em',
+    marginTop: '2px',
+    color: 'var(--dark-charcoal)'
+  },
+  subtitle: {
+    fontSize: '0.9rem',
+    color: 'var(--muted-gray)',
+    marginTop: '2px'
+  },
+  main: {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '24px',
+    position: 'relative' as const,
+    zIndex: 1
+  },
+  tabsContainer: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '24px',
+    flexWrap: 'wrap' as const
+  },
+  tabButton: {
+    padding: '10px 18px',
+    borderRadius: '12px',
+    border: '1px solid',
+    fontSize: '0.85rem',
+    fontWeight: '700',
+    cursor: 'pointer',
+    transition: 'all 0.25s ease'
+  },
+  metricsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: '16px'
+  },
+  metricCard: {
+    padding: '24px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '8px'
+  },
+  metricLabel: {
+    fontSize: '0.85rem',
+    color: 'var(--muted-gray)',
+    fontWeight: '700'
+  },
+  metricValue: {
+    fontSize: '2rem',
+    fontWeight: '850',
+    letterSpacing: '-0.02em'
+  },
+  metricSub: {
+    fontSize: '0.75rem',
+    color: 'var(--muted-gray)'
+  },
+  profileStatItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '0.9rem',
+    padding: '8px 0',
+    borderBottom: '1.5px solid var(--card-border)'
+  },
+  otpHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '20px',
+    flexWrap: 'wrap' as const,
+    gap: '12px'
+  },
+  timerBlock: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'flex-end',
+    background: 'var(--bg-surface)',
+    padding: '8px 16px',
+    borderRadius: '12px',
+    border: '1.5px solid var(--card-border)'
+  },
+  timerVal: {
+    fontSize: '1.25rem',
+    fontFamily: 'monospace',
+    color: 'var(--royal-gold)',
+    marginTop: '2px'
+  },
+  keysGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gap: '16px'
+  },
+  keyCard: {
+    padding: '20px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '12px',
+    minHeight: '190px'
+  },
+  keyRoleLabel: {
+    fontSize: '0.75rem',
+    color: 'var(--royal-gold)',
+    fontWeight: '800',
+    letterSpacing: '0.05em'
+  },
+  keyDisplayBlock: {
+    background: 'var(--bg-surface-strong)',
+    padding: '12px',
+    borderRadius: '12px',
+    textAlign: 'center' as const,
+    border: '1.5px solid var(--card-border)'
+  },
+  keyValue: {
+    fontSize: '1.8rem',
+    fontFamily: 'monospace',
+    letterSpacing: '0.1em',
+    color: 'var(--dark-charcoal)'
+  },
+  keyDesc: {
+    fontSize: '0.8rem',
+    color: 'var(--muted-gray)',
+    lineHeight: '1.4'
+  },
+  backupCodesList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '10px',
+    maxHeight: '520px',
+    overflowY: 'auto' as const,
+    paddingRight: '8px'
+  },
+  backupCodeCard: {
+    padding: '14px 18px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  backupCodeValBlock: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'flex-end'
+  },
+  backupCodeVal: {
+    fontSize: '1.2rem',
+    fontFamily: 'monospace',
+    letterSpacing: '0.05em',
+    color: 'var(--dark-charcoal)',
+    marginTop: '2px'
+  },
+  resetForm: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '12px'
+  },
+  formGroup: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '4px'
+  },
+  inputLabel: {
+    fontSize: '0.8rem',
+    fontWeight: '700',
+    color: 'var(--muted-gray)'
+  },
+  formInput: {
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: '8px',
+    border: '1.5px solid var(--card-border)',
+    background: 'var(--bg-secondary)',
+    color: 'var(--dark-charcoal)',
+    fontSize: '0.85rem',
+    outline: 'none',
+    boxSizing: 'border-box' as const
+  },
+  formSelect: {
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: '8px',
+    border: '1.5px solid var(--card-border)',
+    background: 'var(--bg-secondary)',
+    color: 'var(--dark-charcoal)',
+    fontSize: '0.85rem',
+    outline: 'none',
+    boxSizing: 'border-box' as const
+  },
+  resetSubmitBtn: {
+    padding: '12px',
+    borderRadius: '10px',
+    border: 'none',
+    background: 'var(--gold-gradient)',
+    color: '#000',
+    fontWeight: '800',
+    fontSize: '0.9rem',
+    cursor: 'pointer',
+    marginTop: '8px'
+  },
+  cancelBtn: {
+    padding: '12px',
+    borderRadius: '10px',
+    border: '1.5px solid var(--card-border)',
+    background: 'var(--bg-secondary)',
+    color: 'var(--dark-charcoal)',
+    fontWeight: '700',
+    fontSize: '0.9rem',
+    cursor: 'pointer',
+    marginTop: '8px'
+  },
+  accountsGrid: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '10px'
+  },
+  accountCard: {
+    padding: '14px 18px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  editBtn: {
+    padding: '6px 12px',
+    borderRadius: '6px',
+    border: '1.5px solid var(--royal-gold)',
+    background: 'transparent',
+    color: 'var(--royal-gold)',
+    fontSize: '0.8rem',
+    fontWeight: '700',
+    cursor: 'pointer'
+  },
+  deleteBtn: {
+    padding: '6px 12px',
+    borderRadius: '6px',
+    border: '1px solid #EF4444',
+    background: 'transparent',
+    color: '#EF4444',
+    fontSize: '0.8rem',
+    fontWeight: '700',
+    cursor: 'pointer'
+  },
+  logoutBtn: {
+    width: '100%',
+    padding: '14px',
+    borderRadius: '14px',
+    border: '1.5px solid rgba(239, 68, 68, 0.4)',
+    background: 'rgba(239, 68, 68, 0.05)',
+    color: '#EF4444',
+    fontWeight: '700',
+    fontSize: '0.95rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    marginTop: '24px'
+  },
+  toast: {
+    position: 'fixed' as const,
+    bottom: '24px',
+    right: '24px',
+    backgroundColor: '#8B5CF6',
+    color: '#FFF',
+    padding: '12px 24px',
+    borderRadius: '12px',
+    fontWeight: '700',
+    boxShadow: '0 10px 25px rgba(139, 92, 246, 0.4)',
+    zIndex: 9999
+  }
+};

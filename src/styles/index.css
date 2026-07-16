@@ -96,12 +96,13 @@ p {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(212, 175, 55, 0.25);
   border-radius: var(--radius-full);
+  transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(212, 175, 55, 0.55);
 }
 
 /* Utilities */
@@ -165,4 +166,61 @@ input[type="radio"] {
 /* Bottom navigation bar — full top-left/top-right pill rounding */
 .floating-bottom-nav {
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+
+/* ─── GLOBAL INPUT FOCUS RING ─────────────────────────────────────────────── */
+/* Gold glow ring on every focused interactive field */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--royal-gold) !important;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.18), 0 1px 3px rgba(0,0,0,0.06) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ─── GOLD TEXT SELECTION ─────────────────────────────────────────────────── */
+::selection {
+  background-color: rgba(212, 175, 55, 0.22);
+  color: var(--dark-charcoal);
+}
+
+::-moz-selection {
+  background-color: rgba(212, 175, 55, 0.22);
+  color: var(--dark-charcoal);
+}
+
+/* ─── CARD HOVER LIFT ─────────────────────────────────────────────────────── */
+/* Apply to any container that should lift on hover */
+.card-hover-lift {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+.card-hover-lift:active {
+  transform: translateY(-1px) scale(0.985);
+  transition-duration: 0.1s;
+}
+
+/* ─── SMOOTH INPUT TRANSITIONS ───────────────────────────────────────────── */
+input, textarea, select {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+/* ─── LINK / BUTTON RESET SMOOTHNESS ─────────────────────────────────────── */
+button {
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
 }

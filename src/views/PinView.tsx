@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
 import { InspireLogo } from '../components/common/InspireLogo';
+import passwordBg from '../assets/passwordbackground.jpg';
 
 interface PinViewProps {
   onComplete: () => void;
+  hideRoleSelector?: boolean;
 }
 
 // Identifier map: each segment resolves to a different username tried against the backend.
@@ -18,10 +20,12 @@ const SEGMENT_TO_IDENTIFIER: Record<string, string> = {
   student: 'student',
   admin1: 'admin1',
   admin2: 'admin2',
+  admin3: 'admin3',
   accountant: 'accountant',
+  authenticator: 'authenticator',
 };
 
-export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
+export const PinView: React.FC<PinViewProps> = ({ onComplete, hideRoleSelector }) => {
   const [pin, setPin] = useState<string>('');
   const [isChecking, setIsChecking] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -29,6 +33,13 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
   const [lastKeypadIndex, setLastKeypadIndex] = useState<number | null>(null);
   const [bioScanning, setBioScanning] = useState(false);
   const { isMobile, portalRole, setPortalRole, login } = useNavigation();
+
+  const [userId, setUserId] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [step, setStep] = useState<'credentials' | 'pin'>('credentials');
+
+
 
   // Clear toast after 3 seconds
   useEffect(() => {
@@ -65,7 +76,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
       return;
     }
 
-    let identifier = SEGMENT_TO_IDENTIFIER[portalRole] || 'student';
+    let identifier = userId.trim() || SEGMENT_TO_IDENTIFIER[portalRole] || 'student';
 
     setIsChecking(true);
 
@@ -134,13 +145,254 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
     return boxes;
   };
 
+  // Shared credentials layout page
+  const renderCredentialsContent = () => {
+    return (
+      <>
+        {/* Main Title Section */}
+        <div style={styles.titleSection}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+            <InspireLogo size="lg" />
+          </div>
+          <p style={styles.subtitle}>
+            {portalRole === 'student'
+              ? '🎓 Student Portal Login'
+              : portalRole === 'admin1'
+              ? '🏛 Admin 1 (Rector) Login'
+              : portalRole === 'admin2'
+              ? '🏫 Admin 2 (Campus Principal) Login'
+              : portalRole === 'admin3'
+              ? '📚 Admin 3 (Academics) Login'
+              : portalRole === 'accountant'
+              ? '💼 Accountant Login'
+              : '🔐 Portal Login'}
+          </p>
+
+          {/* Role selector Segment */}
+          {!hideRoleSelector && (
+            <div style={{
+              display: 'flex',
+              backgroundColor: 'rgba(0, 0, 0, 0.04)',
+              borderRadius: '14px',
+              padding: '2px',
+              marginTop: '18px',
+              width: '420px',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              border: '1px solid rgba(0, 0, 0, 0.03)'
+            }}>
+              <button
+                onClick={() => { setPortalRole('student'); setPin(''); }}
+                style={{
+                  flex: 1,
+                  padding: '10px 0',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontFamily: 'var(--font-family)',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  backgroundColor: portalRole === 'student' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                  color: portalRole === 'student' ? '#0F172A' : 'var(--muted-gray)',
+                  boxShadow: portalRole === 'student' ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Student
+              </button>
+              <button
+                onClick={() => { setPortalRole('admin1'); setPin(''); }}
+                style={{
+                  flex: 1,
+                  padding: '10px 0',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontFamily: 'var(--font-family)',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  backgroundColor: portalRole === 'admin1' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                  color: portalRole === 'admin1' ? '#0F172A' : 'var(--muted-gray)',
+                  boxShadow: portalRole === 'admin1' ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Admin 1
+              </button>
+              <button
+                onClick={() => { setPortalRole('admin2'); setPin(''); }}
+                style={{
+                  flex: 1,
+                  padding: '10px 0',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontFamily: 'var(--font-family)',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  backgroundColor: portalRole === 'admin2' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                  color: portalRole === 'admin2' ? '#0F172A' : 'var(--muted-gray)',
+                  boxShadow: portalRole === 'admin2' ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Admin 2
+              </button>
+              <button
+                onClick={() => { setPortalRole('accountant'); setPin(''); }}
+                style={{
+                  flex: 1,
+                  padding: '10px 0',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontFamily: 'var(--font-family)',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  backgroundColor: portalRole === 'accountant' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                  color: portalRole === 'accountant' ? '#0F172A' : 'var(--muted-gray)',
+                  boxShadow: portalRole === 'accountant' ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Accountant
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Credentials Form Inputs */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', margin: '24px 0', width: '100%', maxWidth: '340px', marginLeft: 'auto', marginRight: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+            <label style={{ fontSize: '10.5px', color: 'var(--muted-gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>User ID / ID Card No</label>
+            <input
+              type="text"
+              placeholder="e.g. ADM24001"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: '12px',
+                border: '1.5px solid rgba(0, 0, 0, 0.08)',
+                backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                fontFamily: 'var(--font-family)',
+                fontSize: '13px',
+                color: 'var(--dark-charcoal)',
+                outline: 'none',
+                boxShadow: 'var(--shadow-sm)',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+            <label style={{ fontSize: '10.5px', color: 'var(--muted-gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && setStep('pin')}
+                style={{
+                  width: '100%',
+                  padding: '12px 44px 12px 14px',
+                  borderRadius: '12px',
+                  border: '1.5px solid rgba(0, 0, 0, 0.08)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                  fontFamily: 'var(--font-family)',
+                  fontSize: '13px',
+                  color: 'var(--dark-charcoal)',
+                  outline: 'none',
+                  boxShadow: 'var(--shadow-sm)',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  padding: '4px',
+                  cursor: 'pointer',
+                  color: 'var(--muted-gray)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  transition: 'color 0.2s ease',
+                }}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setStep('pin')}
+            style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: '14px',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: '13px',
+              background: 'var(--gold-gradient)',
+              color: '#fff',
+              boxShadow: '0 4px 14px rgba(212, 175, 55, 0.3)',
+              marginTop: '8px',
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+            className="press-interactive"
+          >
+            Continue to PIN
+            <span style={{ fontSize: '11px', opacity: 0.75, fontWeight: 600 }}>↵ Enter</span>
+          </button>
+        </div>
+      </>
+    );
+  };
+
   // Shared content widget
   const renderPinContent = () => {
     return (
       <>
         {/* Top Action Bar */}
         <header style={styles.header}>
-          <div style={{ flex: 1 }} />
+          <button
+            onClick={() => setStep('credentials')}
+            className="press-interactive"
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--royal-gold)',
+              fontWeight: 700,
+              fontSize: '12px',
+              cursor: 'pointer',
+              padding: '4px 8px'
+            }}
+          >
+            ← Edit ID
+          </button>
           <button
             onClick={handleResetPin}
             className="press-interactive"
@@ -157,103 +409,112 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
           </div>
           <p style={styles.subtitle}>
             {portalRole === 'student'
-              ? 'Student Portal'
+              ? '🎓 Student Portal'
               : portalRole === 'admin1'
-              ? 'Admin 1 (Campus) Portal'
+              ? '🏛 Admin 1 (Rector) Portal'
               : portalRole === 'admin2'
-              ? 'Admin 2 (Finance) Portal'
-              : 'Accountant Portal'}
+              ? '🏫 Admin 2 (Campus Principal) Portal'
+              : portalRole === 'admin3'
+              ? '📚 Admin 3 (Academic & Publishing) Portal'
+              : portalRole === 'accountant'
+              ? '💼 Accountant Portal'
+              : '🔐 Authenticator Portal'}
+          </p>
+          <p style={{ fontSize: '11px', color: 'var(--muted-gray)', fontWeight: 500, marginTop: '2px', opacity: 0.8 }}>
+            Enter your 6-digit access PIN
           </p>
 
           {/* Role selector Segment */}
-          <div style={{
-            display: 'flex',
-            backgroundColor: 'rgba(0, 0, 0, 0.04)',
-            borderRadius: '14px',
-            padding: '2px',
-            marginTop: '18px',
-            width: '420px',
-            marginLeft: 'auto',
-            marginRight: 'auto',
-            border: '1px solid rgba(0, 0, 0, 0.03)'
-          }}>
-            <button
-              onClick={() => { setPortalRole('student'); setPin(''); }}
-              style={{
-                flex: 1,
-                padding: '10px 0',
-                borderRadius: '12px',
-                border: 'none',
-                fontFamily: 'var(--font-family)',
-                fontSize: '10px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                backgroundColor: portalRole === 'student' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                color: portalRole === 'student' ? '#0F172A' : 'var(--muted-gray)',
-                boxShadow: portalRole === 'student' ? 'var(--shadow-sm)' : 'none',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              Student
-            </button>
-            <button
-              onClick={() => { setPortalRole('admin1'); setPin(''); }}
-              style={{
-                flex: 1,
-                padding: '10px 0',
-                borderRadius: '12px',
-                border: 'none',
-                fontFamily: 'var(--font-family)',
-                fontSize: '10px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                backgroundColor: portalRole === 'admin1' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                color: portalRole === 'admin1' ? '#0F172A' : 'var(--muted-gray)',
-                boxShadow: portalRole === 'admin1' ? 'var(--shadow-sm)' : 'none',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              Admin 1
-            </button>
-            <button
-              onClick={() => { setPortalRole('admin2'); setPin(''); }}
-              style={{
-                flex: 1,
-                padding: '10px 0',
-                borderRadius: '12px',
-                border: 'none',
-                fontFamily: 'var(--font-family)',
-                fontSize: '10px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                backgroundColor: portalRole === 'admin2' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                color: portalRole === 'admin2' ? '#0F172A' : 'var(--muted-gray)',
-                boxShadow: portalRole === 'admin2' ? 'var(--shadow-sm)' : 'none',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              Admin 2
-            </button>
-            <button
-              onClick={() => { setPortalRole('accountant'); setPin(''); }}
-              style={{
-                flex: 1,
-                padding: '10px 0',
-                borderRadius: '12px',
-                border: 'none',
-                fontFamily: 'var(--font-family)',
-                fontSize: '10px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                backgroundColor: portalRole === 'accountant' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                color: portalRole === 'accountant' ? '#0F172A' : 'var(--muted-gray)',
-                boxShadow: portalRole === 'accountant' ? 'var(--shadow-sm)' : 'none',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              Accountant
-            </button>
-          </div>
+          {!hideRoleSelector && (
+            <div style={{
+              display: 'flex',
+              backgroundColor: 'rgba(0, 0, 0, 0.04)',
+              borderRadius: '14px',
+              padding: '2px',
+              marginTop: '18px',
+              width: '420px',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+              border: '1px solid rgba(0, 0, 0, 0.03)'
+            }}>
+              <button
+                onClick={() => { setPortalRole('student'); setPin(''); }}
+                style={{
+                  flex: 1,
+                  padding: '10px 0',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontFamily: 'var(--font-family)',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  backgroundColor: portalRole === 'student' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                  color: portalRole === 'student' ? '#0F172A' : 'var(--muted-gray)',
+                  boxShadow: portalRole === 'student' ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Student
+              </button>
+              <button
+                onClick={() => { setPortalRole('admin1'); setPin(''); }}
+                style={{
+                  flex: 1,
+                  padding: '10px 0',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontFamily: 'var(--font-family)',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  backgroundColor: portalRole === 'admin1' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                  color: portalRole === 'admin1' ? '#0F172A' : 'var(--muted-gray)',
+                  boxShadow: portalRole === 'admin1' ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Admin 1
+              </button>
+              <button
+                onClick={() => { setPortalRole('admin2'); setPin(''); }}
+                style={{
+                  flex: 1,
+                  padding: '10px 0',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontFamily: 'var(--font-family)',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  backgroundColor: portalRole === 'admin2' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                  color: portalRole === 'admin2' ? '#0F172A' : 'var(--muted-gray)',
+                  boxShadow: portalRole === 'admin2' ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Admin 2
+              </button>
+              <button
+                onClick={() => { setPortalRole('accountant'); setPin(''); }}
+                style={{
+                  flex: 1,
+                  padding: '10px 0',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontFamily: 'var(--font-family)',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  backgroundColor: portalRole === 'accountant' ? 'rgba(255,255,255,0.96)' : 'transparent',
+                  color: portalRole === 'accountant' ? '#0F172A' : 'var(--muted-gray)',
+                  boxShadow: portalRole === 'accountant' ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Accountant
+              </button>
+            </div>
+          )}
         </div>
 
         {/* PIN Box Container */}
@@ -406,7 +667,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
   if (isMobile) {
     return (
       <div className="view-container anim-slide-in-right" style={styles.container}>
-        {renderPinContent()}
+        {step === 'credentials' ? renderCredentialsContent() : renderPinContent()}
 
         {/* Checking/Loading Modal Overlay */}
         {isChecking && (
@@ -436,7 +697,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
       <div style={styles.ambientGlow} />
 
       <GlassCard hoverable={false} style={styles.desktopCard} className="anim-scale-in">
-        {renderPinContent()}
+        {step === 'credentials' ? renderCredentialsContent() : renderPinContent()}
       </GlassCard>
 
       {/* Checking/Loading Modal Overlay */}
@@ -468,7 +729,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
-    backgroundColor: 'var(--bg-primary)',
+    backgroundImage: `url(${passwordBg})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
     padding: 'calc(24px + var(--safe-area-top)) 24px calc(24px + var(--safe-area-bottom)) 24px',
     position: 'absolute',
     top: 0,
@@ -483,8 +747,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'var(--bg-primary)',
-    backgroundImage: 'var(--bg-gradient-overlay)',
+    backgroundImage: `url(${passwordBg})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
     position: 'absolute',
     top: 0,
     left: 0,
@@ -571,11 +837,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     WebkitBackdropFilter: 'blur(10px)',
   },
   pinDot: {
-    width: '10px',
-    height: '10px',
+    width: '11px',
+    height: '11px',
     borderRadius: '50%',
-    background: '#000000',
-    boxShadow: 'none',
+    background: 'var(--gold-gradient)',
+    boxShadow: '0 0 6px rgba(212,175,55,0.4)',
   },
   bioContainer: {
     display: 'flex',

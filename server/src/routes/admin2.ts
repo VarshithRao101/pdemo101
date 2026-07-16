@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { authenticateJWT, AuthRequest } from '../middleware/authenticate';
 import { authorizeRoles } from '../middleware/authorize';
+import { validateSecurityKey } from '../middleware/validateKey';
 import { Student } from '../models/student';
 import { Teacher } from '../models/teacher';
 import { AcademicFeeSettings } from '../models/feeSettings';
@@ -13,6 +14,7 @@ const router = Router();
 
 // Protect all routes in this file with JWT verification and admin2 role check
 const admin2Guard = [authenticateJWT, authorizeRoles('admin2')];
+const admin2KeyGuard = [authenticateJWT, authorizeRoles('admin2'), validateSecurityKey('admin2')];
 
 const isNonEmptyString = (value: unknown, maxLength: number) =>
   typeof value === 'string' && value.trim().length > 0 && value.trim().length <= maxLength;
@@ -127,7 +129,7 @@ router.patch('/fee-settings', ...admin2Guard, async (req: Request, res: Response
 // ─── 2. STUDENT FEE OVERRIDES & BREAKDOWNS ───
 
 // PATCH /api/admin2/students/:id/fee-override
-router.patch('/students/:id/fee-override', ...admin2Guard, async (req: Request, res: Response) => {
+router.patch('/students/:id/fee-override', ...admin2KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { tuitionWaiver, hostelWaiver, transportWaiver, miscWaiver } = req.body;
@@ -243,7 +245,7 @@ router.get('/expenditure', ...admin2Guard, async (_req: Request, res: Response) 
 });
 
 // POST /api/admin2/expenditure
-router.post('/expenditure', ...admin2Guard, async (req: Request, res: Response) => {
+router.post('/expenditure', ...admin2KeyGuard, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
     const { category, amount, description, date } = req.body;
@@ -272,7 +274,7 @@ router.post('/expenditure', ...admin2Guard, async (req: Request, res: Response) 
 });
 
 // PATCH /api/admin2/expenditure/:id
-router.patch('/expenditure/:id', ...admin2Guard, async (req: Request, res: Response) => {
+router.patch('/expenditure/:id', ...admin2KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };
@@ -300,7 +302,7 @@ router.patch('/expenditure/:id', ...admin2Guard, async (req: Request, res: Respo
 });
 
 // DELETE /api/admin2/expenditure/:id
-router.delete('/expenditure/:id', ...admin2Guard, async (req: Request, res: Response) => {
+router.delete('/expenditure/:id', ...admin2KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const exp = await Expenditure.findByIdAndDelete(id);
@@ -326,7 +328,7 @@ router.get('/worker-payments', ...admin2Guard, async (_req: Request, res: Respon
 });
 
 // POST /api/admin2/worker-payments
-router.post('/worker-payments', ...admin2Guard, async (req: Request, res: Response) => {
+router.post('/worker-payments', ...admin2KeyGuard, async (req: Request, res: Response) => {
   try {
     const { workerName, role, amount, monthPeriod, paid } = req.body;
     if (!isNonEmptyString(workerName, 120) || !isNonEmptyString(role, 120) || !isNonEmptyString(monthPeriod, 40)) {
@@ -350,7 +352,7 @@ router.post('/worker-payments', ...admin2Guard, async (req: Request, res: Respon
 });
 
 // PATCH /api/admin2/worker-payments/:id
-router.patch('/worker-payments/:id', ...admin2Guard, async (req: Request, res: Response) => {
+router.patch('/worker-payments/:id', ...admin2KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };
@@ -381,7 +383,7 @@ router.patch('/worker-payments/:id', ...admin2Guard, async (req: Request, res: R
 });
 
 // DELETE /api/admin2/worker-payments/:id
-router.delete('/worker-payments/:id', ...admin2Guard, async (req: Request, res: Response) => {
+router.delete('/worker-payments/:id', ...admin2KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const payment = await WorkerPayment.findByIdAndDelete(id);
@@ -407,7 +409,7 @@ router.get('/staff-salaries', ...admin2Guard, async (_req: Request, res: Respons
 });
 
 // PATCH /api/admin2/staff-salaries/:teacherId
-router.patch('/staff-salaries/:teacherId', ...admin2Guard, async (req: Request, res: Response) => {
+router.patch('/staff-salaries/:teacherId', ...admin2KeyGuard, async (req: Request, res: Response) => {
   try {
     const { teacherId } = req.params;
     // Note: teacherId can be MongoDB ObjectId or custom id FAC-xxx

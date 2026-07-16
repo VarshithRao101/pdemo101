@@ -10,8 +10,8 @@ export const InspireLogo: React.FC<InspireLogoProps> = ({ size = 'md', style }) 
   const isSm = size === 'sm';
   const isLg = size === 'lg';
 
-  // Responsive heights
-  const height = isLg ? 110 : isSm ? 32 : 46;
+  // Responsive heights (doubled/tripled for prominence)
+  const height = isLg ? 260 : isSm ? 75 : 115;
 
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', ...style }}>

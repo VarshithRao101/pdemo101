@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticateJWT, AuthRequest } from '../middleware/authenticate';
 import { authorizeRoles } from '../middleware/authorize';
+import { validateSecurityKey } from '../middleware/validateKey';
 import { Student } from '../models/student';
 import { Teacher } from '../models/teacher';
 import { FeePayment } from '../models/payment';
@@ -12,6 +13,8 @@ import { emitToRole, emitToStudent } from '../realtime';
 
 const router = Router();
 const accountantGuard = [authenticateJWT, authorizeRoles('accountant')];
+const accountantKeyGuard = [authenticateJWT, authorizeRoles('accountant'), validateSecurityKey('accountant')];
+const attendanceGuard = [authenticateJWT, authorizeRoles('accountant', 'admin3', 'admin1')];
 
 const isNonEmptyString = (value: unknown, maxLength: number) =>
   typeof value === 'string' && value.trim().length > 0 && value.trim().length <= maxLength;
@@ -54,7 +57,7 @@ router.get('/students/:id', ...accountantGuard, async (req: Request, res: Respon
 });
 
 // PATCH /api/accountant/students/:id/bio
-router.patch('/students/:id/bio', ...accountantGuard, async (req: Request, res: Response) => {
+router.patch('/students/:id/bio', ...accountantKeyGuard, async (req: Request, res: Response) => {
   try {
     const { address, hostelStatus, transportStatus, hostelBlock, hostelRoom, residentialAddress } = req.body;
     const student = await Student.findById(req.params.id);
@@ -95,7 +98,7 @@ router.patch('/students/:id/bio', ...accountantGuard, async (req: Request, res: 
 });
 
 // POST /api/accountant/students/:id/payments
-router.post('/students/:id/payments', ...accountantGuard, async (req: Request, res: Response) => {
+router.post('/students/:id/payments', ...accountantKeyGuard, async (req: Request, res: Response) => {
   try {
     const authReq = req as AuthRequest;
     const { amount, installment, mode, category, date } = req.body;
@@ -218,7 +221,7 @@ router.get('/hostel', ...accountantGuard, async (_req: Request, res: Response) =
 });
 
 // PATCH /api/accountant/hostel/:roomId
-router.patch('/hostel/:roomId', ...accountantGuard, async (req: Request, res: Response) => {
+router.patch('/hostel/:roomId', ...accountantKeyGuard, async (req: Request, res: Response) => {
   try {
     const { studentId } = req.body;
     if (!isNonEmptyString(studentId, 80)) {
@@ -378,7 +381,7 @@ router.get('/dashboard-summary', ...accountantGuard, async (_req: Request, res: 
 });
 
 // GET /api/accountant/attendance
-router.get('/attendance', ...accountantGuard, async (req: Request, res: Response) => {
+router.get('/attendance', ...attendanceGuard, async (req: Request, res: Response) => {
   try {
     const dateParam = req.query.date as string;
     const queryDate = dateParam ? new Date(dateParam) : new Date();
@@ -427,7 +430,7 @@ router.get('/attendance', ...accountantGuard, async (req: Request, res: Response
 });
 
 // POST /api/accountant/attendance
-router.post('/attendance', ...accountantGuard, async (req: Request, res: Response) => {
+router.post('/attendance', ...attendanceGuard, async (req: Request, res: Response) => {
   try {
     const { date, records } = req.body;
     if (date !== undefined && !isNonEmptyString(date, 40)) {

@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from './authenticate';
 
-export const authorizeRoles = (...allowedRoles: ('student' | 'accountant' | 'admin1' | 'admin2')[]) => {
+export const authorizeRoles = (...allowedRoles: ('student' | 'accountant' | 'admin1' | 'admin2' | 'admin3' | 'authenticator')[]) => {
   return (req: any, res: Response, next: NextFunction) => {
     const authReq = req as AuthRequest;
     

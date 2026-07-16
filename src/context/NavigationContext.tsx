@@ -2,9 +2,9 @@ import React, { createContext, useContext, useState, useEffect, type ReactNode }
 import { apiClient } from '../services/apiClient';
 import { connectSocket, disconnectSocket } from '../services/socketClient';
 
-export type TabType = 'dashboard' | 'academics' | 'updates' | 'profile';
+export type TabType = 'dashboard' | 'academics' | 'updates' | 'profile' | 'keys' | 'backup_codes' | 'accounts';
 export type AcademicsTabType = 'attendance' | 'marks' | 'fee' | 'results' | 'achievements';
-export type PortalRoleType = 'student' | 'admin1' | 'admin2' | 'accountant';
+export type PortalRoleType = 'student' | 'admin1' | 'admin2' | 'admin3' | 'accountant' | 'authenticator';
 export type ThemeModeType = 'Light' | 'Dark' | 'System';
 
 interface NavigationContextType {
@@ -32,10 +32,11 @@ interface NavigationContextType {
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
 
-export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: PortalRoleType }> = ({ children, defaultRole }) => {
   const [activeTab, setActiveTabState] = useState<TabType>('dashboard');
   const [academicsTab, setAcademicsTab] = useState<AcademicsTabType>('attendance');
-  const [portalRole, setPortalRole] = useState<PortalRoleType>('student');
+  const [portalRole, setPortalRole] = useState<PortalRoleType>(defaultRole || 'student');
+
   const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth < 768);
   const [themeMode, setThemeModeState] = useState<ThemeModeType>(() => {
     return (localStorage.getItem('portal_theme_mode') as ThemeModeType) || 'Light';
@@ -74,8 +75,12 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
         setPortalRole('admin1');
       } else if (userData.role === 'admin2') {
         setPortalRole('admin2');
+      } else if (userData.role === 'admin3') {
+        setPortalRole('admin3');
       } else if (userData.role === 'accountant') {
         setPortalRole('accountant');
+      } else if (userData.role === 'authenticator') {
+        setPortalRole('authenticator');
       } else {
         setPortalRole('student');
       }
@@ -119,8 +124,12 @@ export const NavigationProvider: React.FC<{ children: ReactNode }> = ({ children
         setPortalRole('admin1');
       } else if (userData.role === 'admin2') {
         setPortalRole('admin2');
+      } else if (userData.role === 'admin3') {
+        setPortalRole('admin3');
       } else if (userData.role === 'accountant') {
         setPortalRole('accountant');
+      } else if (userData.role === 'authenticator') {
+        setPortalRole('authenticator');
       } else {
         setPortalRole('student');
       }

@@ -33,6 +33,19 @@ async function runTests() {
   const authA2 = { 'Authorization': `Bearer ${tokenA2}` };
   console.log('✅ Logged in as Admin2.\n');
 
+  // Fetch security keys
+  const keysRes = await apiFetch('/authenticator/keys', 'GET', null, authA2);
+  if (keysRes.status !== 200) {
+    console.error('❌ Failed to fetch security keys:', keysRes.data);
+    process.exit(1);
+  }
+  const keys = keysRes.data.data;
+  const admin2Obj = keys.find(k => k.role === 'admin2');
+  const accountantObj = keys.find(k => k.role === 'accountant');
+  const admin2KeyHeader = { 'x-security-key': admin2Obj ? admin2Obj.key : '' };
+  const accountantKeyHeader = { 'x-security-key': accountantObj ? accountantObj.key : '' };
+  console.log('✅ Active Security Keys resolved from Authenticator:', { admin2: admin2KeyHeader, accountant: accountantKeyHeader }, '\n');
+
   console.log('[LOGIN] Logging in as accountant...');
   const loginAc = await apiFetch('/auth/login', 'POST', { identifier: 'accountant', password: '111111' });
   if (loginAc.status !== 200 || !loginAc.data.token) {
@@ -113,7 +126,7 @@ async function runTests() {
   // Apply a new override: add ₹5,000 waiver
   const newWaiver = initialWaiver + 5000;
   console.log(`Applying new tuition waiver of ₹${newWaiver}...`);
-  const overrideRes = await apiFetch(`/admin2/students/${studentId}/fee-override`, 'PATCH', { tuitionWaiver: newWaiver }, authA2);
+  const overrideRes = await apiFetch(`/admin2/students/${studentId}/fee-override`, 'PATCH', { tuitionWaiver: newWaiver }, { ...authA2, ...admin2KeyHeader });
   if (overrideRes.status !== 200) {
     console.error('❌ Failed to apply fee override:', overrideRes.data);
     process.exit(1);
@@ -166,7 +179,7 @@ async function runTests() {
   // 1. Create expenditure
   const newExp = { category: 'Infrastructure', amount: 45000, description: 'Lab AC unit replacement', date: '2026-07-07' };
   console.log('Creating new expenditure item...');
-  const createExpRes = await apiFetch('/admin2/expenditure', 'POST', newExp, authA2);
+  const createExpRes = await apiFetch('/admin2/expenditure', 'POST', newExp, { ...authA2, ...admin2KeyHeader });
   if (createExpRes.status !== 201 || !createExpRes.data.data._id) {
     console.error('❌ Failed to create expenditure:', createExpRes.data);
     process.exit(1);
@@ -186,7 +199,7 @@ async function runTests() {
 
   // 3. Edit expenditure
   console.log('Updating expenditure description...');
-  const editExpRes = await apiFetch(`/admin2/expenditure/${expId}`, 'PATCH', { description: 'Lab AC unit replacement (Server Room)' }, authA2);
+  const editExpRes = await apiFetch(`/admin2/expenditure/${expId}`, 'PATCH', { description: 'Lab AC unit replacement (Server Room)' }, { ...authA2, ...admin2KeyHeader });
   if (editExpRes.status !== 200 || editExpRes.data.data.description !== 'Lab AC unit replacement (Server Room)') {
     console.error('❌ Failed to update expenditure:', editExpRes.data);
     process.exit(1);
@@ -195,7 +208,7 @@ async function runTests() {
 
   // 4. Delete expenditure
   console.log('Deleting expenditure...');
-  const deleteExpRes = await apiFetch(`/admin2/expenditure/${expId}`, 'DELETE', null, authA2);
+  const deleteExpRes = await apiFetch(`/admin2/expenditure/${expId}`, 'DELETE', null, { ...authA2, ...admin2KeyHeader });
   if (deleteExpRes.status !== 200) {
     console.error('❌ Failed to delete expenditure:', deleteExpRes.data);
     process.exit(1);
@@ -219,7 +232,7 @@ async function runTests() {
   // 1. Create worker payment
   const newWorker = { workerName: 'Ramesh Singh', role: 'Security Guard', amount: 15000, monthPeriod: 'June 2026', paid: false };
   console.log('Creating new worker payment...');
-  const createWorkerRes = await apiFetch('/admin2/worker-payments', 'POST', newWorker, authA2);
+  const createWorkerRes = await apiFetch('/admin2/worker-payments', 'POST', newWorker, { ...authA2, ...admin2KeyHeader });
   if (createWorkerRes.status !== 201 || !createWorkerRes.data.data._id) {
     console.error('❌ Failed to create worker payment:', createWorkerRes.data);
     process.exit(1);
@@ -229,7 +242,7 @@ async function runTests() {
 
   // 2. Edit worker payment (mark paid)
   console.log('Toggling worker payment paid status to true...');
-  const editWorkerRes = await apiFetch(`/admin2/worker-payments/${workerPaymentId}`, 'PATCH', { paid: true }, authA2);
+  const editWorkerRes = await apiFetch(`/admin2/worker-payments/${workerPaymentId}`, 'PATCH', { paid: true }, { ...authA2, ...admin2KeyHeader });
   if (editWorkerRes.status !== 200 || editWorkerRes.data.data.paid !== true) {
     console.error('❌ Failed to update worker payment:', editWorkerRes.data);
     process.exit(1);
@@ -238,7 +251,7 @@ async function runTests() {
 
   // 3. Delete worker payment
   console.log('Deleting worker payment...');
-  const deleteWorkerRes = await apiFetch(`/admin2/worker-payments/${workerPaymentId}`, 'DELETE', null, authA2);
+  const deleteWorkerRes = await apiFetch(`/admin2/worker-payments/${workerPaymentId}`, 'DELETE', null, { ...authA2, ...admin2KeyHeader });
   if (deleteWorkerRes.status !== 200) {
     console.error('❌ Failed to delete worker payment:', deleteWorkerRes.data);
     process.exit(1);
@@ -271,7 +284,7 @@ async function runTests() {
   // 2. Toggle status
   const originalStatus = firstTeacher.salaryStatus || 'pending';
   console.log(`Toggling salary status from ${originalStatus}...`);
-  const toggleRes = await apiFetch(`/admin2/staff-salaries/${firstTeacher.id}`, 'PATCH', null, authA2);
+  const toggleRes = await apiFetch(`/admin2/staff-salaries/${firstTeacher.id}`, 'PATCH', null, { ...authA2, ...admin2KeyHeader });
   if (toggleRes.status !== 200) {
     console.error('❌ Failed to toggle staff salary:', toggleRes.data);
     process.exit(1);
@@ -281,7 +294,7 @@ async function runTests() {
 
   // Revert toggle back to keep DB state clean
   console.log('Reverting toggle back to original status...');
-  await apiFetch(`/admin2/staff-salaries/${firstTeacher.id}`, 'PATCH', null, authA2);
+  await apiFetch(`/admin2/staff-salaries/${firstTeacher.id}`, 'PATCH', null, { ...authA2, ...admin2KeyHeader });
   console.log('✅ Status reverted.');
   console.log('');
 

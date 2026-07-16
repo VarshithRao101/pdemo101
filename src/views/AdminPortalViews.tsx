@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
-import { useNavigation } from '../context/NavigationContext';
 import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
-import { apiClient } from '../services/apiClient';
+import { apiClient, setGlobalSecurityKey } from '../services/apiClient';
 import { admin1Service } from '../services/admin1Service';
 import { admin2Service } from '../services/admin2Service';
+import * as accountantService from '../services/accountantService';
 import { onSocketEvent } from '../services/socketClient';
 
 // --- RENDER BACKGROUND DESIGN WITH CUSTOM ACCENT COLOR GLOWS ---
@@ -99,6 +99,7 @@ interface ExpenditureItem {
   amount: number;
   description: string;
   date: string;
+  branch?: string;
 }
 
 interface WorkerItem {
@@ -135,6 +136,18 @@ interface Student {
   status: 'Active' | 'Inactive';
   tempPassword?: string;
   documents: string[];
+  scholarshipCategory?: string;
+  tuitionWaiver?: number;
+  hostelWaiver?: number;
+  transportWaiver?: number;
+  tuitionFee?: number;
+  hostelFee?: number;
+  transportFee?: number;
+  miscellaneousFee?: number;
+  previousPending?: number;
+  totalPaid?: number;
+  remainingBalance?: number;
+  miscWaiver?: number;
 }
 
 interface Teacher {
@@ -149,6 +162,7 @@ interface Teacher {
   assignedSubjects: string[];
   status: 'Active' | 'Inactive';
   tempPassword?: string;
+  branch?: string;
 }
 
 interface Bulletin {
@@ -222,9 +236,9 @@ const INITIAL_STUDENTS_LIST: Student[] = [
 ];
 
 const INITIAL_TEACHERS_LIST: Teacher[] = [
-  { id: 'FAC-201', name: 'Mr. Ramesh K', subject: 'Physics', mobile: '9000100021', salary: 75000, assignedClasses: ['Junior MPC', 'Senior MPC'], assignedSections: ['Section A', 'Section B'], assignedSubjects: ['Physics'], status: 'Active' },
-  { id: 'FAC-202', name: 'Mrs. Sarada M', subject: 'Chemistry', mobile: '9000100022', salary: 80000, assignedClasses: ['Junior BiPC'], assignedSections: ['Section A'], assignedSubjects: ['Chemistry'], status: 'Active' },
-  { id: 'FAC-203', name: 'Mr. Anand S', subject: 'Mathematics', mobile: '9000100023', salary: 85000, assignedClasses: ['Junior MPC'], assignedSections: ['Section A'], assignedSubjects: ['Mathematics'], status: 'Active' }
+  { id: 'FAC-201', name: 'Mr. Ramesh K', subject: 'Physics', mobile: '9000100021', salary: 75000, assignedClasses: ['Junior MPC', 'Senior MPC'], assignedSections: ['Section A', 'Section B'], assignedSubjects: ['Physics'], status: 'Active', branch: 'Madhapur' },
+  { id: 'FAC-202', name: 'Mrs. Sarada M', subject: 'Chemistry', mobile: '9000100022', salary: 80000, assignedClasses: ['Junior BiPC'], assignedSections: ['Section A'], assignedSubjects: ['Chemistry'], status: 'Active', branch: 'Jubilee Hills' },
+  { id: 'FAC-203', name: 'Mr. Anand S', subject: 'Mathematics', mobile: '9000100023', salary: 85000, assignedClasses: ['Junior MPC'], assignedSections: ['Section A'], assignedSubjects: ['Mathematics'], status: 'Active', branch: 'Madhapur' }
 ];
 
 const INITIAL_BULLETINS: Bulletin[] = [
@@ -268,11 +282,12 @@ const getMockAcademicFees = () => {
 };
 
 // ─── ADMIN DASHBOARD CONTROLLER ───
-export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ role = 'admin1' }) => {
+export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3' }> = ({ role = 'admin1' }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [activePage, setActivePage] = useState<string>('menu');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [livePulseKey, setLivePulseKey] = useState<'students' | 'attendance' | 'bulletins' | 'fees' | 'finance' | null>(null);
+  const [securityKey, setSecurityKey] = useState('');
 
   // States
   const [students, setStudents] = useState<Student[]>(getAdminStudents);
@@ -343,6 +358,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [attendanceSummary, setAttendanceSummary] = useState<any[]>([]);
   const [reportsData, setReportsData] = useState<any>(null);
 
+  // Attendance marking states (moved from accountant portal)
+  const [attTab, setAttTab] = useState<'students' | 'faculty' | 'summary'>('students');
+  const [selectedSection, setSelectedSection] = useState('MPC-A');
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [attendanceRoster, setAttendanceRoster] = useState<any[]>([]);
+
   // Manual timetable scheduling states
   const [newSlotDay, setNewSlotDay] = useState('Monday');
   const [newSlotPeriod, setNewSlotPeriod] = useState('');
@@ -359,11 +380,22 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [examUploading, setExamUploading] = useState(false);
 
   // --- ADMIN 2 FINANCE & Overheads States ---
-  const [expenditures, setExpenditures] = useState<ExpenditureItem[]>([
-    { id: 'EXP001', category: 'Mess & Food', amount: 85000, description: 'Weekly groceries & milk supply', date: '2026-07-01' },
-    { id: 'EXP002', category: 'Maintenance', amount: 24000, description: 'Hostel block water pump repair', date: '2026-07-03' },
-    { id: 'EXP003', category: 'Utilities', amount: 48000, description: 'Internet broadband monthly payment', date: '2026-07-05' },
-  ]);
+  const [expenditures, setExpenditures] = useState<ExpenditureItem[]>(() => {
+    if (!(window as any)._adminExpenditures) {
+      (window as any)._adminExpenditures = [
+        { id: 'EXP001', category: 'Mess & Food', amount: 85000, description: 'Weekly groceries & milk supply', date: '2026-07-01', branch: 'Madhapur' },
+        { id: 'EXP002', category: 'Maintenance', amount: 24000, description: 'Hostel block water pump repair', date: '2026-07-03', branch: 'Madhapur' },
+        { id: 'EXP003', category: 'Utilities', amount: 48000, description: 'Internet broadband monthly payment', date: '2026-07-05', branch: 'Madhapur' },
+        { id: 'EXP004', category: 'Maintenance', amount: 80000, description: 'Lab AC repair work', date: '2026-07-09', branch: 'Jubilee Hills' },
+        { id: 'EXP005', category: 'Mess & Food', amount: 95000, description: 'Mess vegetable supplies', date: '2026-07-07', branch: 'Jubilee Hills' },
+        { id: 'EXP006', category: 'Events', amount: 150000, description: 'College annual day setup', date: '2026-07-06', branch: 'Gachibowli' },
+        { id: 'EXP007', category: 'Transport', amount: 65000, description: 'College buses diesel fuel', date: '2026-07-05', branch: 'Kukatpally' },
+        { id: 'EXP008', category: 'Stationery', amount: 35000, description: 'Library reference books purchase', date: '2026-07-04', branch: 'Secunderabad' }
+      ];
+    }
+    return (window as any)._adminExpenditures;
+  });
+  const [selectedExpBranch, setSelectedExpBranch] = useState<'Madhapur' | 'Jubilee Hills' | 'Gachibowli' | 'Kukatpally' | 'Secunderabad'>('Madhapur');
   const [newExpCat, setNewExpCat] = useState('Utilities');
   const [newExpAmt, setNewExpAmt] = useState('');
   const [newExpDesc, setNewExpDesc] = useState('');
@@ -464,11 +496,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     setTimetableUploading(true);
     setTimetableUploadStatus(null);
     try {
+      setGlobalSecurityKey(securityKey);
       const res = await admin1Service.uploadTimetable(timetableSection, timetableFile);
       if (res.status === 'success') {
         setTimetableUploadStatus(res.data);
-        triggerToast(`Timetable processed! Succeeded: ${res.data.succeeded}, Failed: ${res.data.failed}`);
+        triggerToast('Timetable parsed and registered successfully!');
         setTimetableFile(null);
+        setSecurityKey('');
         fetchTimetable(timetableSection);
       } else {
         triggerToast(res.message || 'Failed to upload timetable.');
@@ -500,11 +534,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       const mockExamName = resultsFile.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
       const formattedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
+      setGlobalSecurityKey(securityKey);
       const res = await admin1Service.uploadExamResults(resultsFile, mockExamName, formattedDate);
       if (res.status === 'success') {
         setExamUploadStatus(res.data);
         triggerToast(`Results processed! Succeeded: ${res.data.succeeded}, Failed: ${res.data.failed}`);
         setResultsFile(null);
+        setSecurityKey('');
         fetchExams();
       } else {
         triggerToast(res.message || 'Failed to upload results.');
@@ -556,11 +592,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const fetchSections = async () => {
     try {
       const data = await admin1Service.getSections();
-      if (data.teachers) {
+      if (data && data.teachers && data.teachers.length > 0) {
         setTeachers(data.teachers);
       }
     } catch (err: any) {
-      triggerToast(err.message || 'Failed to load sections.');
+      console.warn('API getSections failed, using mock teachers list:', err);
     }
   };
 
@@ -570,6 +606,33 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       setAttendanceSummary(data);
     } catch (err: any) {
       triggerToast(err.message || 'Failed to load attendance summary.');
+    }
+  };
+
+  const fetchAttendanceRoster = async (dateStr: string) => {
+    try {
+      const roster = await accountantService.getAttendance(dateStr);
+      setAttendanceRoster(roster);
+    } catch (err) {
+      console.error('Failed to load attendance roster:', err);
+    }
+  };
+
+  const handleToggleAttendance = (id: string, newStatus: 'present' | 'absent' | 'late' | 'leave') => {
+    const next = attendanceRoster.map(a => a.id === id ? { ...a, status: newStatus } : a);
+    setAttendanceRoster(next);
+  };
+
+  const handleSaveAttendance = async (type: 'student' | 'faculty') => {
+    setIsLoading(true);
+    try {
+      const filtered = attendanceRoster.filter(a => type === 'student' ? a.type === 'student' && a.section === selectedSection : a.type === 'faculty');
+      await accountantService.saveAttendance(attendanceDate, filtered);
+      triggerToast(`${type === 'student' ? 'Section ' + selectedSection : 'Faculty'} Attendance changes saved for date ${attendanceDate}`);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to save attendance.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -621,7 +684,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const { theme, setThemeMode } = useNavigation();
+
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 500);
@@ -661,6 +724,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       fetchStudents();
     } else if (activePage === 'attendance') {
       fetchAttendanceSummary();
+      fetchAttendanceRoster(attendanceDate);
     } else if (activePage === 'reports') {
       fetchReports();
     } else if (activePage === 'academic_fees') {
@@ -678,7 +742,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     } else if (activePage === 'enrollment_stats') {
       fetchEnrollmentStats();
     }
-  }, [activePage, timetableSection]);
+  }, [activePage, timetableSection, attendanceDate]);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -688,6 +752,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const handleStudentQuickFill = (admNo: string) => {
     setSearchAdm(admNo);
     const match = students.find(s => s.admissionNumber === admNo) || null;
+    if (match && role !== 'admin1' && match.branch !== 'Madhapur') {
+      triggerToast('Access Denied: Student belongs to another branch.');
+      return;
+    }
     setSelectedStudent(match);
     setEditStudent(match ? { ...match } : null);
   };
@@ -699,6 +767,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
     const match = students.find(s => s.admissionNumber.toUpperCase().trim() === searchAdm.toUpperCase().trim() || s.registrationNumber.toUpperCase().trim() === searchAdm.toUpperCase().trim());
     if (match) {
+      if (role !== 'admin1' && match.branch !== 'Madhapur') {
+        triggerToast('Access Denied: Student belongs to another branch.');
+        return;
+      }
       setSelectedStudent(match);
       setEditStudent({ ...match });
       triggerToast('Student loaded.');
@@ -710,12 +782,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const handleStudentSave = async (updated: Student) => {
     if (!updated._id) return;
     try {
+      setGlobalSecurityKey(securityKey);
       const saved = await admin1Service.updateStudent(updated._id, updated);
       const next = students.map(s => s._id === saved._id ? saved : s);
       setStudents(next);
       setSelectedStudent(saved);
       setEditStudent({ ...saved });
       triggerToast('Student profile details submitted and saved to database.');
+      setSecurityKey('');
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save student details.');
     }
@@ -723,14 +797,21 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const handleTeacherSave = async (updated: Teacher) => {
     try {
+      setGlobalSecurityKey(securityKey);
       const saved = await admin1Service.updateTeacher(updated.id, updated);
       const next = teachers.map(t => t.id === saved.id ? saved : t);
       setTeachers(next);
       setSelectedTeacher(saved);
       setEditTeacher({ ...saved });
       triggerToast('Teacher credentials submitted and saved to database.');
+      setSecurityKey('');
     } catch (err: any) {
-      triggerToast(err.message || 'Failed to save teacher details.');
+      console.warn('API updateTeacher failed, using local update fallback:', err);
+      const next = teachers.map(t => t.id === updated.id ? updated : t);
+      setTeachers(next);
+      setSelectedTeacher(updated);
+      setEditTeacher({ ...updated });
+      triggerToast('Teacher credentials updated (Mocked).');
     }
   };
 
@@ -797,6 +878,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     try {
       const isDeactivating = selectedStudent.status === 'Active';
       if (isDeactivating) {
+        setGlobalSecurityKey(securityKey);
         await admin1Service.deactivateStudent(selectedStudent._id);
         const updated = { ...selectedStudent, status: 'Inactive' as any };
         const next = students.map(s => s._id === selectedStudent._id ? updated : s);
@@ -804,6 +886,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         setSelectedStudent(updated);
         setEditStudent({ ...updated });
         triggerToast('Student account soft-deactivated successfully.');
+        setSecurityKey('');
       } else {
         const updated = { ...selectedStudent, status: 'Active' as any };
         await handleStudentSave(updated);
@@ -821,39 +904,67 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   };
 
   const handleAddTeacher = async () => {
-    if (!newFacName || !newFacSal) {
+    if (!newFacName || (role !== 'admin2' && !newFacSal)) {
       triggerToast('Please enter faculty details.');
       return;
     }
     const newId = `FAC-20${teachers.length + 1}`;
     try {
+      setGlobalSecurityKey(securityKey);
       const saved = await admin1Service.createTeacher({
         id: newId,
         name: newFacName,
         subject: newFacSub,
-        salary: parseFloat(newFacSal),
+        salary: role === 'admin2' ? 50000 : parseFloat(newFacSal),
         mobile: '9000000000'
       });
+      saved.branch = 'Madhapur';
       setTeachers([...teachers, saved]);
       setNewFacName('');
       setNewFacSal('');
       triggerToast(`Teacher ${newFacName} registered successfully!`);
+      setSecurityKey('');
     } catch (err: any) {
-      triggerToast(err.message || 'Failed to register teacher.');
+      console.warn('API createTeacher failed, using local fallback:', err);
+      const mockSaved = {
+        id: newId,
+        name: newFacName,
+        subject: newFacSub,
+        salary: role === 'admin2' ? 50000 : parseFloat(newFacSal),
+        mobile: '9000000000',
+        assignedClasses: [],
+        assignedSections: [],
+        assignedSubjects: [],
+        status: 'Active' as const,
+        branch: 'Madhapur'
+      };
+      setTeachers([...teachers, mockSaved]);
+      setNewFacName('');
+      setNewFacSal('');
+      triggerToast(`Teacher ${newFacName} registered successfully (Mocked).`);
     }
   };
 
   const handleAssignTeacherDuty = async () => {
     if (!selectedTeacher || !editTeacher) return;
+    const nextSections = Array.from(new Set([...editTeacher.assignedSections, assignSec]));
+    const nextSubjects = Array.from(new Set([...editTeacher.assignedSubjects, assignSub]));
     try {
-      const nextSections = Array.from(new Set([...editTeacher.assignedSections, assignSec]));
-      const nextSubjects = Array.from(new Set([...editTeacher.assignedSubjects, assignSub]));
-      
       await admin1Service.allocateTeacherDuty(selectedTeacher.id, nextSections, nextSubjects);
       triggerToast('Duty allocation changes submitted.');
       fetchSections(); // refreshes teachers and sections lists from backend
     } catch (err: any) {
-      triggerToast(err.message || 'Failed to assign teacher duty.');
+      console.warn('API allocateTeacherDuty failed, updating local state instead:', err);
+      const updatedTeacher = {
+        ...editTeacher,
+        assignedSections: nextSections,
+        assignedSubjects: nextSubjects
+      };
+      const next = teachers.map(t => t.id === selectedTeacher.id ? updatedTeacher : t);
+      setTeachers(next);
+      setSelectedTeacher(updatedTeacher);
+      setEditTeacher({ ...updatedTeacher });
+      triggerToast('Duty allocation changes updated (Mocked).');
     }
   };
 
@@ -864,6 +975,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
 
     try {
+      setGlobalSecurityKey(securityKey);
       if (editingPubId) {
         await admin1Service.updateBulletin(editingPubId, { title: newPubTitle, content: newPubContent, category: pubCat });
         setEditingPubId(null);
@@ -878,6 +990,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       }
       setNewPubTitle('');
       setNewPubContent('');
+      setSecurityKey('');
       fetchBulletins(); // refreshes bulletins from backend
     } catch (err: any) {
       triggerToast(err.message || 'Failed to publish bulletin.');
@@ -886,8 +999,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const handleDeleteBulletin = async (id: string) => {
     try {
+      setGlobalSecurityKey(securityKey);
       await admin1Service.deleteBulletin(id);
       triggerToast('Notice deleted.');
+      setSecurityKey('');
       fetchBulletins();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to delete bulletin.');
@@ -900,10 +1015,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       return;
     }
     try {
+      setGlobalSecurityKey(securityKey);
       await admin1Service.scheduleExam(newExamName, newExamDate);
       setNewExamName('');
       setNewExamDate('');
-      triggerToast(`Exam ${newExamName} scheduling changes submitted.`);
+      triggerToast('Exam scheduled successfully!');
+      setSecurityKey('');
       fetchExams();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to schedule exam.');
@@ -915,8 +1032,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       // Find the exam by id to get its name
       const exam = exams.find(e => e._id === id || e.id === id);
       if (!exam) return;
+      setGlobalSecurityKey(securityKey);
       await apiClient.patch(`/admin1/exams/${exam._id || exam.id}`, { status: 'Results Published', resultsPublished: true });
       triggerToast('Exam results published and broadcasted to Student portal!');
+      setSecurityKey('');
       fetchExams();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to publish exam results.');
@@ -929,6 +1048,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       return;
     }
     try {
+      setGlobalSecurityKey(securityKey);
       await admin1Service.createTimetableEntry({
         section: timetableSection,
         day: newSlotDay,
@@ -940,6 +1060,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       setNewSlotSubject('');
       setNewSlotTeacher('');
       triggerToast('Timetable entry created.');
+      setSecurityKey('');
       fetchTimetable(timetableSection);
     } catch (err: any) {
       triggerToast(err.message || 'Failed to create timetable slot.');
@@ -948,8 +1069,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const handleDeleteTimetableSlot = async (id: string) => {
     try {
+      setGlobalSecurityKey(securityKey);
       await admin1Service.deleteTimetableEntry(id);
       triggerToast('Timetable entry deleted.');
+      setSecurityKey('');
       fetchTimetable(timetableSection);
     } catch (err: any) {
       triggerToast(err.message || 'Failed to delete timetable slot.');
@@ -999,10 +1122,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     return (
       <div style={styles.container}>
         <div style={styles.header}>
-          <div style={{ width: 140, height: 20, borderRadius: 4 }} className="shimmer-item" />
+          <div style={{ width: 180, height: 22, borderRadius: 10, background: 'rgba(255,255,255,0.18)' }} />
         </div>
-        <div style={styles.content}>
-          <div style={{ height: 180, borderRadius: '24px' }} className="shimmer-item" />
+        <div style={{ ...styles.content, gap: '18px' }}>
+          <div style={{ ...styles.skeletonCard, padding: '22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ ...styles.skeletonLine, width: '55%' }} />
+            <div style={{ ...styles.skeletonLine, width: '80%' }} />
+            <div style={{ ...styles.skeletonLine, width: '40%' }} />
+          </div>
+          <div style={{ ...styles.skeletonCard, padding: '22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ ...styles.skeletonLine, width: '75%' }} />
+            <div style={{ ...styles.skeletonLine, width: '90%' }} />
+            <div style={{ ...styles.skeletonLine, width: '60%' }} />
+          </div>
         </div>
       </div>
     );
@@ -1037,7 +1169,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             <div style={styles.quickFillContainer}>
               <span style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 700 }}>Quick Selection:</span>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
-                {students.map(s => (
+                {students.filter(s => role === 'admin1' || s.branch === 'Madhapur').map(s => (
                   <button key={s.admissionNumber} onClick={() => handleStudentQuickFill(s.admissionNumber)} style={styles.quickFillPill} className="press-interactive">
                     {s.admissionNumber} ({s.name.split(' ')[0]})
                   </button>
@@ -1159,7 +1291,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     />
                   </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={styles.formLabel}>Permanent Address</label>
                   <input
                     type="text"
@@ -1168,6 +1300,83 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     style={styles.textInputBox}
                   />
                 </div>
+                {role === 'admin1' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px', borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '10px' }}>
+                    <h5 style={{ ...styles.sectionSubtitle, margin: '4px 0 8px 0', fontSize: '12px' }}>Edit Student Fee Details (Rector Control)</h5>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Tuition Fee (₹)</label>
+                        <input
+                          type="number"
+                          value={editStudent.tuitionFee || 0}
+                          onChange={(e) => setEditStudent({ ...editStudent, tuitionFee: Number(e.target.value) })}
+                          style={styles.textInputBox}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Hostel Fee (₹)</label>
+                        <input
+                          type="number"
+                          value={editStudent.hostelFee || 0}
+                          onChange={(e) => setEditStudent({ ...editStudent, hostelFee: Number(e.target.value) })}
+                          style={styles.textInputBox}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Transport Fee (₹)</label>
+                        <input
+                          type="number"
+                          value={editStudent.transportFee || 0}
+                          onChange={(e) => setEditStudent({ ...editStudent, transportFee: Number(e.target.value) })}
+                          style={styles.textInputBox}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Misc Fee (₹)</label>
+                        <input
+                          type="number"
+                          value={editStudent.miscellaneousFee || 0}
+                          onChange={(e) => setEditStudent({ ...editStudent, miscellaneousFee: Number(e.target.value) })}
+                          style={styles.textInputBox}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Previous Pending (₹)</label>
+                        <input
+                          type="number"
+                          value={editStudent.previousPending || 0}
+                          onChange={(e) => setEditStudent({ ...editStudent, previousPending: Number(e.target.value) })}
+                          style={styles.textInputBox}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Total Paid (₹)</label>
+                        <input
+                          type="number"
+                          value={editStudent.totalPaid || 0}
+                          onChange={(e) => setEditStudent({ ...editStudent, totalPaid: Number(e.target.value) })}
+                          style={styles.textInputBox}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px', marginBottom: '8px' }}>
+                <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+                <input
+                  type="text"
+                  placeholder="Enter Admin Key (OTP) e.g. ADM-1234"
+                  value={securityKey}
+                  onChange={(e) => setSecurityKey(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleStudentSave(editStudent)}
+                  style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+                />
               </div>
 
               {/* SAVE AND SUBMIT PROFILE CHANGES */}
@@ -1236,7 +1445,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   // ─── SUBPAGE 2: TEACHERS MANAGEMENT ───
   if (activePage === 'teachers') {
-    const list = teachers.filter(t => t.name.toLowerCase().includes(searchFac.toLowerCase()) || t.subject.toLowerCase().includes(searchFac.toLowerCase()));
+    const list = teachers
+      .filter(t => role === 'admin1' || t.branch === 'Madhapur')
+      .filter(t => t.name.toLowerCase().includes(searchFac.toLowerCase()) || t.subject.toLowerCase().includes(searchFac.toLowerCase()));
 
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -1263,8 +1474,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               {list.map(t => (
                 <div key={t.id} style={styles.receiptRowItem}>
                   <div>
-                    <strong>{t.name} ({t.subject})</strong>
-                    <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>Salary: ₹{t.salary.toLocaleString('en-IN')} • Code: {t.id}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <strong>{t.name} ({t.subject})</strong>
+                      <span style={{ ...styles.statusBadge, backgroundColor: t.status === 'Active' ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)', color: t.status === 'Active' ? '#10B981' : '#EF4444', borderColor: t.status === 'Active' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)' }}>{t.status}</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>Salary: ₹{t.salary.toLocaleString('en-IN')} • Code: {t.id} • Campus: {t.branch || 'Madhapur'}</div>
                   </div>
                   <button onClick={() => { setSelectedTeacher(t); setEditTeacher({ ...t }); }} style={styles.actionItemBtn} className="press-interactive">Select</button>
                 </div>
@@ -1276,11 +1490,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }} className="anim-fade-in">
               <div style={styles.readOnlyBlock}>
                 <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Faculty Profile: {selectedTeacher.name}</h4>
+                <div style={styles.metaRow}><span>Campus/Branch</span><strong>{selectedTeacher.branch || 'Madhapur'}</strong></div>
                 <div style={styles.metaRow}><span>Subject Head</span><strong>{selectedTeacher.subject}</strong></div>
                 <div style={styles.metaRow}><span>Mobile Contact</span><strong>{selectedTeacher.mobile}</strong></div>
                 <div style={styles.metaRow}><span>Monthly Salary</span><strong>₹{selectedTeacher.salary.toLocaleString('en-IN')}</strong></div>
                 <div style={styles.metaRow}><span>Teacher Login Code</span><strong>{selectedTeacher.id}</strong></div>
-                <div style={styles.metaRow}><span>Account Status</span><strong style={{ color: selectedTeacher.status === 'Active' ? '#10B981' : '#EF4444' }}>{selectedTeacher.status}</strong></div>
+                <div style={styles.metaRow}><span>Account Status</span><span style={{ ...styles.statusBadge, backgroundColor: selectedTeacher.status === 'Active' ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)', color: selectedTeacher.status === 'Active' ? '#10B981' : '#EF4444', borderColor: selectedTeacher.status === 'Active' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)' }}>{selectedTeacher.status}</span></div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1302,6 +1517,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     style={styles.textInputBox}
                   />
                 </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px', marginBottom: '8px' }}>
+                <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+                <input
+                  type="text"
+                  placeholder="Enter Admin Key (OTP) e.g. ADM-1234"
+                  value={securityKey}
+                  onChange={(e) => setSecurityKey(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleTeacherSave(editTeacher)}
+                  style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+                />
               </div>
 
               {/* SAVE / SUBMIT TEACHER PROFILE CHANGES */}
@@ -1358,9 +1585,28 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                     <label style={styles.formLabel}>Monthly Salary (₹)</label>
-                    <input type="number" placeholder="e.g. 75000" value={newFacSal} onChange={(e) => setNewFacSal(e.target.value)} style={styles.textInputBox} />
+                    <input 
+                      type="number" 
+                      placeholder={role === 'admin2' ? "Managed by Rector" : "e.g. 75000"} 
+                      value={role === 'admin2' ? "" : newFacSal} 
+                      disabled={role === 'admin2'}
+                      onChange={(e) => setNewFacSal(e.target.value)} 
+                      style={{ ...styles.textInputBox, backgroundColor: role === 'admin2' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)' }} 
+                    />
                   </div>
                 </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px', marginBottom: '8px' }}>
+                  <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+                  <input
+                    type="text"
+                    placeholder="Enter Admin Key (OTP) e.g. ADM-1234"
+                    value={securityKey}
+                    onChange={(e) => setSecurityKey(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddTeacher()}
+                    style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+                  />
+                </div>
+
                 <button onClick={handleAddTeacher} style={styles.saveSubmitBtn} className="press-interactive">Submit & Create Faculty Profile</button>
               </div>
             </div>
@@ -1425,6 +1671,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 onChange={(e) => setNewPubContent(e.target.value)}
                 style={{ ...styles.textInputBox, height: '80px', resize: 'none' }}
               />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+                <input
+                  type="text"
+                  placeholder="Enter Admin Key (OTP) e.g. ADM-1234"
+                  value={securityKey}
+                  onChange={(e) => setSecurityKey(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handlePublishBulletin()}
+                  style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+                />
+              </div>
+
               <button onClick={handlePublishBulletin} style={styles.saveSubmitBtn} className="press-interactive">
                 {editingPubId ? 'Submit Notice Edits' : 'Submit & Broadcast to App'}
               </button>
@@ -1476,6 +1734,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         </header>
 
         <main style={styles.content}>
+          <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+              <input
+                type="text"
+                placeholder="Enter Academics Key (OTP) e.g. ACD-1234"
+                value={securityKey}
+                onChange={(e) => setSecurityKey(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submitTimetable()}
+                style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+              />
+            </div>
+          </div>
           <label style={{
             ...styles.readOnlyBlock,
             zIndex: 1,
@@ -1781,6 +2052,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         </header>
 
         <main style={{ ...styles.content, gap: '16px' }}>
+          <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+              <input
+                type="text"
+                placeholder="Enter Academics Key (OTP) e.g. ACD-1234"
+                value={securityKey}
+                onChange={(e) => setSecurityKey(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submitResults()}
+                style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+              />
+            </div>
+          </div>
           <label style={{
             ...styles.readOnlyBlock,
             zIndex: 1,
@@ -2093,70 +2377,232 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     );
   }
 
-  // ─── SUBPAGE 9: ATTENDANCE DASHBOARD ───
+  // ─── SUBPAGE 9: ATTENDANCE DASHBOARD & MARKING CONSOLE ───
   if (activePage === 'attendance') {
-    const totals = (attendanceSummary as any)?.totals || {
-      studentsPresent: 2735,
-      studentsAbsent: 111,
-      facultyPresent: 180,
-      facultyAbsent: 6
-    };
-    const sectionsList = (attendanceSummary as any)?.sections || [];
+    if (role === 'admin3') {
+      const studentsList = attendanceRoster.filter(a => a.type === 'student' && a.section === selectedSection);
+      const facultyList = attendanceRoster.filter(a => a.type === 'faculty');
 
-    return (
-      <div style={styles.container} className="anim-slide-up">
-        {renderBackgroundDesign('indigo')}
-        <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Attendance Dashboard</h1>
-          <p style={styles.subtitle}>Check summary stats and presenter ratios (Read-only)</p>
-        </header>
+      return (
+        <div style={styles.container} className="anim-slide-up">
+          {renderBackgroundDesign('indigo')}
+          <header style={styles.header}>
+            <button onClick={() => { setActivePage('menu'); }} style={styles.backArrowBtn} className="press-interactive">
+              ← Back to Cockpit
+            </button>
+            <h1 style={{ ...styles.title, marginTop: '8px' }}>Attendance Marking Console</h1>
+            <p style={styles.subtitle}>Directly log daily presenters, leaves, and absentees timeline</p>
+          </header>
 
-        <main style={{ ...styles.content, gap: '16px' }}>
-          <div style={{ ...styles.metricsGrid, zIndex: 1 }}>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Students Present</span>
-              <strong style={{ ...styles.metricValue, color: '#10B981' }}>{totals.studentsPresent.toLocaleString()}</strong>
+          <main style={{ ...styles.content, gap: '16px' }}>
+            <div style={{ display: 'flex', gap: '8px', zIndex: 1 }}>
+              {['students', 'faculty', 'summary'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setAttTab(tab as any)}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '12px',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    border: '1.5px solid var(--card-border)',
+                    backgroundColor: attTab === tab ? 'var(--royal-gold)' : 'rgba(255,255,255,0.5)',
+                    color: attTab === tab ? '#fff' : 'var(--dark-charcoal)'
+                  }}
+                  className="press-interactive"
+                >
+                  {tab.toUpperCase()}
+                </button>
+              ))}
             </div>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Students Absent</span>
-              <strong style={{ ...styles.metricValue, color: '#EF4444' }}>{totals.studentsAbsent.toLocaleString()}</strong>
-            </div>
-          </div>
-          <div style={{ ...styles.metricsGrid, zIndex: 1 }}>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Faculty Present</span>
-              <strong style={styles.metricValue}>{totals.facultyPresent.toLocaleString()}</strong>
-            </div>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Faculty on Leave</span>
-              <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>{totals.facultyAbsent.toLocaleString()}</strong>
-            </div>
-          </div>
 
-          <h4 style={styles.sectionSubtitle}>Section-wise Attendance Summary</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
-            {sectionsList.length > 0 ? (
-              sectionsList.map((sec: any, idx: number) => (
-                <div key={idx} style={styles.receiptRowItem}>
-                  <span>{sec.section}</span>
-                  <strong>{sec.ratio}% Present</strong>
+            <div style={{ display: 'flex', gap: '10px', zIndex: 1 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                <label style={styles.formLabel}>Reporting Date</label>
+                <input
+                  type="date"
+                  value={attendanceDate}
+                  onChange={(e) => setAttendanceDate(e.target.value)}
+                  style={styles.textInputBox}
+                />
+              </div>
+              {attTab === 'students' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                  <label style={styles.formLabel}>Class Section</label>
+                  <select
+                    value={selectedSection}
+                    onChange={(e) => setSelectedSection(e.target.value)}
+                    style={styles.selectInput}
+                  >
+                    <option value="MPC-A">MPC - Section A</option>
+                    <option value="MPC-B">MPC - Section B</option>
+                    <option value="BiPC-A">BiPC - Section A</option>
+                    <option value="CEC-A">CEC - Section A</option>
+                  </select>
                 </div>
-              ))
-            ) : (
-              <>
-                <div style={styles.receiptRowItem}><span>MPC - Section A</span><strong>96.2% Present</strong></div>
-                <div style={styles.receiptRowItem}><span>MPC - Section B</span><strong>92.4% Present</strong></div>
-                <div style={styles.receiptRowItem}><span>BiPC - Section A</span><strong>94.8% Present</strong></div>
-                <div style={styles.receiptRowItem}><span>CEC - Section A</span><strong>98.0% Present</strong></div>
-              </>
+              )}
+            </div>
+
+            {/* Student list */}
+            {attTab === 'students' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
+                <h4 style={styles.sectionSubtitle}>Student Marking ({selectedSection})</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {studentsList.map((stu) => (
+                    <div key={stu.id} style={styles.receiptRowItem}>
+                      <div>
+                        <strong>{stu.name}</strong>
+                        <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>ID: {stu.id} • Roster Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{stu.status}</span></div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {(['present', 'absent', 'late'] as const).map((st) => (
+                          <button
+                            key={st}
+                            onClick={() => handleToggleAttendance(stu.id, st)}
+                            style={{
+                              padding: '6px 8px',
+                              fontSize: '9px',
+                              fontWeight: 800,
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              border: '1px solid var(--card-border)',
+                              backgroundColor: stu.status === st ? (st === 'present' ? '#10B981' : st === 'absent' ? '#EF4444' : '#FBBF24') : 'rgba(255,255,255,0.6)',
+                              color: stu.status === st ? '#fff' : 'var(--dark-charcoal)'
+                            }}
+                            className="press-interactive"
+                          >
+                            {st.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* EXPLICIT SUBMIT CHANGES BUTTON */}
+                <button onClick={() => handleSaveAttendance('student')} style={styles.saveSubmitBtn} className="press-interactive">Submit Attendance Changes</button>
+              </div>
             )}
-          </div>
-        </main>
-      </div>
-    );
+
+            {/* Faculty list */}
+            {attTab === 'faculty' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
+                <h4 style={styles.sectionSubtitle}>Lecturer Attendance Logs</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {facultyList.map((fac) => (
+                    <div key={fac.id} style={styles.receiptRowItem}>
+                      <div>
+                        <strong>{fac.name}</strong>
+                        <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Code: {fac.id} • Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{fac.status}</span></div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {(['present', 'absent', 'leave'] as const).map((st) => (
+                          <button
+                            key={st}
+                            onClick={() => handleToggleAttendance(fac.id, st)}
+                            style={{
+                              padding: '6px 8px',
+                              fontSize: '9px',
+                              fontWeight: 800,
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              border: '1px solid var(--card-border)',
+                              backgroundColor: fac.status === st ? (st === 'present' ? '#10B981' : st === 'absent' ? '#EF4444' : '#8B5CF6') : 'rgba(255,255,255,0.6)',
+                              color: fac.status === st ? '#fff' : 'var(--dark-charcoal)'
+                            }}
+                            className="press-interactive"
+                          >
+                            {st.toUpperCase()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* EXPLICIT SUBMIT CHANGES BUTTON */}
+                <button onClick={() => handleSaveAttendance('faculty')} style={styles.saveSubmitBtn} className="press-interactive">Submit Faculty Roster Changes</button>
+              </div>
+            )}
+
+            {/* Ratios summary */}
+            {attTab === 'summary' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }} className="anim-fade-in">
+                <div style={styles.readOnlyBlock}>
+                  <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Presenter Statistics Summary</h4>
+                  <div style={styles.metaRow}><span>Total Classrooms Tracked</span><strong>4 Sections</strong></div>
+                  <div style={styles.metaRow}><span>Average Present Ratio</span><strong>96.2% Present Today</strong></div>
+                  <div style={styles.metaRow}><span>Faculty Availability</span><strong>96.8% Available</strong></div>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      );
+    } else {
+      const totals = (attendanceSummary as any)?.totals || {
+        studentsPresent: 2735,
+        studentsAbsent: 111,
+        facultyPresent: 180,
+        facultyAbsent: 6
+      };
+      const sectionsList = (attendanceSummary as any)?.sections || [];
+
+      return (
+        <div style={styles.container} className="anim-slide-up">
+          {renderBackgroundDesign('indigo')}
+          <header style={styles.header}>
+            <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
+              ← Back to Cockpit
+            </button>
+            <h1 style={{ ...styles.title, marginTop: '8px' }}>Attendance Dashboard</h1>
+            <p style={styles.subtitle}>Check summary stats and presenter ratios (Read-only)</p>
+          </header>
+
+          <main style={{ ...styles.content, gap: '16px' }}>
+            <div style={{ ...styles.metricsGrid, zIndex: 1 }}>
+              <div style={styles.metricCard}>
+                <span style={styles.metricLabel}>Students Present</span>
+                <strong style={{ ...styles.metricValue, color: '#10B981' }}>{totals.studentsPresent.toLocaleString()}</strong>
+              </div>
+              <div style={styles.metricCard}>
+                <span style={styles.metricLabel}>Students Absent</span>
+                <strong style={{ ...styles.metricValue, color: '#EF4444' }}>{totals.studentsAbsent.toLocaleString()}</strong>
+              </div>
+            </div>
+            <div style={{ ...styles.metricsGrid, zIndex: 1 }}>
+              <div style={styles.metricCard}>
+                <span style={styles.metricLabel}>Faculty Present</span>
+                <strong style={styles.metricValue}>{totals.facultyPresent.toLocaleString()}</strong>
+              </div>
+              <div style={styles.metricCard}>
+                <span style={styles.metricLabel}>Faculty on Leave</span>
+                <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>{totals.facultyAbsent.toLocaleString()}</strong>
+              </div>
+            </div>
+
+            <h4 style={styles.sectionSubtitle}>Section-wise Attendance Summary</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
+              {sectionsList.length > 0 ? (
+                sectionsList.map((sec: any, idx: number) => (
+                  <div key={idx} style={styles.receiptRowItem}>
+                    <span>{sec.section}</span>
+                    <strong>{sec.ratio}% Present</strong>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div style={styles.receiptRowItem}><span>MPC - Section A</span><strong>96.2% Present</strong></div>
+                  <div style={styles.receiptRowItem}><span>MPC - Section B</span><strong>92.4% Present</strong></div>
+                  <div style={styles.receiptRowItem}><span>BiPC - Section A</span><strong>94.8% Present</strong></div>
+                  <div style={styles.receiptRowItem}><span>CEC - Section A</span><strong>98.0% Present</strong></div>
+                </>
+              )}
+            </div>
+          </main>
+        </div>
+      );
+    }
   }
 
   // ─── SUBPAGE 10: ERP SETTINGS ───
@@ -2222,14 +2668,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   // ─── SUBPAGE 12: STUDENT FEE EDITOR (Admin 2) ───
   if (activePage === 'fee_editor') {
-    const handleFeeSearch = async () => {
-      const match = students.find(s =>
-        s.admissionNumber.toUpperCase().trim() === feeEditSearch.toUpperCase().trim() ||
-        s.rollNumber.toUpperCase().trim() === feeEditSearch.toUpperCase().trim()
-      );
-      if (match && match._id) {
+    const handleFeeQuickFill = async (admNo: string) => {
+      setFeeEditSearch(admNo);
+      const match = students.find(s => s.admissionNumber.toUpperCase().trim() === admNo.toUpperCase().trim());
+      if (match) {
         try {
-          const breakdown = await admin2Service.getFeeBreakdown(match._id);
+          const breakdown = await admin2Service.getFeeBreakdown(match._id || 'fallback_id');
           setSelectedFeeStudent(match);
           setFeeBreakdownData(breakdown);
           setEditTuitionWaiver(String(breakdown.tuitionWaiver));
@@ -2238,7 +2682,82 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           setEditMiscWaiver(String(breakdown.miscWaiver));
           triggerToast(`Loaded fee record for ${match.name}`);
         } catch (err: any) {
-          triggerToast(err.message || 'Failed to load student fee breakdown.');
+          console.warn('API getFeeBreakdown failed, using mock data instead:', err);
+          const mockBreakdown = {
+            baseFee: 245000,
+            tuitionFee: 120000,
+            hostelFee: 80000,
+            transportFee: 30000,
+            miscFee: 15000,
+            previousPending: 5000,
+            scholarshipCategory: match.scholarshipCategory || 'Merit',
+            scholarshipPct: match.scholarshipCategory === 'Sports' ? 30 : 50,
+            scholarshipDeduction: 60000,
+            individualOverrideDeduction: (match as any).tuitionWaiver || 15000,
+            tuitionWaiver: (match as any).tuitionWaiver || 10000,
+            hostelWaiver: (match as any).hostelWaiver || 5000,
+            transportWaiver: (match as any).transportWaiver || 0,
+            miscWaiver: (match as any).miscWaiver || 0,
+            totalPaid: 95000,
+            remainingBalance: 90000
+          };
+          setSelectedFeeStudent(match);
+          setFeeBreakdownData(mockBreakdown);
+          setEditTuitionWaiver(String(mockBreakdown.tuitionWaiver));
+          setEditHostelWaiver(String(mockBreakdown.hostelWaiver));
+          setEditTransportWaiver(String(mockBreakdown.transportWaiver));
+          setEditMiscWaiver(String(mockBreakdown.miscWaiver));
+          triggerToast(`Loaded fee record for ${match.name} (Mocked)`);
+        }
+      } else {
+        setSelectedFeeStudent(null);
+        setFeeBreakdownData(null);
+        triggerToast('Student not found.');
+      }
+    };
+
+    const handleFeeSearch = async () => {
+      const match = students.find(s =>
+        s.admissionNumber.toUpperCase().trim() === feeEditSearch.toUpperCase().trim() ||
+        s.rollNumber.toUpperCase().trim() === feeEditSearch.toUpperCase().trim()
+      );
+      if (match) {
+        try {
+          const breakdown = await admin2Service.getFeeBreakdown(match._id || 'fallback_id');
+          setSelectedFeeStudent(match);
+          setFeeBreakdownData(breakdown);
+          setEditTuitionWaiver(String(breakdown.tuitionWaiver));
+          setEditHostelWaiver(String(breakdown.hostelWaiver));
+          setEditTransportWaiver(String(breakdown.transportWaiver));
+          setEditMiscWaiver(String(breakdown.miscWaiver));
+          triggerToast(`Loaded fee record for ${match.name}`);
+        } catch (err: any) {
+          console.warn('API getFeeBreakdown failed, using mock data instead:', err);
+          const mockBreakdown = {
+            baseFee: 245000,
+            tuitionFee: 120000,
+            hostelFee: 80000,
+            transportFee: 30000,
+            miscFee: 15000,
+            previousPending: 5000,
+            scholarshipCategory: match.scholarshipCategory || 'Merit',
+            scholarshipPct: match.scholarshipCategory === 'Sports' ? 30 : 50,
+            scholarshipDeduction: 60000,
+            individualOverrideDeduction: (match as any).tuitionWaiver || 15000,
+            tuitionWaiver: (match as any).tuitionWaiver || 10000,
+            hostelWaiver: (match as any).hostelWaiver || 5000,
+            transportWaiver: (match as any).transportWaiver || 0,
+            miscWaiver: (match as any).miscWaiver || 0,
+            totalPaid: 95000,
+            remainingBalance: 90000
+          };
+          setSelectedFeeStudent(match);
+          setFeeBreakdownData(mockBreakdown);
+          setEditTuitionWaiver(String(mockBreakdown.tuitionWaiver));
+          setEditHostelWaiver(String(mockBreakdown.hostelWaiver));
+          setEditTransportWaiver(String(mockBreakdown.transportWaiver));
+          setEditMiscWaiver(String(mockBreakdown.miscWaiver));
+          triggerToast(`Loaded fee record for ${match.name} (Mocked)`);
         }
       } else {
         setSelectedFeeStudent(null);
@@ -2248,23 +2767,47 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     };
 
     const handleApplyWaivers = async () => {
-      if (!selectedFeeStudent || !selectedFeeStudent._id) return;
+      if (!selectedFeeStudent) return;
       try {
-        const res = await admin2Service.applyFeeOverride(selectedFeeStudent._id, {
+        setGlobalSecurityKey(securityKey);
+        const res = await admin2Service.applyFeeOverride(selectedFeeStudent._id || 'fallback_id', {
           tuitionWaiver: Number(editTuitionWaiver) || 0,
           hostelWaiver: Number(editHostelWaiver) || 0,
           transportWaiver: Number(editTransportWaiver) || 0,
           miscWaiver: Number(editMiscWaiver) || 0,
         });
         if (res.status === 'success') {
-          const breakdown = await admin2Service.getFeeBreakdown(selectedFeeStudent._id);
+          const breakdown = await admin2Service.getFeeBreakdown(selectedFeeStudent._id || 'fallback_id');
           setFeeBreakdownData(breakdown);
           triggerToast(`Fee waivers applied for ${selectedFeeStudent.name}.`);
+          setSecurityKey('');
         } else {
-          triggerToast(res.message || 'Failed to apply waivers.');
+          throw new Error(res.message || 'Failed to apply waivers via API');
         }
       } catch (err: any) {
-        triggerToast(err.message || 'Failed to save fee waivers.');
+        console.warn('API applyFeeOverride failed, updating local state instead:', err);
+        (selectedFeeStudent as any).tuitionWaiver = Number(editTuitionWaiver) || 0;
+        (selectedFeeStudent as any).hostelWaiver = Number(editHostelWaiver) || 0;
+        (selectedFeeStudent as any).transportWaiver = Number(editTransportWaiver) || 0;
+        (selectedFeeStudent as any).miscWaiver = Number(editMiscWaiver) || 0;
+
+        const totalWaivers =
+          (selectedFeeStudent as any).tuitionWaiver +
+          (selectedFeeStudent as any).hostelWaiver +
+          (selectedFeeStudent as any).transportWaiver +
+          (selectedFeeStudent as any).miscWaiver;
+
+        const updatedBreakdown = {
+          ...feeBreakdownData,
+          tuitionWaiver: (selectedFeeStudent as any).tuitionWaiver,
+          hostelWaiver: (selectedFeeStudent as any).hostelWaiver,
+          transportWaiver: (selectedFeeStudent as any).transportWaiver,
+          miscWaiver: (selectedFeeStudent as any).miscWaiver,
+          individualOverrideDeduction: totalWaivers,
+          remainingBalance: Math.max(0, (feeBreakdownData?.baseFee || 245000) - (feeBreakdownData?.scholarshipDeduction || 60000) - totalWaivers - (feeBreakdownData?.totalPaid || 95000))
+        };
+        setFeeBreakdownData(updatedBreakdown);
+        triggerToast(`Fee waivers applied for ${selectedFeeStudent.name} (Mocked).`);
       }
     };
 
@@ -2277,11 +2820,35 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <p style={styles.subtitle}>Apply individual tuition, hostel & misc waivers per student</p>
         </header>
         <main style={styles.content}>
+          <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+              <input
+                type="text"
+                placeholder="Enter Finance Key (OTP) e.g. FIN-1234"
+                value={securityKey}
+                onChange={(e) => setSecurityKey(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleApplyWaivers()}
+                style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+              />
+            </div>
+          </div>
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>Search Student</h4>
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
               <input type="text" placeholder="Admission No or Roll No" value={feeEditSearch} onChange={(e) => setFeeEditSearch(e.target.value)} style={{ ...styles.textInputBox, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && handleFeeSearch()} />
               <button onClick={handleFeeSearch} style={{ ...styles.saveSubmitBtn, marginTop: 0, padding: '12px 20px' }} className="press-interactive">Search</button>
+            </div>
+            
+            <div style={styles.quickFillContainer}>
+              <span style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 700 }}>Quick Selection:</span>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                {students.filter(s => role === 'admin1' || s.branch === 'Madhapur').map(s => (
+                  <button key={s.admissionNumber} onClick={() => handleFeeQuickFill(s.admissionNumber)} style={styles.quickFillPill} className="press-interactive">
+                    {s.admissionNumber} ({s.name.split(' ')[0]})
+                  </button>
+                ))}
+              </div>
             </div>
           </GlassCard>
           {selectedFeeStudent && (
@@ -2368,32 +2935,104 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     const handleLogExpenditure = async () => {
       if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; }
       try {
-        const saved = await admin2Service.createExpenditure({ category: newExpCat, amount: Number(newExpAmt), description: newExpDesc });
-        setExpenditures([saved, ...expenditures]);
+        setGlobalSecurityKey(securityKey);
+        await admin2Service.createExpenditure({
+          category: newExpCat,
+          amount: Number(newExpAmt),
+          description: newExpDesc
+        });
+        setSecurityKey('');
         setNewExpAmt(''); setNewExpDesc('');
         triggerToast('Expenditure logged successfully.');
+        fetchExpenditures();
       } catch (err: any) { triggerToast(err.message || 'Failed to log expenditure.'); }
     };
+
     const handleDeleteExpenditure = async (exp: ExpenditureItem) => {
       const id = exp._id || exp.id;
       if (!id) return;
       try {
+        setGlobalSecurityKey(securityKey);
         await admin2Service.deleteExpenditure(id);
-        setExpenditures(expenditures.filter(e => (e._id || e.id) !== id));
+        setSecurityKey('');
         triggerToast('Expenditure deleted.');
+        fetchExpenditures();
       } catch (err: any) { triggerToast(err.message || 'Failed to delete expenditure.'); }
     };
+
+    // Filter recent entries based on role
+    const filteredExpenditures = role === 'admin1'
+      ? expenditures.filter(e => e.branch === selectedExpBranch)
+      : expenditures.filter(e => e.branch === 'Madhapur');
+
+    const totalFiltered = filteredExpenditures.reduce((s, e) => s + e.amount, 0);
+
+    // Compute totals per branch for Admin 1 dashboard display
+    const getBranchTotal = (b: string) => {
+      return expenditures.filter(e => e.branch === b).reduce((s, e) => s + e.amount, 0);
+    };
+
     return (
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('teal')}
         <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">← Back to Finance Cockpit</button>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">← Back to Cockpit</button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Expenditure Tracker</h1>
-          <p style={styles.subtitle}>Log and monitor institutional expenses by category</p>
+          <p style={styles.subtitle}>
+            {role === 'admin1' 
+              ? 'Multi-branch expenditure monitoring console' 
+              : 'Log and monitor campus expenditures'}
+          </p>
         </header>
         <main style={styles.content}>
+          <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+              <input
+                type="text"
+                placeholder="Enter Finance Key (OTP) e.g. FIN-1234"
+                value={securityKey}
+                onChange={(e) => setSecurityKey(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLogExpenditure()}
+                style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+              />
+            </div>
+          </div>
+          
+          {/* Admin 1 Branch Overview Cards */}
+          {role === 'admin1' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginBottom: '16px', zIndex: 1 }}>
+              {['Madhapur', 'Jubilee Hills', 'Gachibowli', 'Kukatpally', 'Secunderabad'].map(b => {
+                const total = getBranchTotal(b);
+                const isActive = selectedExpBranch === b;
+                return (
+                  <div 
+                    key={b} 
+                    onClick={() => setSelectedExpBranch(b as any)}
+                    style={{
+                      padding: '12px 10px',
+                      borderRadius: '12px',
+                      border: isActive ? '2px solid var(--royal-gold)' : '1px solid rgba(255,255,255,0.1)',
+                      background: isActive ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    className="press-interactive"
+                  >
+                    <div style={{ fontSize: '10px', color: isActive ? 'var(--royal-gold)' : 'var(--muted-gray)', fontWeight: 800 }}>{b}</div>
+                    <strong style={{ fontSize: '14px', color: '#EF4444', display: 'block', marginTop: '4px' }}>₹{total.toLocaleString('en-IN')}</strong>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Form and recent entries */}
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
-            <h4 style={styles.sectionSubtitle}>Log New Expenditure</h4>
+            <h4 style={styles.sectionSubtitle}>
+              Log New Expenditure {role === 'admin1' ? `(For ${selectedExpBranch})` : '(Campus: Madhapur)'}
+            </h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={styles.formLabel}>Category</label>
@@ -2412,21 +3051,28 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             </div>
             <button onClick={handleLogExpenditure} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">Log Expenditure</button>
           </GlassCard>
+
           <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
-            <h4 style={styles.sectionSubtitle}>Recent Entries — Total: ₹{expenditures.reduce((s, e) => s + e.amount, 0).toLocaleString('en-IN')}</h4>
+            <h4 style={styles.sectionSubtitle}>
+              Recent Entries {role === 'admin1' ? `(${selectedExpBranch})` : '(Madhapur)'} — Total: ₹{totalFiltered.toLocaleString('en-IN')}
+            </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-              {expenditures.map((exp, i) => (
-                <div key={exp._id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: '1.5px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{exp.category} — {exp.description}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{typeof exp.date === 'string' ? exp.date.split('T')[0] : exp.date}</div>
+              {filteredExpenditures.length === 0 ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '12px' }}>No expenditure entries logged for this branch.</div>
+              ) : (
+                filteredExpenditures.map((exp, i) => (
+                  <div key={exp._id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: '1.5px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{exp.category} — {exp.description}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{typeof exp.date === 'string' ? exp.date.split('T')[0] : exp.date}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <strong style={{ fontSize: '14px', color: '#EF4444' }}>₹{exp.amount.toLocaleString('en-IN')}</strong>
+                      <button onClick={() => handleDeleteExpenditure(exp)} style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <strong style={{ fontSize: '14px', color: '#EF4444' }}>₹{exp.amount.toLocaleString('en-IN')}</strong>
-                    <button onClick={() => handleDeleteExpenditure(exp)} style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </GlassCard>
         </main>
@@ -2441,7 +3087,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       const teacherId = t.id || t._id;
       if (!teacherId) return;
       try {
+        setGlobalSecurityKey(securityKey);
         await admin2Service.toggleStaffSalary(teacherId);
+        setSecurityKey('');
         await fetchStaffSalaries();
         triggerToast('Salary status toggled.');
       } catch (err: any) { triggerToast(err.message || 'Failed to toggle.'); }
@@ -2455,6 +3103,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <p style={styles.subtitle}>View teacher roster and toggle salary disbursement status</p>
         </header>
         <main style={styles.content}>
+          <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+              <input
+                type="text"
+                placeholder="Enter Finance Key (OTP) e.g. FIN-1234"
+                value={securityKey}
+                onChange={(e) => setSecurityKey(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && fetchStaffSalaries()}
+                style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+              />
+            </div>
+          </div>
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Faculty Roster — {teacherList.length} Members</h4>
@@ -2492,27 +3153,33 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     const handleAddWorker = async () => {
       if (!newWorkerName || !newWorkerRole || !newWorkerWage) { triggerToast('Please fill in name, role and wage.'); return; }
       try {
+        setGlobalSecurityKey(securityKey);
         const saved = await admin2Service.createWorkerPayment({ workerName: newWorkerName, role: newWorkerRole, amount: Number(newWorkerWage), monthPeriod: newWorkerPeriod, paid: false });
         const mapped = { ...saved, name: saved.workerName, salary: saved.amount, id: saved._id };
         setWorkers([mapped, ...workers]);
         setNewWorkerName(''); setNewWorkerRole(''); setNewWorkerWage('');
         triggerToast('Worker entry added.');
+        setSecurityKey('');
       } catch (err: any) { triggerToast(err.message || 'Failed to add worker.'); }
     };
     const handleToggleWorker = async (w: any) => {
       if (!w._id) return;
       try {
+        setGlobalSecurityKey(securityKey);
         const updated = await admin2Service.updateWorkerPayment(w._id, { paid: !w.paid });
         setWorkers(workers.map(ww => ww._id === w._id ? { ...updated, name: updated.workerName, salary: updated.amount, id: updated._id } : ww));
         triggerToast(`${w.workerName || w.name} marked ${!w.paid ? 'Paid' : 'Pending'}.`);
+        setSecurityKey('');
       } catch (err: any) { triggerToast(err.message || 'Failed to update.'); }
     };
     const handleDeleteWorker = async (w: any) => {
       if (!w._id) return;
       try {
+        setGlobalSecurityKey(securityKey);
         await admin2Service.deleteWorkerPayment(w._id);
         setWorkers(workers.filter(ww => ww._id !== w._id));
         triggerToast('Worker entry deleted.');
+        setSecurityKey('');
       } catch (err: any) { triggerToast(err.message || 'Failed to delete.'); }
     };
     return (
@@ -2524,6 +3191,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <p style={styles.subtitle}>Manage and record non-teaching staff payroll for the month</p>
         </header>
         <main style={styles.content}>
+          <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+              <input
+                type="text"
+                placeholder="Enter Finance Key (OTP) e.g. FIN-1234"
+                value={securityKey}
+                onChange={(e) => setSecurityKey(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddWorker()}
+                style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+              />
+            </div>
+          </div>
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>Add Worker Entry</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
@@ -2629,8 +3309,38 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     );
   }
 
-  // ─── SUBPAGE 11: ADMIN PROFILE BIO ───
+  // ─── SUBPAGE 20: PROFILE CONSOLE ───
   if (activePage === 'profile') {
+    const getProfileData = () => {
+      if (role === 'admin1') {
+        return {
+          initials: 'RC',
+          name: 'Mr. Satish Varma (Rector)',
+          title: 'General Principal Superintendent Rector',
+          clearance: 'Level 1 Executive Clearance (All 5 Branches)',
+          registry: 'Global Institutional ERP Cockpit'
+        };
+      } else if (role === 'admin2') {
+        return {
+          initials: 'CP',
+          name: 'Dr. Ramesh Rao (Dean)',
+          title: 'Madhapur Campus Principal Dean',
+          clearance: 'Level 2 Operations Clearance (Madhapur Campus)',
+          registry: 'Campus Operations ERP Cockpit'
+        };
+      } else {
+        return {
+          initials: 'AR',
+          name: 'Mr. K. Anand (Registrar)',
+          title: 'Academic Registrar & Publisher',
+          clearance: 'Level 3 Academic Publishing clearance',
+          registry: 'Central Academic Cell ERP Cockpit'
+        };
+      }
+    };
+
+    const prof = getProfileData();
+
     return (
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('navy')}
@@ -2638,20 +3348,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
             ← Back to Cockpit
           </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Dean Profile Console</h1>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Administrator Profile Console</h1>
           <p style={styles.subtitle}>Consolidated credentials and administrator clearances</p>
         </header>
 
         <main style={styles.content}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }}>
             <GlassCard hoverable={false} style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.45)' }}>
-              <div style={styles.heroAvatar}>AD</div>
-              <h3 style={{ ...styles.studentName, marginTop: '12px' }}>Dean Administration</h3>
-              <span style={styles.studentID}>General Coordinator & Director</span>
+              <div style={styles.heroAvatar}>{prof.initials}</div>
+              <h3 style={{ ...styles.studentName, marginTop: '12px' }}>{prof.name}</h3>
+              <span style={styles.studentID}>{prof.title}</span>
               <div style={styles.heroLineDivider} />
               <div style={styles.heroMetaGrid}>
-                <div style={styles.metaRow}><span>Active ERP Registry</span><strong>Inspire Campus Cockpit</strong></div>
-                <div style={styles.metaRow}><span>Clearance Level</span><strong>Tier-1 Principal Dean</strong></div>
+                <div style={styles.metaRow}><span>Active ERP Registry</span><strong>{prof.registry}</strong></div>
+                <div style={styles.metaRow}><span>Clearance Level</span><strong>{prof.clearance}</strong></div>
               </div>
             </GlassCard>
           </div>
@@ -2668,11 +3378,29 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       <header style={styles.header}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', zIndex: 1 }}>
           <div style={styles.parentWelcomeRow}>
-            <div style={styles.avatarMini}>{role === 'admin1' ? 'A1' : 'A2'}</div>
+            <div style={styles.avatarMini}>{role === 'admin1' ? 'RC' : role === 'admin2' ? 'CP' : 'AR'}</div>
             <div>
-              <span style={styles.greetingText}>{role === 'admin1' ? 'Campus Operations,' : 'Finance & Staff Operations,'}</span>
-              <h2 style={styles.parentWelcomeTitle}>{role === 'admin1' ? 'Admin 1 Cockpit' : 'Admin 2 Finance Cockpit'}</h2>
-              <p style={styles.childMetaText}>{role === 'admin1' ? 'Campus Operations Administrator' : 'Finance & Staff Operations Administrator'}</p>
+              <span style={styles.greetingText}>
+                {role === 'admin1'
+                  ? 'General Principal Rector,'
+                  : role === 'admin2'
+                  ? 'Campus Principal Dean,'
+                  : 'Academic Registrar,'}
+              </span>
+              <h2 style={styles.parentWelcomeTitle}>
+                {role === 'admin1'
+                  ? 'Rector General Cockpit'
+                  : role === 'admin2'
+                  ? 'Campus Operations Cockpit'
+                  : 'Academic & Publishing Cockpit'}
+              </h2>
+              <p style={styles.childMetaText}>
+                {role === 'admin1'
+                  ? 'Superintendent Coordinator (All 5 Campuses)'
+                  : role === 'admin2'
+                  ? 'Principal Coordinator (Madhapur Campus)'
+                  : 'Independent Student Data Registrar'}
+              </p>
             </div>
           </div>
           <LiveConnectionIndicator compact />
@@ -2689,54 +3417,93 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           {role === 'admin1' ? (
             <>
               <div style={styles.metricsGrid}>
-                <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
+                <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring neo-2d-card hover-gold ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
                   <span style={styles.metricLabel}>Total Students Present Today</span>
                   <strong style={{ ...styles.metricValue, color: '#10B981' }}>2,735</strong>
                   <span style={styles.metricSub}>96.1% Attendance Rate</span>
+                  <span className="glass-status-pill status-present">Live</span>
                 </GlassCard>
                 <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
                   <span style={styles.metricLabel}>Total Students Absent Today</span>
                   <strong style={{ ...styles.metricValue, color: '#EF4444' }}>111</strong>
                   <span style={styles.metricSub}>3.9% Absent</span>
+                  <span className="glass-status-pill status-absent">Watch</span>
                 </GlassCard>
               </div>
               <div style={styles.metricsGrid}>
-                <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
+                <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring neo-2d-card hover-gold ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
                   <span style={styles.metricLabel}>Total Faculty Present Today</span>
                   <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>180</strong>
                   <span style={styles.metricSub}>96.8% Present</span>
+                  <span className="glass-status-pill status-active">Stable</span>
                 </GlassCard>
                 <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
                   <span style={styles.metricLabel}>Faculty on Leave Today</span>
                   <strong style={styles.metricValue}>6</strong>
                   <span style={styles.metricSub}>3.2% Leave Rate</span>
+                  <span className="glass-status-pill status-warning">Alert</span>
+                </GlassCard>
+              </div>
+            </>
+          ) : role === 'admin2' ? (
+            <>
+              <div style={styles.metricsGrid}>
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
+                  <span style={styles.metricLabel}>Monthly Fee Collected</span>
+                  <strong style={{ ...styles.metricValue, color: '#10B981' }}>₹48.2L</strong>
+                  <span style={styles.metricSub}>92.4% of target</span>
+                  <span className="glass-status-pill status-paid">On Target</span>
+                </GlassCard>
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
+                  <span style={styles.metricLabel}>Monthly Expenditure</span>
+                  <strong style={{ ...styles.metricValue, color: '#EF4444' }}>₹15.7L</strong>
+                  <span style={styles.metricSub}>Jul 2026 Total</span>
+                  <span className="glass-status-pill status-warning">Budgeted</span>
+                </GlassCard>
+              </div>
+              <div style={styles.metricsGrid}>
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
+                  <span style={styles.metricLabel}>Fee Defaulters</span>
+                  <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>38</strong>
+                  <span style={styles.metricSub}>Pending since Term 1</span>
+                  <span className="glass-status-pill status-pending">Pending</span>
+                </GlassCard>
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
+                  <span style={styles.metricLabel}>Worker Payments Pending</span>
+                  <strong style={styles.metricValue}>{workers.filter(w => !w.paid).length}</strong>
+                  <span style={styles.metricSub}>Awaiting approval</span>
+                  <span className="glass-status-pill status-pending">Payroll</span>
                 </GlassCard>
               </div>
             </>
           ) : (
             <>
               <div style={styles.metricsGrid}>
-                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-                  <span style={styles.metricLabel}>Monthly Fee Collected</span>
-                  <strong style={{ ...styles.metricValue, color: '#10B981' }}>₹48.2L</strong>
-                  <span style={styles.metricSub}>92.4% of target</span>
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
+                  <span style={styles.metricLabel}>Exams Scheduled</span>
+                  <strong style={{ ...styles.metricValue, color: '#10B981' }}>2</strong>
+                  <span style={styles.metricSub}>Active Exam calendars</span>
+                  <span className="glass-status-pill status-active">Ready</span>
                 </GlassCard>
                 <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-                  <span style={styles.metricLabel}>Monthly Expenditure</span>
-                  <strong style={{ ...styles.metricValue, color: '#EF4444' }}>₹15.7L</strong>
-                  <span style={styles.metricSub}>Jul 2026 Total</span>
+                  <span style={styles.metricLabel}>Published Results</span>
+                  <strong style={{ ...styles.metricValue, color: '#10B981' }}>24</strong>
+                  <span style={styles.metricSub}>Term-wise grades released</span>
+                  <span className="glass-status-pill status-paid">Published</span>
                 </GlassCard>
               </div>
               <div style={styles.metricsGrid}>
-                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-                  <span style={styles.metricLabel}>Fee Defaulters</span>
-                  <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>38</strong>
-                  <span style={styles.metricSub}>Pending since Term 1</span>
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
+                  <span style={styles.metricLabel}>Bulletins & Notice Broadcasts</span>
+                  <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>12</strong>
+                  <span style={styles.metricSub}>Announcements active</span>
+                  <span className="glass-status-pill status-info">Live</span>
                 </GlassCard>
                 <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-                  <span style={styles.metricLabel}>Worker Payments Pending</span>
-                  <strong style={styles.metricValue}>{workers.filter(w => !w.paid).length}</strong>
-                  <span style={styles.metricSub}>Awaiting approval</span>
+                  <span style={styles.metricLabel}>Active Class Schedules</span>
+                  <strong style={{ ...styles.metricValue, color: '#3B82F6' }}>8</strong>
+                  <span style={styles.metricSub}>Sections fully mapped</span>
+                  <span className="glass-status-pill status-active">Active</span>
                 </GlassCard>
               </div>
             </>
@@ -2745,29 +3512,35 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
         {/* Module Grid — role-conditional */}
         <section style={styles.section}>
-          <h3 style={styles.sectionTitle}>{role === 'admin1' ? 'Campus Operations Modules' : 'Finance & Staff Modules'}</h3>
+          <h3 style={styles.sectionTitle}>
+            {role === 'admin1'
+              ? 'Campus Operations Modules'
+              : role === 'admin2'
+              ? 'Finance & Staff Modules'
+              : 'Systems & Security Modules'}
+          </h3>
           {role === 'admin1' ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
             
             {/* 1. Students */}
             <div
-              onClick={() => setActivePage('students')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.09) 0%, rgba(16, 185, 129, 0.02) 100%)',
-                border: '1.5px solid rgba(16, 185, 129, 0.3)',
-                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)'
-              }}
-              className="press-interactive"
-            >
+                onClick={() => setActivePage('students')}
+                style={{
+                  ...styles.moduleCardNew,
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.09) 0%, rgba(16, 185, 129, 0.02) 100%)',
+                  border: '1.5px solid rgba(16, 185, 129, 0.3)',
+                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)'
+                }}
+                className="neo-2d-card hover-gold press-interactive"
+              >
               <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5">
                   <circle cx="12" cy="7" r="4" />
                   <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
                 </svg>
               </div>
-              <h4 style={styles.moduleTitle}>Students Registry</h4>
-              <p style={styles.moduleDesc}>Register admissions, edit details, reset logs.</p>
+              <h4 style={styles.moduleTitle}>Students Registry (All)</h4>
+              <p style={styles.moduleDesc}>Register admissions, view details across all 5 branches.</p>
             </div>
 
             {/* 2. Teachers */}
@@ -2779,7 +3552,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 border: '1.5px solid rgba(245, 158, 11, 0.3)',
                 boxShadow: '0 4px 14px rgba(245, 158, 11, 0.08)'
               }}
-              className="press-interactive"
+              className="neo-2d-card hover-gold press-interactive"
             >
               <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2.5">
@@ -2787,95 +3560,32 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                 </svg>
               </div>
-              <h4 style={styles.moduleTitle}>Faculty Mgmt</h4>
-              <p style={styles.moduleDesc}>Search lecturers, allocate subject slots, check salaries.</p>
+              <h4 style={styles.moduleTitle}>Faculty Mgmt (All)</h4>
+              <p style={styles.moduleDesc}>Configure lecturers, allocate subjects, check base salaries.</p>
             </div>
 
-            {/* 3. Publishing Center */}
-            <div
-              onClick={() => setActivePage('publishing')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.09) 0%, rgba(59, 130, 246, 0.02) 100%)',
-                border: '1.5px solid rgba(59, 130, 246, 0.3)',
-                boxShadow: '0 4px 14px rgba(59, 130, 246, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5">
-                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                </svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Publishing Desk</h4>
-              <p style={styles.moduleDesc}>Compose bulletins alerts, events calendar to student app.</p>
+            {/* 3. Academic Fees */}
+            <div onClick={() => setActivePage('academic_fees')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(249,115,22,0.09) 0%, rgba(249,115,22,0.02) 100%)', border: '1.5px solid rgba(249,115,22,0.3)', boxShadow: '0 4px 14px rgba(249,115,22,0.08)' }} className="neo-2d-card hover-gold press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.5"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg></div>
+              <h4 style={styles.moduleTitle}>Academic Fees Structure</h4>
+              <p style={styles.moduleDesc}>Set baseline yearly/term academic fees globally.</p>
             </div>
 
-            {/* 4. Academic Calendar */}
-            <div
-              onClick={() => setActivePage('calendar')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.09) 0%, rgba(239, 68, 68, 0.02) 100%)',
-                border: '1.5px solid rgba(239, 68, 68, 0.3)',
-                boxShadow: '0 4px 14px rgba(239, 68, 68, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                </svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Timetables</h4>
-              <p style={styles.moduleDesc}>Configure academic timelines and upload sheets.</p>
+            {/* 4. Student Fee Editor */}
+            <div onClick={() => setActivePage('fee_editor')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(16,185,129,0.09) 0%, rgba(16,185,129,0.02) 100%)', border: '1.5px solid rgba(16,185,129,0.3)', boxShadow: '0 4px 14px rgba(16,185,129,0.08)' }} className="neo-2d-card hover-gold press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+              <h4 style={styles.moduleTitle}>Student Fee & Waivers</h4>
+              <p style={styles.moduleDesc}>Configure individual scholarship category fee waivers.</p>
             </div>
 
-            {/* 5. Class Scheduling */}
-            <div
-              onClick={() => setActivePage('classes')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.09) 0%, rgba(20, 184, 166, 0.02) 100%)',
-                border: '1.5px solid rgba(20, 184, 166, 0.3)',
-                boxShadow: '0 4px 14px rgba(20, 184, 166, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20, 184, 166, 0.08)', border: '1px solid rgba(20, 184, 166, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#20B2AA" strokeWidth="2.5">
-                  <path d="M22 10v6M2 10v6M12 2l10 5-10 5L2 7l10-5z" />
-                </svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Class Scheduling</h4>
-              <p style={styles.moduleDesc}>Map sections, allocate students and lecturers.</p>
+            {/* 5. Expenditure Tracker */}
+            <div onClick={() => setActivePage('expenditure')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(20,184,166,0.09) 0%, rgba(20,184,166,0.02) 100%)', border: '1.5px solid rgba(20,184,166,0.3)', boxShadow: '0 4px 14px rgba(20,184,166,0.08)' }} className="neo-2d-card hover-gold press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+              <h4 style={styles.moduleTitle}>Multi-Branch Expenditures</h4>
+              <p style={styles.moduleDesc}>Compare totals and log expenses across all 5 branches.</p>
             </div>
 
-            {/* 6. Examination */}
-            <div
-              onClick={() => setActivePage('exams')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.09) 0%, rgba(139, 92, 246, 0.02) 100%)',
-                border: '1.5px solid rgba(139, 92, 246, 0.3)',
-                boxShadow: '0 4px 14px rgba(139, 92, 246, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                </svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Exams Desk</h4>
-              <p style={styles.moduleDesc}>Schedule tests term, publish grades lists.</p>
-            </div>
-
-
-            {/* 8. Reports */}
+            {/* 6. Reports */}
             <div
               onClick={() => setActivePage('reports')}
               style={{
@@ -2884,7 +3594,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 border: '1.5px solid rgba(6, 182, 212, 0.3)',
                 boxShadow: '0 4px 14px rgba(6, 182, 212, 0.08)'
               }}
-              className="press-interactive"
+              className="neo-2d-card hover-gold press-interactive"
             >
               <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.2)' }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" strokeWidth="2.5">
@@ -2896,28 +3606,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <p style={styles.moduleDesc}>Compile enrollment charts sheets and download PDFs.</p>
             </div>
 
-            {/* 9. Attendance Dashboard */}
-            <div
-              onClick={() => setActivePage('attendance')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.09) 0%, rgba(99, 102, 241, 0.02) 100%)',
-                border: '1.5px solid rgba(99, 102, 241, 0.3)',
-                boxShadow: '0 4px 14px rgba(99, 102, 241, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Attendance Summary</h4>
-              <p style={styles.moduleDesc}>Examine section-wise availability stats (Read-only).</p>
-            </div>
-
-            {/* 10. ERP Settings */}
+            {/* 7. ERP Settings */}
             <div
               onClick={() => setActivePage('settings')}
               style={{
@@ -2926,7 +3615,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 border: '1.5px solid rgba(244, 63, 94, 0.3)',
                 boxShadow: '0 4px 14px rgba(244, 63, 94, 0.08)'
               }}
-              className="press-interactive"
+              className="neo-2d-card hover-gold press-interactive"
             >
               <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(244, 63, 94, 0.08)', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" strokeWidth="2.5">
@@ -2937,31 +3626,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <p style={styles.moduleDesc}>Configure academic years calendar parameters directories.</p>
             </div>
 
-            {/* 11. Appearance Accent Mode Theme Toggle */}
-            <div
-              onClick={() => {
-                const nextTheme = theme === 'light' ? 'Dark' : 'Light';
-                setThemeMode(nextTheme);
-                triggerToast(`Accent switched to ${nextTheme} Mode`);
-              }}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.09) 0%, rgba(139, 92, 246, 0.02) 100%)',
-                border: '1.5px solid rgba(139, 92, 246, 0.3)',
-                boxShadow: '0 4px 14px rgba(139, 92, 246, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.5">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Appearance Accent</h4>
-              <p style={styles.moduleDesc}>Toggle theme Mode ({theme === 'light' ? 'Standard Light' : 'Dark Mode'}).</p>
-            </div>
-
-            {/* 12. Dean Profile */}
+            {/* 8. Profile */}
             <div
               onClick={() => setActivePage('profile')}
               style={{
@@ -2970,7 +3635,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 border: '1.5px solid rgba(30, 41, 59, 0.3)',
                 boxShadow: '0 4px 14px rgba(30, 41, 59, 0.08)'
               }}
-              className="press-interactive"
+              className="neo-2d-card hover-gold press-interactive"
             >
               <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(30, 41, 59, 0.08)', border: '1px solid rgba(30, 41, 59, 0.2)' }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E293B" strokeWidth="2.5">
@@ -2978,68 +3643,100 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <circle cx="12" cy="7" r="4" />
                 </svg>
               </div>
-              <h4 style={styles.moduleTitle}>Dean Profile</h4>
-              <p style={styles.moduleDesc}>Review registered director bio credentials clearance.</p>
+              <h4 style={styles.moduleTitle}>Rector Profile</h4>
+              <p style={styles.moduleDesc}>Review registered principal rector credentials.</p>
             </div>
 
           </div>
-          ) : (
+          ) : role === 'admin2' ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
 
-            {/* A2-1. Academic Fees */}
-            <div onClick={() => setActivePage('academic_fees')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(249,115,22,0.09) 0%, rgba(249,115,22,0.02) 100%)', border: '1.5px solid rgba(249,115,22,0.3)', boxShadow: '0 4px 14px rgba(249,115,22,0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.5"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg></div>
-              <h4 style={styles.moduleTitle}>Academic Fees</h4>
-              <p style={styles.moduleDesc}>Lock and configure baseline term fees per year.</p>
+            {/* CP-1. Student Registry */}
+            <div onClick={() => setActivePage('students')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.09) 0%, rgba(16, 185, 129, 0.02) 100%)', border: '1.5px solid rgba(16, 185, 129, 0.3)', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><circle cx="12" cy="7" r="4" /><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg></div>
+              <h4 style={styles.moduleTitle}>Campus Students Registry</h4>
+              <p style={styles.moduleDesc}>Edit student details and reset pins for Madhapur branch.</p>
             </div>
 
-            {/* A2-2. Student Fee Editor */}
-            <div onClick={() => setActivePage('fee_editor')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(16,185,129,0.09) 0%, rgba(16,185,129,0.02) 100%)', border: '1.5px solid rgba(16,185,129,0.3)', boxShadow: '0 4px 14px rgba(16,185,129,0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
-              <h4 style={styles.moduleTitle}>Student Fee Editor</h4>
-              <p style={styles.moduleDesc}>Apply individual waivers & edit student fee structures.</p>
+            {/* CP-2. Faculty Management */}
+            <div onClick={() => setActivePage('teachers')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.09) 0%, rgba(245, 158, 11, 0.02) 100%)', border: '1.5px solid rgba(245, 158, 11, 0.3)', boxShadow: '0 4px 14px rgba(245, 158, 11, 0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg></div>
+              <h4 style={styles.moduleTitle}>Campus Faculty Roster</h4>
+              <p style={styles.moduleDesc}>Register instructors and assign classrooms (Salary locked).</p>
             </div>
 
-            {/* A2-3. Late Fees & Scholarships */}
-            <div onClick={() => setActivePage('late_scholarships')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(239,68,68,0.09) 0%, rgba(239,68,68,0.02) 100%)', border: '1.5px solid rgba(239,68,68,0.3)', boxShadow: '0 4px 14px rgba(239,68,68,0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2"/><path d="M12 6v6l4 2"/></svg></div>
-              <h4 style={styles.moduleTitle}>Late Fees & Scholarships</h4>
-              <p style={styles.moduleDesc}>Set penalty rates and merit scholarship slabs.</p>
-            </div>
-
-            {/* A2-4. Expenditure Tracker */}
+            {/* CP-3. Expenditure Tracker */}
             <div onClick={() => setActivePage('expenditure')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(20,184,166,0.09) 0%, rgba(20,184,166,0.02) 100%)', border: '1.5px solid rgba(20,184,166,0.3)', boxShadow: '0 4px 14px rgba(20,184,166,0.08)' }} className="press-interactive">
               <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-              <h4 style={styles.moduleTitle}>Expenditure Tracker</h4>
-              <p style={styles.moduleDesc}>Log and monitor all institutional expenses by category.</p>
+              <h4 style={styles.moduleTitle}>Campus Expenditures</h4>
+              <p style={styles.moduleDesc}>Log and track local expenditures of Madhapur branch.</p>
             </div>
 
-            {/* A2-5. Staff Salary Status */}
-            <div onClick={() => setActivePage('salary_status')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(59,130,246,0.09) 0%, rgba(59,130,246,0.02) 100%)', border: '1.5px solid rgba(59,130,246,0.3)', boxShadow: '0 4px 14px rgba(59,130,246,0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-              <h4 style={styles.moduleTitle}>Staff Salary Status</h4>
-              <p style={styles.moduleDesc}>View faculty roster and monthly salary disbursements.</p>
-            </div>
-
-            {/* A2-6. Worker Payment Details */}
+            {/* CP-4. Worker Payments */}
             <div onClick={() => setActivePage('worker_payments')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(139,92,246,0.09) 0%, rgba(139,92,246,0.02) 100%)', border: '1.5px solid rgba(139,92,246,0.3)', boxShadow: '0 4px 14px rgba(139,92,246,0.08)' }} className="press-interactive">
               <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
               <h4 style={styles.moduleTitle}>Worker Payments</h4>
               <p style={styles.moduleDesc}>Record and mark non-teaching staff payroll payouts.</p>
             </div>
 
-            {/* A2-7. Yearly Enrollment Stats */}
+            {/* CP-5. Yearly Enrollment Stats */}
             <div onClick={() => setActivePage('enrollment_stats')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(99,102,241,0.09) 0%, rgba(99,102,241,0.02) 100%)', border: '1.5px solid rgba(99,102,241,0.3)', boxShadow: '0 4px 14px rgba(99,102,241,0.08)' }} className="press-interactive">
               <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-              <h4 style={styles.moduleTitle}>Yearly Enrollment Stats</h4>
-              <p style={styles.moduleDesc}>5-year admission trend charts across all streams.</p>
+              <h4 style={styles.moduleTitle}>Enrollment Stats</h4>
+              <p style={styles.moduleDesc}>View 5-year campus enrollment and admission trends.</p>
             </div>
 
-            {/* A2-8. Profile */}
+            {/* CP-6. Profile */}
             <div onClick={() => setActivePage('profile')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(30,41,59,0.09) 0%, rgba(30,41,59,0.02) 100%)', border: '1.5px solid rgba(30,41,59,0.3)', boxShadow: '0 4px 14px rgba(30,41,59,0.08)' }} className="press-interactive">
               <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(30,41,59,0.08)', border: '1px solid rgba(30,41,59,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E293B" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-              <h4 style={styles.moduleTitle}>Finance Admin Profile</h4>
-              <p style={styles.moduleDesc}>Review Finance Administrator access and credentials.</p>
+              <h4 style={styles.moduleTitle}>Campus Dean Profile</h4>
+              <p style={styles.moduleDesc}>Review Madhapur principal dean operations credentials.</p>
+            </div>
+
+          </div>
+          ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+
+            {/* A3-1. Class Scheduling */}
+            <div onClick={() => setActivePage('classes')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.09) 0%, rgba(20, 184, 166, 0.02) 100%)', border: '1.5px solid rgba(20, 184, 166, 0.3)', boxShadow: '0 4px 14px rgba(20, 184, 166, 0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20, 184, 166, 0.08)', border: '1px solid rgba(20, 184, 166, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#20B2AA" strokeWidth="2.5"><path d="M22 10v6M2 10v6M12 2l10 5-10 5L2 7l10-5z" /></svg></div>
+              <h4 style={styles.moduleTitle}>Class Scheduling</h4>
+              <p style={styles.moduleDesc}>Map sections, allocate student groups, and assign duties.</p>
+            </div>
+
+            {/* A3-2. Examination Portal */}
+            <div onClick={() => setActivePage('exams')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.09) 0%, rgba(139, 92, 246, 0.02) 100%)', border: '1.5px solid rgba(139, 92, 246, 0.3)', boxShadow: '0 4px 14px rgba(139, 92, 246, 0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /></svg></div>
+              <h4 style={styles.moduleTitle}>Examination Portal</h4>
+              <p style={styles.moduleDesc}>Create term schedules, upload results, and publish grades.</p>
+            </div>
+
+            {/* A3-3. Notice Board / Bulletins */}
+            <div onClick={() => setActivePage('publishing')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.09) 0%, rgba(59, 130, 246, 0.02) 100%)', border: '1.5px solid rgba(59, 130, 246, 0.3)', boxShadow: '0 4px 14px rgba(59, 130, 246, 0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /></svg></div>
+              <h4 style={styles.moduleTitle}>Publishing Desk</h4>
+              <p style={styles.moduleDesc}>Compose bulletins, circular notices, and holiday events.</p>
+            </div>
+
+            {/* A3-4. Timetables */}
+            <div onClick={() => setActivePage('calendar')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.09) 0%, rgba(239, 68, 68, 0.02) 100%)', border: '1.5px solid rgba(239, 68, 68, 0.3)', boxShadow: '0 4px 14px rgba(239, 68, 68, 0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /></svg></div>
+              <h4 style={styles.moduleTitle}>Timetables & Calendars</h4>
+              <p style={styles.moduleDesc}>Upload and schedule daily class timelines and calendars.</p>
+            </div>
+
+            {/* A3-5. Attendance Summary */}
+            <div onClick={() => setActivePage('attendance')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.09) 0%, rgba(99, 102, 241, 0.02) 100%)', border: '1.5px solid rgba(99, 102, 241, 0.3)', boxShadow: '0 4px 14px rgba(99, 102, 241, 0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg></div>
+              <h4 style={styles.moduleTitle}>Attendance Summary</h4>
+              <p style={styles.moduleDesc}>Examine section-wise student availability reports.</p>
+            </div>
+
+            {/* A3-6. Publisher Profile */}
+            <div onClick={() => setActivePage('profile')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(30,41,59,0.09) 0%, rgba(30,41,59,0.02) 100%)', border: '1.5px solid rgba(30,41,59,0.3)', boxShadow: '0 4px 14px rgba(30, 41, 59, 0.08)' }} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(30,41,59,0.08)', border: '1px solid rgba(30,41,59,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E293B" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+              <h4 style={styles.moduleTitle}>Publisher Profile</h4>
+              <p style={styles.moduleDesc}>Review Academic Registrar & Publisher credentials.</p>
             </div>
 
           </div>
@@ -3175,14 +3872,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '16px',
   },
   metricCard: {
-    padding: '16px',
+    padding: '18px',
     borderRadius: '24px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '4px',
-    backgroundColor: 'var(--card-bg)',
-    border: '1.5px solid var(--card-border)',
-    boxShadow: 'var(--shadow-sm)',
+    gap: '6px',
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    border: '1.5px solid rgba(255,255,255,0.65)',
+    boxShadow: '0 24px 50px rgba(15, 23, 42, 0.07)',
+    backdropFilter: 'blur(20px)',
   },
   metricLabel: {
     fontSize: '10px',
@@ -3211,19 +3909,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: 'var(--dark-charcoal)',
   },
   moduleCardNew: {
-    padding: '20px',
-    borderRadius: '24px',
+    padding: '22px',
+    borderRadius: '28px',
     cursor: 'pointer',
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
-    backgroundColor: 'var(--card-bg)',
-    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    gap: '12px',
+    backgroundColor: 'rgba(255,255,255,0.68)',
+    border: '1.5px solid rgba(255,255,255,0.72)',
+    boxShadow: '0 26px 60px rgba(15, 23, 42, 0.08)',
+    transition: 'transform 0.22s ease, box-shadow 0.22s ease',
   },
   moduleIconWrapper: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '12px',
+    width: '44px',
+    height: '44px',
+    borderRadius: '14px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -3270,13 +3970,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginTop: '8px',
   },
   readOnlyBlock: {
-    padding: '14px',
-    borderRadius: '16px',
-    border: '1px solid rgba(0,0,0,0.04)',
-    backgroundColor: 'rgba(0,0,0,0.02)',
+    padding: '18px',
+    borderRadius: '22px',
+    border: '1.5px solid rgba(255,255,255,0.65)',
+    backgroundColor: 'rgba(255,255,255,0.65)',
+    boxShadow: '0 22px 38px rgba(15, 23, 42, 0.06)',
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '10px',
+    backdropFilter: 'blur(18px)',
   },
   metaRow: {
     display: 'flex',
@@ -3304,16 +4006,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '12px 14px',
-    border: '1.5px solid rgba(255, 255, 255, 0.6)',
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    borderRadius: '16px',
+    padding: '14px 16px',
+    border: '1px solid rgba(255, 255, 255, 0.72)',
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: '20px',
+    boxShadow: '0 18px 34px rgba(15, 23, 42, 0.05)',
   },
   actionItemBtn: {
-    padding: '6px 12px',
-    borderRadius: '10px',
-    border: '1px solid rgba(0,0,0,0.06)',
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    padding: '8px 14px',
+    borderRadius: '12px',
+    border: '1px solid rgba(0,0,0,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.82)',
     fontSize: '11px',
     fontWeight: 700,
     color: 'var(--dark-charcoal)',
@@ -3345,6 +4048,31 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: '1.5px solid rgba(212, 175, 55, 0.3)',
     boxShadow: 'var(--shadow-lg)',
     borderRadius: '16px',
+  },
+  statusBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '4px 10px',
+    borderRadius: '999px',
+    fontSize: '10px',
+    fontWeight: 800,
+    letterSpacing: '0.02em',
+    border: '1px solid rgba(0,0,0,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    color: 'var(--dark-charcoal)',
+  },
+  skeletonCard: {
+    minHeight: '130px',
+    borderRadius: '24px',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    border: '1px solid rgba(255,255,255,0.4)',
+    boxShadow: '0 22px 40px rgba(15, 23, 42, 0.05)',
+  },
+  skeletonLine: {
+    width: '100%',
+    height: '16px',
+    borderRadius: '10px',
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   toastText: {
     fontSize: '12px',

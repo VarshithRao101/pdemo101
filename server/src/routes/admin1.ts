@@ -4,6 +4,7 @@ import multer from 'multer';
 import * as XLSX from 'xlsx';
 import { authenticateJWT } from '../middleware/authenticate';
 import { authorizeRoles } from '../middleware/authorize';
+import { validateSecurityKey } from '../middleware/validateKey';
 import { Student } from '../models/student';
 import { Teacher } from '../models/teacher';
 import { Bulletin } from '../models/bulletin';
@@ -18,8 +19,10 @@ const router = Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Only admin1 (Campus Operations) has access to admin1 endpoints
-const admin1Guard = [authenticateJWT, authorizeRoles('admin1')];
+// Allow both admin1 and admin3 to access these routes, specific operations will be key-guarded
+const admin1Guard = [authenticateJWT, authorizeRoles('admin1', 'admin3')];
+const admin1KeyGuard = [validateSecurityKey('admin1')];
+const admin3KeyGuard = [validateSecurityKey('admin3')];
 
 const isNonEmptyString = (value: unknown, maxLength: number) =>
   typeof value === 'string' && value.trim().length > 0 && value.trim().length <= maxLength;
@@ -71,7 +74,7 @@ router.get('/students', async (req: Request, res: Response) => {
 
 // PATCH /api/admin1/students/:id
 // Edit student non-financial fields
-router.patch('/students/:id', async (req: Request, res: Response) => {
+router.patch('/students/:id', ...admin1KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };
@@ -106,7 +109,7 @@ router.patch('/students/:id', async (req: Request, res: Response) => {
 
 // DELETE /api/admin1/students/:id
 // Soft-delete/deactivate student
-router.delete('/students/:id', async (req: Request, res: Response) => {
+router.delete('/students/:id', ...admin1KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const student = await Student.findByIdAndUpdate(id, { $set: { status: 'Inactive' } }, { new: true });
@@ -124,7 +127,7 @@ router.delete('/students/:id', async (req: Request, res: Response) => {
 // ==========================================
 
 // POST /api/admin1/teachers
-router.post('/teachers', async (req: Request, res: Response) => {
+router.post('/teachers', ...admin1KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id, name, subject, salary, mobile } = req.body;
     if (!isNonEmptyString(id, 40) || !isNonEmptyString(name, 120) || !isNonEmptyString(subject, 120) || salary === undefined) {
@@ -160,7 +163,7 @@ router.post('/teachers', async (req: Request, res: Response) => {
 });
 
 // PATCH /api/admin1/teachers/:id
-router.patch('/teachers/:id', async (req: Request, res: Response) => {
+router.patch('/teachers/:id', ...admin1KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     let teacher = await findTeacherByIdentifier(id);
@@ -223,7 +226,7 @@ router.get('/bulletins', async (_req: Request, res: Response) => {
 });
 
 // POST /api/admin1/bulletins
-router.post('/bulletins', async (req: Request, res: Response) => {
+router.post('/bulletins', ...admin1KeyGuard, async (req: Request, res: Response) => {
   try {
     const { title, content, category } = req.body;
     if (!isNonEmptyString(title, 200) || !isNonEmptyString(content, 4000) || !isNonEmptyString(category, 40)) {
@@ -253,7 +256,7 @@ router.post('/bulletins', async (req: Request, res: Response) => {
 });
 
 // PATCH /api/admin1/bulletins/:id
-router.patch('/bulletins/:id', async (req: Request, res: Response) => {
+router.patch('/bulletins/:id', ...admin1KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
@@ -299,7 +302,7 @@ router.patch('/bulletins/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/admin1/bulletins/:id
-router.delete('/bulletins/:id', async (req: Request, res: Response) => {
+router.delete('/bulletins/:id', ...admin1KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -340,7 +343,7 @@ router.get('/timetable', async (req: Request, res: Response) => {
 });
 
 // POST /api/admin1/timetable
-router.post('/timetable', async (req: Request, res: Response) => {
+router.post('/timetable', ...admin3KeyGuard, async (req: Request, res: Response) => {
   try {
     const { section, day, period, subject, teacherId } = req.body;
     if (!isNonEmptyString(section, 40) || !isNonEmptyString(day, 40) || !isNonEmptyString(period, 40) || !isNonEmptyString(subject, 120) || !isNonEmptyString(teacherId, 80)) {
@@ -368,7 +371,7 @@ router.post('/timetable', async (req: Request, res: Response) => {
 });
 
 // PATCH /api/admin1/timetable/:id
-router.patch('/timetable/:id', async (req: Request, res: Response) => {
+router.patch('/timetable/:id', ...admin3KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { section, day, period, subject, teacherId } = req.body;
@@ -412,7 +415,7 @@ router.patch('/timetable/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/admin1/timetable/:id
-router.delete('/timetable/:id', async (req: Request, res: Response) => {
+router.delete('/timetable/:id', ...admin3KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const entry = await TimetableEntry.findByIdAndDelete(id);
@@ -427,7 +430,7 @@ router.delete('/timetable/:id', async (req: Request, res: Response) => {
 
 // POST /api/admin1/timetable/upload
 // Bulk timetable spreadsheet upload (overwrites the section timetable)
-router.post('/timetable/upload', upload.single('file'), async (req: Request, res: Response) => {
+router.post('/timetable/upload', ...admin3KeyGuard, upload.single('file'), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ status: 'error', message: 'No file uploaded.' });
@@ -609,7 +612,7 @@ router.get('/exams', async (_req: Request, res: Response) => {
 });
 
 // POST /api/admin1/exams
-router.post('/exams', async (req: Request, res: Response) => {
+router.post('/exams', ...admin3KeyGuard, async (req: Request, res: Response) => {
   try {
     const { name, date } = req.body;
     if (!isNonEmptyString(name, 200) || !isNonEmptyString(date, 40)) {
@@ -635,7 +638,7 @@ router.post('/exams', async (req: Request, res: Response) => {
 });
 
 // PATCH /api/admin1/exams/:id
-router.patch('/exams/:id', async (req: Request, res: Response) => {
+router.patch('/exams/:id', ...admin3KeyGuard, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     let exam = await Exam.findById(id);
@@ -672,8 +675,7 @@ router.patch('/exams/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/admin1/exams/upload
-// Bulk exam grades spreadsheet upload
-router.post('/exams/upload', upload.single('file'), async (req: Request, res: Response) => {
+router.post('/exams/upload', ...admin3KeyGuard, upload.single('file'), async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ status: 'error', message: 'No file uploaded.' });

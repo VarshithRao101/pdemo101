@@ -6,29 +6,546 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     
     <!-- Primary Meta Tags -->
-    <title>Inspire Junior College | Student Portal</title>
-    <meta name="title" content="Inspire Junior College | Student Portal" />
-    <meta name="description" content="Official Student Portal of Inspire Junior College. Access academics, schedules, attendance, results, gate pass, and campus updates in a premium 2D styled interface." />
-    <meta name="theme-color" content="#0c1938" />
+    <title>Inspire Junior College | Portal Hub</title>
+    <meta name="title" content="Inspire Junior College | Portal Hub" />
+    <meta name="description" content="Central hub to launch Inspire Junior College applications. Highly secure, isolated student, admin, and accountant portals." />
+    <meta name="theme-color" content="#070B19" />
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://inspire.pdemo101.vercel.app/" />
-    <meta property="og:title" content="Inspire Junior College | Student & Parent Portal" />
-    <meta property="og:description" content="Access academics, schedules, attendance, exam results, gate pass applications, and campus updates in a premium 2D styled dashboard." />
-    <meta property="og:image" content="/og-preview.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://inspire.pdemo101.vercel.app/" />
-    <meta property="twitter:title" content="Inspire Junior College | Student & Parent Portal" />
-    <meta property="twitter:description" content="Access academics, schedules, attendance, exam results, gate pass applications, and campus updates in a premium 2D styled dashboard." />
-    <meta property="twitter:image" content="/og-preview.png" />
+      :root {
+        --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --bg-primary: #070B19;
+        --bg-secondary: #0F172A;
+        --royal-gold: #D4AF37;
+        --white: #F8FAFC;
+        --muted-gray: #94A3B8;
+        --card-border: rgba(255, 255, 255, 0.08);
+        --glass-bg: rgba(10, 16, 32, 0.6);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --glass-shadow: rgba(0, 0, 0, 0.4);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--font-family);
+        background-color: var(--bg-primary);
+        color: var(--white);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        overflow-x: hidden;
+        position: relative;
+      }
+
+      /* Animated Background Gradients */
+      body::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: -1;
+        background: 
+          radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15), transparent 40%),
+          radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.12), transparent 45%),
+          radial-gradient(circle at 50% 80%, rgba(139, 92, 246, 0.1), transparent 40%);
+        pointer-events: none;
+      }
+
+      header {
+        padding: 2.5rem 2rem 1.5rem;
+        text-align: center;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      .logo-container {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 1.5rem;
+      }
+
+      .logo-icon {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #3B82F6 0%, #D4AF37 50%, #EF4444 100%);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1.6rem;
+        color: #070B19;
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        background: linear-gradient(to right, #FFFFFF, #E2E8F0, #94A3B8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+      }
+
+      .subtitle {
+        font-size: 1.1rem;
+        color: var(--muted-gray);
+        max-width: 640px;
+        margin: 0 auto;
+        line-height: 1.6;
+        font-weight: 400;
+      }
+
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+        width: 100%;
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 24px;
+        width: 100%;
+      }
+
+      .card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        padding: 2.5rem 2rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 400px;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        text-decoration: none;
+        color: inherit;
+        position: relative;
+        box-shadow: 0 10px 30px var(--glass-shadow);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+
+      .card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 24px;
+        background: linear-gradient(135deg, var(--accent-gradient-start), var(--accent-gradient-end));
+        opacity: 0;
+        z-index: -1;
+        transition: opacity 0.3s ease;
+      }
+
+      .card:hover {
+        transform: translateY(-8px);
+        border-color: rgba(255, 255, 255, 0.25);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 30px var(--glow-color);
+      }
+
+      .card:hover::before {
+        opacity: 0.03;
+      }
+
+      .card-top {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      .icon-wrapper {
+        width: 60px;
+        height: 60px;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        transition: all 0.3s ease;
+        color: var(--accent-color);
+      }
+
+      .card:hover .icon-wrapper {
+        background: var(--accent-color);
+        color: #070B19;
+        box-shadow: 0 0 15px var(--accent-color);
+      }
+
+      h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.5rem;
+        color: #FFFFFF;
+      }
+
+      .card-desc {
+        font-size: 0.95rem;
+        color: var(--muted-gray);
+        line-height: 1.6;
+      }
+
+      .launch-btn {
+        margin-top: 2rem;
+        padding: 0.9rem 1.5rem;
+        border-radius: 14px;
+        border: 1px solid var(--accent-color);
+        background: transparent;
+        color: var(--accent-color);
+        font-weight: 700;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        width: 100%;
+      }
+
+      .card:hover .launch-btn {
+        background: var(--accent-color);
+        color: #070B19;
+        box-shadow: 0 4px 12px var(--glow-color);
+      }
+
+      /* Admin Card Styles */
+      .card-main-view, .card-profiles-view {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        flex-grow: 1;
+      }
+
+      .profiles-header {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .back-btn {
+        background: transparent;
+        border: none;
+        color: var(--muted-gray);
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        align-self: flex-start;
+        transition: color 0.2s;
+      }
+
+      .back-btn:hover {
+        color: #FFFFFF;
+      }
+
+      .profiles-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 1.5rem;
+        flex-grow: 1;
+        justify-content: center;
+      }
+
+      .profile-link-btn {
+        padding: 0.9rem 1.2rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1.5px solid rgba(255, 255, 255, 0.08);
+        color: #FFFFFF;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+      }
+
+      .profile-link-btn:hover {
+        background: var(--accent-color);
+        color: #070B19;
+        border-color: var(--accent-color);
+        box-shadow: 0 4px 12px var(--glow-color);
+      }
+
+      .profile-meta {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--muted-gray);
+      }
+
+      .profile-link-btn:hover .profile-meta {
+        color: rgba(7, 11, 25, 0.8);
+      }
+
+      /* Specific Portal Styling Classes */
+      .student-card {
+        --accent-color: #3B82F6;
+        --accent-gradient-start: #3B82F6;
+        --accent-gradient-end: #60A5FA;
+        --glow-color: rgba(59, 130, 246, 0.15);
+      }
+
+      .admin-card {
+        cursor: pointer;
+        --accent-color: #EF4444;
+        --accent-gradient-start: #EF4444;
+        --accent-gradient-end: #F87171;
+        --glow-color: rgba(239, 68, 68, 0.15);
+      }
+
+      .accountant-card {
+        --accent-color: #10B981;
+        --accent-gradient-start: #10B981;
+        --accent-gradient-end: #34D399;
+        --glow-color: rgba(16, 185, 129, 0.15);
+      }
+
+      .authenticator-card {
+        --accent-color: #8B5CF6;
+        --accent-gradient-start: #8B5CF6;
+        --accent-gradient-end: #A78BFA;
+        --glow-color: rgba(139, 92, 246, 0.15);
+      }
+
+      footer {
+        padding: 3rem 2rem 2rem;
+        text-align: center;
+        font-size: 0.85rem;
+        color: rgba(148, 163, 184, 0.6);
+        max-width: 800px;
+        margin: 0 auto;
+        line-height: 1.5;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        width: 100%;
+      }
+
+      footer strong {
+        color: var(--muted-gray);
+      }
+
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 2rem;
+        }
+        main {
+          padding: 1rem;
+        }
+        .card {
+          min-height: auto;
+          padding: 2rem 1.5rem;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+
+    <header>
+      <div class="logo-container">
+        <div class="logo-icon">I</div>
+        <div style="text-align: left;">
+          <div style="font-weight: 800; font-size: 1.1rem; letter-spacing: 0.05em; color: #FFFFFF;">INSPIRE</div>
+          <div style="font-size: 0.75rem; font-weight: 600; color: var(--royal-gold); letter-spacing: 0.1em;">JUNIOR COLLEGE</div>
+        </div>
+      </div>
+      <h1>Institution Portal Hub</h1>
+      <p class="subtitle">Launch the isolated web applications for campus portals. Each application simulates an independent architectural workspace for deployment demonstration.</p>
+    </header>
+
+    <main>
+      <div class="grid">
+        
+        <!-- Student Card -->
+        <a href="./student/" class="card student-card">
+          <div class="card-top">
+            <div class="icon-wrapper">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Student Portal</h2>
+              <p class="card-desc">Access student dashboard, view grades, class attendance schedules, and apply for hostel gate passes via the mobile/kiosk simulator.</p>
+            </div>
+          </div>
+          <div class="launch-btn">
+            Launch Application
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </div>
+        </a>
+
+        <!-- Admin Card -->
+        <div class="card admin-card" id="adminCard">
+          <div class="card-main-view" id="adminMainView">
+            <div class="card-top">
+              <div class="icon-wrapper">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="9" y1="3" x2="9" y2="21"/>
+                  <line x1="15" y1="3" x2="15" y2="21"/>
+                  <line x1="3" y1="9" x2="21" y2="9"/>
+                  <line x1="3" y1="15" x2="21" y2="15"/>
+                </svg>
+              </div>
+              <div>
+                <h2>Admin Portal</h2>
+                <p class="card-desc">Institution administrative consoles. Access operational modules, adjust academic timetables, or configure baseline term-wide structures.</p>
+              </div>
+            </div>
+            <button class="launch-btn">
+              Select Profile
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+
+          <div class="card-profiles-view" id="adminProfilesView" style="display: none;">
+            <div class="profiles-header">
+              <button class="back-btn" id="backToAdminBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="19" y1="12" x2="5" y2="12"></line>
+                  <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Back
+              </button>
+              <h2 style="font-size: 1.4rem; font-weight: 800; margin-top: 8px;">Select Admin Profile</h2>
+              <p style="font-size: 0.8rem; color: var(--muted-gray);">Select an administrative cockpit role:</p>
+            </div>
+            <div class="profiles-list">
+              <a href="./admin1/" class="profile-link-btn">
+                <span>Admin 1 (Campus)</span>
+                <span class="profile-meta">Campus operations dashboard</span>
+              </a>
+              <a href="./admin2/" class="profile-link-btn">
+                <span>Admin 2 (Finance)</span>
+                <span class="profile-meta">Institution finance cockpit</span>
+              </a>
+              <a href="./admin3/" class="profile-link-btn">
+                <span>Admin 3 (Systems)</span>
+                <span class="profile-meta">Systems & security dashboard</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accountant Card -->
+        <a href="./accountant/" class="card accountant-card">
+          <div class="card-top">
+            <div class="icon-wrapper">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"/>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Accountants Portal</h2>
+              <p class="card-desc">Restricted-access ledger console. Designed for Kiosk terminal deployment. Process payment receipts and audit accounts details.</p>
+            </div>
+          </div>
+          <div class="launch-btn">
+            Launch Kiosk Mode
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </div>
+        </a>
+
+        <!-- Authenticator Card -->
+        <a href="./authenticator/" class="card authenticator-card">
+          <div class="card-top">
+            <div class="icon-wrapper">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <div>
+              <h2>Authenticator Portal</h2>
+              <p class="card-desc">Credential verification gateway. Verify live student pass clearance codes, manage authorization logs, and cryptographically audit sessions.</p>
+            </div>
+          </div>
+          <div class="launch-btn">
+            Launch Gateway
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </div>
+        </a>
+
+      </div>
+    </main>
+
+    <footer>
+      <p><strong>Demo Mode Notice:</strong> In the final production release, the Student portal runs via a dedicated Flutter native application, while the Accountant portal is launched within a locked, password-restricted Kiosk environment. Admin consoles are hosted under secure administrative subdomains. This portal hub serves as a central showcase for validation meetings.</p>
+      <p style="margin-top: 8px;">&copy; 2026 Inspire Junior College. All rights reserved.</p>
+    </footer>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const adminCard = document.getElementById('adminCard');
+        const mainView = document.getElementById('adminMainView');
+        const profilesView = document.getElementById('adminProfilesView');
+
+        adminCard.addEventListener('click', (e) => {
+          // If clicked inside profiles list (the links), let it navigate
+          if (e.target.closest('.profile-link-btn')) {
+            return;
+          }
+
+          // If clicked the back button, return to main view
+          if (e.target.closest('#backToAdminBtn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            profilesView.style.display = 'none';
+            mainView.style.display = 'flex';
+            return;
+          }
+
+          // Switch to profiles view
+          if (profilesView.style.display === 'none') {
+            e.preventDefault();
+            mainView.style.display = 'none';
+            profilesView.style.display = 'flex';
+          }
+        });
+      });
+    </script>
+
   </body>
 </html>

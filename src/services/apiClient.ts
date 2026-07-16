@@ -13,6 +13,12 @@ export interface ApiError extends Error {
   data?: any;
 }
 
+let activeSecurityKey = '';
+
+export const setGlobalSecurityKey = (key: string) => {
+  activeSecurityKey = key;
+};
+
 export const apiClient = {
   async get<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'GET' });
@@ -34,6 +40,14 @@ export const apiClient = {
     });
   },
 
+  async put<T = any>(endpoint: string, body?: any, options: RequestInit = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
+    });
+  },
+
   async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     // SECURITY NOTE: Storing the token in sessionStorage is simple and convenient for this
     // prototype demo phase, but in a production environment, tokens should be managed via secure
@@ -50,6 +64,11 @@ export const apiClient = {
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    if (activeSecurityKey) {
+      headers['x-security-key'] = activeSecurityKey;
+      activeSecurityKey = ''; // reset after consumption
     }
 
     const url = `${getApiBaseUrl()}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;

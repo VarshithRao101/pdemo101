@@ -47,18 +47,24 @@ export const getStudentProfile = async (id: string): Promise<StudentProfile> => 
   return res.data;
 };
 
-export const updateStudentBio = async (id: string, fields: Partial<StudentProfile>): Promise<StudentProfile> => {
-  const res = await apiClient.patch<{ status: string; data: StudentProfile }>(`/accountant/students/${id}/bio`, fields);
+export const updateStudentBio = async (id: string, fields: Partial<StudentProfile>, securityKey?: string): Promise<StudentProfile> => {
+  const res = await apiClient.patch<{ status: string; data: StudentProfile }>(
+    `/accountant/students/${id}/bio`, 
+    fields,
+    securityKey ? { headers: { 'x-security-key': securityKey } } : {}
+  );
   return res.data;
 };
 
 export const recordPayment = async (
   studentId: string,
-  paymentData: { amount: number; installment: string; mode: string; category: string; date?: string }
+  paymentData: { amount: number; installment: string; mode: string; category: string; date?: string },
+  securityKey?: string
 ): Promise<{ payment: FeePayment; student: StudentProfile }> => {
   const res = await apiClient.post<{ status: string; data: { payment: FeePayment; student: StudentProfile } }>(
     `/accountant/students/${studentId}/payments`,
-    paymentData
+    paymentData,
+    securityKey ? { headers: { 'x-security-key': securityKey } } : {}
   );
   return res.data;
 };
@@ -73,10 +79,11 @@ export const getHostelAdmissions = async (): Promise<HostelData> => {
   return res.data;
 };
 
-export const allocateRoom = async (roomId: string, studentId: string): Promise<{ student: StudentProfile; room: RoomOccupancy }> => {
+export const allocateRoom = async (roomId: string, studentId: string, securityKey?: string): Promise<{ student: StudentProfile; room: RoomOccupancy }> => {
   const res = await apiClient.patch<{ status: string; data: { student: StudentProfile; room: RoomOccupancy } }>(
     `/accountant/hostel/${roomId}`,
-    { studentId }
+    { studentId },
+    securityKey ? { headers: { 'x-security-key': securityKey } } : {}
   );
   return res.data;
 };

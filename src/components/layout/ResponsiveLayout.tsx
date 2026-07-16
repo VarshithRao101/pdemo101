@@ -57,7 +57,7 @@ const SvgCog = () => (
 );
 
 export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) => {
-  const { isMobile, activeTab, setActiveTab, portalRole, isDrawerOpen, setIsDrawerOpen, theme, setThemeMode } = useNavigation();
+  const { isMobile, activeTab, setActiveTab, portalRole, isDrawerOpen, setIsDrawerOpen, theme, setThemeMode, logout } = useNavigation();
 
   // State hooks for drawer modal views
   const [showAboutModal, setShowAboutModal] = useState(false);
@@ -577,7 +577,156 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   return (
     <div style={styles.desktopContainer} className="anim-fade-in">
       {/* Left Sidebar Menu */}
-      {portalRole !== 'admin1' && portalRole !== 'admin2' && portalRole !== 'accountant' && (
+      {/* Left Sidebar Menu */}
+      {portalRole === 'authenticator' && (
+        <aside style={{
+          width: '260px',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '24px 16px',
+          backgroundColor: 'var(--bg-secondary)',
+          borderRight: '1.5px solid var(--card-border)',
+          zIndex: 100,
+          position: 'relative'
+        }}>
+          {/* Authenticator Profile Card */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            padding: '20px 8px 8px 8px',
+          }}>
+            <div style={{
+              width: '68px',
+              height: '68px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--bg-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1.5px solid var(--card-border)',
+              marginBottom: '12px',
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <div style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                background: 'var(--gold-gradient)',
+                color: 'var(--white)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px',
+                fontWeight: 850,
+              }}>
+                AU
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
+              <h3 style={{
+                fontSize: '14.5px',
+                fontWeight: 850,
+                color: 'var(--dark-charcoal)',
+                margin: 0
+              }}>
+                System Authenticator
+              </h3>
+              <span style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', fontWeight: 700 }}>ID: SEC-OVERRIDE</span>
+              <div style={{
+                fontSize: '10px',
+                fontWeight: 800,
+                color: 'var(--royal-gold)',
+                letterSpacing: '0.08em',
+                marginTop: '6px',
+                textTransform: 'uppercase'
+              }}>
+                Inspire Security Control
+              </div>
+              <div style={{ marginTop: '10px' }}>
+                <LiveConnectionIndicator compact />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ height: '1.5px', backgroundColor: 'var(--card-border)', margin: '16px 0' }} />
+
+          {/* Sidebar Nav Links */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+            flex: 1,
+            overflowY: 'auto',
+            paddingRight: '4px'
+          }} className="drawer-scrollbar">
+            {[
+              { label: 'Dashboard Overview', type: 'dashboard', icon: <SvgHome />, action: () => setActiveTab('dashboard') },
+              { label: 'Security Keys (OTP)', type: 'keys', icon: <SvgCrest />, action: () => setActiveTab('keys') },
+              { label: 'User Backup Codes', type: 'backup_codes', icon: <SvgStar />, action: () => setActiveTab('backup_codes') },
+              { label: 'Staff Accounts Control', type: 'accounts', icon: <SvgCog />, action: () => setActiveTab('accounts') },
+            ].map((item, idx) => {
+              const isActive = activeTab === item.type;
+              return (
+                <button
+                  key={idx}
+                  onClick={item.action}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    border: isActive ? '1.5px solid var(--card-border)' : '1.5px solid transparent',
+                    cursor: 'pointer',
+                    width: '100%',
+                    textAlign: 'left',
+                    fontSize: '13px',
+                    fontWeight: isActive ? 800 : 700,
+                    fontFamily: 'var(--font-family)',
+                    transition: 'all 0.2s ease',
+                    backgroundColor: isActive ? 'var(--royal-gold)' : 'transparent',
+                    color: isActive ? 'var(--white)' : 'var(--dark-charcoal)',
+                    boxShadow: isActive ? 'var(--shadow-sm)' : 'none'
+                  }}
+                  className="press-interactive"
+                >
+                  <span style={{ display: 'flex', color: isActive ? 'var(--white)' : 'var(--muted-gray)' }}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Log Out button at bottom */}
+          <div style={{ padding: '8px 0' }}>
+            <button
+              onClick={logout}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '12px',
+                borderRadius: '10px',
+                border: '1.5px solid #EF4444',
+                background: 'rgba(239, 68, 68, 0.05)',
+                color: '#EF4444',
+                fontWeight: 800,
+                width: '100%',
+                cursor: 'pointer',
+                fontSize: '12.5px'
+              }}
+              className="press-interactive"
+            >
+              Sign Out
+            </button>
+          </div>
+        </aside>
+      )}
+
+      {portalRole !== 'admin1' && portalRole !== 'admin2' && portalRole !== 'accountant' && portalRole !== 'authenticator' && (
         <aside style={{
           width: '260px',
           height: '100%',
@@ -1064,6 +1213,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     height: '100%',
     overflowY: 'auto',
     position: 'relative',
-    backgroundColor: 'var(--bg-primary)',
+    backgroundColor: 'transparent',
   },
 };

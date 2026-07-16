@@ -40,6 +40,19 @@ async function runTests() {
   const authH = { 'Authorization': `Bearer ${token}` };
   console.log('✅  Logged in. Token acquired.\n');
 
+  // Fetch security key for validation
+  const keysRes = await apiFetch('/authenticator/keys', 'GET', null, authH);
+  if (keysRes.status !== 200) {
+    console.error('❌  Failed to fetch security keys:', keysRes.data);
+    process.exit(1);
+  }
+  const keys = keysRes.data.data;
+  const admin1Obj = keys.find(k => k.role === 'admin1');
+  const admin3Obj = keys.find(k => k.role === 'admin3');
+  const admin1KeyHeader = { 'x-security-key': admin1Obj ? admin1Obj.key : '' };
+  const admin3KeyHeader = { 'x-security-key': admin3Obj ? admin3Obj.key : '' };
+  console.log('✅  Active Security Keys resolved from Authenticator:', { admin1: admin1KeyHeader, admin3: admin3KeyHeader }, '\n');
+
   // ─── TEST 2: Students List ────────────────────────────────────────────────
   console.log('[TEST 2] Fetching students list...');
   const studentsRes = await apiFetch('/admin1/students', 'GET', null, authH);
@@ -59,7 +72,7 @@ async function runTests() {
     name: originalName + ' Edited',
     mobile: '9999999999',
     tuitionFee: 9999999
-  }, authH);
+  }, { ...authH, ...admin1KeyHeader });
   if (patchRes.status !== 200) { console.error('❌  PATCH student failed:', patchRes.data); process.exit(1); }
   const updatedStu = patchRes.data.data;
   if (updatedStu.name !== originalName + ' Edited') { console.error('❌  Name was not updated.'); process.exit(1); }
@@ -67,7 +80,7 @@ async function runTests() {
   console.log(`✅  Name updated to "${updatedStu.name}". tuitionFee guard confirmed (not mutated).\n`);
 
   // Revert name
-  await apiFetch(`/admin1/students/${student._id}`, 'PATCH', { name: originalName }, authH);
+  await apiFetch(`/admin1/students/${student._id}`, 'PATCH', { name: originalName }, { ...authH, ...admin1KeyHeader });
 
   // ─── TEST 4: Admin1 cannot reach Admin2 routes ────────────────────────────
   console.log('[TEST 4] Verifying Admin1 gets 403 on Admin2-only route (/admin/fee-settings)...');
@@ -99,7 +112,7 @@ async function runTests() {
   examFD.append('testTitle', 'Verify Test');
   examFD.append('date', '07 July 2026');
 
-  const examUploadRes = await apiFetch('/admin1/exams/upload', 'POST', examFD, { 'Authorization': `Bearer ${token}` });
+  const examUploadRes = await apiFetch('/admin1/exams/upload', 'POST', examFD, { 'Authorization': `Bearer ${token}`, ...admin3KeyHeader });
   fs.unlinkSync(examPath);
 
   if (examUploadRes.status !== 200) { console.error('❌  Exam upload failed:', examUploadRes.data); process.exit(1); }
@@ -130,7 +143,7 @@ async function runTests() {
   ttFD.append('file', new Blob([fs.readFileSync(ttPath)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'test_timetable.xlsx');
   ttFD.append('section', 'Section A');
 
-  const ttUploadRes = await apiFetch('/admin1/timetable/upload', 'POST', ttFD, { 'Authorization': `Bearer ${token}` });
+  const ttUploadRes = await apiFetch('/admin1/timetable/upload', 'POST', ttFD, { 'Authorization': `Bearer ${token}`, ...admin3KeyHeader });
   fs.unlinkSync(ttPath);
 
   if (ttUploadRes.status !== 200) { console.error('❌  Timetable upload failed:', ttUploadRes.data); process.exit(1); }

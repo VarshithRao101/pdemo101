@@ -11,6 +11,7 @@ import adminRouter from './routes/admin';
 import accountantRouter from './routes/accountant';
 import admin1Router from './routes/admin1';
 import admin2Router from './routes/admin2';
+import authenticatorRouter from './routes/authenticator';
 
 dotenv.config();
 
@@ -38,7 +39,7 @@ app.use(
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -62,6 +63,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/admin1', admin1Router);
 app.use('/api/admin2', admin2Router);
 app.use('/api/accountant', accountantRouter);
+app.use('/api/authenticator', authenticatorRouter);
 app.use('/api', studentRouter);
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

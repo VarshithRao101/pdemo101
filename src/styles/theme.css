@@ -36,6 +36,7 @@
   /* Gradients */
   --brand-gradient: linear-gradient(135deg, #3B82F6 0%, #FBBF24 45%, #EF4444 100%);
   --brand-gradient-soft: linear-gradient(180deg, rgba(59,130,246,0.22) 0%, rgba(251,191,36,0.14) 50%, rgba(239,68,68,0.1) 100%);
+  --gold-gradient: linear-gradient(135deg, #FBBF24 0%, #D4AF37 55%, #B38F4D 100%);
 
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);

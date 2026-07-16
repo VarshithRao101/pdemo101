@@ -14,6 +14,7 @@ import { TimetableEntry } from '../models/timetable';
 import { User } from '../models/user';
 import { Room } from '../models/room';
 import { Exam } from '../models/exam';
+import { SecurityKey } from '../models/securityKey';
 
 
 dotenv.config();
@@ -40,6 +41,7 @@ const reset = async () => {
       { name: 'User', model: User },
       { name: 'Room', model: Room },
       { name: 'Exam', model: Exam },
+      { name: 'SecurityKey', model: SecurityKey },
     ];
 
     // Wipe documents from each collection

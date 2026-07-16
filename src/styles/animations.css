@@ -289,4 +289,127 @@
   animation: pulseBadge 2.2s infinite ease-in-out;
 }
 
+/* ─── RIPPLE EFFECT ────────────────────────────────────────────────────────── */
+@keyframes rippleWave {
+  0% {
+    transform: scale(0);
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(3.5);
+    opacity: 0;
+  }
+}
+
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-container .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.35);
+  pointer-events: none;
+  transform: scale(0);
+  animation: rippleWave 0.55s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+/* ─── COUNT-UP NUMBER ANIMATION ────────────────────────────────────────────── */
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.anim-count-up {
+  animation: countUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ─── ANIMATED GOLD BORDER GLOW ─────────────────────────────────────────────  */
+@keyframes borderGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
+    border-color: var(--card-border);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.18);
+    border-color: var(--royal-gold);
+  }
+}
+
+.anim-border-glow {
+  animation: borderGlow 2s ease-in-out infinite;
+}
+
+/* ─── TYPING INDICATOR ─────────────────────────────────────────────────────── */
+@keyframes typingDot {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+
+.typing-dot-1 { animation: typingDot 1.2s infinite 0s; }
+.typing-dot-2 { animation: typingDot 1.2s infinite 0.2s; }
+.typing-dot-3 { animation: typingDot 1.2s infinite 0.4s; }
+
+/* ─── MORE STAGGER DELAYS ──────────────────────────────────────────────────── */
+.stagger-6  { animation-delay: 300ms; }
+.stagger-7  { animation-delay: 350ms; }
+.stagger-8  { animation-delay: 400ms; }
+.stagger-9  { animation-delay: 450ms; }
+.stagger-10 { animation-delay: 500ms; }
+
+/* ─── SLIDE-IN FROM LEFT ────────────────────────────────────────────────────  */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.anim-slide-in-left {
+  animation: slideInLeft 0.45s var(--spring-default) forwards;
+}
+
+/* ─── FADE SCALE IN CARD ─────────────────────────────────────────────────── */
+@keyframes fadeScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.anim-fade-scale-in {
+  animation: fadeScaleIn 0.4s var(--spring-snappy) forwards;
+}
+
+/* ─── ENHANCED PRESS MICRO-INTERACTION ──────────────────────────────────────  */
+.press-interactive {
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+              opacity 0.18s ease,
+              box-shadow 0.18s ease;
+  will-change: transform;
+}
+
+.press-interactive:hover {
+  opacity: 0.92;
+}
+
+.press-interactive:active {
+  transform: scale(0.94);
+  opacity: 0.85;
+}
 

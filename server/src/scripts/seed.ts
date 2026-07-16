@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import { connectDB } from '../config/db';
 import { Student } from '../models/student';
 import { Teacher } from '../models/teacher';
@@ -602,11 +603,60 @@ const seed = async () => {
 
     // 8. Seed Users & Print Credentials
     const demoPassword = '111111';
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(demoPassword, salt);
+
     const usersToSeed = [
-      { username: 'admin1', role: 'admin1' as const },
-      { username: 'admin2', role: 'admin2' as const },
-      { username: 'accountant', role: 'accountant' as const },
-      { username: 'student', role: 'student' as const, profileId: studentMapping['STU-2421604']._id, profileModel: 'Student' as const }
+      {
+        username: 'admin1',
+        role: 'admin1' as const,
+        name: 'Rector Office',
+        email: 'admin1@inspirehnk.org',
+        mobile: '+91 9876543210',
+        department: 'Rectorate'
+      },
+      {
+        username: 'admin2',
+        role: 'admin2' as const,
+        name: 'Principal Desk',
+        email: 'admin2@inspirehnk.org',
+        mobile: '+91 9876543211',
+        department: 'Campus Administration'
+      },
+      {
+        username: 'admin3',
+        role: 'admin3' as const,
+        name: 'Academics Controller',
+        email: 'admin3@inspirehnk.org',
+        mobile: '+91 9876543212',
+        department: 'Academics & Exams'
+      },
+      {
+        username: 'accountant',
+        role: 'accountant' as const,
+        name: 'Accounts Officer',
+        email: 'accountant@inspirehnk.org',
+        mobile: '+91 9876543213',
+        department: 'Finance & Billing'
+      },
+      {
+        username: 'authenticator',
+        role: 'authenticator' as const,
+        name: 'Security Command Center',
+        email: 'security@inspirehnk.org',
+        mobile: '+91 9876543214',
+        department: 'Security Controls'
+      },
+      {
+        username: 'student',
+        role: 'student' as const,
+        profileId: studentMapping['STU-2421604']._id,
+        profileModel: 'Student' as const,
+        name: 'Polsani Manoneeth Rao',
+        email: 'student@inspirehnk.org',
+        mobile: '+91 9900000000',
+        department: 'Student Body'
+      }
     ];
 
     console.log('\n==================================================');
@@ -616,10 +666,16 @@ const seed = async () => {
     for (const u of usersToSeed) {
       await User.create({
         username: u.username,
-        passwordHash: demoPassword, // plain placeholder for now
+        passwordHash: hashed,
         role: u.role,
         profileId: u.profileId,
-        profileModel: u.profileModel
+        profileModel: u.profileModel,
+        backupCode: '111111',
+        usedBackupCodes: [],
+        name: u.name,
+        email: u.email,
+        mobile: u.mobile,
+        department: u.department
       });
       console.log(`Role: ${u.role.toUpperCase().padEnd(12)} | Username: ${u.username.padEnd(12)} | Password: ${demoPassword}`);
     }

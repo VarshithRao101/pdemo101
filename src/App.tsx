@@ -9,10 +9,18 @@ import { SplashView } from './views/SplashView';
 import { PinView } from './views/PinView';
 import { AdminDashboardView } from './views/AdminPortalViews';
 import { AccountantDashboardView } from './views/AccountantPortalViews';
+import { AuthenticatorDashboardView } from './views/AuthenticatorPortalViews';
 
-const AppContent: React.FC = () => {
-  const { activeTab, portalRole, checkSession, logout, isAuthenticated } = useNavigation();
+const AppContent: React.FC<{ forcedRole?: 'student' | 'admin1' | 'admin2' | 'admin3' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
+  const { activeTab, portalRole, checkSession, logout, isAuthenticated, setPortalRole } = useNavigation();
   const [flowStage, setFlowStage] = useState<'splash' | 'pin' | 'authenticated'>('splash');
+
+  // Sync forcedRole to NavigationContext
+  useEffect(() => {
+    if (forcedRole) {
+      setPortalRole(forcedRole);
+    }
+  }, [forcedRole, setPortalRole]);
   const sessionChecked = useRef(false);
 
   // On mount: attempt session recovery during the splash window.
@@ -65,8 +73,16 @@ const AppContent: React.FC = () => {
       return <AdminDashboardView role="admin2" />;
     }
 
+    if (portalRole === 'admin3') {
+      return <AdminDashboardView role="admin3" />;
+    }
+
     if (portalRole === 'accountant') {
       return <AccountantDashboardView />;
+    }
+
+    if (portalRole === 'authenticator') {
+      return <AuthenticatorDashboardView />;
     }
 
 
@@ -90,7 +106,7 @@ const AppContent: React.FC = () => {
   }
 
   if (flowStage === 'pin') {
-    return <PinView onComplete={() => setFlowStage('authenticated')} />;
+    return <PinView onComplete={() => setFlowStage('authenticated')} hideRoleSelector={!!forcedRole} />;
   }
 
   return (
@@ -100,10 +116,14 @@ const AppContent: React.FC = () => {
   );
 };
 
-function App() {
+interface AppProps {
+  forcedRole?: 'student' | 'admin1' | 'admin2' | 'admin3' | 'accountant' | 'authenticator';
+}
+
+function App({ forcedRole }: AppProps = {}) {
   return (
-    <NavigationProvider>
-      <AppContent />
+    <NavigationProvider defaultRole={forcedRole}>
+      <AppContent forcedRole={forcedRole} />
     </NavigationProvider>
   );
 }

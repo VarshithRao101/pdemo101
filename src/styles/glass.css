@@ -102,3 +102,162 @@
   opacity: 0.15;
 }
 
+/* ─── GLASS FORM FIELD ─────────────────────────────────────────────────────── */
+/* Wrapper around label + input with subtle inset shadow & left-border accent */
+.glass-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.glass-form-field label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-gray);
+}
+
+.glass-form-field input,
+.glass-form-field select,
+.glass-form-field textarea {
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--card-border);
+  color: var(--dark-charcoal);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  font-family: var(--font-family);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* ─── STATUS PILL ──────────────────────────────────────────────────────────── */
+.glass-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid transparent;
+}
+
+.glass-status-pill.status-present,
+.glass-status-pill.status-paid,
+.glass-status-pill.status-active {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
+.glass-status-pill.status-absent,
+.glass-status-pill.status-unpaid,
+.glass-status-pill.status-error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.glass-status-pill.status-late,
+.glass-status-pill.status-pending,
+.glass-status-pill.status-warning {
+  background: rgba(251, 191, 36, 0.12);
+  color: #92400e;
+  border-color: rgba(251, 191, 36, 0.25);
+}
+
+.glass-status-pill.status-leave,
+.glass-status-pill.status-info {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+/* ─── NEO-2D CARD ──────────────────────────────────────────────────────────── */
+/* Premium neo-brutalist card with bold offset shadow */
+.neo-2d-card {
+  background: var(--card-bg);
+  border: 2px solid var(--card-border);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-md);
+  transition: box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1);
+  position: relative;
+}
+
+.neo-2d-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* ─── HOVER GOLD BORDER ─────────────────────────────────────────────────────  */
+/* Add to any card or element to get gold border on hover */
+.hover-gold {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-gold:hover {
+  border-color: var(--royal-gold) !important;
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.12) !important;
+}
+
+/* ─── GLASS METRIC CARD ─────────────────────────────────────────────────────  */
+/* KPI / stats cards with colored top accent strip */
+.glass-metric-card {
+  background: var(--card-bg);
+  border: 1.5px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s ease;
+}
+
+.glass-metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gold-gradient);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.glass-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.glass-metric-card .metric-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--dark-charcoal);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.glass-metric-card .metric-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 6px;
+}
+
+/* ─── ZEBRA TABLE ROWS ──────────────────────────────────────────────────────  */
+.zebra-row:nth-child(even) {
+  background-color: rgba(212, 175, 55, 0.03);
+}
+
+.zebra-row:hover {
+  background-color: rgba(212, 175, 55, 0.06) !important;
+  transition: background-color 0.15s ease;
+}

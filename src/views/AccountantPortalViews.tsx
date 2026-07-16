@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
-import { useNavigation } from '../context/NavigationContext';
 import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
 import collegeLogo from '../assets/college logo.png';
@@ -201,6 +200,7 @@ export const AccountantDashboardView: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [livePulseKey, setLivePulseKey] = useState<'students' | 'fees' | 'attendance' | 'hostel' | 'settings' | null>(null);
+  const [securityKey, setSecurityKey] = useState('');
 
   // Search parameters (Local Edit Buffer state)
   const [searchAdmNo, setSearchAdmNo] = useState('');
@@ -255,7 +255,6 @@ export const AccountantDashboardView: React.FC = () => {
     absentCount: 0
   });
 
-  const { theme, setThemeMode } = useNavigation();
 
   const fetchDashboardSummary = async () => {
     try {
@@ -467,11 +466,12 @@ export const AccountantDashboardView: React.FC = () => {
         hostelBlock: updated.hostelBlock,
         hostelRoom: updated.hostelRoom,
         residentialAddress: updated.residentialAddress
-      });
+      }, securityKey);
       setSelectedStudent(res as any);
       setEditStudent({ ...res } as any);
       setStudents(prev => prev.map(s => s._id === res._id ? (res as any) : s));
       triggerToast('Profile bio updated successfully.');
+      setSecurityKey('');
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save changes.');
     } finally {
@@ -549,7 +549,7 @@ export const AccountantDashboardView: React.FC = () => {
         installment: collectInstallment,
         mode: collectMode,
         category: collectCategory
-      });
+      }, securityKey);
       
       const updatedStudent = res.student;
       setSelectedStudent(updatedStudent as any);
@@ -557,6 +557,7 @@ export const AccountantDashboardView: React.FC = () => {
       setStudents(prev => prev.map(s => s._id === updatedStudent._id ? (updatedStudent as any) : s));
       setCollectAmount('');
       triggerToast(`Payment logged: ₹${paymentAmount.toLocaleString('en-IN')}`);
+      setSecurityKey('');
       fetchDashboardSummary();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to submit payment.');
@@ -573,12 +574,13 @@ export const AccountantDashboardView: React.FC = () => {
     }
     setIsLoading(true);
     try {
-      const res = await accountantService.allocateRoom(allocateRoom, selectedStudent._id);
+      const res = await accountantService.allocateRoom(allocateRoom, selectedStudent._id, securityKey);
       triggerToast('Hostel room allocation changes saved successfully!');
       fetchHostelData();
       setSelectedStudent(res.student as any);
       setEditStudent({ ...res.student } as any);
       setStudents(prev => prev.map(s => s._id === res.student._id ? (res.student as any) : s));
+      setSecurityKey('');
     } catch (err: any) {
       triggerToast(err.message || 'Failed to allocate room.');
     } finally {
@@ -1008,6 +1010,18 @@ export const AccountantDashboardView: React.FC = () => {
                 </div>
               </div>
 
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px' }}>
+                <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+                <input
+                  type="text"
+                  placeholder="Enter Accountant Key (OTP) e.g. ACC-1234"
+                  value={securityKey}
+                  onChange={(e) => setSecurityKey(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleStudentSave(editStudent)}
+                  style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+                />
+              </div>
+
               {/* SAVE / SUBMIT CHANGES BUTTON */}
               <button 
                 onClick={() => handleStudentSave(editStudent)} 
@@ -1141,6 +1155,17 @@ export const AccountantDashboardView: React.FC = () => {
                         <option value="Credit Card">Credit Card</option>
                       </select>
                     </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px', marginBottom: '8px' }}>
+                    <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+                    <input
+                      type="text"
+                      placeholder="Enter Accountant Key (OTP) e.g. ACC-1234"
+                      value={securityKey}
+                      onChange={(e) => setSecurityKey(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleFeePayment('collect')}
+                      style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+                    />
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
@@ -1523,6 +1548,18 @@ export const AccountantDashboardView: React.FC = () => {
                       </select>
                     </div>
                   </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px' }}>
+                    <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+                    <input
+                      type="text"
+                      placeholder="Enter Accountant Key (OTP) e.g. ACC-1234"
+                      value={securityKey}
+                      onChange={(e) => setSecurityKey(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAllocateRoom()}
+                      style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+                    />
+                  </div>
+
                   {/* EXPLICIT SUBMIT CHANGES BUTTON */}
                   <button onClick={handleAllocateRoom} style={styles.saveSubmitBtn} className="press-interactive">Submit Room Allocation changes</button>
                 </div>
@@ -1657,24 +1694,28 @@ export const AccountantDashboardView: React.FC = () => {
         {/* Top Summary Metrics Cards */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={styles.metricsGrid}>
-            <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey === 'students' || livePulseKey === 'fees' ? 'anim-pulse-gold' : ''}`}>
+            <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring neo-2d-card hover-gold ${livePulseKey === 'students' || livePulseKey === 'fees' ? 'anim-pulse-gold' : ''}`}>
               <span style={styles.metricLabel}>Total Fee Collected Today</span>
               <strong style={{ ...styles.metricValue, color: '#10B981' }}>₹{feeCollectedToday.toLocaleString('en-IN')}</strong>
+              <span className="glass-status-pill status-paid">Collected</span>
             </GlassCard>
             <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey === 'students' || livePulseKey === 'fees' ? 'anim-pulse-gold' : ''}`}>
               <span style={styles.metricLabel}>Pending Fees Total</span>
               <strong style={{ ...styles.metricValue, color: '#EF4444' }}>₹{pendingFeesTotal.toLocaleString('en-IN')}</strong>
+              <span className="glass-status-pill status-unpaid">Pending</span>
             </GlassCard>
           </div>
 
           <div style={styles.metricsGrid}>
-            <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey === 'attendance' ? 'anim-pulse-gold' : ''}`}>
+            <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring neo-2d-card hover-gold ${livePulseKey === 'attendance' ? 'anim-pulse-gold' : ''}`}>
               <span style={styles.metricLabel}>Students Present Today</span>
               <strong style={styles.metricValue}>{Math.max(0, students.length - dashboardSummary.absentCount)}</strong>
+              <span className="glass-status-pill status-present">Present</span>
             </GlassCard>
             <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey === 'attendance' ? 'anim-pulse-gold' : ''}`}>
               <span style={styles.metricLabel}>Students Absent Today</span>
               <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>{dashboardSummary.absentCount}</strong>
+              <span className="glass-status-pill status-absent">Absent</span>
             </GlassCard>
           </div>
         </section>
@@ -1726,26 +1767,7 @@ export const AccountantDashboardView: React.FC = () => {
               <p style={styles.moduleDesc}>Search student records and log term payments.</p>
             </div>
 
-            {/* 3. Attendance marking */}
-            <div
-              onClick={() => setActiveSubPage('attendance')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.09) 0%, rgba(59, 130, 246, 0.02) 100%)',
-                border: '1.5px solid rgba(59, 130, 246, 0.3)',
-                boxShadow: '0 4px 14px rgba(59, 130, 246, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                  <polyline points="22 4 12 14.01 9 11.01" />
-                </svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Attendance</h4>
-              <p style={styles.moduleDesc}>Mark daily attendance section-wise roster.</p>
-            </div>
+
 
             {/* 4. Collection Reports */}
             <div
@@ -1791,71 +1813,9 @@ export const AccountantDashboardView: React.FC = () => {
             </div>
 
             {/* 6. Switch Color Theme */}
-            <div
-              onClick={() => {
-                const nextTheme = theme === 'light' ? 'Dark' : 'Light';
-                setThemeMode(nextTheme);
-                triggerToast(`Accent switched to ${nextTheme} Mode`);
-              }}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.09) 0%, rgba(139, 92, 246, 0.02) 100%)',
-                border: '1.5px solid rgba(139, 92, 246, 0.3)',
-                boxShadow: '0 4px 14px rgba(139, 92, 246, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.5">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Appearance Accent</h4>
-              <p style={styles.moduleDesc}>Toggle theme Mode ({theme === 'light' ? 'Standard Light' : 'Dark Mode'}).</p>
-            </div>
 
-            {/* 7. Late Fee Rules */}
-            <div
-              onClick={() => setActiveSubPage('late_fees')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.09) 0%, rgba(244, 63, 94, 0.02) 100%)',
-                border: '1.5px solid rgba(244, 63, 94, 0.3)',
-                boxShadow: '0 4px 14px rgba(244, 63, 94, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(244, 63, 94, 0.08)', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 16 14" />
-                </svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Late Fees Config</h4>
-              <p style={styles.moduleDesc}>Define penalties dues and grace periods.</p>
-            </div>
 
-            {/* 8. Scholarships waivers */}
-            <div
-              onClick={() => setActiveSubPage('scholarships')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.09) 0%, rgba(20, 184, 166, 0.02) 100%)',
-                border: '1.5px solid rgba(20, 184, 166, 0.3)',
-                boxShadow: '0 4px 14px rgba(20, 184, 166, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20, 184, 166, 0.08)', border: '1px solid rgba(20, 184, 166, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2.5">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                  <path d="M2 17l10 5 10-5" />
-                  <path d="M2 12l10 5 10-5" />
-                </svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Scholarships waivers</h4>
-              <p style={styles.moduleDesc}>Set grants percentages and discount terms.</p>
-            </div>
+
 
             {/* 9. Accountant Profile Info */}
             <div
@@ -2129,20 +2089,46 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '12px 14px',
-    border: '1.5px solid rgba(255, 255, 255, 0.6)',
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    borderRadius: '16px',
+    padding: '14px 16px',
+    border: '1px solid rgba(255, 255, 255, 0.72)',
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: '20px',
+    boxShadow: '0 18px 34px rgba(15, 23, 42, 0.05)',
   },
   actionItemBtn: {
-    padding: '6px 12px',
-    borderRadius: '10px',
-    border: '1px solid rgba(0,0,0,0.06)',
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    padding: '8px 14px',
+    borderRadius: '12px',
+    border: '1px solid rgba(0,0,0,0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.82)',
     fontSize: '11px',
     fontWeight: 700,
     color: 'var(--dark-charcoal)',
     cursor: 'pointer',
+  },
+  statusBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '4px 10px',
+    borderRadius: '999px',
+    fontSize: '10px',
+    fontWeight: 800,
+    letterSpacing: '0.02em',
+    border: '1px solid rgba(0,0,0,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    color: 'var(--dark-charcoal)',
+  },
+  skeletonCard: {
+    minHeight: '130px',
+    borderRadius: '24px',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    border: '1px solid rgba(255,255,255,0.4)',
+    boxShadow: '0 22px 40px rgba(15, 23, 42, 0.05)',
+  },
+  skeletonLine: {
+    width: '100%',
+    height: '16px',
+    borderRadius: '10px',
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   sheetBtn: {
     padding: '10px',
