@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
+import PinEntry from '../components/common/PinEntry';
 import { useNavigation } from '../context/NavigationContext';
 import { InspireLogo } from '../components/common/InspireLogo';
 import passwordBg from '../assets/passwordbackground.jpg';
@@ -517,149 +518,16 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, hideRoleSelector }
           )}
         </div>
 
-        {/* PIN Box Container */}
-        <div
-          style={styles.pinContainer}
-          className={isError ? 'anim-shiver' : ''}
-        >
-          {renderPinBoxes()}
-        </div>
-
-        {/* Biometric Trigger */}
-        <div style={styles.bioContainer}>
-          <button
-            onClick={handleBiometrics}
-            className={`press-interactive ${bioScanning ? 'anim-biometric' : ''}`}
-            style={{
-              ...styles.bioButton,
-              border: bioScanning ? '1px solid var(--royal-gold)' : '1px solid rgba(255, 255, 255, 0.4)',
-            }}
-          >
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="url(#goldGradientBio)"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <defs>
-                <linearGradient id="goldGradientBio" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#E5C158" />
-                  <stop offset="100%" stopColor="#B38F4D" />
-                </linearGradient>
-              </defs>
-              <path d="M12 2a10 10 0 0 0-10 10" />
-              <path d="M22 12a10 10 0 0 0-10-10" />
-              <path d="M12 22a10 10 0 0 0 10-10" />
-              <path d="M2 12a10 10 0 0 0 10 10" />
-              <path d="M12 8v8" />
-              <path d="M8 12h8" />
-              <path d="M12 5a7 7 0 0 1 7 7c0 1.5-.5 2-1 3.5M5 12a7 7 0 0 1 7-7" />
-              <path d="M9 15c.5-1.5 1-2 1-3.5" />
-            </svg>
-            <span style={styles.bioText}>Use Fingerprint</span>
-          </button>
-        </div>
-
-        {/* Custom Keypad Container */}
-        <div style={styles.keypadContainer}>
-          <div style={styles.keypadRow}>
-            {[1, 2, 3].map((num) => (
-              <button
-                key={num}
-                onClick={() => handleKeyPress(num)}
-                className="press-interactive glass-panel"
-                style={styles.keypadButton}
-              >
-                {num}
-              </button>
-            ))}
-          </div>
-          <div style={styles.keypadRow}>
-            {[4, 5, 6].map((num) => (
-              <button
-                key={num}
-                onClick={() => handleKeyPress(num)}
-                className="press-interactive glass-panel"
-                style={styles.keypadButton}
-              >
-                {num}
-              </button>
-            ))}
-          </div>
-          <div style={styles.keypadRow}>
-            {[7, 8, 9].map((num) => (
-              <button
-                key={num}
-                onClick={() => handleKeyPress(num)}
-                className="press-interactive glass-panel"
-                style={styles.keypadButton}
-              >
-                {num}
-              </button>
-            ))}
-          </div>
-          <div style={styles.keypadRow}>
-            {/* Delete Button */}
-            <button
-              onClick={handleDelete}
-              className="press-interactive glass-panel"
-              style={styles.keypadActionBtn}
-              aria-label="Delete"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--dark-charcoal)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
-                <line x1="18" y1="9" x2="12" y2="15" />
-                <line x1="12" y1="9" x2="18" y2="15" />
-              </svg>
-            </button>
-            {/* Zero Button */}
-            <button
-              onClick={() => handleKeyPress(0)}
-              className="press-interactive glass-panel"
-              style={styles.keypadButton}
-            >
-              0
-            </button>
-            {/* Confirm Button */}
-            <button
-              onClick={handleConfirm}
-              className="press-interactive glass-panel"
-              style={{
-                ...styles.keypadActionBtn,
-                background: pin.length === 6 ? 'var(--gold-gradient)' : 'rgba(255, 255, 255, 0.45)',
-                borderColor: pin.length === 6 ? 'var(--royal-gold)' : 'rgba(255, 255, 255, 0.5)',
-                color: pin.length === 6 ? 'var(--dark-charcoal)' : 'var(--dark-charcoal)',
-              }}
-              aria-label="Confirm"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
+        <PinEntry
+          pin={pin}
+          onKeyPress={handleKeyPress}
+          onDelete={handleDelete}
+          onConfirm={handleConfirm}
+          onBiometrics={handleBiometrics}
+          lastKeyIndex={lastKeypadIndex}
+          isError={isError}
+          isChecking={isChecking}
+        />
       </>
     );
   };
