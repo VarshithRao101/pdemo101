@@ -24,6 +24,7 @@ export const connectDB = async (): Promise<void> => {
 
     await mongoose.connect(uri, {
       dbName: dbName,
+      serverSelectionTimeoutMS: 5000, // Fail fast after 5 seconds if DB is unreachable
     });
 
     console.log(`Successfully connected to database: ${dbName}`);
