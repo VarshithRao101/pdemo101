@@ -6,7 +6,6 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import healthRouter from './routes/health';
 import authRouter from './routes/auth';
-import studentRouter from './routes/student';
 import adminRouter from './routes/admin';
 import accountantRouter from './routes/accountant';
 import admin1Router from './routes/admin1';
@@ -22,7 +21,7 @@ app.use(helmet());
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : ['http://localhost:5173', 'https://pdemo101-9yqv.vercel.app'];
+  : ['http://localhost:5173', 'https://inspirecolleges.vercel.app'];
 
 app.use(
   cors({
@@ -58,13 +57,11 @@ if (process.env.NODE_ENV !== 'production') {
 
 app.use('/api', healthRouter);
 app.use('/api/auth', authRouter);
-app.use('/api/student', studentRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin1', admin1Router);
 app.use('/api/admin2', admin2Router);
 app.use('/api/accountant', accountantRouter);
 app.use('/api/authenticator', authenticatorRouter);
-app.use('/api', studentRouter);
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Unhandled Server Error:', err);

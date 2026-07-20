@@ -7,7 +7,6 @@ import passwordBg from '../assets/passwordbackground.jpg';
 
 interface PinViewProps {
   onComplete: () => void;
-  hideRoleSelector?: boolean;
 }
 
 // Identifier map: each segment resolves to a different username tried against the backend.
@@ -18,22 +17,20 @@ interface PinViewProps {
 //   accountant→ 'accountant'
 // The backend will match it via User.username, so this is consistent with seed data.
 const SEGMENT_TO_IDENTIFIER: Record<string, string> = {
-  student: 'student',
   admin1: 'admin1',
   admin2: 'admin2',
-  admin3: 'admin3',
   accountant: 'accountant',
   authenticator: 'authenticator',
 };
 
-export const PinView: React.FC<PinViewProps> = ({ onComplete, hideRoleSelector }) => {
+export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
   const [pin, setPin] = useState<string>('');
   const [isChecking, setIsChecking] = useState(false);
   const [isError, setIsError] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastKeypadIndex, setLastKeypadIndex] = useState<number | null>(null);
   // biometric scanning state removed (not used directly here)
-  const { isMobile, portalRole, setPortalRole, login } = useNavigation();
+  const { isMobile, portalRole, login } = useNavigation();
 
   const [userId, setUserId] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -77,7 +74,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, hideRoleSelector }
       return;
     }
 
-    let identifier = userId.trim() || SEGMENT_TO_IDENTIFIER[portalRole] || 'student';
+    let identifier = userId.trim() || SEGMENT_TO_IDENTIFIER[portalRole] || 'admin1';
 
     setIsChecking(true);
 
@@ -122,111 +119,16 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, hideRoleSelector }
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
             <InspireLogo size="lg" />
           </div>
-          <p style={{ ...styles.subtitle, color: portalRole === 'student' ? '#000' : styles.subtitle.color }}>
-            {portalRole === 'student'
-              ? 'Student Portal Login'
-              : portalRole === 'admin1'
+          <p style={{ ...styles.subtitle, color: styles.subtitle.color }}>
+            {portalRole === 'admin1'
               ? 'Admin 1 (Rector) Login'
               : portalRole === 'admin2'
               ? 'Admin 2 (Campus Principal) Login'
-              : portalRole === 'admin3'
-              ? 'Admin 3 (Academics) Login'
               : portalRole === 'accountant'
               ? 'Accountant Login'
               : 'Portal Login'}
           </p>
 
-          {/* Role selector Segment */}
-          {!hideRoleSelector && (
-            <div style={{
-              display: 'flex',
-              backgroundColor: 'rgba(0, 0, 0, 0.04)',
-              borderRadius: '14px',
-              padding: '2px',
-              marginTop: '18px',
-              width: '420px',
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              border: '1px solid rgba(0, 0, 0, 0.03)'
-            }}>
-              <button
-                onClick={() => { setPortalRole('student'); setPin(''); }}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: '12px',
-                  border: 'none',
-                  fontFamily: 'var(--font-family)',
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backgroundColor: portalRole === 'student' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                  color: portalRole === 'student' ? '#0F172A' : 'var(--muted-gray)',
-                  boxShadow: portalRole === 'student' ? 'var(--shadow-sm)' : 'none',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Student
-              </button>
-              <button
-                onClick={() => { setPortalRole('admin1'); setPin(''); }}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: '12px',
-                  border: 'none',
-                  fontFamily: 'var(--font-family)',
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backgroundColor: portalRole === 'admin1' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                  color: portalRole === 'admin1' ? '#0F172A' : 'var(--muted-gray)',
-                  boxShadow: portalRole === 'admin1' ? 'var(--shadow-sm)' : 'none',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Admin 1
-              </button>
-              <button
-                onClick={() => { setPortalRole('admin2'); setPin(''); }}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: '12px',
-                  border: 'none',
-                  fontFamily: 'var(--font-family)',
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backgroundColor: portalRole === 'admin2' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                  color: portalRole === 'admin2' ? '#0F172A' : 'var(--muted-gray)',
-                  boxShadow: portalRole === 'admin2' ? 'var(--shadow-sm)' : 'none',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Admin 2
-              </button>
-              <button
-                onClick={() => { setPortalRole('accountant'); setPin(''); }}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: '12px',
-                  border: 'none',
-                  fontFamily: 'var(--font-family)',
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backgroundColor: portalRole === 'accountant' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                  color: portalRole === 'accountant' ? '#0F172A' : 'var(--muted-gray)',
-                  boxShadow: portalRole === 'accountant' ? 'var(--shadow-sm)' : 'none',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Accountant
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Credentials Form Inputs */}
@@ -375,15 +277,11 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, hideRoleSelector }
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
             <InspireLogo size="lg" />
           </div>
-          <p style={{ ...styles.subtitle, color: portalRole === 'student' ? '#000' : styles.subtitle.color }}>
-            {portalRole === 'student'
-              ? 'Student Portal'
-              : portalRole === 'admin1'
+          <p style={{ ...styles.subtitle, color: styles.subtitle.color }}>
+            {portalRole === 'admin1'
               ? 'Admin 1 (Rector) Portal'
               : portalRole === 'admin2'
               ? 'Admin 2 (Campus Principal) Portal'
-              : portalRole === 'admin3'
-              ? 'Admin 3 (Academic & Publishing) Portal'
               : portalRole === 'accountant'
               ? 'Accountant Portal'
               : 'Authenticator Portal'}
@@ -391,98 +289,6 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, hideRoleSelector }
           <p style={{ fontSize: '11px', color: 'var(--muted-gray)', fontWeight: 500, marginTop: '2px', opacity: 0.8 }}>
             Enter your 6-digit access PIN
           </p>
-
-          {/* Role selector Segment */}
-          {!hideRoleSelector && (
-            <div style={{
-              display: 'flex',
-              backgroundColor: 'rgba(0, 0, 0, 0.04)',
-              borderRadius: '14px',
-              padding: '2px',
-              marginTop: '18px',
-              width: '420px',
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              border: '1px solid rgba(0, 0, 0, 0.03)'
-            }}>
-              <button
-                onClick={() => { setPortalRole('student'); setPin(''); }}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: '12px',
-                  border: 'none',
-                  fontFamily: 'var(--font-family)',
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backgroundColor: portalRole === 'student' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                  color: portalRole === 'student' ? '#0F172A' : 'var(--muted-gray)',
-                  boxShadow: portalRole === 'student' ? 'var(--shadow-sm)' : 'none',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Student
-              </button>
-              <button
-                onClick={() => { setPortalRole('admin1'); setPin(''); }}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: '12px',
-                  border: 'none',
-                  fontFamily: 'var(--font-family)',
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backgroundColor: portalRole === 'admin1' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                  color: portalRole === 'admin1' ? '#0F172A' : 'var(--muted-gray)',
-                  boxShadow: portalRole === 'admin1' ? 'var(--shadow-sm)' : 'none',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Admin 1
-              </button>
-              <button
-                onClick={() => { setPortalRole('admin2'); setPin(''); }}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: '12px',
-                  border: 'none',
-                  fontFamily: 'var(--font-family)',
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backgroundColor: portalRole === 'admin2' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                  color: portalRole === 'admin2' ? '#0F172A' : 'var(--muted-gray)',
-                  boxShadow: portalRole === 'admin2' ? 'var(--shadow-sm)' : 'none',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Admin 2
-              </button>
-              <button
-                onClick={() => { setPortalRole('accountant'); setPin(''); }}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: '12px',
-                  border: 'none',
-                  fontFamily: 'var(--font-family)',
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  backgroundColor: portalRole === 'accountant' ? 'rgba(255,255,255,0.96)' : 'transparent',
-                  color: portalRole === 'accountant' ? '#0F172A' : 'var(--muted-gray)',
-                  boxShadow: portalRole === 'accountant' ? 'var(--shadow-sm)' : 'none',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                Accountant
-              </button>
-            </div>
-          )}
         </div>
 
         <PinEntry

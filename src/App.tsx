@@ -1,18 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavigationProvider, useNavigation } from './context/NavigationContext';
 import { ResponsiveLayout } from './components/layout/ResponsiveLayout';
-import { DashboardView } from './views/DashboardView';
-import { AcademicsView } from './views/AcademicsView';
-import { UpdatesView } from './views/UpdatesView';
-import { ProfileView } from './views/ProfileView';
 import { SplashView } from './views/SplashView';
 import { PinView } from './views/PinView';
 import { AdminDashboardView } from './views/AdminPortalViews';
 import { AccountantDashboardView } from './views/AccountantPortalViews';
 import { AuthenticatorDashboardView } from './views/AuthenticatorPortalViews';
 
-const AppContent: React.FC<{ forcedRole?: 'student' | 'admin1' | 'admin2' | 'admin3' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
-  const { activeTab, portalRole, checkSession, logout, isAuthenticated, setPortalRole } = useNavigation();
+const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
+  const { portalRole, checkSession, logout, isAuthenticated, setPortalRole } = useNavigation();
   const [flowStage, setFlowStage] = useState<'splash' | 'pin' | 'authenticated'>('splash');
 
   // Sync forcedRole to NavigationContext
@@ -73,10 +69,6 @@ const AppContent: React.FC<{ forcedRole?: 'student' | 'admin1' | 'admin2' | 'adm
       return <AdminDashboardView role="admin2" />;
     }
 
-    if (portalRole === 'admin3') {
-      return <AdminDashboardView role="admin3" />;
-    }
-
     if (portalRole === 'accountant') {
       return <AccountantDashboardView />;
     }
@@ -85,20 +77,7 @@ const AppContent: React.FC<{ forcedRole?: 'student' | 'admin1' | 'admin2' | 'adm
       return <AuthenticatorDashboardView />;
     }
 
-
-
-    switch (activeTab) {
-      case 'dashboard':
-        return <DashboardView />;
-      case 'academics':
-        return <AcademicsView />;
-      case 'updates':
-        return <UpdatesView />;
-      case 'profile':
-        return <ProfileView />;
-      default:
-        return <DashboardView />;
-    }
+    return null;
   };
 
   if (flowStage === 'splash') {
@@ -106,7 +85,7 @@ const AppContent: React.FC<{ forcedRole?: 'student' | 'admin1' | 'admin2' | 'adm
   }
 
   if (flowStage === 'pin') {
-    return <PinView onComplete={() => setFlowStage('authenticated')} hideRoleSelector={!!forcedRole} />;
+    return <PinView onComplete={() => setFlowStage('authenticated')} />;
   }
 
   return (
@@ -117,7 +96,7 @@ const AppContent: React.FC<{ forcedRole?: 'student' | 'admin1' | 'admin2' | 'adm
 };
 
 interface AppProps {
-  forcedRole?: 'student' | 'admin1' | 'admin2' | 'admin3' | 'accountant' | 'authenticator';
+  forcedRole?: 'admin1' | 'admin2' | 'accountant' | 'authenticator';
 }
 
 function App({ forcedRole }: AppProps = {}) {

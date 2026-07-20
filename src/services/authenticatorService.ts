@@ -80,5 +80,43 @@ export const authenticatorService = {
   async getStats(): Promise<AuthenticatorStats> {
     const res = await apiClient.get<{ status: string; data: AuthenticatorStats }>('/authenticator/stats');
     return res.data;
+  },
+
+  // Get transaction sync log
+  async getSyncJournal(): Promise<SyncJournalEntry[]> {
+    const res = await apiClient.get<{ status: string; data: SyncJournalEntry[] }>('/authenticator/sync-journal');
+    return res.data;
+  },
+
+  // Trigger db reconciliation
+  async reconcileDatabase(): Promise<string> {
+    const res = await apiClient.post<{ status: string; message: string }>('/authenticator/reconcile', {});
+    return res.message;
+  },
+
+  // Create system database backup
+  async createBackup(): Promise<BackupResponse> {
+    const res = await apiClient.post<{ status: string; message: string; data: BackupResponse }>('/authenticator/backup', {});
+    return res.data;
   }
 };
+
+export interface SyncJournalEntry {
+  _id: string;
+  transactionId: string;
+  sourceNode: string;
+  targetNode: string;
+  action: string;
+  payload: any;
+  status: 'pending' | 'synced' | 'failed';
+  acknowledgedClients: string[];
+  expectedClientsCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BackupResponse {
+  archiveName: string;
+  sizeBytes: number;
+  checksum: string;
+}

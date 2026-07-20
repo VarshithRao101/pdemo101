@@ -57,7 +57,7 @@ const SvgCog = () => (
 );
 
 export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) => {
-  const { isMobile, activeTab, setActiveTab, portalRole, isDrawerOpen, setIsDrawerOpen, theme, setThemeMode, logout } = useNavigation();
+  const { isMobile, activeTab, setActiveTab, portalRole, isDrawerOpen, setIsDrawerOpen, theme, setThemeMode, logout, user } = useNavigation();
 
   // State hooks for drawer modal views
   const [showAboutModal, setShowAboutModal] = useState(false);
@@ -74,6 +74,19 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   // Settings Modal States
   const [smsNotif, setSmsNotif] = useState(true);
   const [biometrics, setBiometrics] = useState(true);
+
+  // Derive dynamic user initials, name, ID, and branding
+  const getInitials = (n: string) => {
+    if (!n) return '??';
+    const parts = n.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const displayName = user?.name || 'Staff Member';
+  const displayId = user?.username || '—';
+  const displayInitials = getInitials(displayName);
+  const displayBrand = 'INSPIRE JUNIOR COLLEGE';
 
 
 
@@ -93,16 +106,24 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   };
 
   // Mobile side drawer list items (from Screen 1)
-  const drawerMenuItems = [
-    { label: 'Home', type: 'home', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
-    { label: 'Notifications', type: 'notif', icon: <SvgBell />, action: () => { setIsDrawerOpen(false); setActiveTab('updates'); } },
-    { label: 'About Us', type: 'about', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setShowAboutModal(true); } },
-    { label: 'Spotlight', type: 'spotlight', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setShowSpotlightModal(true); } },
-    { label: 'Help & Feedback', type: 'feedback', icon: <SvgQuestion />, action: () => { setIsDrawerOpen(false); setActiveTab('profile'); } },
-    { label: 'Rate the App', type: 'rate', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setShowRateModal(true); } },
-    { label: 'Contact Us', type: 'contact', icon: <SvgPhone />, action: () => { setIsDrawerOpen(false); setActiveTab('profile'); } },
-    { label: 'Settings', type: 'settings', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setShowSettingsModal(true); } },
-  ];
+  const drawerMenuItems = portalRole === 'authenticator'
+    ? [
+        { label: 'Dashboard Overview', type: 'dashboard', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
+        { label: 'Security Keys (OTP)', type: 'keys', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('keys'); } },
+        { label: 'User Backup Codes', type: 'backup_codes', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('backup_codes'); } },
+        { label: 'Staff Accounts Control', type: 'accounts', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('accounts'); } },
+        { label: 'Sync Integrity Console', type: 'sync_integrity', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('sync_integrity'); } },
+      ]
+    : [
+        { label: 'Home', type: 'home', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
+        { label: 'Notifications', type: 'notif', icon: <SvgBell />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
+        { label: 'About Us', type: 'about', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setShowAboutModal(true); } },
+        { label: 'Spotlight', type: 'spotlight', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setShowSpotlightModal(true); } },
+        { label: 'Help & Feedback', type: 'feedback', icon: <SvgQuestion />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
+        { label: 'Rate the App', type: 'rate', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setShowRateModal(true); } },
+        { label: 'Contact Us', type: 'contact', icon: <SvgPhone />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
+        { label: 'Settings', type: 'settings', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setShowSettingsModal(true); } },
+      ];
 
   // Helper function to render styled Neo-Brutalist Modal Overlay
   const renderModal = (title: string, onClose: () => void, content: React.ReactNode) => {
@@ -496,12 +517,12 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           {/* User profile header card */}
           <div style={styles.drawerProfileHeader}>
             <div style={styles.drawerAvatarOuter}>
-              <div style={styles.drawerAvatarInner}>PM</div>
+              <div style={styles.drawerAvatarInner}>{displayInitials}</div>
             </div>
             <div style={styles.drawerProfileInfo}>
-              <h3 style={styles.drawerProfileName}>Polsani Manoneeth Rao</h3>
-              <span style={styles.drawerProfileMeta}>👤 2421604 &gt;</span>
-              <div style={styles.drawerBrandText}>INSPIRE JUNIOR COLLEGE</div>
+              <h3 style={styles.drawerProfileName}>{displayName}</h3>
+              <span style={styles.drawerProfileMeta}>👤 {displayId} &gt;</span>
+              <div style={styles.drawerBrandText}>{displayBrand}</div>
               <div style={{ marginTop: '10px' }}>
                 <LiveConnectionIndicator compact />
               </div>
@@ -514,9 +535,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           <div style={styles.drawerNavScroll}>
             {drawerMenuItems.map((item, idx) => {
               const isHomeActive = item.type === 'home' && activeTab === 'dashboard';
-              const isUpdatesActive = item.type === 'notif' && activeTab === 'updates';
-              const isProfileActive = (item.type === 'settings' || item.type === 'contact' || item.type === 'feedback') && activeTab === 'profile';
-              const isActive = isHomeActive || isUpdatesActive || isProfileActive;
+              const isActive = isHomeActive || item.type === activeTab;
               return (
                 <button
                   key={idx}
@@ -666,6 +685,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               { label: 'Security Keys (OTP)', type: 'keys', icon: <SvgCrest />, action: () => setActiveTab('keys') },
               { label: 'User Backup Codes', type: 'backup_codes', icon: <SvgStar />, action: () => setActiveTab('backup_codes') },
               { label: 'Staff Accounts Control', type: 'accounts', icon: <SvgCog />, action: () => setActiveTab('accounts') },
+              { label: 'Sync Integrity Console', type: 'sync_integrity', icon: <SvgStar />, action: () => setActiveTab('sync_integrity') },
             ].map((item, idx) => {
               const isActive = activeTab === item.type;
               return (
@@ -747,7 +767,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           }}>
           {/* Avatar Clickable to Go to Profile */}
           <div
-            onClick={() => setActiveTab('profile')}
             style={{
               width: '68px',
               height: '68px',
@@ -761,7 +780,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               cursor: 'pointer'
             }}
             className="press-interactive"
-            title="View Profile"
+            title="User Profile"
           >
             <div style={{
               width: '60px',
@@ -775,12 +794,11 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               fontSize: '20px',
               fontWeight: 800,
             }}>
-              PM
+              {displayInitials}
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
             <h3
-              onClick={() => setActiveTab('profile')}
               style={{
                 fontSize: '14.5px',
                 fontWeight: 800,
@@ -789,11 +807,11 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
                 cursor: 'pointer'
               }}
               className="press-interactive"
-              title="View Profile"
+              title="User Profile"
             >
-              Polsani Manoneeth Rao
+              {displayName}
             </h3>
-            <span style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>ID: 2421604 &gt;</span>
+            <span style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>ID: {displayId} &gt;</span>
             <div style={{
               fontSize: '10px',
               fontWeight: 800,
@@ -802,7 +820,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               marginTop: '6px',
               textTransform: 'uppercase'
             }}>
-              INSPIRE JUNIOR COLLEGE
+              {displayBrand}
             </div>
             <div style={{ marginTop: '10px' }}>
               <LiveConnectionIndicator compact />
@@ -823,18 +841,16 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
         }} className="drawer-scrollbar">
           {[
             { label: 'Home', type: 'home', icon: <SvgHome />, action: () => setActiveTab('dashboard') },
-            { label: 'Notifications', type: 'notif', icon: <SvgBell />, action: () => setActiveTab('updates'), badge: 5 },
+            { label: 'Notifications', type: 'notif', icon: <SvgBell />, action: () => setActiveTab('dashboard'), badge: 5 },
             { label: 'About Us', type: 'about', icon: <SvgCrest />, action: () => setShowAboutModal(true) },
             { label: 'Spotlight', type: 'spotlight', icon: <SvgStar />, action: () => setShowSpotlightModal(true) },
-            { label: 'Help & Feedback', type: 'feedback', icon: <SvgQuestion />, action: () => setActiveTab('profile') },
+            { label: 'Help & Feedback', type: 'feedback', icon: <SvgQuestion />, action: () => {} },
             { label: 'Rate the App', type: 'rate', icon: <SvgStar />, action: () => setShowRateModal(true) },
-            { label: 'Contact Us', type: 'contact', icon: <SvgPhone />, action: () => setActiveTab('profile') },
+            { label: 'Contact Us', type: 'contact', icon: <SvgPhone />, action: () => {} },
             { label: 'Settings', type: 'settings', icon: <SvgCog />, action: () => setShowSettingsModal(true) },
           ].map((item, idx) => {
             const isHomeActive = item.type === 'home' && activeTab === 'dashboard';
-            const isUpdatesActive = item.type === 'notif' && activeTab === 'updates';
-            const isProfileActive = (item.type === 'settings' || item.type === 'contact' || item.type === 'feedback') && activeTab === 'profile';
-            const isActive = isHomeActive || isUpdatesActive || isProfileActive;
+            const isActive = isHomeActive || item.type === activeTab;
             return (
               <button
                 key={idx}

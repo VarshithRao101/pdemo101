@@ -4,7 +4,6 @@
  * Every function resolves identity from the JWT on the server — no student ID
  * is ever passed as a parameter from the client.
  */
-import { apiClient } from './apiClient';
 
 // ─── Shared Types ────────────────────────────────────────────────────────────
 
@@ -125,42 +124,3 @@ export interface Bulletin {
   updatedAt: string;
 }
 
-// ─── Service Functions ────────────────────────────────────────────────────────
-
-export const fetchMyProfile = async (): Promise<StudentProfile> => {
-  const res = await apiClient.get<{ status: string; data: StudentProfile }>('/student/me/profile');
-  return res.data;
-};
-
-export const fetchMyAcademics = async (): Promise<AcademicsData> => {
-  const res = await apiClient.get<{ status: string; data: AcademicsData }>('/student/me/academics');
-  return res.data;
-};
-
-export const fetchMyFees = async (): Promise<FeesData> => {
-  const res = await apiClient.get<{ status: string; data: FeesData }>('/student/me/fees');
-  return res.data;
-};
-
-export const fetchMyTimetable = async (): Promise<TimetableEntry[]> => {
-  const res = await apiClient.get<{ status: string; data: TimetableEntry[] }>('/student/me/timetable');
-  return res.data;
-};
-
-export const fetchBulletins = async (): Promise<Bulletin[]> => {
-  const res = await apiClient.get<{ status: string; data: Bulletin[] }>('/bulletins');
-  return res.data;
-};
-
-// ─── Utility Helpers ─────────────────────────────────────────────────────────
-
-/** Returns initials from a name string e.g. "Polsani Manoneeth Rao" → "PM" */
-export const getInitials = (name: string): string => {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
-
-/** Format rupee amount with ₹ prefix and commas */
-export const formatRupees = (amount: number): string =>
-  '₹' + amount.toLocaleString('en-IN');

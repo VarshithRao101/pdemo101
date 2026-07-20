@@ -3,12 +3,15 @@ import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
 import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
+import { onSocketEvent } from '../services/socketClient';
 import { authenticatorService } from '../services/authenticatorService';
 import type { 
   SecurityKeyInfo, 
   BackupCodeInfo, 
   AccountInfo, 
-  AuthenticatorStats 
+  AuthenticatorStats,
+  SyncJournalEntry,
+  BackupResponse
 } from '../services/authenticatorService';
 
 export const AuthenticatorDashboardView: React.FC = () => {
@@ -16,11 +19,11 @@ export const AuthenticatorDashboardView: React.FC = () => {
   const [toast, setToast] = useState<string | null>(null);
   
   // Tab control
-  const activeTab = (globalActiveTab === 'keys' || globalActiveTab === 'backup_codes' || globalActiveTab === 'accounts') 
+  const activeTab = (globalActiveTab === 'keys' || globalActiveTab === 'backup_codes' || globalActiveTab === 'accounts' || globalActiveTab === 'sync_integrity') 
     ? globalActiveTab 
     : 'dashboard';
 
-  const setActiveTab = (tab: 'dashboard' | 'keys' | 'backup_codes' | 'accounts') => {
+  const setActiveTab = (tab: 'dashboard' | 'keys' | 'backup_codes' | 'accounts' | 'sync_integrity') => {
     setGlobalActiveTab(tab);
   };
 
@@ -34,6 +37,12 @@ export const AuthenticatorDashboardView: React.FC = () => {
     totalStaff: 0,
     activeDevices: 0
   });
+
+  // Sync integrity & database management state
+  const [syncLogs, setSyncLogs] = useState<SyncJournalEntry[]>([]);
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [backupDetails, setBackupDetails] = useState<BackupResponse | null>(null);
 
   // Countdown timer for daily keys expiration
   const [timeRemaining, setTimeRemaining] = useState<string>('');
@@ -71,20 +80,40 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Load Initial Data
   const loadData = async () => {
     try {
-      const [keysRes, codesRes, accountsRes, statsRes] = await Promise.all([
+      const [keysRes, codesRes, accountsRes, statsRes, syncRes] = await Promise.all([
         authenticatorService.getKeys(),
         authenticatorService.getBackupCodes(),
         authenticatorService.getAccounts(),
-        authenticatorService.getStats()
+        authenticatorService.getStats(),
+        authenticatorService.getSyncJournal()
       ]);
       setKeys(keysRes);
       setBackupCodes(codesRes);
       setAccounts(accountsRes);
       setStats(statsRes);
+      setSyncLogs(syncRes);
     } catch (err: any) {
       triggerToast(err.message || 'Failed to sync authenticator data.');
     }
   };
+
+  // Listen for real-time transaction updates from other nodes
+  useEffect(() => {
+    const unsubscribe = onSocketEvent('sync:journal-updated' as any, (updatedJournal: any) => {
+      setSyncLogs(prev => {
+        const index = prev.findIndex(item => item.transactionId === updatedJournal.transactionId);
+        if (index > -1) {
+          const next = [...prev];
+          next[index] = updatedJournal;
+          return next;
+        } else {
+          return [updatedJournal, ...prev];
+        }
+      });
+      triggerToast(`Sync Audit Update: ${updatedJournal.action} is ${updatedJournal.status.toUpperCase()}`);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -204,6 +233,37 @@ export const AuthenticatorDashboardView: React.FC = () => {
     }
   };
 
+  // Reconcile pending/failed transaction sync entries
+  const handleReconcile = async () => {
+    setIsReconciling(true);
+    try {
+      const msg = await authenticatorService.reconcileDatabase();
+      triggerToast(msg);
+      // Reload logs
+      const syncRes = await authenticatorService.getSyncJournal();
+      setSyncLogs(syncRes);
+    } catch (err: any) {
+      triggerToast(err.message || 'Reconciliation failed.');
+    } finally {
+      setIsReconciling(false);
+    }
+  };
+
+  // Create database backup archive
+  const handleBackup = async () => {
+    setIsBackingUp(true);
+    setBackupDetails(null);
+    try {
+      const details = await authenticatorService.createBackup();
+      setBackupDetails(details);
+      triggerToast('System database backup snapshot archive created.');
+    } catch (err: any) {
+      triggerToast(err.message || 'Backup failed.');
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
   const filteredBackupCodes = backupCodes.filter(
     c => c.username.toLowerCase().includes(studentSearch.toLowerCase()) || 
          c.name.toLowerCase().includes(studentSearch.toLowerCase())
@@ -243,7 +303,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
       <main style={styles.main}>
         {/* Navigation Tabs */}
         <div style={styles.tabsContainer}>
-          {(['dashboard', 'keys', 'backup_codes', 'accounts'] as const).map((tab) => (
+          {(['dashboard', 'keys', 'backup_codes', 'accounts', 'sync_integrity'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -259,6 +319,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               {tab === 'keys' && 'Security Keys (OTP)'}
               {tab === 'backup_codes' && 'User Backup Codes'}
               {tab === 'accounts' && 'Account Control'}
+              {tab === 'sync_integrity' && 'Sync Integrity Console'}
             </button>
           ))}
         </div>
@@ -620,6 +681,152 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   )}
                 </div>
               </form>
+            </GlassCard>
+          </section>
+        )}
+
+        {/* ─── TAB 5: SYNC INTEGRITY & DATABASE OVERVIEW ─── */}
+        {activeTab === 'sync_integrity' && (
+          <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <GlassCard hoverable={false} style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--dark-charcoal)' }}>Sync Integrity & Database Fallback</h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--muted-gray)' }}>
+                    Real-time transaction status audit ledger. Reconcile database nodes or trigger manual backups.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={handleReconcile}
+                    disabled={isReconciling}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: '10px',
+                      border: '1.5px solid var(--card-border)',
+                      backgroundColor: 'var(--royal-gold)',
+                      color: '#000',
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      opacity: isReconciling ? 0.6 : 1
+                    }}
+                    className="press-interactive"
+                  >
+                    {isReconciling ? 'Reconciling...' : '🔄 Reconcile DB'}
+                  </button>
+                  <button
+                    onClick={handleBackup}
+                    disabled={isBackingUp}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: '10px',
+                      border: '1.5px solid var(--card-border)',
+                      backgroundColor: '#10B981',
+                      color: '#fff',
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      opacity: isBackingUp ? 0.6 : 1
+                    }}
+                    className="press-interactive"
+                  >
+                    {isBackingUp ? 'Backing up...' : '💾 Create DB Backup'}
+                  </button>
+                </div>
+              </div>
+
+              {backupDetails && (
+                <div style={{
+                  marginTop: '20px',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '1.5px solid #10B981',
+                  backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                  animation: 'fade-in 0.3s ease'
+                }}>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: '#10B981', fontWeight: 800 }}>
+                    ✓ Database Backup Archive Created Successfully
+                  </h4>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--dark-charcoal)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span><strong>Archive:</strong> {backupDetails.archiveName}</span>
+                    <span><strong>Size:</strong> {(backupDetails.sizeBytes / 1024 / 1024).toFixed(2)} MB</span>
+                    <span><strong>Checksum (SHA256):</strong> <code style={{ backgroundColor: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem', wordBreak: 'break-all' }}>{backupDetails.checksum}</code></span>
+                  </div>
+                </div>
+              )}
+            </GlassCard>
+
+            <GlassCard hoverable={false} style={{ padding: '20px', overflowX: 'auto' }}>
+              <h4 style={{ margin: '0 0 16px 0', fontSize: '1.05rem', borderBottom: '1.5px solid var(--card-border)', paddingBottom: '8px' }}>
+                Sync Audit Trail Ledger ({syncLogs.length} transactions)
+              </h4>
+
+              {syncLogs.length === 0 ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '0.85rem' }}>
+                  No transaction sync entries recorded in this session.
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--card-border)' }}>
+                      <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '700' }}>Timestamp</th>
+                      <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '700' }}>Transaction ID</th>
+                      <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '700' }}>Action / Event</th>
+                      <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '700' }}>Source → Target</th>
+                      <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '700' }}>Client Acks</th>
+                      <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '700' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {syncLogs.map((log) => {
+                      const date = new Date(log.createdAt);
+                      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                      const isPending = log.status === 'pending';
+                      const isSynced = log.status === 'synced';
+                      
+                      let badgeBg = '#EF4444';
+                      let badgeColor = '#ffffff';
+                      if (isSynced) {
+                        badgeBg = '#10B981';
+                      } else if (isPending) {
+                        badgeBg = '#F59E0B';
+                      }
+
+                      return (
+                        <tr key={log._id || log.transactionId} style={{ borderBottom: '1px solid var(--card-border)' }}>
+                          <td style={{ padding: '12px 8px', whiteSpace: 'nowrap' }}>{timeStr}</td>
+                          <td style={{ padding: '12px 8px', fontFamily: 'monospace', fontWeight: 600 }}>{log.transactionId}</td>
+                          <td style={{ padding: '12px 8px', fontWeight: 700, color: 'var(--dark-charcoal)' }}>{log.action}</td>
+                          <td style={{ padding: '12px 8px', color: 'var(--muted-gray)' }}>
+                            <span style={{ textTransform: 'uppercase', fontWeight: 700 }}>{log.sourceNode}</span>
+                            {' → '}
+                            <span style={{ fontWeight: 600, color: '#3B82F6' }}>{log.targetNode}</span>
+                          </td>
+                          <td style={{ padding: '12px 8px' }}>
+                            <strong>{log.acknowledgedClients ? log.acknowledgedClients.length : 0}</strong> / {log.expectedClientsCount || 0}
+                          </td>
+                          <td style={{ padding: '12px 8px' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.7rem',
+                              fontWeight: 800,
+                              textTransform: 'uppercase',
+                              backgroundColor: badgeBg,
+                              color: badgeColor,
+                              letterSpacing: '0.05em'
+                            }}>
+                              {log.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </GlassCard>
           </section>
         )}

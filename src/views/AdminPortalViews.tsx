@@ -184,102 +184,7 @@ interface ExamItem {
   resultsPublished: boolean;
 }
 
-const INITIAL_STUDENTS_LIST: Student[] = [
-  {
-    admissionNumber: 'ADM24001',
-    studentId: 'STU-1001',
-    qrId: 'QR-90382',
-    registrationNumber: 'REG20240918',
-    name: 'Varshith Rao',
-    fatherName: 'Mr. Satish Rao',
-    motherName: 'Mrs. Sandhya Rao',
-    mobile: '9876543210',
-    parentMobile: '9123456789',
-    email: 'varshith.rao@inspire.edu',
-    address: 'Flat 402, Gold Crest Residency, Madhapur, Hyderabad',
-    residentialAddress: 'Hostel Block A, Room 203, Inspire Campus',
-    hostelStatus: 'Resident',
-    transportStatus: 'Self Transport',
-    hostelBlock: 'Block A',
-    hostelRoom: 'Room 203',
-    course: 'MPC',
-    section: 'Section A',
-    branch: 'Madhapur',
-    rollNumber: '24MPC01',
-    status: 'Active',
-    documents: ['10th Marksheet.pdf', 'SSC Transfer Certificate.pdf', 'Aadhaar Card.pdf']
-  },
-  {
-    admissionNumber: 'ADM24002',
-    studentId: 'STU-1002',
-    qrId: 'QR-18294',
-    registrationNumber: 'REG20240801',
-    name: 'Aaditya Varma',
-    fatherName: 'Mr. Vijay Varma',
-    motherName: 'Mrs. Rekha Varma',
-    mobile: '8765432109',
-    parentMobile: '9234567890',
-    email: 'aaditya.varma@inspire.edu',
-    address: 'Plot 12, Road No 4, Jubilee Hills, Hyderabad',
-    residentialAddress: 'Hostel Block B, Room 104, Inspire Campus',
-    hostelStatus: 'Resident',
-    transportStatus: 'Self Transport',
-    hostelBlock: 'Block B',
-    hostelRoom: 'Room 104',
-    course: 'MPC',
-    section: 'Section B',
-    branch: 'Madhapur',
-    rollNumber: '24MPC02',
-    status: 'Active',
-    documents: ['10th Marksheet.pdf', 'Income Certificate.pdf']
-  }
-];
 
-const INITIAL_TEACHERS_LIST: Teacher[] = [
-  { id: 'FAC-201', name: 'Mr. Ramesh K', subject: 'Physics', mobile: '9000100021', salary: 75000, assignedClasses: ['Junior MPC', 'Senior MPC'], assignedSections: ['Section A', 'Section B'], assignedSubjects: ['Physics'], status: 'Active', branch: 'Madhapur' },
-  { id: 'FAC-202', name: 'Mrs. Sarada M', subject: 'Chemistry', mobile: '9000100022', salary: 80000, assignedClasses: ['Junior BiPC'], assignedSections: ['Section A'], assignedSubjects: ['Chemistry'], status: 'Active', branch: 'Jubilee Hills' },
-  { id: 'FAC-203', name: 'Mr. Anand S', subject: 'Mathematics', mobile: '9000100023', salary: 85000, assignedClasses: ['Junior MPC'], assignedSections: ['Section A'], assignedSubjects: ['Mathematics'], status: 'Active', branch: 'Madhapur' }
-];
-
-const INITIAL_BULLETINS: Bulletin[] = [
-  { id: 'BUL-001', category: 'announcement', title: 'Inspire wins District STEM Cup', date: '04 July 2026', content: 'Our Junior MPC Section A campus team secured 1st prize in engineering physics models.' },
-  { id: 'BUL-002', category: 'holiday', title: 'Independence Day Holiday', date: '15 Aug 2026', content: 'Campus will remain closed on 15th August for national Independence Day celebrations.' }
-];
-
-const getAdminStudents = (): Student[] => {
-  if (!(window as any)._adminStudents) {
-    (window as any)._adminStudents = INITIAL_STUDENTS_LIST;
-  }
-  return (window as any)._adminStudents;
-};
-
-const getAdminTeachers = (): Teacher[] => {
-  if (!(window as any)._adminTeachers) {
-    (window as any)._adminTeachers = INITIAL_TEACHERS_LIST;
-  }
-  return (window as any)._adminTeachers;
-};
-
-const getAdminBulletins = (): Bulletin[] => {
-  if (!(window as any)._adminBulletins) {
-    (window as any)._adminBulletins = INITIAL_BULLETINS;
-  }
-  return (window as any)._adminBulletins;
-};
-
-// --- MOCK ACADEMIC FEES DATABASE ---
-const getMockAcademicFees = () => {
-  if (!(window as any)._adminAcademicFees) {
-    (window as any)._adminAcademicFees = {
-      tuition: 120000,
-      hostel: 85000,
-      transport: 15000,
-      misc: 5000,
-      isLocked: false
-    };
-  }
-  return (window as any)._adminAcademicFees;
-};
 
 // ─── ADMIN DASHBOARD CONTROLLER ───
 export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3' }> = ({ role = 'admin1' }) => {
@@ -290,9 +195,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [securityKey, setSecurityKey] = useState('');
 
   // States
-  const [students, setStudents] = useState<Student[]>(getAdminStudents);
-  const [teachers, setTeachers] = useState<Teacher[]>(getAdminTeachers);
-  const [bulletins, setBulletins] = useState<Bulletin[]>(getAdminBulletins);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [bulletins, setBulletins] = useState<Bulletin[]>([]);
 
   // Edit Buffer States (prevents keypress auto-save)
   const [searchAdm, setSearchAdm] = useState('');
@@ -325,22 +230,22 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [editingPubId, setEditingPubId] = useState<string | null>(null);
 
   // Exam list States
-  const [exams, setExams] = useState<ExamItem[]>([
-    { id: 'EX-1', name: 'Quarterly Physics Term', date: '10 Aug 2026', class: 'Junior MPC', status: 'Scheduled', resultsPublished: false },
-    { id: 'EX-2', name: 'Half-Yearly Math Exam', date: '24 Sep 2026', class: 'Junior MPC', status: 'Scheduled', resultsPublished: false }
-  ]);
+  const [exams, setExams] = useState<ExamItem[]>([]);
   const [newExamName, setNewExamName] = useState('');
   const [newExamDate, setNewExamDate] = useState('');
 
   // Academic baseline fees state (Locked by default, only once editable)
-  const [feeRates, setFeeRates] = useState(getMockAcademicFees);
+  const [feeRates, setFeeRates] = useState({
+    tuition: 0,
+    hostel: 0,
+    transport: 0,
+    misc: 0,
+    isLocked: false
+  });
   const [isEditingFees, setIsEditingFees] = useState(false);
 
   // Calendars logs
-  const [calendarEvents, setCalendarEvents] = useState([
-    { title: 'Academic Session Begins', date: '12 June 2026' },
-    { title: 'Quarterly Examination Starts', date: '10 August 2026' }
-  ]);
+  const [calendarEvents, setCalendarEvents] = useState<{ title: string; date: string }[]>([]);
   const [newCalTitle, setNewCalTitle] = useState('');
   const [newCalDate, setNewCalDate] = useState('');
 
@@ -380,34 +285,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [examUploading, setExamUploading] = useState(false);
 
   // --- ADMIN 2 FINANCE & Overheads States ---
-  const [expenditures, setExpenditures] = useState<ExpenditureItem[]>(() => {
-    if (!(window as any)._adminExpenditures) {
-      (window as any)._adminExpenditures = [
-        { id: 'EXP001', category: 'Mess & Food', amount: 85000, description: 'Weekly groceries & milk supply', date: '2026-07-01', branch: 'Madhapur' },
-        { id: 'EXP002', category: 'Maintenance', amount: 24000, description: 'Hostel block water pump repair', date: '2026-07-03', branch: 'Madhapur' },
-        { id: 'EXP003', category: 'Utilities', amount: 48000, description: 'Internet broadband monthly payment', date: '2026-07-05', branch: 'Madhapur' },
-        { id: 'EXP004', category: 'Maintenance', amount: 80000, description: 'Lab AC repair work', date: '2026-07-09', branch: 'Jubilee Hills' },
-        { id: 'EXP005', category: 'Mess & Food', amount: 95000, description: 'Mess vegetable supplies', date: '2026-07-07', branch: 'Jubilee Hills' },
-        { id: 'EXP006', category: 'Events', amount: 150000, description: 'College annual day setup', date: '2026-07-06', branch: 'Gachibowli' },
-        { id: 'EXP007', category: 'Transport', amount: 65000, description: 'College buses diesel fuel', date: '2026-07-05', branch: 'Kukatpally' },
-        { id: 'EXP008', category: 'Stationery', amount: 35000, description: 'Library reference books purchase', date: '2026-07-04', branch: 'Secunderabad' }
-      ];
-    }
-    return (window as any)._adminExpenditures;
-  });
+  const [expenditures, setExpenditures] = useState<ExpenditureItem[]>([]);
   const [selectedExpBranch, setSelectedExpBranch] = useState<'Madhapur' | 'Jubilee Hills' | 'Gachibowli' | 'Kukatpally' | 'Secunderabad'>('Madhapur');
   const [newExpCat, setNewExpCat] = useState('Utilities');
   const [newExpAmt, setNewExpAmt] = useState('');
   const [newExpDesc, setNewExpDesc] = useState('');
 
 
-  const [workers, setWorkers] = useState<WorkerItem[]>([
-    { id: 'WRK01', name: 'Allu Prasad', role: 'Mess Supervisor', salary: 25000, paid: true },
-    { id: 'WRK02', name: 'NTR Goud', role: 'Gardener & Landscaper', salary: 18000, paid: true },
-    { id: 'WRK03', name: 'Prabhas Raju', role: 'Campus Security Lead', salary: 22000, paid: false },
-    { id: 'WRK04', name: 'Pooja Hegde', role: 'Hostel Block Warden', salary: 30000, paid: true },
-    { id: 'WRK05', name: 'Vijay Deverakonda', role: 'Mess Assistant', salary: 15000, paid: false }
-  ]);
+  const [workers, setWorkers] = useState<WorkerItem[]>([]);
 
   const [feeEditSearch, setFeeEditSearch] = useState('');
   const [selectedFeeStudent, setSelectedFeeStudent] = useState<Student | null>(null);
@@ -592,11 +477,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const fetchSections = async () => {
     try {
       const data = await admin1Service.getSections();
-      if (data && data.teachers && data.teachers.length > 0) {
+      if (data && data.teachers) {
         setTeachers(data.teachers);
       }
     } catch (err: any) {
-      console.warn('API getSections failed, using mock teachers list:', err);
+      triggerToast(err.message || 'Failed to load sections and teachers.');
     }
   };
 
@@ -806,12 +691,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       triggerToast('Teacher credentials submitted and saved to database.');
       setSecurityKey('');
     } catch (err: any) {
-      console.warn('API updateTeacher failed, using local update fallback:', err);
-      const next = teachers.map(t => t.id === updated.id ? updated : t);
-      setTeachers(next);
-      setSelectedTeacher(updated);
-      setEditTeacher({ ...updated });
-      triggerToast('Teacher credentials updated (Mocked).');
+      triggerToast(err.message || 'Failed to save teacher details.');
     }
   };
 
@@ -925,23 +805,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       triggerToast(`Teacher ${newFacName} registered successfully!`);
       setSecurityKey('');
     } catch (err: any) {
-      console.warn('API createTeacher failed, using local fallback:', err);
-      const mockSaved = {
-        id: newId,
-        name: newFacName,
-        subject: newFacSub,
-        salary: role === 'admin2' ? 50000 : parseFloat(newFacSal),
-        mobile: '9000000000',
-        assignedClasses: [],
-        assignedSections: [],
-        assignedSubjects: [],
-        status: 'Active' as const,
-        branch: 'Madhapur'
-      };
-      setTeachers([...teachers, mockSaved]);
-      setNewFacName('');
-      setNewFacSal('');
-      triggerToast(`Teacher ${newFacName} registered successfully (Mocked).`);
+      triggerToast(err.message || 'Failed to register teacher.');
     }
   };
 
@@ -954,17 +818,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       triggerToast('Duty allocation changes submitted.');
       fetchSections(); // refreshes teachers and sections lists from backend
     } catch (err: any) {
-      console.warn('API allocateTeacherDuty failed, updating local state instead:', err);
-      const updatedTeacher = {
-        ...editTeacher,
-        assignedSections: nextSections,
-        assignedSubjects: nextSubjects
-      };
-      const next = teachers.map(t => t.id === selectedTeacher.id ? updatedTeacher : t);
-      setTeachers(next);
-      setSelectedTeacher(updatedTeacher);
-      setEditTeacher({ ...updatedTeacher });
-      triggerToast('Duty allocation changes updated (Mocked).');
+      triggerToast(err.message || 'Failed to allocate teacher duty.');
     }
   };
 
@@ -2682,32 +2536,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           setEditMiscWaiver(String(breakdown.miscWaiver));
           triggerToast(`Loaded fee record for ${match.name}`);
         } catch (err: any) {
-          console.warn('API getFeeBreakdown failed, using mock data instead:', err);
-          const mockBreakdown = {
-            baseFee: 245000,
-            tuitionFee: 120000,
-            hostelFee: 80000,
-            transportFee: 30000,
-            miscFee: 15000,
-            previousPending: 5000,
-            scholarshipCategory: match.scholarshipCategory || 'Merit',
-            scholarshipPct: match.scholarshipCategory === 'Sports' ? 30 : 50,
-            scholarshipDeduction: 60000,
-            individualOverrideDeduction: (match as any).tuitionWaiver || 15000,
-            tuitionWaiver: (match as any).tuitionWaiver || 10000,
-            hostelWaiver: (match as any).hostelWaiver || 5000,
-            transportWaiver: (match as any).transportWaiver || 0,
-            miscWaiver: (match as any).miscWaiver || 0,
-            totalPaid: 95000,
-            remainingBalance: 90000
-          };
-          setSelectedFeeStudent(match);
-          setFeeBreakdownData(mockBreakdown);
-          setEditTuitionWaiver(String(mockBreakdown.tuitionWaiver));
-          setEditHostelWaiver(String(mockBreakdown.hostelWaiver));
-          setEditTransportWaiver(String(mockBreakdown.transportWaiver));
-          setEditMiscWaiver(String(mockBreakdown.miscWaiver));
-          triggerToast(`Loaded fee record for ${match.name} (Mocked)`);
+          triggerToast(err.message || 'Failed to load fee breakdown.');
         }
       } else {
         setSelectedFeeStudent(null);
@@ -2732,32 +2561,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           setEditMiscWaiver(String(breakdown.miscWaiver));
           triggerToast(`Loaded fee record for ${match.name}`);
         } catch (err: any) {
-          console.warn('API getFeeBreakdown failed, using mock data instead:', err);
-          const mockBreakdown = {
-            baseFee: 245000,
-            tuitionFee: 120000,
-            hostelFee: 80000,
-            transportFee: 30000,
-            miscFee: 15000,
-            previousPending: 5000,
-            scholarshipCategory: match.scholarshipCategory || 'Merit',
-            scholarshipPct: match.scholarshipCategory === 'Sports' ? 30 : 50,
-            scholarshipDeduction: 60000,
-            individualOverrideDeduction: (match as any).tuitionWaiver || 15000,
-            tuitionWaiver: (match as any).tuitionWaiver || 10000,
-            hostelWaiver: (match as any).hostelWaiver || 5000,
-            transportWaiver: (match as any).transportWaiver || 0,
-            miscWaiver: (match as any).miscWaiver || 0,
-            totalPaid: 95000,
-            remainingBalance: 90000
-          };
-          setSelectedFeeStudent(match);
-          setFeeBreakdownData(mockBreakdown);
-          setEditTuitionWaiver(String(mockBreakdown.tuitionWaiver));
-          setEditHostelWaiver(String(mockBreakdown.hostelWaiver));
-          setEditTransportWaiver(String(mockBreakdown.transportWaiver));
-          setEditMiscWaiver(String(mockBreakdown.miscWaiver));
-          triggerToast(`Loaded fee record for ${match.name} (Mocked)`);
+          triggerToast(err.message || 'Failed to load fee breakdown.');
         }
       } else {
         setSelectedFeeStudent(null);
@@ -2785,29 +2589,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           throw new Error(res.message || 'Failed to apply waivers via API');
         }
       } catch (err: any) {
-        console.warn('API applyFeeOverride failed, updating local state instead:', err);
-        (selectedFeeStudent as any).tuitionWaiver = Number(editTuitionWaiver) || 0;
-        (selectedFeeStudent as any).hostelWaiver = Number(editHostelWaiver) || 0;
-        (selectedFeeStudent as any).transportWaiver = Number(editTransportWaiver) || 0;
-        (selectedFeeStudent as any).miscWaiver = Number(editMiscWaiver) || 0;
-
-        const totalWaivers =
-          (selectedFeeStudent as any).tuitionWaiver +
-          (selectedFeeStudent as any).hostelWaiver +
-          (selectedFeeStudent as any).transportWaiver +
-          (selectedFeeStudent as any).miscWaiver;
-
-        const updatedBreakdown = {
-          ...feeBreakdownData,
-          tuitionWaiver: (selectedFeeStudent as any).tuitionWaiver,
-          hostelWaiver: (selectedFeeStudent as any).hostelWaiver,
-          transportWaiver: (selectedFeeStudent as any).transportWaiver,
-          miscWaiver: (selectedFeeStudent as any).miscWaiver,
-          individualOverrideDeduction: totalWaivers,
-          remainingBalance: Math.max(0, (feeBreakdownData?.baseFee || 245000) - (feeBreakdownData?.scholarshipDeduction || 60000) - totalWaivers - (feeBreakdownData?.totalPaid || 95000))
-        };
-        setFeeBreakdownData(updatedBreakdown);
-        triggerToast(`Fee waivers applied for ${selectedFeeStudent.name} (Mocked).`);
+        triggerToast(err.message || 'Failed to apply fee overrides.');
       }
     };
 

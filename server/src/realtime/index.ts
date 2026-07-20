@@ -52,6 +52,12 @@ const ensureServer = () => {
   return io;
 };
 
+const getRoomClientCount = (roomName: string): number => {
+  if (!io) return 0;
+  const room = io.sockets.adapter.rooms.get(roomName);
+  return room ? room.size : 0;
+};
+
 export const initializeRealtime = (httpServer: HttpServer) => {
   const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
@@ -104,13 +110,34 @@ export const initializeRealtime = (httpServer: HttpServer) => {
       trackStudentRoom(studentRoom);
       log('connect', { socketId: socket.id, userId: user.id, role: user.role, rooms: [studentRoom] });
       log('room-join', { socketId: socket.id, room: studentRoom });
-    } else if (user.role === 'accountant' || user.role === 'admin1' || user.role === 'admin2') {
+    } else if (['accountant', 'admin1', 'admin2', 'admin3', 'authenticator'].includes(user.role)) {
       const roleRoom = `role:${user.role}`;
       socket.join(roleRoom);
       log('connect', { socketId: socket.id, userId: user.id, role: user.role, rooms: [roleRoom] });
       log('room-join', { socketId: socket.id, room: roleRoom });
-      // Non-student roles only need their role room for dashboard refreshes.
     }
+
+    // Client Acknowledgement Listener for transaction sync integrity
+    socket.on('sync:ack', async (data: { transactionId: string }) => {
+      const { transactionId } = data;
+      try {
+        const { SyncJournal } = require('../models/syncJournal');
+        const journal = await SyncJournal.findOne({ transactionId });
+        if (journal) {
+          if (!journal.acknowledgedClients.includes(socket.id)) {
+            journal.acknowledgedClients.push(socket.id);
+            if (journal.acknowledgedClients.length >= journal.expectedClientsCount) {
+              journal.status = 'synced';
+            }
+            await journal.save();
+            // Broadcast update to authenticators
+            io?.to('role:authenticator').emit('sync:journal-updated', journal);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to register sync:ack:', err);
+      }
+    });
 
     socket.on('disconnect', reason => {
       if (user.role === 'student' && user.profileId) {
@@ -125,12 +152,47 @@ export const initializeRealtime = (httpServer: HttpServer) => {
 
 export const getRealtimeServer = () => ensureServer();
 
-export const emitToRoom = (room: string, event: string, payload: RealtimePayload) => {
+export const emitToRoom = async (room: string, event: string, payload: RealtimePayload) => {
   if (!io) return;
+
+  // Intercept recursively to avoid infinite loop when updating authenticator about itself
+  if (room === 'role:authenticator') {
+    io.to(room).emit(event, payload);
+    return;
+  }
+
+  // Assign transactionId if none exists
+  let transactionId = payload.transactionId as string;
+  if (!transactionId) {
+    transactionId = `TX_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+    payload.transactionId = transactionId;
+  }
+
+  const expectedClientsCount = getRoomClientCount(room);
+
+  try {
+    const { SyncJournal } = require('../models/syncJournal');
+    const journal = new SyncJournal({
+      transactionId,
+      sourceNode: 'server',
+      targetNode: room,
+      action: event,
+      payload,
+      status: expectedClientsCount === 0 ? 'synced' : 'pending',
+      acknowledgedClients: [],
+      expectedClientsCount
+    });
+    await journal.save();
+
+    io.to('role:authenticator').emit('sync:journal-updated', journal);
+  } catch (err) {
+    console.error('Failed to create SyncJournal record:', err);
+  }
+
   io.to(room).emit(event, payload);
 };
 
-export const emitToRole = (role: 'student' | 'accountant' | 'admin1' | 'admin2', event: string, payload: RealtimePayload) => {
+export const emitToRole = (role: 'student' | 'accountant' | 'admin1' | 'admin2' | 'admin3', event: string, payload: RealtimePayload) => {
   emitToRoom(`role:${role}`, event, payload);
 };
 
@@ -141,6 +203,6 @@ export const emitToStudent = (studentId: string, event: string, payload: Realtim
 export const emitToAllConnectedStudentRooms = (event: string, payloadFactory: (studentRoom: string) => RealtimePayload) => {
   if (!io) return;
   for (const studentRoom of studentRoomCounts.keys()) {
-    io.to(studentRoom).emit(event, payloadFactory(studentRoom));
+    emitToRoom(studentRoom, event, payloadFactory(studentRoom));
   }
 };

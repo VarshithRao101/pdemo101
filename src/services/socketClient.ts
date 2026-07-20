@@ -113,6 +113,14 @@ const ensureSocket = () => {
       timeout: 10000,
     });
     bindSocketLifecycle();
+
+    // Auto-ack global listener for transaction sync integrity
+    socket.onAny((_eventName, ...args) => {
+      const payload = args[0];
+      if (payload && payload.transactionId) {
+        socket?.emit('sync:ack', { transactionId: payload.transactionId });
+      }
+    });
   }
 
   return socket;

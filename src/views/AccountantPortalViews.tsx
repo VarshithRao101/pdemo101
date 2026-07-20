@@ -55,6 +55,60 @@ const renderBackgroundDesign = (colorTheme: 'emerald' | 'gold' | 'sapphire' | 'r
         backgroundSize: '30px 30px',
       }} />
 
+      {/* Floating Colorful Neo-Brutalist Circles with Thick Outlines */}
+      <div style={{
+        position: 'absolute',
+        top: '12%',
+        left: '-40px',
+        width: '120px',
+        height: '120px',
+        borderRadius: '50%',
+        backgroundColor: '#3B82F6',
+        border: '2.5px solid var(--card-border)',
+        boxShadow: '6px 6px 0px var(--card-border)',
+        opacity: 0.15,
+      }} />
+
+      <div style={{
+        position: 'absolute',
+        top: '35%',
+        right: '-50px',
+        width: '140px',
+        height: '140px',
+        borderRadius: '50%',
+        backgroundColor: '#EF4444',
+        border: '2.5px solid var(--card-border)',
+        boxShadow: '6px 6px 0px var(--card-border)',
+        opacity: 0.12,
+      }} />
+
+      <div style={{
+        position: 'absolute',
+        bottom: '15%',
+        left: '10%',
+        width: '90px',
+        height: '90px',
+        borderRadius: '16px',
+        backgroundColor: '#FBBF24',
+        border: '2.5px solid var(--card-border)',
+        boxShadow: '6px 6px 0px var(--card-border)',
+        transform: 'rotate(15deg)',
+        opacity: 0.15,
+      }} />
+
+      <div style={{
+        position: 'absolute',
+        bottom: '28%',
+        right: '8%',
+        width: '70px',
+        height: '70px',
+        borderRadius: '50%',
+        backgroundColor: '#22C55E',
+        border: '2px solid var(--card-border)',
+        boxShadow: '4px 4px 0px var(--card-border)',
+        opacity: 0.15,
+      }} />
+
       {/* Dynamic Colorful Gradient Mesh Blobs */}
       <div style={{
         position: 'absolute',

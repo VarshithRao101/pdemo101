@@ -624,14 +624,6 @@ const seed = async () => {
         department: 'Campus Administration'
       },
       {
-        username: 'admin3',
-        role: 'admin3' as const,
-        name: 'Academics Controller',
-        email: 'admin3@inspirehnk.org',
-        mobile: '+91 9876543212',
-        department: 'Academics & Exams'
-      },
-      {
         username: 'accountant',
         role: 'accountant' as const,
         name: 'Accounts Officer',
@@ -646,16 +638,6 @@ const seed = async () => {
         email: 'security@inspirehnk.org',
         mobile: '+91 9876543214',
         department: 'Security Controls'
-      },
-      {
-        username: 'student',
-        role: 'student' as const,
-        profileId: studentMapping['STU-2421604']._id,
-        profileModel: 'Student' as const,
-        name: 'Polsani Manoneeth Rao',
-        email: 'student@inspirehnk.org',
-        mobile: '+91 9900000000',
-        department: 'Student Body'
       }
     ];
 
@@ -668,8 +650,6 @@ const seed = async () => {
         username: u.username,
         passwordHash: hashed,
         role: u.role,
-        profileId: u.profileId,
-        profileModel: u.profileModel,
         backupCode: '111111',
         usedBackupCodes: [],
         name: u.name,

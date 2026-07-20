@@ -2,16 +2,13 @@ import React, { createContext, useContext, useState, useEffect, type ReactNode }
 import { apiClient } from '../services/apiClient';
 import { connectSocket, disconnectSocket } from '../services/socketClient';
 
-export type TabType = 'dashboard' | 'academics' | 'updates' | 'profile' | 'keys' | 'backup_codes' | 'accounts';
-export type AcademicsTabType = 'attendance' | 'marks' | 'fee' | 'results' | 'achievements';
-export type PortalRoleType = 'student' | 'admin1' | 'admin2' | 'admin3' | 'accountant' | 'authenticator';
+export type TabType = 'dashboard' | 'keys' | 'backup_codes' | 'accounts' | 'sync_integrity';
+export type PortalRoleType = 'admin1' | 'admin2' | 'accountant' | 'authenticator';
 export type ThemeModeType = 'Light' | 'Dark' | 'System';
 
 interface NavigationContextType {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
-  academicsTab: AcademicsTabType;
-  setAcademicsTab: (tab: AcademicsTabType) => void;
   portalRole: PortalRoleType;
   setPortalRole: (role: PortalRoleType) => void;
   isMobile: boolean;
@@ -34,8 +31,7 @@ const NavigationContext = createContext<NavigationContextType | undefined>(undef
 
 export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: PortalRoleType }> = ({ children, defaultRole }) => {
   const [activeTab, setActiveTabState] = useState<TabType>('dashboard');
-  const [academicsTab, setAcademicsTab] = useState<AcademicsTabType>('attendance');
-  const [portalRole, setPortalRole] = useState<PortalRoleType>(defaultRole || 'student');
+  const [portalRole, setPortalRole] = useState<PortalRoleType>(defaultRole || 'admin1');
 
   const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth < 768);
   const [themeMode, setThemeModeState] = useState<ThemeModeType>(() => {
@@ -75,14 +71,10 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
         setPortalRole('admin1');
       } else if (userData.role === 'admin2') {
         setPortalRole('admin2');
-      } else if (userData.role === 'admin3') {
-        setPortalRole('admin3');
       } else if (userData.role === 'accountant') {
         setPortalRole('accountant');
       } else if (userData.role === 'authenticator') {
         setPortalRole('authenticator');
-      } else {
-        setPortalRole('student');
       }
 
       return userData;
@@ -99,7 +91,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
     disconnectSocket();
     setUser(null);
     setIsAuthenticated(false);
-    setPortalRole('student');
+    setPortalRole('admin1');
   };
 
   const checkSession = async (): Promise<boolean> => {
@@ -124,14 +116,10 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
         setPortalRole('admin1');
       } else if (userData.role === 'admin2') {
         setPortalRole('admin2');
-      } else if (userData.role === 'admin3') {
-        setPortalRole('admin3');
       } else if (userData.role === 'accountant') {
         setPortalRole('accountant');
       } else if (userData.role === 'authenticator') {
         setPortalRole('authenticator');
-      } else {
-        setPortalRole('student');
       }
 
       return true;
@@ -210,8 +198,6 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
     <NavigationContext.Provider value={{
       activeTab,
       setActiveTab,
-      academicsTab,
-      setAcademicsTab,
       portalRole,
       setPortalRole,
       isMobile,

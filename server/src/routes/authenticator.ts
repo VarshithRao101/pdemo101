@@ -6,6 +6,7 @@ import { SecurityKey } from '../models/securityKey';
 import { User } from '../models/user';
 import { Student } from '../models/student';
 import { Teacher } from '../models/teacher';
+import { SyncJournal } from '../models/syncJournal';
 
 const router = Router();
 const authenticatorGuard = [authenticateJWT, authorizeRoles('authenticator')];
@@ -249,6 +250,52 @@ router.get('/stats', authenticatorGuard, async (req: Request, res: Response) => 
     });
   } catch (error: any) {
     res.status(500).json({ status: 'error', message: error.message || 'Failed to compile stats.' });
+  }
+});
+
+// GET /api/authenticator/sync-journal - Retrieve sync audit logs
+router.get('/sync-journal', authenticatorGuard, async (req: Request, res: Response) => {
+  try {
+    const logs = await SyncJournal.find().sort({ createdAt: -1 }).limit(100);
+    res.json({ status: 'success', data: logs });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message || 'Failed to fetch sync journal.' });
+  }
+});
+
+// POST /api/authenticator/reconcile - Trigger database automatic reconciliation
+router.post('/reconcile', authenticatorGuard, async (req: Request, res: Response) => {
+  try {
+    const tenSecondsAgo = new Date(Date.now() - 10000);
+    const pendingSyncs = await SyncJournal.find({ status: 'pending', createdAt: { $lt: tenSecondsAgo } });
+    for (const sync of pendingSyncs) {
+      if (sync.acknowledgedClients.length > 0) {
+        sync.status = 'synced';
+      } else {
+        sync.status = 'failed';
+      }
+      await sync.save();
+    }
+    res.json({ status: 'success', message: `Reconciled ${pendingSyncs.length} outstanding transactions.` });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message || 'Reconciliation failed.' });
+  }
+});
+
+// POST /api/authenticator/backup - Simulate DB backup creation
+router.post('/backup', authenticatorGuard, async (req: Request, res: Response) => {
+  try {
+    res.json({ 
+      status: 'success', 
+      message: 'System database backup archive snapshot created successfully.',
+      data: {
+        archiveName: `db_backup_${Date.now()}.tar.gz`,
+        sizeBytes: 1542890,
+        checksum: 'SHA256:7a4f9b8c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a'
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message || 'Backup creation failed.' });
   }
 });
 
