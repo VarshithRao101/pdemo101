@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PinEntry from '../components/common/PinEntry';
 import { useNavigation } from '../context/NavigationContext';
 import { InspireLogo } from '../components/common/InspireLogo';
-import abstractBg from '../assets/abstract-vector-background-design-abstract-vector-waves_1055256-327.avif';
+import abstractBg from '../assets/minimalist_portal_bg.png';
 
 interface PinViewProps {
   onComplete: () => void;
