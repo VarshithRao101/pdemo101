@@ -67,20 +67,32 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
     setPin('');
   };
 
+  const [isSuccess, setIsSuccess] = useState(false);
+
   const handleConfirm = async () => {
     if (pin.length !== 6) {
       triggerError('Please enter a 6-digit PIN');
       return;
     }
 
-    let identifier = userId.trim() || SEGMENT_TO_IDENTIFIER[portalRole] || 'admin1';
+    let identifier = userId.trim();
+    const defaultUser = SEGMENT_TO_IDENTIFIER[portalRole] || 'admin1';
+    
+    // Smart Fallback: if username is empty, doesn't match default role user (case-insensitive),
+    // and doesn't match standard prefixes (ADM/STU/FAC), force default portal role user.
+    if (!identifier || (identifier.toLowerCase() !== defaultUser.toLowerCase() && !identifier.toUpperCase().startsWith('ADM') && !identifier.toUpperCase().startsWith('STU') && !identifier.toUpperCase().startsWith('FAC'))) {
+      identifier = defaultUser;
+    }
 
     setIsChecking(true);
 
     try {
       await login(identifier, pin);
-      // On success: let App.tsx drive the transition via isAuthenticated state
-      onComplete();
+      // On success: trigger custom success animation
+      setIsSuccess(true);
+      setTimeout(() => {
+        onComplete();
+      }, 1500);
     } catch (err: any) {
       const msg =
         err?.status === 429
@@ -94,7 +106,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
 
   // Listen for physical keyboard input when entering the PIN
   useEffect(() => {
-    if (step !== 'pin' || isChecking) return;
+    if (step !== 'pin' || isChecking || isSuccess) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
@@ -113,7 +125,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [step, pin, isChecking]);
+  }, [step, pin, isChecking, isSuccess]);
 
   const handleResetPin = () => {
     setPin('');
@@ -316,6 +328,41 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
     );
   };
 
+  const renderContent = () => {
+    if (isSuccess) {
+      return (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px 0',
+          textAlign: 'center'
+        }} className="anim-scale-in">
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 30px rgba(16, 185, 129, 0.4)',
+            marginBottom: '20px',
+            border: '2px solid rgba(255, 255, 255, 0.4)'
+          }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <h3 style={{ color: '#065F46', fontWeight: 800, fontSize: '22px', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-family)' }}>Access Granted</h3>
+          <p style={{ fontSize: '13px', color: '#047857', marginTop: '6px', fontWeight: 600, fontFamily: 'var(--font-family)' }}>Syncing secure session...</p>
+        </div>
+      );
+    }
+    return step === 'credentials' ? renderCredentialsContent() : renderPinContent();
+  };
+
   if (isMobile) {
     return (
       <div className="view-container anim-slide-in-right" style={styles.container}>
@@ -326,19 +373,28 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
           flexDirection: 'column',
           padding: '30px 24px',
           backgroundColor: 'rgba(255, 255, 255, 0.45)',
-          border: '1.5px solid rgba(255, 255, 255, 0.65)',
-          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.08)',
+          border: isError 
+            ? '1.5px solid rgba(239, 68, 68, 0.6)' 
+            : isSuccess 
+            ? '1.5px solid rgba(16, 185, 129, 0.6)' 
+            : '1.5px solid rgba(255, 255, 255, 0.65)',
+          boxShadow: isError 
+            ? '0 0 35px rgba(239, 68, 68, 0.3), 0 20px 50px rgba(0, 0, 0, 0.08)' 
+            : isSuccess 
+            ? '0 0 45px rgba(16, 185, 129, 0.35), 0 20px 50px rgba(0, 0, 0, 0.08)' 
+            : '0 20px 50px rgba(0, 0, 0, 0.08)',
           borderRadius: '24px',
           backdropFilter: 'blur(25px)',
           WebkitBackdropFilter: 'blur(25px)',
           boxSizing: 'border-box',
           margin: 'auto 0',
-        }} className="anim-scale-in">
-          {step === 'credentials' ? renderCredentialsContent() : renderPinContent()}
+          transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'
+        }} className={isError ? 'anim-shiver' : 'anim-scale-in'}>
+          {renderContent()}
         </div>
 
         {/* Checking/Loading Modal Overlay */}
-        {isChecking && (
+        {isChecking && !isSuccess && (
           <div style={styles.loaderOverlay} className="anim-fade-in">
             <div style={styles.loaderContainer} className="glass-panel-heavy anim-scale-in">
               <div style={styles.spinner} />
@@ -354,11 +410,14 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
               padding: '12px 18px',
               textAlign: 'center',
               backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              border: '1px solid rgba(212, 175, 55, 0.3)',
+              border: isError ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(212, 175, 55, 0.3)',
               boxShadow: 'var(--shadow-lg)',
               borderRadius: '12px',
             }}>
-              <span style={styles.toastText}>{toastMessage}</span>
+              <span style={{
+                ...styles.toastText,
+                color: isError ? '#B91C1C' : 'var(--dark-charcoal)'
+              }}>{toastMessage}</span>
             </div>
           </div>
         )}
@@ -377,19 +436,28 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
         flexDirection: 'column',
         padding: '40px 34px',
         backgroundColor: 'rgba(255, 255, 255, 0.45)', // Premium clear glass
-        border: '1.5px solid rgba(255, 255, 255, 0.65)', // Delicate white border
-        boxShadow: '0 24px 60px rgba(0, 0, 0, 0.12)',
+        border: isError 
+          ? '1.5px solid rgba(239, 68, 68, 0.6)' 
+          : isSuccess 
+          ? '1.5px solid rgba(16, 185, 129, 0.6)' 
+          : '1.5px solid rgba(255, 255, 255, 0.65)', // Delicate white border
+        boxShadow: isError 
+          ? '0 0 45px rgba(239, 68, 68, 0.35), 0 24px 60px rgba(0, 0, 0, 0.12)' 
+          : isSuccess 
+          ? '0 0 55px rgba(16, 185, 129, 0.4), 0 24px 60px rgba(0, 0, 0, 0.12)' 
+          : '0 24px 60px rgba(0, 0, 0, 0.12)',
         borderRadius: '24px',
         position: 'relative',
         zIndex: 10,
         backdropFilter: 'blur(25px)',
         WebkitBackdropFilter: 'blur(25px)',
-      }} className="anim-scale-in">
-        {step === 'credentials' ? renderCredentialsContent() : renderPinContent()}
+        transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'
+      }} className={isError ? 'anim-shiver' : 'anim-scale-in'}>
+        {renderContent()}
       </div>
 
       {/* Checking/Loading Modal Overlay */}
-      {isChecking && (
+      {isChecking && !isSuccess && (
         <div style={styles.loaderOverlay} className="anim-fade-in">
           <div style={styles.loaderContainer} className="glass-panel-heavy anim-scale-in">
             <div style={styles.spinner} />
@@ -405,11 +473,14 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
             padding: '12px 18px',
             textAlign: 'center',
             backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            border: '1px solid rgba(212, 175, 55, 0.3)',
+            border: isError ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(212, 175, 55, 0.3)',
             boxShadow: 'var(--shadow-lg)',
             borderRadius: '12px',
           }}>
-            <span style={styles.toastText}>{toastMessage}</span>
+            <span style={{
+              ...styles.toastText,
+              color: isError ? '#B91C1C' : 'var(--dark-charcoal)'
+            }}>{toastMessage}</span>
           </div>
         </div>
       )}
