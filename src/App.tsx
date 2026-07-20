@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavigationProvider, useNavigation } from './context/NavigationContext';
 import { ResponsiveLayout } from './components/layout/ResponsiveLayout';
-import { SplashView } from './views/SplashView';
 import { PinView } from './views/PinView';
 import { AdminDashboardView } from './views/AdminPortalViews';
 import { AccountantDashboardView } from './views/AccountantPortalViews';
@@ -9,7 +8,7 @@ import { AuthenticatorDashboardView } from './views/AuthenticatorPortalViews';
 
 const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
   const { portalRole, checkSession, logout, isAuthenticated, setPortalRole } = useNavigation();
-  const [flowStage, setFlowStage] = useState<'splash' | 'pin' | 'authenticated'>('splash');
+  const [flowStage, setFlowStage] = useState<'pin' | 'authenticated'>('pin');
 
   // Sync forcedRole to NavigationContext
   useEffect(() => {
@@ -80,9 +79,6 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
     return null;
   };
 
-  if (flowStage === 'splash') {
-    return <SplashView onComplete={() => setFlowStage('pin')} />;
-  }
 
   if (flowStage === 'pin') {
     return <PinView onComplete={() => setFlowStage('authenticated')} />;

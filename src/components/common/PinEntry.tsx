@@ -5,13 +5,19 @@ interface PinEntryProps {
   onKeyPress: (n: number) => void;
   onDelete: () => void;
   onConfirm: () => void;
-  onBiometrics?: () => void;
   lastKeyIndex?: number | null;
   isError?: boolean;
   isChecking?: boolean;
 }
 
-export const PinEntry: React.FC<PinEntryProps> = ({ pin, onKeyPress, onDelete, onConfirm, onBiometrics, lastKeyIndex, isError, isChecking }) => {
+export const PinEntry: React.FC<PinEntryProps> = ({
+  pin,
+  onKeyPress,
+  onDelete,
+  onConfirm,
+  lastKeyIndex,
+  isError,
+}) => {
   const renderPinBoxes = () => {
     const boxes = [];
     for (let i = 0; i < 6; i++) {
@@ -21,23 +27,43 @@ export const PinEntry: React.FC<PinEntryProps> = ({ pin, onKeyPress, onDelete, o
       boxes.push(
         <div
           key={i}
-          className={`glass-panel ${hasJustEntered ? 'anim-pin-pop' : ''}`}
+          className={`${hasJustEntered ? 'anim-pin-pop' : ''}`}
           style={{
-            width: 'min(56px, 9.5vw)',
-            height: 'min(56px, 9.5vw)',
-            borderRadius: 12,
+            width: 'min(48px, 8.5vw)',
+            height: 'min(48px, 8.5vw)',
+            borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            borderWidth: 1.5,
-            transition: 'all 0.15s ease',
-            background: 'rgba(255,255,255,0.45)',
-            borderColor: isActive ? 'var(--royal-gold)' : isFilled ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.4)',
-            boxShadow: isActive ? '0 0 12px rgba(212,175,55,0.25), inset 0 1px 0 rgba(255,255,255,0.4)' : 'var(--shadow-sm)',
-            transform: hasJustEntered ? 'scale(1.05)' : 'scale(1)'
+            border: '1.5px solid',
+            transition: 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+            background: isActive 
+              ? 'rgba(212, 175, 55, 0.15)' 
+              : isFilled 
+              ? 'rgba(255, 255, 255, 0.2)' 
+              : 'rgba(255, 255, 255, 0.05)',
+            borderColor: isActive 
+              ? 'var(--royal-gold)' 
+              : isFilled 
+              ? 'rgba(212, 175, 55, 0.6)' 
+              : 'rgba(255, 255, 255, 0.25)',
+            boxShadow: isActive 
+              ? '0 0 16px rgba(212, 175, 55, 0.4)' 
+              : 'none',
+            transform: hasJustEntered ? 'scale(1.15)' : 'scale(1)',
           }}
         >
-          {isFilled && <div style={{ width: 11, height: 11, borderRadius: '50%', background: 'var(--gold-gradient)', boxShadow: '0 0 6px rgba(212,175,55,0.4)' }} />}
+          {isFilled && (
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: 'var(--gold-gradient)',
+                boxShadow: '0 0 8px rgba(212, 175, 55, 0.6)',
+              }}
+            />
+          )}
         </div>
       );
     }
@@ -45,48 +71,124 @@ export const PinEntry: React.FC<PinEntryProps> = ({ pin, onKeyPress, onDelete, o
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, width: '100%' }}>
-      <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'nowrap' }} className={isError ? 'anim-shiver' : ''}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, width: '100%' }}>
+      <div
+        style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'nowrap' }}
+        className={isError ? 'anim-shiver' : ''}
+      >
         {renderPinBoxes()}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
-        <button
-          onClick={onBiometrics}
-          className={`press-interactive ${isChecking ? 'anim-biometric' : ''}`}
-          style={{
-            background: 'rgba(255,255,255,0.45)',
-            padding: '10px 18px',
-            borderRadius: 999,
-            border: '1px solid rgba(255,255,255,0.5)',
-            boxShadow: 'var(--shadow-sm)',
-            cursor: 'pointer'
-          }}
-        >
-          Use Fingerprint
-        </button>
-      </div>
-
-      <div style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+      <div style={{ width: '100%', maxWidth: 280, display: 'flex', flexDirection: 'column', gap: 14, marginTop: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
           {[1, 2, 3].map(n => (
-            <button key={n} onClick={() => onKeyPress(n)} className="press-interactive glass-panel" style={{ width: 'min(64px, 16vw)', height: 'min(64px, 16vw)', borderRadius: '50%', fontSize: 20 }}>{n}</button>
+            <button
+              key={n}
+              onClick={() => onKeyPress(n)}
+              className="press-interactive premium-keypad-btn"
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                fontSize: 22,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {n}
+            </button>
           ))}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
           {[4, 5, 6].map(n => (
-            <button key={n} onClick={() => onKeyPress(n)} className="press-interactive glass-panel" style={{ width: 'min(64px, 16vw)', height: 'min(64px, 16vw)', borderRadius: '50%', fontSize: 20 }}>{n}</button>
+            <button
+              key={n}
+              onClick={() => onKeyPress(n)}
+              className="press-interactive premium-keypad-btn"
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                fontSize: 22,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {n}
+            </button>
           ))}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
           {[7, 8, 9].map(n => (
-            <button key={n} onClick={() => onKeyPress(n)} className="press-interactive glass-panel" style={{ width: 'min(64px, 16vw)', height: 'min(64px, 16vw)', borderRadius: '50%', fontSize: 20 }}>{n}</button>
+            <button
+              key={n}
+              onClick={() => onKeyPress(n)}
+              className="press-interactive premium-keypad-btn"
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                fontSize: 22,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {n}
+            </button>
           ))}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-          <button onClick={onDelete} className="press-interactive glass-panel" style={{ width: 'min(64px, 16vw)', height: 'min(64px, 16vw)', borderRadius: '50%' }}>⌫</button>
-          <button onClick={() => onKeyPress(0)} className="press-interactive glass-panel" style={{ width: 'min(64px, 16vw)', height: 'min(64px, 16vw)', borderRadius: '50%', fontSize: 20 }}>0</button>
-          <button onClick={onConfirm} className="press-interactive glass-panel" style={{ width: 'min(64px, 16vw)', height: 'min(64px, 16vw)', borderRadius: '50%', background: 'var(--gold-gradient)' }}>✓</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+          <button
+            onClick={onDelete}
+            className="press-interactive premium-keypad-btn"
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              fontSize: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            ⌫
+          </button>
+          <button
+            onClick={() => onKeyPress(0)}
+            className="press-interactive premium-keypad-btn"
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              fontSize: 22,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            0
+          </button>
+          <button
+            onClick={onConfirm}
+            className="press-interactive premium-keypad-btn"
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              fontSize: 20,
+              background: 'var(--gold-gradient)',
+              color: '#fff',
+              borderColor: 'rgba(212, 175, 55, 0.6)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            ✓
+          </button>
         </div>
       </div>
     </div>

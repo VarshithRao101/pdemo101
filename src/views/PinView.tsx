@@ -92,15 +92,28 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
     }
   };
 
-  const handleBiometrics = () => {
-    // Biometrics remain as a UI prototype gesture — use checking + toast
-    setIsChecking(true);
-    setToastMessage('Scanning fingerprint...');
-    setTimeout(() => {
-      setIsChecking(false);
-      setToastMessage('Fingerprint login is not yet enabled on this device.');
-    }, 1200);
-  };
+  // Listen for physical keyboard input when entering the PIN
+  useEffect(() => {
+    if (step !== 'pin' || isChecking) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleConfirm();
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        handleDelete();
+      } else if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        handleKeyPress(parseInt(e.key));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [step, pin, isChecking]);
 
   const handleResetPin = () => {
     setPin('');
@@ -295,7 +308,6 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
           onKeyPress={handleKeyPress}
           onDelete={handleDelete}
           onConfirm={handleConfirm}
-          onBiometrics={handleBiometrics}
           lastKeyIndex={lastKeypadIndex}
           isError={isError}
           isChecking={isChecking}

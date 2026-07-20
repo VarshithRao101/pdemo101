@@ -224,3 +224,27 @@ button:disabled {
   cursor: not-allowed;
   transform: none !important;
 }
+
+/* ─── PREMIUM KEYPAD BUTTONS ─────────────────────────────────────────────── */
+.premium-keypad-btn {
+  background: rgba(255, 255, 255, 0.25) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.45) !important;
+  color: #0F172A !important;
+  font-family: var(--font-family);
+  font-weight: 600;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+.premium-keypad-btn:hover {
+  background: rgba(255, 255, 255, 0.45) !important;
+  border-color: var(--royal-gold) !important;
+  transform: scale(1.08) !important;
+  box-shadow: 0 6px 18px rgba(212, 175, 55, 0.15) !important;
+}
+
+.premium-keypad-btn:active {
+  transform: scale(0.95) !important;
+}
