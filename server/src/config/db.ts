@@ -41,14 +41,9 @@ export const connectDB = async (): Promise<void> => {
 
     // Isolation check: if collections are found on first run, exit immediately
     if (collections.length > 0 && process.env.BYPASS_DB_EMPTY_CHECK !== 'true') {
-      console.error(
-        `\n======================================================================\n` +
-        `CRITICAL WARNING: Database "${dbName}" is NOT empty.\n` +
-        `Found collections: ${collectionNames.join(', ')}\n` +
-        `To prevent cross-contamination or data loss, execution has been HALTED.\n` +
-        `======================================================================\n`
-      );
-      process.exit(1);
+      const msg = `Database "${dbName}" is NOT empty. Found collections: ${collectionNames.join(', ')}. Isolation check failed.`;
+      console.error(`\nCRITICAL WARNING: ${msg}\n`);
+      throw new Error(msg);
     }
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
