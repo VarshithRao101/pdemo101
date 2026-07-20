@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { GlassCard } from '../components/common/GlassCard';
 import PinEntry from '../components/common/PinEntry';
 import { useNavigation } from '../context/NavigationContext';
 import { InspireLogo } from '../components/common/InspireLogo';
-import passwordBg from '../assets/passwordbackground.jpg';
+import abstractBg from '../assets/abstract-vector-background-design-abstract-vector-waves_1055256-327.avif';
 
 interface PinViewProps {
   onComplete: () => void;
@@ -117,7 +116,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
         {/* Main Title Section */}
         <div style={styles.titleSection}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-            <InspireLogo size="lg" />
+            <InspireLogo size="md" />
           </div>
           <p style={{ ...styles.subtitle, color: styles.subtitle.color }}>
             {portalRole === 'admin1'
@@ -275,7 +274,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
         {/* Main Title Section */}
         <div style={styles.titleSection}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-            <InspireLogo size="lg" />
+            <InspireLogo size="md" />
           </div>
           <p style={{ ...styles.subtitle, color: styles.subtitle.color }}>
             {portalRole === 'admin1'
@@ -308,7 +307,23 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
   if (isMobile) {
     return (
       <div className="view-container anim-slide-in-right" style={styles.container}>
-        {step === 'credentials' ? renderCredentialsContent() : renderPinContent()}
+        <div style={{
+          width: '100%',
+          maxWidth: '420px',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '30px 24px',
+          backgroundColor: 'rgba(255, 255, 255, 0.45)',
+          border: '1.5px solid rgba(255, 255, 255, 0.65)',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.08)',
+          borderRadius: '24px',
+          backdropFilter: 'blur(25px)',
+          WebkitBackdropFilter: 'blur(25px)',
+          boxSizing: 'border-box',
+          margin: 'auto 0',
+        }} className="anim-scale-in">
+          {step === 'credentials' ? renderCredentialsContent() : renderPinContent()}
+        </div>
 
         {/* Checking/Loading Modal Overlay */}
         {isChecking && (
@@ -323,9 +338,16 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
         {/* Floating Action Notification Toast */}
         {toastMessage && (
           <div style={styles.toastContainer} className="anim-slide-up">
-            <GlassCard hoverable={false} style={styles.toastCard} className="glass-gold-ring">
+            <div style={{
+              padding: '12px 18px',
+              textAlign: 'center',
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              border: '1px solid rgba(212, 175, 55, 0.3)',
+              boxShadow: 'var(--shadow-lg)',
+              borderRadius: '12px',
+            }}>
               <span style={styles.toastText}>{toastMessage}</span>
-            </GlassCard>
+            </div>
           </div>
         )}
       </div>
@@ -337,9 +359,22 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
     <div style={styles.desktopBg} className="anim-fade-in">
       <div style={styles.ambientGlow} />
 
-      <GlassCard hoverable={false} style={styles.desktopCard} className="anim-scale-in">
+      <div style={{
+        width: '420px',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '40px 34px',
+        backgroundColor: 'rgba(255, 255, 255, 0.45)', // Premium clear glass
+        border: '1.5px solid rgba(255, 255, 255, 0.65)', // Delicate white border
+        boxShadow: '0 24px 60px rgba(0, 0, 0, 0.12)',
+        borderRadius: '24px',
+        position: 'relative',
+        zIndex: 10,
+        backdropFilter: 'blur(25px)',
+        WebkitBackdropFilter: 'blur(25px)',
+      }} className="anim-scale-in">
         {step === 'credentials' ? renderCredentialsContent() : renderPinContent()}
-      </GlassCard>
+      </div>
 
       {/* Checking/Loading Modal Overlay */}
       {isChecking && (
@@ -354,9 +389,16 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
       {/* Floating Action Notification Toast */}
       {toastMessage && (
         <div style={styles.toastContainer} className="anim-slide-up">
-          <GlassCard hoverable={false} style={styles.toastCard} className="glass-gold-ring">
+          <div style={{
+            padding: '12px 18px',
+            textAlign: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            border: '1px solid rgba(212, 175, 55, 0.3)',
+            boxShadow: 'var(--shadow-lg)',
+            borderRadius: '12px',
+          }}>
             <span style={styles.toastText}>{toastMessage}</span>
-          </GlassCard>
+          </div>
         </div>
       )}
     </div>
@@ -369,12 +411,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: 'space-between',
-    backgroundImage: `url(${passwordBg})`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundImage: `url(${abstractBg})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
-    padding: 'calc(24px + var(--safe-area-top)) 24px calc(24px + var(--safe-area-bottom)) 24px',
+    padding: '24px',
     position: 'absolute',
     top: 0,
     left: 0,
@@ -388,7 +431,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundImage: `url(${passwordBg})`,
+    backgroundImage: `url(${abstractBg})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
@@ -405,18 +448,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     height: '560px',
     background: 'none',
     pointerEvents: 'none',
-  },
-  desktopCard: {
-    width: '420px',
-    display: 'flex',
-    flexDirection: 'column',
-    padding: '34px 34px',
-    backgroundColor: 'var(--card-bg)',
-    border: '1.5px solid var(--card-border)',
-    boxShadow: 'var(--shadow-lg)',
-    borderRadius: 'var(--radius-xl)',
-    position: 'relative',
-    zIndex: 10,
   },
   header: {
     height: '44px',

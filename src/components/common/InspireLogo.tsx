@@ -24,7 +24,6 @@ export const InspireLogo: React.FC<InspireLogoProps> = ({ size = 'md', style }) 
           objectFit: 'contain',
           display: 'block'
         }}
-        className="anim-scale-logo"
       />
     </div>
   );
