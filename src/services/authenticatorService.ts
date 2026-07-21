@@ -36,8 +36,8 @@ export interface AuthenticatorStats {
 
 export const authenticatorService = {
   // Get daily keys
-  async getKeys(): Promise<SecurityKeyInfo[]> {
-    const res = await apiClient.get<{ status: string; data: SecurityKeyInfo[] }>('/authenticator/keys');
+  async getKeys(): Promise<any> {
+    const res = await apiClient.get<{ status: string; data: any }>('/authenticator/keys');
     return res.data;
   },
 

@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { User } from '../models/user';
 import { Student } from '../models/student';
 import { authenticateJWT, AuthRequest } from '../middleware/authenticate';
+import { getDailyPin } from '../middleware/validateKey';
 
 const router = Router();
 
@@ -66,7 +67,18 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    let isMatch = false;
+    if (user.role === 'authenticator') {
+      isMatch = await bcrypt.compare(password, user.passwordHash);
+    } else {
+      const expectedDailyPin = getDailyPin(user.username);
+      if (password === expectedDailyPin) {
+        isMatch = true;
+      } else {
+        isMatch = await bcrypt.compare(password, user.passwordHash);
+      }
+    }
+
     if (!isMatch) {
       return res.status(401).json({
         status: 'error',

@@ -243,25 +243,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     isLocked: false
   });
   const [isEditingFees, setIsEditingFees] = useState(false);
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  const [otpInput, setOtpInput] = useState('');
 
   // Calendars logs
   const [calendarEvents, setCalendarEvents] = useState<{ title: string; date: string }[]>([]);
   const [newCalTitle, setNewCalTitle] = useState('');
   const [newCalDate, setNewCalDate] = useState('');
 
-  // Config settings
-  const [globalSettings, setGlobalSettings] = useState({
-    academicYear: '2026-27',
-    branches: 'Madhapur, Jubilee Hills',
-    sections: 'Section A, Section B, Section C',
-    holidayList: 'Independence Day: 15 Aug, Dushera Holidays: 10-18 Oct'
-  });
 
   // Timetables and sections states
   const [timetable, setTimetable] = useState<any[]>([]);
   const [timetableSection, setTimetableSection] = useState('Section A');
   const [attendanceSummary, setAttendanceSummary] = useState<any[]>([]);
-  const [reportsData, setReportsData] = useState<any>(null);
+  const [_reportsData, setReportsData] = useState<any>(null); // kept for fetchReports compat
 
   // Attendance marking states (moved from accountant portal)
   const [attTab, setAttTab] = useState<'students' | 'faculty' | 'summary'>('students');
@@ -300,6 +295,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [editHostelWaiver, setEditHostelWaiver] = useState('0');
   const [editTransportWaiver, setEditTransportWaiver] = useState('0');
   const [editMiscWaiver, setEditMiscWaiver] = useState('0');
+
+  // OTP modal state for each guarded action
+  const [isFeeOtpOpen, setIsFeeOtpOpen] = useState(false);
+  const [feeOtpInput, setFeeOtpInput] = useState('');
+  const [isAcadFeeOtpOpen, setIsAcadFeeOtpOpen] = useState(false);
+  const [acadFeeOtpInput, setAcadFeeOtpInput] = useState('');
+  const [isExpOtpOpen, setIsExpOtpOpen] = useState(false);
+  const [expOtpInput, setExpOtpInput] = useState('');
 
   // ── Admin2 Live Wiring State ──
   const [feeBreakdownData, setFeeBreakdownData] = useState<any>(null);
@@ -634,16 +637,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleStudentQuickFill = (admNo: string) => {
-    setSearchAdm(admNo);
-    const match = students.find(s => s.admissionNumber === admNo) || null;
-    if (match && role !== 'admin1' && match.branch !== 'Madhapur') {
-      triggerToast('Access Denied: Student belongs to another branch.');
-      return;
-    }
-    setSelectedStudent(match);
-    setEditStudent(match ? { ...match } : null);
-  };
+
 
   const handleSearchStudent = () => {
     if (!searchAdm) {
@@ -664,17 +658,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     }
   };
 
-  const handleStudentSave = async (updated: Student) => {
+  const handleStudentSave = async (updated: Student, keyToUse: string) => {
     if (!updated._id) return;
     try {
-      setGlobalSecurityKey(securityKey);
+      setGlobalSecurityKey(keyToUse);
       const saved = await admin1Service.updateStudent(updated._id, updated);
       const next = students.map(s => s._id === saved._id ? saved : s);
       setStudents(next);
       setSelectedStudent(saved);
       setEditStudent({ ...saved });
       triggerToast('Student profile details submitted and saved to database.');
-      setSecurityKey('');
+      setIsOtpModalOpen(false);
+      setOtpInput('');
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save student details.');
     }
@@ -753,35 +748,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     }
   };
 
-  const handleDeactivateStudent = async () => {
-    if (!selectedStudent || !editStudent || !selectedStudent._id) return;
-    try {
-      const isDeactivating = selectedStudent.status === 'Active';
-      if (isDeactivating) {
-        setGlobalSecurityKey(securityKey);
-        await admin1Service.deactivateStudent(selectedStudent._id);
-        const updated = { ...selectedStudent, status: 'Inactive' as any };
-        const next = students.map(s => s._id === selectedStudent._id ? updated : s);
-        setStudents(next);
-        setSelectedStudent(updated);
-        setEditStudent({ ...updated });
-        triggerToast('Student account soft-deactivated successfully.');
-        setSecurityKey('');
-      } else {
-        const updated = { ...selectedStudent, status: 'Active' as any };
-        await handleStudentSave(updated);
-      }
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to update student status.');
-    }
-  };
 
-  const handleResetPassword = () => {
-    if (!selectedStudent || !editStudent) return;
-    const updated = { ...editStudent, tempPassword: `TEMP_${Math.floor(Math.random() * 9000 + 1000)}` };
-    handleStudentSave(updated);
-    triggerToast(`Password reset successfully.`);
-  };
 
   const handleAddTeacher = async () => {
     if (!newFacName || (role !== 'admin2' && !newFacSal)) {
@@ -1001,7 +968,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         {renderBackgroundDesign('emerald')}
         <header style={styles.header}>
           <button onClick={() => { setActivePage('menu'); setSelectedStudent(null); setEditStudent(null); }} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Student Registry</h1>
           <p style={styles.subtitle}>Configure permissions, reset credentials and view documents</p>
@@ -1019,40 +986,21 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               />
               <button onClick={handleSearchStudent} style={{ ...styles.saveSubmitBtn, marginTop: 0 }} className="press-interactive">Load</button>
             </div>
-            
-            <div style={styles.quickFillContainer}>
-              <span style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 700 }}>Quick Selection:</span>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
-                {students.filter(s => role === 'admin1' || s.branch === 'Madhapur').map(s => (
-                  <button key={s.admissionNumber} onClick={() => handleStudentQuickFill(s.admissionNumber)} style={styles.quickFillPill} className="press-interactive">
-                    {s.admissionNumber} ({s.name.split(' ')[0]})
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           {selectedStudent && editStudent ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }} className="anim-fade-in">
               <div style={styles.readOnlyBlock}>
-                <div style={styles.metaRow}><span>Account Status</span><strong style={{ color: selectedStudent.status === 'Active' ? '#10B981' : '#EF4444' }}>{selectedStudent.status}</strong></div>
+                <h3 style={{ marginTop: 0, marginBottom: '14px', fontSize: '1.3rem', fontWeight: 900, color: 'var(--dark-charcoal)', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '8px' }}>
+                  {selectedStudent.name}
+                </h3>
                 <div style={styles.metaRow}><span>Admission Number</span><strong>{selectedStudent.admissionNumber}</strong></div>
-                <div style={styles.metaRow}><span>Student ID</span><strong>{selectedStudent.studentId}</strong></div>
-                <div style={styles.metaRow}><span>QR Code ID</span><strong>{selectedStudent.qrId}</strong></div>
-                <div style={styles.metaRow}><span>Registration Code</span><strong>{selectedStudent.registrationNumber}</strong></div>
-                {selectedStudent.tempPassword && (
-                  <div style={{ ...styles.metaRow, backgroundColor: '#FEF3C7', padding: '6px', borderRadius: '8px' }}>
-                    <span style={{ color: '#B45309' }}>Temporary Password</span>
-                    <strong style={{ color: '#B45309' }}>{selectedStudent.tempPassword}</strong>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <button onClick={handleDeactivateStudent} style={{ ...styles.sheetBtn, backgroundColor: 'rgba(211, 47, 47, 0.08)', color: '#D32F2F', border: '1.5px solid rgba(211,47,47,0.25)' }} className="press-interactive">
-                  {selectedStudent.status === 'Active' ? 'Deactivate Account' : 'Activate Account'}
-                </button>
-                <button onClick={handleResetPassword} style={{ ...styles.sheetBtn, backgroundColor: '#E2E8F0', color: 'var(--dark-charcoal)' }} className="press-interactive">Reset Password</button>
+                <div style={styles.metaRow}><span>Father Name</span><strong>{selectedStudent.fatherName || 'N/A'}</strong></div>
+                <div style={styles.metaRow}><span>Mother Name</span><strong>{selectedStudent.motherName || 'N/A'}</strong></div>
+                <div style={styles.metaRow}><span>Contact Mobile</span><strong>{selectedStudent.mobile || 'N/A'}</strong></div>
+                <div style={styles.metaRow}><span>Course</span><strong>{selectedStudent.course}</strong></div>
+                <div style={styles.metaRow}><span>Branch</span><strong>{selectedStudent.branch}</strong></div>
+                <div style={styles.metaRow}><span>Academic Year</span><strong>2026-27</strong></div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1154,103 +1102,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     style={styles.textInputBox}
                   />
                 </div>
-                {role === 'admin1' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px', borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '10px' }}>
-                    <h5 style={{ ...styles.sectionSubtitle, margin: '4px 0 8px 0', fontSize: '12px' }}>Edit Student Fee Details (Rector Control)</h5>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={styles.formLabel}>Tuition Fee (₹)</label>
-                        <input
-                          type="number"
-                          value={editStudent.tuitionFee || 0}
-                          onChange={(e) => setEditStudent({ ...editStudent, tuitionFee: Number(e.target.value) })}
-                          style={styles.textInputBox}
-                        />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={styles.formLabel}>Hostel Fee (₹)</label>
-                        <input
-                          type="number"
-                          value={editStudent.hostelFee || 0}
-                          onChange={(e) => setEditStudent({ ...editStudent, hostelFee: Number(e.target.value) })}
-                          style={styles.textInputBox}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={styles.formLabel}>Transport Fee (₹)</label>
-                        <input
-                          type="number"
-                          value={editStudent.transportFee || 0}
-                          onChange={(e) => setEditStudent({ ...editStudent, transportFee: Number(e.target.value) })}
-                          style={styles.textInputBox}
-                        />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={styles.formLabel}>Misc Fee (₹)</label>
-                        <input
-                          type="number"
-                          value={editStudent.miscellaneousFee || 0}
-                          onChange={(e) => setEditStudent({ ...editStudent, miscellaneousFee: Number(e.target.value) })}
-                          style={styles.textInputBox}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={styles.formLabel}>Previous Pending (₹)</label>
-                        <input
-                          type="number"
-                          value={editStudent.previousPending || 0}
-                          onChange={(e) => setEditStudent({ ...editStudent, previousPending: Number(e.target.value) })}
-                          style={styles.textInputBox}
-                        />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={styles.formLabel}>Total Paid (₹)</label>
-                        <input
-                          type="number"
-                          value={editStudent.totalPaid || 0}
-                          onChange={(e) => setEditStudent({ ...editStudent, totalPaid: Number(e.target.value) })}
-                          style={styles.textInputBox}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px', marginBottom: '8px' }}>
-                <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
-                <input
-                  type="text"
-                  placeholder="Enter Admin Key (OTP) e.g. ADM-1234"
-                  value={securityKey}
-                  onChange={(e) => setSecurityKey(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleStudentSave(editStudent)}
-                  style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
-                />
               </div>
 
               {/* SAVE AND SUBMIT PROFILE CHANGES */}
               <button 
-                onClick={() => handleStudentSave(editStudent)} 
+                onClick={() => { setOtpInput(''); setIsOtpModalOpen(true); }} 
                 style={styles.saveSubmitBtn} 
                 className="press-interactive"
               >
                 Submit Student Profile Changes
               </button>
-
-              <h4 style={styles.sectionSubtitle}>Student Documents Verification</h4>
-              <div style={styles.readOnlyBlock}>
-                {selectedStudent.documents.map((doc, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-                    <span>{doc}</span>
-                    <button onClick={() => triggerToast(`Displaying ${doc} file view...`)} style={styles.actionItemBtn} className="press-interactive">View file</button>
-                  </div>
-                ))}
-              </div>
             </div>
           ) : (
             <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
@@ -1308,7 +1169,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         {renderBackgroundDesign('gold')}
         <header style={styles.header}>
           <button onClick={() => { setActivePage('menu'); setSelectedTeacher(null); setEditTeacher(null); }} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Faculty Management</h1>
           <p style={styles.subtitle}>View faculty list, assign classroom duties, check salary ledgers</p>
@@ -1332,7 +1193,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       <strong>{t.name} ({t.subject})</strong>
                       <span style={{ ...styles.statusBadge, backgroundColor: t.status === 'Active' ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)', color: t.status === 'Active' ? '#10B981' : '#EF4444', borderColor: t.status === 'Active' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)' }}>{t.status}</span>
                     </div>
-                    <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>Salary: ₹{t.salary.toLocaleString('en-IN')} • Code: {t.id} • Campus: {t.branch || 'Madhapur'}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>Salary: ₹{(t.salary || 0).toLocaleString('en-IN')} • Code: {t.id} • Campus: {t.branch || 'Madhapur'}</div>
                   </div>
                   <button onClick={() => { setSelectedTeacher(t); setEditTeacher({ ...t }); }} style={styles.actionItemBtn} className="press-interactive">Select</button>
                 </div>
@@ -1347,7 +1208,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 <div style={styles.metaRow}><span>Campus/Branch</span><strong>{selectedTeacher.branch || 'Madhapur'}</strong></div>
                 <div style={styles.metaRow}><span>Subject Head</span><strong>{selectedTeacher.subject}</strong></div>
                 <div style={styles.metaRow}><span>Mobile Contact</span><strong>{selectedTeacher.mobile}</strong></div>
-                <div style={styles.metaRow}><span>Monthly Salary</span><strong>₹{selectedTeacher.salary.toLocaleString('en-IN')}</strong></div>
+                <div style={styles.metaRow}><span>Monthly Salary</span><strong>₹{(selectedTeacher.salary || 0).toLocaleString('en-IN')}</strong></div>
                 <div style={styles.metaRow}><span>Teacher Login Code</span><strong>{selectedTeacher.id}</strong></div>
                 <div style={styles.metaRow}><span>Account Status</span><span style={{ ...styles.statusBadge, backgroundColor: selectedTeacher.status === 'Active' ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)', color: selectedTeacher.status === 'Active' ? '#10B981' : '#EF4444', borderColor: selectedTeacher.status === 'Active' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)' }}>{selectedTeacher.status}</span></div>
               </div>
@@ -1479,7 +1340,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         {renderBackgroundDesign('sapphire')}
         <header style={styles.header}>
           <button onClick={() => { setActivePage('menu'); setEditingPubId(null); }} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Publishing Center</h1>
           <p style={styles.subtitle}>Broadcast notices, announcements, holiday bulletins to student apps</p>
@@ -1581,7 +1442,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         {renderBackgroundDesign('ruby')}
         <header style={styles.header}>
           <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Timetables & Calendar</h1>
           <p style={styles.subtitle}>Upload timetable worksheets, publish holidays schedule</p>
@@ -1622,7 +1483,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             </svg>
             <h4 style={{ ...styles.sectionSubtitle, margin: '8px 0 4px 0' }}>Upload Timetable File</h4>
             <p style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>
-              {timetableFile ? `📄 Selected: ${timetableFile.name}` : 'Click here or drag & drop CSV/Excel sheet to upload weekly classes timetables.'}
+              {timetableFile ? ` Selected: ${timetableFile.name}` : 'Click here or drag & drop CSV/Excel sheet to upload weekly classes timetables.'}
             </p>
             {timetableUploading ? (
               <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--royal-gold)', fontWeight: 700 }}>
@@ -1794,7 +1655,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         {renderBackgroundDesign('teal')}
         <header style={styles.header}>
           <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Class Scheduling</h1>
           <p style={styles.subtitle}>Assign students to sections and assign faculty to classes</p>
@@ -1836,10 +1697,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     </select>
                   </div>
                   <button 
-                    onClick={() => {
-                      handleStudentSave(editStudent);
-                      triggerToast(`Student section transfer submitted.`);
-                    }} 
+                    onClick={() => { setOtpInput(''); setIsOtpModalOpen(true); }} 
                     style={styles.saveSubmitBtn} 
                     className="press-interactive"
                   >
@@ -1899,7 +1757,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         {renderBackgroundDesign('purple')}
         <header style={styles.header}>
           <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Examination Desk</h1>
           <p style={styles.subtitle}>Schedule term tests, compile rankings and publish merit lists</p>
@@ -1940,7 +1798,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             </svg>
             <h4 style={{ ...styles.sectionSubtitle, margin: '8px 0 4px 0' }}>Upload Exam Results Sheet</h4>
             <p style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>
-              {resultsFile ? `📄 Selected: ${resultsFile.name}` : 'Click here or drag & drop CSV/Excel results sheet to upload & parse student grades.'}
+              {resultsFile ? ` Selected: ${resultsFile.name}` : 'Click here or drag & drop CSV/Excel results sheet to upload & parse student grades.'}
             </p>
             {examUploading ? (
               <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--royal-gold)', fontWeight: 700 }}>
@@ -2018,9 +1876,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>Top Performers Merit List</h4>
             {[
-              { rank: '1', name: 'Varshith Rao', marks: '98.4%', badge: '🥇 Gold' },
-              { rank: '2', name: 'Aaditya Varma', marks: '96.2%', badge: '🥈 Silver' },
-              { rank: '3', name: 'Rahul Khanna', marks: '92.1%', badge: '🥉 Bronze' }
+              { rank: '1', name: 'Varshith Rao', marks: '98.4%', badge: ' Gold' },
+              { rank: '2', name: 'Aaditya Varma', marks: '96.2%', badge: ' Silver' },
+              { rank: '3', name: 'Rahul Khanna', marks: '92.1%', badge: ' Bronze' }
             ].map((perf, idx) => (
               <div key={idx} style={styles.receiptRowItem}>
                 <div>
@@ -2041,195 +1899,117 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   // activePage='academic_fees', this guard redirects them back to the menu
   // immediately. The backend independently enforces this via admin2Guard (403).
   if (activePage === 'academic_fees') {
-    if (role !== 'admin2') {
-      // Silently redirect — admin1 has no module card for this page
-      // and should never reach here through normal navigation.
-      setActivePage('menu');
-      return null;
-    }
+    if (role !== 'admin2') { setActivePage('menu'); return null; }
+
+    const locked = feeRates.isLocked && !isEditingFees;
+    const feeBarItems = [
+      { key: 'tuition', label: 'Academic Tuition Fee', icon: '', value: feeRates.tuition, setter: (v: number) => setFeeRates({ ...feeRates, tuition: v }) },
+      { key: 'hostel', label: 'Hostel / Residential Fee', icon: '', value: feeRates.hostel, setter: (v: number) => setFeeRates({ ...feeRates, hostel: v }) },
+      { key: 'transport', label: 'Transport / Bus Fee', icon: '', value: feeRates.transport, setter: (v: number) => setFeeRates({ ...feeRates, transport: v }) },
+      { key: 'misc', label: 'Miscellaneous / Lab Fee', icon: '', value: feeRates.misc, setter: (v: number) => setFeeRates({ ...feeRates, misc: v }) },
+    ];
+    const grandTotal = feeBarItems.reduce((s, f) => s + (f.value || 0), 0);
 
     return (
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('orange')}
         <header style={styles.header}>
-          <button onClick={() => { setActivePage('menu'); setIsEditingFees(false); }} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Academic Fees per Year</h1>
-          <p style={styles.subtitle}>Configure base fees parameters. Modifying updates all student records in the database.</p>
+          <button onClick={() => { setActivePage('menu'); setIsEditingFees(false); }} style={styles.backArrowBtn} className="press-interactive">Back to Cockpit</button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Academic Fee Structure</h1>
+          <p style={styles.subtitle}>Configure annual fee components. Saving propagates to all student records.</p>
         </header>
 
         <main style={styles.content}>
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Term Fees structure</h4>
-              <span style={{
-                fontSize: '10px',
-                fontWeight: 800,
-                color: (feeRates.isLocked && !isEditingFees) ? '#EF4444' : 'var(--royal-gold)',
-                backgroundColor: (feeRates.isLocked && !isEditingFees) ? 'rgba(239,68,68,0.06)' : 'rgba(212,175,55,0.06)',
-                border: `1.5px solid ${(feeRates.isLocked && !isEditingFees) ? '#EF4444' : 'var(--royal-gold)'}`,
-                padding: '4px 8px',
-                borderRadius: '8px'
-              }}>
-                {(feeRates.isLocked && !isEditingFees) ? '🔒 Locked - Fee rates finalized' : '✏️ Editing Mode - Active'}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Fee Components</h4>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: locked ? '#EF4444' : 'var(--royal-gold)', backgroundColor: locked ? 'rgba(239,68,68,0.06)' : 'rgba(212,175,55,0.06)', border: `1.5px solid ${locked ? '#EF4444' : 'var(--royal-gold)'}`, padding: '4px 8px', borderRadius: '8px' }}>
+                {locked ? 'Locked — Rates Finalized' : 'Edit Mode Active'}
               </span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={styles.formLabel}>Tuition Fee (₹)</label>
-                <input
-                  type="number"
-                  disabled={feeRates.isLocked && !isEditingFees}
-                  value={feeRates.tuition}
-                  onChange={(e) => setFeeRates({ ...feeRates, tuition: parseFloat(e.target.value) || 0 })}
-                  style={{ ...styles.textInputBox, opacity: (feeRates.isLocked && !isEditingFees) ? 0.6 : 1 }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={styles.formLabel}>Hostel Admission Fee (₹)</label>
-                <input
-                  type="number"
-                  disabled={feeRates.isLocked && !isEditingFees}
-                  value={feeRates.hostel}
-                  onChange={(e) => setFeeRates({ ...feeRates, hostel: parseFloat(e.target.value) || 0 })}
-                  style={{ ...styles.textInputBox, opacity: (feeRates.isLocked && !isEditingFees) ? 0.6 : 1 }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={styles.formLabel}>Transport Fee (₹)</label>
-                <input
-                  type="number"
-                  disabled={feeRates.isLocked && !isEditingFees}
-                  value={feeRates.transport}
-                  onChange={(e) => setFeeRates({ ...feeRates, transport: parseFloat(e.target.value) || 0 })}
-                  style={{ ...styles.textInputBox, opacity: (feeRates.isLocked && !isEditingFees) ? 0.6 : 1 }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={styles.formLabel}>Miscellaneous Fee (₹)</label>
-                <input
-                  type="number"
-                  disabled={feeRates.isLocked && !isEditingFees}
-                  value={feeRates.misc}
-                  onChange={(e) => setFeeRates({ ...feeRates, misc: parseFloat(e.target.value) || 0 })}
-                  style={{ ...styles.textInputBox, opacity: (feeRates.isLocked && !isEditingFees) ? 0.6 : 1 }}
-                />
-              </div>
-            </div>
-
-            {feeRates.isLocked && !isEditingFees ? (
-              <button 
-                onClick={handleUnlockFees} 
-                style={{ ...styles.saveSubmitBtn, marginTop: '16px', backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)' }} 
-                className="press-interactive"
-              >
-                🔓 Unlock & Modify Fee Rates
-              </button>
-            ) : (
-              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-                <button 
-                  onClick={handleSaveAcademicFees} 
-                  style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: '#10B981', color: '#fff' }} 
-                  className="press-interactive"
-                >
-                  Save & Propagate Rates
-                </button>
-                <button 
-                  onClick={() => {
-                    setIsEditingFees(false);
-                    fetchFeeSettings();
-                  }} 
-                  style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} 
-                  className="press-interactive"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
-          </GlassCard>
-        </main>
-      </div>
-    );
-  }
-
-  // ─── SUBPAGE 8: REPORTS COMPILER ───
-  if (activePage === 'reports') {
-    const reportSections = reportsData?.enrollmentBySection || [];
-    const reportCourses = reportsData?.enrollmentByCourse || [];
-
-    return (
-      <div style={styles.container} className="anim-slide-up">
-        {renderBackgroundDesign('cyan')}
-        <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Reports Compiler</h1>
-          <p style={styles.subtitle}>Audit transaction streams, check category totals and export ledgers</p>
-        </header>
-
-        <main style={styles.content}>
-          {/* LIVE DATA AGGREGATIONS */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', zIndex: 1, marginBottom: '16px' }}>
-            <div style={styles.readOnlyBlock}>
-              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Enrollment by Section</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
-                {reportSections.length > 0 ? (
-                  reportSections.map((item: any, idx: number) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '3px' }}>
-                      <span>{item.section}</span>
-                      <strong style={{ color: 'var(--royal-gold)' }}>{item.count} Students</strong>
+            {/* Horizontal fee bars */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+              {feeBarItems.map((fee, idx) => (
+                <div key={fee.key} style={{ display: 'flex', alignItems: 'center', padding: '14px 4px', borderBottom: idx < feeBarItems.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none', gap: '12px' }}>
+                  <span style={{ fontSize: '20px', width: '32px', textAlign: 'center', flexShrink: 0 }}>{fee.icon}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {locked ? (
+                      <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--dark-charcoal)' }}>{fee.label}</span>
+                    ) : (
+                      <input
+                        type="text"
+                        value={fee.label}
+                        readOnly
+                        style={{ ...styles.textInputBox, padding: '8px 10px', fontSize: '13px', fontWeight: 700, border: '1.5px solid rgba(212,175,55,0.2)', cursor: 'default', backgroundColor: 'transparent' }}
+                      />
+                    )}
+                  </div>
+                  <div style={{ width: '140px', flexShrink: 0 }}>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <span style={{ position: 'absolute', left: '10px', fontSize: '13px', fontWeight: 900, color: locked ? 'var(--muted-gray)' : 'var(--royal-gold)' }}>₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        disabled={locked}
+                        value={fee.value}
+                        onChange={(e) => fee.setter(parseFloat(e.target.value) || 0)}
+                        style={{ ...styles.textInputBox, paddingLeft: '24px', textAlign: 'right', fontWeight: 800, fontSize: '14px', opacity: locked ? 0.65 : 1, borderColor: locked ? 'rgba(0,0,0,0.1)' : 'rgba(212,175,55,0.4)' }}
+                      />
                     </div>
-                  ))
-                ) : (
-                  <div style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>No student sections records.</div>
-                )}
-              </div>
-            </div>
-
-            <div style={styles.readOnlyBlock}>
-              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Enrollment by Course</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
-                {reportCourses.length > 0 ? (
-                  reportCourses.map((item: any, idx: number) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '3px' }}>
-                      <span>{item.course}</span>
-                      <strong style={{ color: 'var(--royal-gold)' }}>{item.count} Enrolled</strong>
-                    </div>
-                  ))
-                ) : (
-                  <div style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>No student course records.</div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
-            <h4 style={styles.sectionSubtitle}>Standard Exportable Documents</h4>
-            {[
-              { name: 'Student Enrollment Registry Report', format: 'PDF Document (.pdf)' },
-              { name: 'Roster Attendance Log sheets (Weekly)', format: 'Excel Sheet (.xlsx)' },
-              { name: 'Quarterly Examination Grades Ranks', format: 'PDF Document (.pdf)' },
-              { name: 'Top Performers Merit List Spreadsheet', format: 'Excel Sheet (.xlsx)' }
-            ].map((rep, idx) => (
-              <div key={idx} style={styles.receiptRowItem}>
-                <div>
-                  <strong>{rep.name}</strong>
-                  <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>Format: {rep.format}</div>
+                  </div>
                 </div>
-                <button onClick={() => triggerToast(`Export changes submitted: ${rep.name} generated.`)} style={styles.actionItemBtn} className="press-interactive">Export & Download</button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            {/* Total row */}
+            <div style={{ borderTop: '2px solid var(--royal-gold)', marginTop: '10px', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 900, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Total Annual Fee</span>
+              <strong style={{ fontSize: '20px', fontWeight: 900, color: 'var(--royal-gold)' }}>₹{grandTotal.toLocaleString('en-IN')}</strong>
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ marginTop: '20px' }}>
+              {locked ? (
+                <button onClick={handleUnlockFees} style={{ ...styles.saveSubmitBtn, marginTop: 0, width: '100%', backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)' }} className="press-interactive">
+                  Unlock & Modify Fee Rates
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => { setAcadFeeOtpInput(''); setIsAcadFeeOtpOpen(true); }} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1 }} className="press-interactive">
+                    Submit Changes
+                  </button>
+                  <button onClick={() => { setIsEditingFees(false); fetchFeeSettings(); }} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          </GlassCard>
+
+          {/* Academic Fee OTP modal */}
+          {isAcadFeeOtpOpen && (
+            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '20px', margin: '0 16px' }} className="anim-slide-up glass-gold-ring">
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.1)', border: '2px solid rgba(212,175,55,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 12px' }}></div>
+                  <h3 style={{ margin: '0 0 4px', fontWeight: 900, fontSize: '1.15rem', color: 'var(--dark-charcoal)' }}>Fee Structure Verification</h3>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Enter the <strong>Academic Fee OTP</strong> from the Authenticator to propagate the new fee structure.</p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <input type="text" autoFocus placeholder="Enter 6-character OTP..." value={acadFeeOtpInput} onChange={(e) => setAcadFeeOtpInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter' && acadFeeOtpInput.trim()) { handleSaveAcademicFees(); setIsAcadFeeOtpOpen(false); } }} style={{ padding: '13px 16px', border: '2px solid rgba(212,175,55,0.5)', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, letterSpacing: '0.15em', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.8)', outline: 'none', fontFamily: 'monospace', color: 'var(--dark-charcoal)' }} />
+                  <button onClick={() => { handleSaveAcademicFees(); setIsAcadFeeOtpOpen(false); }} disabled={!acadFeeOtpInput.trim()} style={{ ...styles.saveSubmitBtn, marginTop: 0, opacity: acadFeeOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">Confirm & Save Rates</button>
+                  <button onClick={() => { setIsAcadFeeOtpOpen(false); setAcadFeeOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel</button>
+                </div>
+              </GlassCard>
+            </div>
+          )}
         </main>
       </div>
     );
   }
+
+  // ─── Reports Compiler removed per admin directive ───
 
   // ─── SUBPAGE 9: ATTENDANCE DASHBOARD & MARKING CONSOLE ───
   if (activePage === 'attendance') {
@@ -2242,7 +2022,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           {renderBackgroundDesign('indigo')}
           <header style={styles.header}>
             <button onClick={() => { setActivePage('menu'); }} style={styles.backArrowBtn} className="press-interactive">
-              ← Back to Cockpit
+              Back to Cockpit
             </button>
             <h1 style={{ ...styles.title, marginTop: '8px' }}>Attendance Marking Console</h1>
             <p style={styles.subtitle}>Directly log daily presenters, leaves, and absentees timeline</p>
@@ -2407,7 +2187,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           {renderBackgroundDesign('indigo')}
           <header style={styles.header}>
             <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-              ← Back to Cockpit
+              Back to Cockpit
             </button>
             <h1 style={{ ...styles.title, marginTop: '8px' }}>Attendance Dashboard</h1>
             <p style={styles.subtitle}>Check summary stats and presenter ratios (Read-only)</p>
@@ -2459,91 +2239,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     }
   }
 
-  // ─── SUBPAGE 10: ERP SETTINGS ───
-  if (activePage === 'settings') {
-    return (
-      <div style={styles.container} className="anim-slide-up">
-        {renderBackgroundDesign('rose')}
-        <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>ERP Configurations Settings</h1>
-          <p style={styles.subtitle}>Configure permissions settings, App banners, Branches directories</p>
-        </header>
 
-        <main style={styles.content}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', zIndex: 1 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={styles.formLabel}>Academic Year</label>
-              <input
-                type="text"
-                value={globalSettings.academicYear}
-                onChange={(e) => setGlobalSettings({ ...globalSettings, academicYear: e.target.value })}
-                style={styles.textInputBox}
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={styles.formLabel}>Campus Branches List</label>
-              <input
-                type="text"
-                value={globalSettings.branches}
-                onChange={(e) => setGlobalSettings({ ...globalSettings, branches: e.target.value })}
-                style={styles.textInputBox}
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={styles.formLabel}>Classroom Sections</label>
-              <input
-                type="text"
-                value={globalSettings.sections}
-                onChange={(e) => setGlobalSettings({ ...globalSettings, sections: e.target.value })}
-                style={styles.textInputBox}
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={styles.formLabel}>Active Holiday Lists</label>
-              <textarea
-                value={globalSettings.holidayList}
-                onChange={(e) => setGlobalSettings({ ...globalSettings, holidayList: e.target.value })}
-                style={{ ...styles.textInputBox, height: '80px', resize: 'none' }}
-              />
-            </div>
-
-            <button onClick={() => triggerToast('ERP Global configuration changes submitted.')} style={styles.saveSubmitBtn} className="press-interactive">Submit Configurations</button>
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   // ─── SUBPAGE 12: STUDENT FEE EDITOR (Admin 2) ───
   if (activePage === 'fee_editor') {
-    const handleFeeQuickFill = async (admNo: string) => {
-      setFeeEditSearch(admNo);
-      const match = students.find(s => s.admissionNumber.toUpperCase().trim() === admNo.toUpperCase().trim());
-      if (match) {
-        try {
-          const breakdown = await admin2Service.getFeeBreakdown(match._id || 'fallback_id');
-          setSelectedFeeStudent(match);
-          setFeeBreakdownData(breakdown);
-          setEditTuitionWaiver(String(breakdown.tuitionWaiver));
-          setEditHostelWaiver(String(breakdown.hostelWaiver));
-          setEditTransportWaiver(String(breakdown.transportWaiver));
-          setEditMiscWaiver(String(breakdown.miscWaiver));
-          triggerToast(`Loaded fee record for ${match.name}`);
-        } catch (err: any) {
-          triggerToast(err.message || 'Failed to load fee breakdown.');
-        }
-      } else {
-        setSelectedFeeStudent(null);
-        setFeeBreakdownData(null);
-        triggerToast('Student not found.');
-      }
-    };
 
     const handleFeeSearch = async () => {
       const match = students.find(s =>
@@ -2570,10 +2269,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       }
     };
 
-    const handleApplyWaivers = async () => {
+    const handleApplyWaivers = async (keyToUse: string) => {
       if (!selectedFeeStudent) return;
       try {
-        setGlobalSecurityKey(securityKey);
+        setGlobalSecurityKey(keyToUse);
         const res = await admin2Service.applyFeeOverride(selectedFeeStudent._id || 'fallback_id', {
           tuitionWaiver: Number(editTuitionWaiver) || 0,
           hostelWaiver: Number(editHostelWaiver) || 0,
@@ -2584,7 +2283,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           const breakdown = await admin2Service.getFeeBreakdown(selectedFeeStudent._id || 'fallback_id');
           setFeeBreakdownData(breakdown);
           triggerToast(`Fee waivers applied for ${selectedFeeStudent.name}.`);
-          setSecurityKey('');
+          setIsFeeOtpOpen(false);
+          setFeeOtpInput('');
         } else {
           throw new Error(res.message || 'Failed to apply waivers via API');
         }
@@ -2597,46 +2297,75 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('orange')}
         <header style={styles.header}>
-          <button onClick={() => { setActivePage('menu'); setSelectedFeeStudent(null); setFeeBreakdownData(null); }} style={styles.backArrowBtn} className="press-interactive">← Back to Finance Cockpit</button>
+          <button onClick={() => { setActivePage('menu'); setSelectedFeeStudent(null); setFeeBreakdownData(null); }} style={styles.backArrowBtn} className="press-interactive">Back to Finance Cockpit</button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Student Fee Editor</h1>
-          <p style={styles.subtitle}>Apply individual tuition, hostel & misc waivers per student</p>
+          <p style={styles.subtitle}>View fee history and apply individual waivers per student</p>
         </header>
         <main style={styles.content}>
-          <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
-              <input
-                type="text"
-                placeholder="Enter Finance Key (OTP) e.g. FIN-1234"
-                value={securityKey}
-                onChange={(e) => setSecurityKey(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleApplyWaivers()}
-                style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
-              />
-            </div>
-          </div>
+          {/* Search bar */}
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>Search Student</h4>
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-              <input type="text" placeholder="Admission No or Roll No" value={feeEditSearch} onChange={(e) => setFeeEditSearch(e.target.value)} style={{ ...styles.textInputBox, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && handleFeeSearch()} />
-              <button onClick={handleFeeSearch} style={{ ...styles.saveSubmitBtn, marginTop: 0, padding: '12px 20px' }} className="press-interactive">Search</button>
-            </div>
-            
-            <div style={styles.quickFillContainer}>
-              <span style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 700 }}>Quick Selection:</span>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
-                {students.filter(s => role === 'admin1' || s.branch === 'Madhapur').map(s => (
-                  <button key={s.admissionNumber} onClick={() => handleFeeQuickFill(s.admissionNumber)} style={styles.quickFillPill} className="press-interactive">
-                    {s.admissionNumber} ({s.name.split(' ')[0]})
-                  </button>
-                ))}
-              </div>
+              <input type="text" placeholder="Enter Admission No or Roll No..." value={feeEditSearch} onChange={(e) => setFeeEditSearch(e.target.value)} style={{ ...styles.textInputBox, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && handleFeeSearch()} />
+              <button onClick={handleFeeSearch} style={{ ...styles.saveSubmitBtn, marginTop: 0, padding: '12px 24px' }} className="press-interactive">Load</button>
             </div>
           </GlassCard>
+
+          {/* Student header card once loaded */}
           {selectedFeeStudent && (
+            <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1, border: '1.5px solid rgba(212,175,55,0.25)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+                <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.1)', border: '2px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 900, color: 'var(--royal-gold)' }}>
+                  {selectedFeeStudent.name.charAt(0)}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--dark-charcoal)' }}>{selectedFeeStudent.name}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                    <strong>ID:</strong> {selectedFeeStudent.admissionNumber} &nbsp;|&nbsp; <strong>Course:</strong> {selectedFeeStudent.course} &nbsp;|&nbsp; <strong>Branch:</strong> {selectedFeeStudent.branch}
+                  </div>
+                </div>
+              </div>
+
+              {/* Fee ledger breakdown */}
+              {feeBreakdownData ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <h5 style={{ margin: '0 0 8px', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Fee Transaction History</h5>
+                  <div style={styles.metaRow}><span>Base Tuition Fee</span><strong>₹{(feeBreakdownData.tuitionFee||0).toLocaleString('en-IN')}</strong></div>
+                  {feeBreakdownData.hostelFee > 0 && <div style={styles.metaRow}><span>Hostel Fee</span><strong>₹{feeBreakdownData.hostelFee.toLocaleString('en-IN')}</strong></div>}
+                  {feeBreakdownData.transportFee > 0 && <div style={styles.metaRow}><span>Transport Fee</span><strong>₹{feeBreakdownData.transportFee.toLocaleString('en-IN')}</strong></div>}
+                  {feeBreakdownData.miscFee > 0 && <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>₹{feeBreakdownData.miscFee.toLocaleString('en-IN')}</strong></div>}
+                  {feeBreakdownData.previousPending > 0 && <div style={styles.metaRow}><span>Previous Pending</span><strong>₹{feeBreakdownData.previousPending.toLocaleString('en-IN')}</strong></div>}
+                  <div style={{ ...styles.metaRow, borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span><strong>Total Base Fee</strong></span><strong>₹{(feeBreakdownData.baseFee||0).toLocaleString('en-IN')}</strong></div>
+                  {feeBreakdownData.scholarshipDeduction > 0 && (
+                    <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
+                      <span>Scholarship ({feeBreakdownData.scholarshipCategory}: {feeBreakdownData.scholarshipPct}%)</span>
+                      <strong>- ₹{feeBreakdownData.scholarshipDeduction.toLocaleString('en-IN')}</strong>
+                    </div>
+                  )}
+                  {feeBreakdownData.individualOverrideDeduction > 0 && (
+                    <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
+                      <span>Fee Waivers Applied</span>
+                      <strong>- ₹{feeBreakdownData.individualOverrideDeduction.toLocaleString('en-IN')}</strong>
+                    </div>
+                  )}
+                  <div style={{ ...styles.metaRow, color: '#D32F2F', borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span>Total Paid by Student</span><strong>- ₹{(feeBreakdownData.totalPaid||0).toLocaleString('en-IN')}</strong></div>
+                  <div style={{ ...styles.metaRow, backgroundColor: 'rgba(212,175,55,0.08)', padding: '12px', borderRadius: '12px', marginTop: '6px' }}>
+                    <span style={{ fontWeight: 800, color: 'var(--royal-gold)' }}>Remaining Balance</span>
+                    <strong style={{ fontSize: '16px', color: 'var(--royal-gold)', fontWeight: 900 }}>₹{(feeBreakdownData.remainingBalance||0).toLocaleString('en-IN')}</strong>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '12px' }}>Loading fee breakdown…</div>
+              )}
+            </GlassCard>
+          )}
+
+          {/* Modified fees section — Admin 1 only */}
+          {selectedFeeStudent && role === 'admin1' && (
             <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
-              <h4 style={styles.sectionSubtitle}>{selectedFeeStudent.name} — {selectedFeeStudent.admissionNumber}</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)' }}>Modify Fee Waivers (Rector Control)</h4>
+              <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: '14px' }}>Changes will be reflected in the student's fee ledger after OTP verification.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 {[['Tuition Waiver (₹)', editTuitionWaiver, setEditTuitionWaiver], ['Hostel Waiver (₹)', editHostelWaiver, setEditHostelWaiver], ['Transport Waiver (₹)', editTransportWaiver, setEditTransportWaiver], ['Misc Waiver (₹)', editMiscWaiver, setEditMiscWaiver]].map(([label, val, setter]: any) => (
                   <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>{label}</label>
@@ -2644,38 +2373,28 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   </div>
                 ))}
               </div>
-              <button onClick={handleApplyWaivers} style={{ ...styles.saveSubmitBtn, marginTop: '16px' }} className="press-interactive">Apply Waivers</button>
+              <button onClick={() => { setFeeOtpInput(''); setIsFeeOtpOpen(true); }} style={{ ...styles.saveSubmitBtn, marginTop: '16px' }} className="press-interactive">
+                Submit Fee Changes
+              </button>
             </GlassCard>
           )}
-          {feeBreakdownData && (
-            <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
-              <h4 style={styles.sectionSubtitle}>Fee Ledger Breakdown</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-                <div style={styles.metaRow}><span>Base Tuition Fee</span><strong>₹{(feeBreakdownData.tuitionFee||0).toLocaleString('en-IN')}</strong></div>
-                {feeBreakdownData.hostelFee > 0 && <div style={styles.metaRow}><span>Base Hostel Fee</span><strong>₹{feeBreakdownData.hostelFee.toLocaleString('en-IN')}</strong></div>}
-                {feeBreakdownData.transportFee > 0 && <div style={styles.metaRow}><span>Base Transport Fee</span><strong>₹{feeBreakdownData.transportFee.toLocaleString('en-IN')}</strong></div>}
-                {feeBreakdownData.miscFee > 0 && <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>₹{feeBreakdownData.miscFee.toLocaleString('en-IN')}</strong></div>}
-                {feeBreakdownData.previousPending > 0 && <div style={styles.metaRow}><span>Previous Pending</span><strong>₹{feeBreakdownData.previousPending.toLocaleString('en-IN')}</strong></div>}
-                <div style={{ ...styles.metaRow, borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '6px' }}><span><strong>Total Base Fee</strong></span><strong>₹{(feeBreakdownData.baseFee||0).toLocaleString('en-IN')}</strong></div>
-                {feeBreakdownData.scholarshipDeduction > 0 && (
-                  <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
-                    <span>Scholarship ({feeBreakdownData.scholarshipCategory}: {feeBreakdownData.scholarshipPct}%)</span>
-                    <strong>- ₹{feeBreakdownData.scholarshipDeduction.toLocaleString('en-IN')}</strong>
-                  </div>
-                )}
-                {feeBreakdownData.individualOverrideDeduction > 0 && (
-                  <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
-                    <span>Individual Waivers</span>
-                    <strong>- ₹{feeBreakdownData.individualOverrideDeduction.toLocaleString('en-IN')}</strong>
-                  </div>
-                )}
-                <div style={{ ...styles.metaRow, color: '#D32F2F', borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '6px' }}><span>Total Paid</span><strong>- ₹{(feeBreakdownData.totalPaid||0).toLocaleString('en-IN')}</strong></div>
-                <div style={{ ...styles.metaRow, backgroundColor: 'rgba(212,175,55,0.08)', padding: '10px', borderRadius: '10px', marginTop: '6px' }}>
-                  <span style={{ fontWeight: 800, color: 'var(--royal-gold)' }}>Remaining Balance</span>
-                  <strong style={{ fontSize: '15px', color: 'var(--royal-gold)', fontWeight: 900 }}>₹{(feeBreakdownData.remainingBalance||0).toLocaleString('en-IN')}</strong>
+
+          {/* OTP modal for fee override */}
+          {isFeeOtpOpen && selectedFeeStudent && (
+            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '20px', margin: '0 16px' }} className="anim-slide-up glass-gold-ring">
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.1)', border: '2px solid rgba(212,175,55,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 12px' }}></div>
+                  <h3 style={{ margin: '0 0 4px', fontWeight: 900, fontSize: '1.15rem', color: 'var(--dark-charcoal)' }}>Fee Override Verification</h3>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Enter the <strong>Student Administrative OTP</strong> from the Authenticator to apply fee changes for <strong>{selectedFeeStudent.name}</strong>.</p>
                 </div>
-              </div>
-            </GlassCard>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <input type="text" autoFocus placeholder="Enter 6-character OTP..." value={feeOtpInput} onChange={(e) => setFeeOtpInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter' && feeOtpInput.trim()) handleApplyWaivers(feeOtpInput.trim()); }} style={{ padding: '13px 16px', border: '2px solid rgba(212,175,55,0.5)', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, letterSpacing: '0.15em', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.8)', outline: 'none', fontFamily: 'monospace', color: 'var(--dark-charcoal)' }} />
+                  <button onClick={() => handleApplyWaivers(feeOtpInput.trim())} disabled={!feeOtpInput.trim()} style={{ ...styles.saveSubmitBtn, marginTop: 0, opacity: feeOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">Confirm & Apply Waivers</button>
+                  <button onClick={() => { setIsFeeOtpOpen(false); setFeeOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel</button>
+                </div>
+              </GlassCard>
+            </div>
           )}
         </main>
       </div>
@@ -2688,7 +2407,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('ruby')}
         <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">← Back to Finance Cockpit</button>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">Back to Finance Cockpit</button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Late Fees & Scholarships</h1>
           <p style={styles.subtitle}>View active penalty rates and merit scholarship policies</p>
         </header>
@@ -2714,32 +2433,103 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   // ─── SUBPAGE 14: EXPENDITURE TRACKER (Admin 2) ───
   if (activePage === 'expenditure') {
-    const handleLogExpenditure = async () => {
+    const handleLogExpenditure = async (keyToUse: string) => {
       if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; }
       try {
-        setGlobalSecurityKey(securityKey);
+        setGlobalSecurityKey(keyToUse);
         await admin2Service.createExpenditure({
           category: newExpCat,
           amount: Number(newExpAmt),
           description: newExpDesc
         });
-        setSecurityKey('');
         setNewExpAmt(''); setNewExpDesc('');
+        setIsExpOtpOpen(false); setExpOtpInput('');
         triggerToast('Expenditure logged successfully.');
         fetchExpenditures();
       } catch (err: any) { triggerToast(err.message || 'Failed to log expenditure.'); }
     };
 
     const handleDeleteExpenditure = async (exp: ExpenditureItem) => {
+      if (role !== 'admin1') { triggerToast('Only the Rector (Admin 1) can delete expenditure entries.'); return; }
       const id = exp._id || exp.id;
       if (!id) return;
       try {
-        setGlobalSecurityKey(securityKey);
         await admin2Service.deleteExpenditure(id);
-        setSecurityKey('');
-        triggerToast('Expenditure deleted.');
+        triggerToast('Expenditure entry deleted.');
         fetchExpenditures();
       } catch (err: any) { triggerToast(err.message || 'Failed to delete expenditure.'); }
+    };
+
+    const handleDownloadBill = (exp: ExpenditureItem) => {
+      const dateStr = typeof exp.date === 'string' ? exp.date.split('T')[0] : String(exp.date || '');
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <title>Expenditure Bill — ${exp.category}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Inter',sans-serif;background:#fff;color:#1a1a1a;padding:40px;}
+    .page{max-width:720px;margin:auto;border:2px solid #D4AF37;border-radius:16px;overflow:hidden;}
+    .header{background:linear-gradient(135deg,#1a1a2e 0%,#0d1b2a 100%);padding:32px 40px;display:flex;justify-content:space-between;align-items:center;}
+    .logo-text{color:#D4AF37;font-size:22px;font-weight:900;letter-spacing:0.04em;}
+    .logo-sub{color:rgba(212,175,55,0.6);font-size:11px;font-weight:700;margin-top:2px;}
+    .bill-no{color:rgba(212,175,55,0.8);font-size:12px;font-weight:700;text-align:right;}
+    .body{padding:36px 40px;}
+    .title{font-size:28px;font-weight:900;color:#1a1a1a;margin-bottom:4px;}
+    .sub{font-size:13px;color:#666;margin-bottom:32px;}
+    .row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f0f0;font-size:14px;}
+    .row:last-of-type{border-bottom:none;}
+    .row span{color:#888;}
+    .row strong{font-weight:700;color:#1a1a1a;}
+    .total-row{display:flex;justify-content:space-between;align-items:center;background:#fffbea;border:2px solid #D4AF37;border-radius:12px;padding:16px 20px;margin-top:20px;}
+    .total-label{font-size:14px;font-weight:700;color:#1a1a1a;}
+    .total-amt{font-size:28px;font-weight:900;color:#D4AF37;}
+    .footer{background:#f9f9f9;padding:20px 40px;border-top:1px solid #eee;text-align:center;font-size:11px;color:#999;}
+    .stamp{display:inline-block;border:2px solid #D4AF37;border-radius:8px;padding:6px 16px;font-size:11px;font-weight:700;color:#D4AF37;margin-top:12px;letter-spacing:0.08em;}
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="logo-text">INSPIRE COLLEGES</div>
+      <div class="logo-sub">Expenditure Management System</div>
+    </div>
+    <div class="bill-no">
+      Bill #${(exp._id || exp.id || 'N/A').toString().slice(-8).toUpperCase()}<br/>
+      Date: ${dateStr}
+    </div>
+  </div>
+  <div class="body">
+    <div class="title">Expenditure Bill</div>
+    <div class="sub">Official record for internal financial audit</div>
+    <div class="row"><span>Category</span><strong>${exp.category}</strong></div>
+    <div class="row"><span>Description</span><strong>${exp.description}</strong></div>
+    <div class="row"><span>Branch / Campus</span><strong>${exp.branch || 'N/A'}</strong></div>
+    <div class="row"><span>Date of Expenditure</span><strong>${dateStr}</strong></div>
+    <div class="row"><span>Logged By</span><strong>Administrator — ${role === 'admin1' ? 'Rector' : 'Principal'}</strong></div>
+    <div class="total-row">
+      <div class="total-label">Total Amount Spent</div>
+      <div class="total-amt">₹${exp.amount.toLocaleString('en-IN')}</div>
+    </div>
+    <div style="margin-top:20px;text-align:right;">
+      <div class="stamp"> APPROVED</div>
+    </div>
+  </div>
+  <div class="footer">
+    This document is system-generated by the Inspire ERP — Expenditure Tracker. For queries contact finance@inspirecolleges.edu
+  </div>
+</div>
+</body>
+</html>`;
+      const win = window.open('', '_blank', 'width=800,height=900');
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+        setTimeout(() => win.print(), 600);
+      }
     };
 
     // Filter recent entries based on role
@@ -2749,38 +2539,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
     const totalFiltered = filteredExpenditures.reduce((s, e) => s + e.amount, 0);
 
-    // Compute totals per branch for Admin 1 dashboard display
-    const getBranchTotal = (b: string) => {
-      return expenditures.filter(e => e.branch === b).reduce((s, e) => s + e.amount, 0);
-    };
+    const getBranchTotal = (b: string) => expenditures.filter(e => e.branch === b).reduce((s, e) => s + e.amount, 0);
 
     return (
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('teal')}
         <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">← Back to Cockpit</button>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">Back to Cockpit</button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Expenditure Tracker</h1>
-          <p style={styles.subtitle}>
-            {role === 'admin1' 
-              ? 'Multi-branch expenditure monitoring console' 
-              : 'Log and monitor campus expenditures'}
-          </p>
+          <p style={styles.subtitle}>{role === 'admin1' ? 'Multi-branch expenditure monitoring console' : 'Log and monitor campus expenditures'}</p>
         </header>
         <main style={styles.content}>
-          <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
-              <input
-                type="text"
-                placeholder="Enter Finance Key (OTP) e.g. FIN-1234"
-                value={securityKey}
-                onChange={(e) => setSecurityKey(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleLogExpenditure()}
-                style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
-              />
-            </div>
-          </div>
-          
           {/* Admin 1 Branch Overview Cards */}
           {role === 'admin1' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginBottom: '16px', zIndex: 1 }}>
@@ -2788,20 +2557,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 const total = getBranchTotal(b);
                 const isActive = selectedExpBranch === b;
                 return (
-                  <div 
-                    key={b} 
-                    onClick={() => setSelectedExpBranch(b as any)}
-                    style={{
-                      padding: '12px 10px',
-                      borderRadius: '12px',
-                      border: isActive ? '2px solid var(--royal-gold)' : '1px solid rgba(255,255,255,0.1)',
-                      background: isActive ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    className="press-interactive"
-                  >
+                  <div key={b} onClick={() => setSelectedExpBranch(b as any)} style={{ padding: '12px 10px', borderRadius: '12px', border: isActive ? '2px solid var(--royal-gold)' : '1px solid rgba(255,255,255,0.1)', background: isActive ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }} className="press-interactive">
                     <div style={{ fontSize: '10px', color: isActive ? 'var(--royal-gold)' : 'var(--muted-gray)', fontWeight: 800 }}>{b}</div>
                     <strong style={{ fontSize: '14px', color: '#EF4444', display: 'block', marginTop: '4px' }}>₹{total.toLocaleString('en-IN')}</strong>
                   </div>
@@ -2810,7 +2566,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             </div>
           )}
 
-          {/* Form and recent entries */}
+          {/* Log form */}
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>
               Log New Expenditure {role === 'admin1' ? `(For ${selectedExpBranch})` : '(Campus: Madhapur)'}
@@ -2831,9 +2587,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 <input type="text" value={newExpDesc} onChange={(e) => setNewExpDesc(e.target.value)} style={styles.textInputBox} placeholder="Brief description of the expense" />
               </div>
             </div>
-            <button onClick={handleLogExpenditure} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">Log Expenditure</button>
+            <button onClick={() => { if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; } setExpOtpInput(''); setIsExpOtpOpen(true); }} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">
+              Log Expenditure
+            </button>
           </GlassCard>
 
+          {/* Recent entries */}
           <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>
               Recent Entries {role === 'admin1' ? `(${selectedExpBranch})` : '(Madhapur)'} — Total: ₹{totalFiltered.toLocaleString('en-IN')}
@@ -2843,20 +2602,45 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '12px' }}>No expenditure entries logged for this branch.</div>
               ) : (
                 filteredExpenditures.map((exp, i) => (
-                  <div key={exp._id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: '1.5px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{exp.category} — {exp.description}</div>
+                  <div key={exp._id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: '1.5px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--dark-charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exp.category} — {exp.description}</div>
                       <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{typeof exp.date === 'string' ? exp.date.split('T')[0] : exp.date}</div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                       <strong style={{ fontSize: '14px', color: '#EF4444' }}>₹{exp.amount.toLocaleString('en-IN')}</strong>
-                      <button onClick={() => handleDeleteExpenditure(exp)} style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
+                      <button onClick={() => handleDownloadBill(exp)} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(212,175,55,0.4)', backgroundColor: 'rgba(212,175,55,0.06)', color: 'var(--royal-gold)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }} title="Download Bill">Bill</button>
+                      {role === 'admin1' && (
+                        <button onClick={() => handleDeleteExpenditure(exp)} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
+                      )}
                     </div>
                   </div>
                 ))
               )}
             </div>
           </GlassCard>
+
+          {/* Expenditure OTP modal */}
+          {isExpOtpOpen && (
+            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '20px', margin: '0 16px' }} className="anim-slide-up glass-gold-ring">
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.1)', border: '2px solid rgba(212,175,55,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 12px' }}></div>
+                  <h3 style={{ margin: '0 0 4px', fontWeight: 900, fontSize: '1.15rem', color: 'var(--dark-charcoal)' }}>Expenditure Verification</h3>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Enter the <strong>Expenditure OTP</strong> from the Authenticator to log this entry.</p>
+                  <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '10px', fontSize: '12px', textAlign: 'left' }}>
+                    <div style={{ fontWeight: 700 }}>{newExpCat} — {newExpDesc}</div>
+                    <div style={{ color: '#EF4444', fontWeight: 900, fontSize: '16px', marginTop: '4px' }}>₹{Number(newExpAmt).toLocaleString('en-IN')}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <input type="text" autoFocus placeholder="Enter 6-character OTP..." value={expOtpInput} onChange={(e) => setExpOtpInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter' && expOtpInput.trim()) handleLogExpenditure(expOtpInput.trim()); }} style={{ padding: '13px 16px', border: '2px solid rgba(212,175,55,0.5)', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, letterSpacing: '0.15em', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.8)', outline: 'none', fontFamily: 'monospace', color: 'var(--dark-charcoal)' }} />
+                  <button onClick={() => handleLogExpenditure(expOtpInput.trim())} disabled={!expOtpInput.trim()} style={{ ...styles.saveSubmitBtn, marginTop: 0, opacity: expOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">Confirm & Log Entry</button>
+                  <button onClick={() => { setIsExpOtpOpen(false); setExpOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel</button>
+                </div>
+              </GlassCard>
+            </div>
+          )}
         </main>
       </div>
     );
@@ -2880,7 +2664,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('sapphire')}
         <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">← Back to Finance Cockpit</button>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">Back to Finance Cockpit</button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Staff & Teacher Salary Status</h1>
           <p style={styles.subtitle}>View teacher roster and toggle salary disbursement status</p>
         </header>
@@ -2916,7 +2700,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     <strong style={{ fontSize: '14px', color: 'var(--royal-gold)' }}>₹{(t.salary||0).toLocaleString('en-IN')}</strong>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '10px', color: t.salaryStatus === 'paid' ? '#10B981' : '#EF4444', fontWeight: 700 }}>
-                        {t.salaryStatus === 'paid' ? `✓ Paid${t.salaryPaymentDate ? ` (${t.salaryPaymentDate})` : ''}` : '● Pending'}
+                        {t.salaryStatus === 'paid' ? ` Paid${t.salaryPaymentDate ? ` (${t.salaryPaymentDate})` : ''}` : '● Pending'}
                       </span>
                       <button onClick={() => handleToggleSalary(t)} style={{ fontSize: '9px', padding: '3px 8px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(0,0,0,0.06)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }} className="press-interactive">Toggle</button>
                     </div>
@@ -2968,7 +2752,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('emerald')}
         <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">← Back to Finance Cockpit</button>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">Back to Finance Cockpit</button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Worker Payment Details</h1>
           <p style={styles.subtitle}>Manage and record non-teaching staff payroll for the month</p>
         </header>
@@ -3009,7 +2793,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{w.role} • {w.monthPeriod} • ₹{(w.amount || w.salary || 0).toLocaleString('en-IN')}/mo</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button onClick={() => handleToggleWorker(w)} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', backgroundColor: w.paid ? 'rgba(16,185,129,0.12)' : 'var(--royal-gold)', color: w.paid ? '#10B981' : '#000', fontWeight: 800, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }} className="press-interactive">{w.paid ? '✓ Paid' : 'Mark Paid'}</button>
+                    <button onClick={() => handleToggleWorker(w)} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', backgroundColor: w.paid ? 'rgba(16,185,129,0.12)' : 'var(--royal-gold)', color: w.paid ? '#10B981' : '#000', fontWeight: 800, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }} className="press-interactive">{w.paid ? ' Paid' : 'Mark Paid'}</button>
                     <button onClick={() => handleDeleteWorker(w)} style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
                   </div>
                 </div>
@@ -3042,7 +2826,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('violet')}
         <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">← Back to Finance Cockpit</button>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">Back to Finance Cockpit</button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Yearly Enrollment Stats</h1>
           <p style={styles.subtitle}>Academic year-wise admission trends across MPC, BiPC & CEC</p>
         </header>
@@ -3128,7 +2912,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         {renderBackgroundDesign('navy')}
         <header style={styles.header}>
           <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Administrator Profile Console</h1>
           <p style={styles.subtitle}>Consolidated credentials and administrator clearances</p>
@@ -3151,6 +2935,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       </div>
     );
   }
+
+  const totals = (attendanceSummary as any)?.totals || {
+    studentsPresent: 0,
+    studentsAbsent: 0,
+    facultyPresent: 0,
+    facultyAbsent: 0
+  };
 
   return (
     <div style={styles.container} className="anim-slide-up">
@@ -3201,28 +2992,44 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               <div style={styles.metricsGrid}>
                 <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring neo-2d-card hover-gold ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
                   <span style={styles.metricLabel}>Total Students Present Today</span>
-                  <strong style={{ ...styles.metricValue, color: '#10B981' }}>2,735</strong>
-                  <span style={styles.metricSub}>96.1% Attendance Rate</span>
+                  <strong style={{ ...styles.metricValue, color: '#10B981' }}>
+                    {(totals.studentsPresent || 0).toLocaleString()}
+                  </strong>
+                  <span style={styles.metricSub}>
+                    {((totals.studentsPresent || 0) / Math.max((totals.studentsPresent || 0) + (totals.studentsAbsent || 0), 1) * 100).toFixed(1)}% Attendance Rate
+                  </span>
                   <span className="glass-status-pill status-present">Live</span>
                 </GlassCard>
                 <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
                   <span style={styles.metricLabel}>Total Students Absent Today</span>
-                  <strong style={{ ...styles.metricValue, color: '#EF4444' }}>111</strong>
-                  <span style={styles.metricSub}>3.9% Absent</span>
+                  <strong style={{ ...styles.metricValue, color: '#EF4444' }}>
+                    {(totals.studentsAbsent || 0).toLocaleString()}
+                  </strong>
+                  <span style={styles.metricSub}>
+                    {((totals.studentsAbsent || 0) / Math.max((totals.studentsPresent || 0) + (totals.studentsAbsent || 0), 1) * 100).toFixed(1)}% Absent
+                  </span>
                   <span className="glass-status-pill status-absent">Watch</span>
                 </GlassCard>
               </div>
               <div style={styles.metricsGrid}>
                 <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring neo-2d-card hover-gold ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
                   <span style={styles.metricLabel}>Total Faculty Present Today</span>
-                  <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>180</strong>
-                  <span style={styles.metricSub}>96.8% Present</span>
+                  <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>
+                    {(totals.facultyPresent || 0).toLocaleString()}
+                  </strong>
+                  <span style={styles.metricSub}>
+                    {((totals.facultyPresent || 0) / Math.max((totals.facultyPresent || 0) + (totals.facultyAbsent || 0), 1) * 100).toFixed(1)}% Present
+                  </span>
                   <span className="glass-status-pill status-active">Stable</span>
                 </GlassCard>
                 <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
                   <span style={styles.metricLabel}>Faculty on Leave Today</span>
-                  <strong style={styles.metricValue}>6</strong>
-                  <span style={styles.metricSub}>3.2% Leave Rate</span>
+                  <strong style={styles.metricValue}>
+                    {(totals.facultyAbsent || 0).toLocaleString()}
+                  </strong>
+                  <span style={styles.metricSub}>
+                    {((totals.facultyAbsent || 0) / Math.max((totals.facultyPresent || 0) + (totals.facultyAbsent || 0), 1) * 100).toFixed(1)}% Leave Rate
+                  </span>
                   <span className="glass-status-pill status-warning">Alert</span>
                 </GlassCard>
               </div>
@@ -3292,265 +3099,177 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           )}
         </section>
 
-        {/* Module Grid — role-conditional */}
+        {/* Module Grid */}
         <section style={styles.section}>
           <h3 style={styles.sectionTitle}>
-            {role === 'admin1'
-              ? 'Campus Operations Modules'
-              : role === 'admin2'
-              ? 'Finance & Staff Modules'
-              : 'Systems & Security Modules'}
+            {role === 'admin1' ? 'Operations Modules' : role === 'admin2' ? 'Finance & Staff Modules' : 'Academic Modules'}
           </h3>
+
           {role === 'admin1' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-            
-            {/* 1. Students */}
-            <div
-                onClick={() => setActivePage('students')}
-                style={{
-                  ...styles.moduleCardNew,
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.09) 0%, rgba(16, 185, 129, 0.02) 100%)',
-                  border: '1.5px solid rgba(16, 185, 129, 0.3)',
-                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)'
-                }}
-                className="neo-2d-card hover-gold press-interactive"
-              >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5">
-                  <circle cx="12" cy="7" r="4" />
-                  <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
-                </svg>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+              <div onClick={() => setActivePage('students')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><circle cx="12" cy="7" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Students Registry</h4>
+                <p style={styles.moduleDesc}>Register admissions, view records across all 5 branches.</p>
               </div>
-              <h4 style={styles.moduleTitle}>Students Registry (All)</h4>
-              <p style={styles.moduleDesc}>Register admissions, view details across all 5 branches.</p>
-            </div>
 
-            {/* 2. Teachers */}
-            <div
-              onClick={() => setActivePage('teachers')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.09) 0%, rgba(245, 158, 11, 0.02) 100%)',
-                border: '1.5px solid rgba(245, 158, 11, 0.3)',
-                boxShadow: '0 4px 14px rgba(245, 158, 11, 0.08)'
-              }}
-              className="neo-2d-card hover-gold press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2.5">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                </svg>
+              <div onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Faculty Management</h4>
+                <p style={styles.moduleDesc}>Configure lecturers, allocate subjects, check base salaries.</p>
               </div>
-              <h4 style={styles.moduleTitle}>Faculty Mgmt (All)</h4>
-              <p style={styles.moduleDesc}>Configure lecturers, allocate subjects, check base salaries.</p>
-            </div>
 
-            {/* 3. Academic Fees */}
-            <div onClick={() => setActivePage('academic_fees')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(249,115,22,0.09) 0%, rgba(249,115,22,0.02) 100%)', border: '1.5px solid rgba(249,115,22,0.3)', boxShadow: '0 4px 14px rgba(249,115,22,0.08)' }} className="neo-2d-card hover-gold press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.5"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg></div>
-              <h4 style={styles.moduleTitle}>Academic Fees Structure</h4>
-              <p style={styles.moduleDesc}>Set baseline yearly/term academic fees globally.</p>
-            </div>
-
-            {/* 4. Student Fee Editor */}
-            <div onClick={() => setActivePage('fee_editor')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(16,185,129,0.09) 0%, rgba(16,185,129,0.02) 100%)', border: '1.5px solid rgba(16,185,129,0.3)', boxShadow: '0 4px 14px rgba(16,185,129,0.08)' }} className="neo-2d-card hover-gold press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
-              <h4 style={styles.moduleTitle}>Student Fee & Waivers</h4>
-              <p style={styles.moduleDesc}>Configure individual scholarship category fee waivers.</p>
-            </div>
-
-            {/* 5. Expenditure Tracker */}
-            <div onClick={() => setActivePage('expenditure')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(20,184,166,0.09) 0%, rgba(20,184,166,0.02) 100%)', border: '1.5px solid rgba(20,184,166,0.3)', boxShadow: '0 4px 14px rgba(20,184,166,0.08)' }} className="neo-2d-card hover-gold press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-              <h4 style={styles.moduleTitle}>Multi-Branch Expenditures</h4>
-              <p style={styles.moduleDesc}>Compare totals and log expenses across all 5 branches.</p>
-            </div>
-
-            {/* 6. Reports */}
-            <div
-              onClick={() => setActivePage('reports')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.09) 0%, rgba(6, 182, 212, 0.02) 100%)',
-                border: '1.5px solid rgba(6, 182, 212, 0.3)',
-                boxShadow: '0 4px 14px rgba(6, 182, 212, 0.08)'
-              }}
-              className="neo-2d-card hover-gold press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" strokeWidth="2.5">
-                  <line x1="12" y1="18" x2="12" y2="12" />
-                  <line x1="9" y1="15" x2="15" y2="15" />
-                </svg>
+              <div onClick={() => setActivePage('academic_fees')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(249,115,22,0.07)', border: '1px solid rgba(249,115,22,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Academic Fee Structure</h4>
+                <p style={styles.moduleDesc}>Set baseline yearly/term academic fees globally.</p>
               </div>
-              <h4 style={styles.moduleTitle}>Reports Compiler</h4>
-              <p style={styles.moduleDesc}>Compile enrollment charts sheets and download PDFs.</p>
-            </div>
 
-            {/* 7. ERP Settings */}
-            <div
-              onClick={() => setActivePage('settings')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.09) 0%, rgba(244, 63, 94, 0.02) 100%)',
-                border: '1.5px solid rgba(244, 63, 94, 0.3)',
-                boxShadow: '0 4px 14px rgba(244, 63, 94, 0.08)'
-              }}
-              className="neo-2d-card hover-gold press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(244, 63, 94, 0.08)', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
+              <div onClick={() => setActivePage('fee_editor')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Student Fee & Waivers</h4>
+                <p style={styles.moduleDesc}>Configure individual scholarship category fee waivers.</p>
               </div>
-              <h4 style={styles.moduleTitle}>ERP Settings</h4>
-              <p style={styles.moduleDesc}>Configure academic years calendar parameters directories.</p>
-            </div>
 
-            {/* 8. Profile */}
-            <div
-              onClick={() => setActivePage('profile')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.09) 0%, rgba(30, 41, 59, 0.02) 100%)',
-                border: '1.5px solid rgba(30, 41, 59, 0.3)',
-                boxShadow: '0 4px 14px rgba(30, 41, 59, 0.08)'
-              }}
-              className="neo-2d-card hover-gold press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(30, 41, 59, 0.08)', border: '1px solid rgba(30, 41, 59, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E293B" strokeWidth="2.5">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
+              <div onClick={() => setActivePage('expenditure')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Multi-Branch Expenditure</h4>
+                <p style={styles.moduleDesc}>Compare totals and log expenses across all 5 branches.</p>
               </div>
-              <h4 style={styles.moduleTitle}>Rector Profile</h4>
-              <p style={styles.moduleDesc}>Review registered principal rector credentials.</p>
+
+              <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Rector Profile</h4>
+                <p style={styles.moduleDesc}>Review registered principal rector credentials.</p>
+              </div>
             </div>
 
-          </div>
           ) : role === 'admin2' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+              <div onClick={() => setActivePage('students')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><circle cx="12" cy="7" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Campus Students Registry</h4>
+                <p style={styles.moduleDesc}>Edit student details for Madhapur branch.</p>
+              </div>
 
-            {/* CP-1. Student Registry */}
-            <div onClick={() => setActivePage('students')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.09) 0%, rgba(16, 185, 129, 0.02) 100%)', border: '1.5px solid rgba(16, 185, 129, 0.3)', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><circle cx="12" cy="7" r="4" /><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg></div>
-              <h4 style={styles.moduleTitle}>Campus Students Registry</h4>
-              <p style={styles.moduleDesc}>Edit student details and reset pins for Madhapur branch.</p>
+              <div onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Campus Faculty Roster</h4>
+                <p style={styles.moduleDesc}>Register instructors and assign classrooms.</p>
+              </div>
+
+              <div onClick={() => setActivePage('expenditure')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Campus Expenditures</h4>
+                <p style={styles.moduleDesc}>Log and track local expenditures of Madhapur branch.</p>
+              </div>
+
+              <div onClick={() => setActivePage('worker_payments')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Worker Payments</h4>
+                <p style={styles.moduleDesc}>Record and mark non-teaching staff payroll payouts.</p>
+              </div>
+
+              <div onClick={() => setActivePage('enrollment_stats')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Enrollment Stats</h4>
+                <p style={styles.moduleDesc}>View 5-year campus enrollment and admission trends.</p>
+              </div>
+
+              <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Campus Dean Profile</h4>
+                <p style={styles.moduleDesc}>Review Madhapur principal dean credentials.</p>
+              </div>
             </div>
 
-            {/* CP-2. Faculty Management */}
-            <div onClick={() => setActivePage('teachers')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.09) 0%, rgba(245, 158, 11, 0.02) 100%)', border: '1.5px solid rgba(245, 158, 11, 0.3)', boxShadow: '0 4px 14px rgba(245, 158, 11, 0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg></div>
-              <h4 style={styles.moduleTitle}>Campus Faculty Roster</h4>
-              <p style={styles.moduleDesc}>Register instructors and assign classrooms (Salary locked).</p>
-            </div>
-
-            {/* CP-3. Expenditure Tracker */}
-            <div onClick={() => setActivePage('expenditure')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(20,184,166,0.09) 0%, rgba(20,184,166,0.02) 100%)', border: '1.5px solid rgba(20,184,166,0.3)', boxShadow: '0 4px 14px rgba(20,184,166,0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-              <h4 style={styles.moduleTitle}>Campus Expenditures</h4>
-              <p style={styles.moduleDesc}>Log and track local expenditures of Madhapur branch.</p>
-            </div>
-
-            {/* CP-4. Worker Payments */}
-            <div onClick={() => setActivePage('worker_payments')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(139,92,246,0.09) 0%, rgba(139,92,246,0.02) 100%)', border: '1.5px solid rgba(139,92,246,0.3)', boxShadow: '0 4px 14px rgba(139,92,246,0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
-              <h4 style={styles.moduleTitle}>Worker Payments</h4>
-              <p style={styles.moduleDesc}>Record and mark non-teaching staff payroll payouts.</p>
-            </div>
-
-            {/* CP-5. Yearly Enrollment Stats */}
-            <div onClick={() => setActivePage('enrollment_stats')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(99,102,241,0.09) 0%, rgba(99,102,241,0.02) 100%)', border: '1.5px solid rgba(99,102,241,0.3)', boxShadow: '0 4px 14px rgba(99,102,241,0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-              <h4 style={styles.moduleTitle}>Enrollment Stats</h4>
-              <p style={styles.moduleDesc}>View 5-year campus enrollment and admission trends.</p>
-            </div>
-
-            {/* CP-6. Profile */}
-            <div onClick={() => setActivePage('profile')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(30,41,59,0.09) 0%, rgba(30,41,59,0.02) 100%)', border: '1.5px solid rgba(30,41,59,0.3)', boxShadow: '0 4px 14px rgba(30,41,59,0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(30,41,59,0.08)', border: '1px solid rgba(30,41,59,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E293B" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-              <h4 style={styles.moduleTitle}>Campus Dean Profile</h4>
-              <p style={styles.moduleDesc}>Review Madhapur principal dean operations credentials.</p>
-            </div>
-
-          </div>
           ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+              <div onClick={() => setActivePage('classes')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><path d="M22 10v6M2 10v6M12 2l10 5-10 5L2 7l10-5z"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Class Scheduling</h4>
+                <p style={styles.moduleDesc}>Map sections, allocate student groups, and assign duties.</p>
+              </div>
 
-            {/* A3-1. Class Scheduling */}
-            <div onClick={() => setActivePage('classes')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.09) 0%, rgba(20, 184, 166, 0.02) 100%)', border: '1.5px solid rgba(20, 184, 166, 0.3)', boxShadow: '0 4px 14px rgba(20, 184, 166, 0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20, 184, 166, 0.08)', border: '1px solid rgba(20, 184, 166, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#20B2AA" strokeWidth="2.5"><path d="M22 10v6M2 10v6M12 2l10 5-10 5L2 7l10-5z" /></svg></div>
-              <h4 style={styles.moduleTitle}>Class Scheduling</h4>
-              <p style={styles.moduleDesc}>Map sections, allocate student groups, and assign duties.</p>
+              <div onClick={() => setActivePage('exams')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Examination Portal</h4>
+                <p style={styles.moduleDesc}>Create term schedules, upload results, and publish grades.</p>
+              </div>
+
+              <div onClick={() => setActivePage('publishing')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Publishing Desk</h4>
+                <p style={styles.moduleDesc}>Compose bulletins, circular notices, and holiday events.</p>
+              </div>
+
+              <div onClick={() => setActivePage('calendar')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Timetables & Calendars</h4>
+                <p style={styles.moduleDesc}>Upload and schedule daily class timelines and calendars.</p>
+              </div>
+
+              <div onClick={() => setActivePage('attendance')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Attendance Summary</h4>
+                <p style={styles.moduleDesc}>Examine section-wise student availability reports.</p>
+              </div>
+
+              <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>Publisher Profile</h4>
+                <p style={styles.moduleDesc}>Review Academic Registrar & Publisher credentials.</p>
+              </div>
             </div>
-
-            {/* A3-2. Examination Portal */}
-            <div onClick={() => setActivePage('exams')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.09) 0%, rgba(139, 92, 246, 0.02) 100%)', border: '1.5px solid rgba(139, 92, 246, 0.3)', boxShadow: '0 4px 14px rgba(139, 92, 246, 0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /></svg></div>
-              <h4 style={styles.moduleTitle}>Examination Portal</h4>
-              <p style={styles.moduleDesc}>Create term schedules, upload results, and publish grades.</p>
-            </div>
-
-            {/* A3-3. Notice Board / Bulletins */}
-            <div onClick={() => setActivePage('publishing')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.09) 0%, rgba(59, 130, 246, 0.02) 100%)', border: '1.5px solid rgba(59, 130, 246, 0.3)', boxShadow: '0 4px 14px rgba(59, 130, 246, 0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /></svg></div>
-              <h4 style={styles.moduleTitle}>Publishing Desk</h4>
-              <p style={styles.moduleDesc}>Compose bulletins, circular notices, and holiday events.</p>
-            </div>
-
-            {/* A3-4. Timetables */}
-            <div onClick={() => setActivePage('calendar')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.09) 0%, rgba(239, 68, 68, 0.02) 100%)', border: '1.5px solid rgba(239, 68, 68, 0.3)', boxShadow: '0 4px 14px rgba(239, 68, 68, 0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /></svg></div>
-              <h4 style={styles.moduleTitle}>Timetables & Calendars</h4>
-              <p style={styles.moduleDesc}>Upload and schedule daily class timelines and calendars.</p>
-            </div>
-
-            {/* A3-5. Attendance Summary */}
-            <div onClick={() => setActivePage('attendance')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.09) 0%, rgba(99, 102, 241, 0.02) 100%)', border: '1.5px solid rgba(99, 102, 241, 0.3)', boxShadow: '0 4px 14px rgba(99, 102, 241, 0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg></div>
-              <h4 style={styles.moduleTitle}>Attendance Summary</h4>
-              <p style={styles.moduleDesc}>Examine section-wise student availability reports.</p>
-            </div>
-
-            {/* A3-6. Publisher Profile */}
-            <div onClick={() => setActivePage('profile')} style={{ ...styles.moduleCardNew, background: 'linear-gradient(135deg, rgba(30,41,59,0.09) 0%, rgba(30,41,59,0.02) 100%)', border: '1.5px solid rgba(30,41,59,0.3)', boxShadow: '0 4px 14px rgba(30, 41, 59, 0.08)' }} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(30,41,59,0.08)', border: '1px solid rgba(30,41,59,0.2)' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E293B" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-              <h4 style={styles.moduleTitle}>Publisher Profile</h4>
-              <p style={styles.moduleDesc}>Review Academic Registrar & Publisher credentials.</p>
-            </div>
-
-          </div>
           )}
-
         </section>
 
-        {/* Terminate Session Trigger at the bottom of the page */}
-        <button onClick={handleLogout} style={{ ...styles.logoutBtn, marginTop: '20px' }} className="press-interactive">
+        {/* Terminate Session */}
+        <button onClick={handleLogout} style={{ ...styles.logoutBtn, marginTop: '8px' }} className="press-interactive">
           Terminate Director Session
         </button>
 
-        {/* Centered Logo Branding Footer */}
-        <footer style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '30px 24px 10px 24px',
-          marginTop: 'auto',
-          gap: '4px',
-          opacity: 0.9
-        }}>
+        {/* Footer */}
+        <footer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 28px 12px', gap: '4px', opacity: 0.6 }}>
           <InspireLogo size="sm" />
-          <span style={{
-            fontSize: '9px',
-            color: 'var(--muted-gray)',
-            textTransform: 'uppercase',
-            fontWeight: 700,
-            letterSpacing: '0.05em'
-          }}>
-            Inspire ERP General Portal • v2.6.4
+          <span style={{ fontSize: '9px', color: 'var(--muted-gray)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
+            Inspire ERP General Portal v2.6.4
           </span>
         </footer>
 
@@ -3558,9 +3277,24 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
       {toastMessage && (
         <div style={styles.toastContainer} className="anim-slide-up">
-          <GlassCard hoverable={false} style={styles.toastCard} className="glass-gold-ring">
+          <div style={styles.toastCard}>
             <span style={styles.toastText}>{toastMessage}</span>
-          </GlassCard>
+          </div>
+        </div>
+      )}
+
+      {/* OTP Security Modal */}
+      {isOtpModalOpen && editStudent && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
+          <div style={{ width: '100%', maxWidth: '360px', padding: '28px', borderRadius: '16px', margin: '0 16px', backgroundColor: 'rgba(255,255,255,0.96)', border: '1px solid var(--card-border)', boxShadow: '0 20px 50px rgba(15,23,42,0.15)' }} className="anim-slide-up">
+            <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' }}>Security Verification</h3>
+            <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Enter the <strong>Student Administrative OTP</strong> from the Authenticator to save changes.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <input type="text" autoFocus placeholder="Enter OTP..." value={otpInput} onChange={(e) => setOtpInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter' && otpInput.trim()) handleStudentSave(editStudent, otpInput.trim()); }} style={{ padding: '12px 16px', border: '1px solid var(--card-border)', borderRadius: '10px', fontSize: '14px', fontWeight: 700, letterSpacing: '0.12em', textAlign: 'center', backgroundColor: '#fff', outline: 'none', fontFamily: 'monospace', color: 'var(--dark-charcoal)' }} />
+              <button onClick={() => handleStudentSave(editStudent, otpInput.trim())} disabled={!otpInput.trim()} style={{ ...styles.saveSubmitBtn, marginTop: 0, opacity: otpInput.trim() ? 1 : 0.4 }} className="press-interactive">Confirm & Save Changes</button>
+              <button onClick={() => { setIsOtpModalOpen(false); setOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -3581,38 +3315,37 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: 'column',
     backgroundColor: 'var(--bg-primary)',
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: 0, left: 0, right: 0, bottom: 0,
     overflowY: 'auto',
   },
   header: {
-    padding: 'calc(24px + var(--safe-area-top)) 24px 16px 24px',
+    padding: 'calc(20px + var(--safe-area-top)) 28px 18px 28px',
     background: 'var(--glass-bg)',
-    borderBottom: '1.5px solid var(--card-border)',
+    borderBottom: '1px solid var(--card-border)',
     position: 'sticky',
     top: 0,
     zIndex: 10,
+    backdropFilter: 'blur(20px)',
   },
   title: {
-    fontSize: '20px',
-    fontWeight: 850,
+    fontSize: '18px',
+    fontWeight: 800,
     color: 'var(--dark-charcoal)',
-    letterSpacing: '-0.02em',
-    lineHeight: '1.15',
+    letterSpacing: '-0.025em',
+    lineHeight: 1.2,
   },
   subtitle: {
-    fontSize: '12px',
+    fontSize: '11.5px',
     color: 'var(--muted-gray)',
     fontWeight: 500,
     marginTop: '3px',
+    letterSpacing: '0.005em',
   },
   content: {
-    padding: '24px',
+    padding: '28px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
+    gap: '16px',
   },
   parentWelcomeRow: {
     display: 'flex',
@@ -3620,166 +3353,189 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '14px',
   },
   avatarMini: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '50%',
-    backgroundColor: 'rgba(212,175,55,0.08)',
+    width: '42px',
+    height: '42px',
+    borderRadius: '10px',
+    backgroundColor: 'var(--dark-charcoal)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '15px',
-    fontWeight: 850,
+    fontSize: '13px',
+    fontWeight: 900,
     color: 'var(--royal-gold)',
-    boxShadow: 'var(--shadow-sm)',
-    border: '1px solid rgba(212,175,55,0.2)',
+    border: '1px solid rgba(212,175,55,0.25)',
+    letterSpacing: '0.04em',
+    flexShrink: 0,
   },
   parentWelcomeTitle: {
-    fontSize: '16.5px',
+    fontSize: '16px',
     fontWeight: 800,
     color: 'var(--dark-charcoal)',
+    letterSpacing: '-0.02em',
   },
   greetingText: {
-    fontSize: '10.5px',
+    fontSize: '10px',
     color: 'var(--muted-gray)',
-    fontWeight: 500,
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    display: 'block',
+    marginBottom: '3px',
   },
   childMetaText: {
-    fontSize: '11.5px',
+    fontSize: '11px',
     color: 'var(--muted-gray)',
     fontWeight: 500,
+    marginTop: '1px',
   },
   metricsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '16px',
+    gap: '12px',
   },
   metricCard: {
-    padding: '18px',
-    borderRadius: '24px',
+    padding: '18px 20px',
+    borderRadius: '14px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    border: '1.5px solid rgba(255,255,255,0.65)',
-    boxShadow: '0 24px 50px rgba(15, 23, 42, 0.07)',
-    backdropFilter: 'blur(20px)',
+    gap: '4px',
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    border: '1px solid var(--card-border)',
+    boxShadow: '0 1px 3px rgba(15,23,42,0.05)',
   },
   metricLabel: {
-    fontSize: '10px',
+    fontSize: '9.5px',
     fontWeight: 700,
     color: 'var(--muted-gray)',
     textTransform: 'uppercase',
-    letterSpacing: '0.02em',
+    letterSpacing: '0.08em',
   },
   metricValue: {
-    fontSize: '18px',
-    fontWeight: 950,
+    fontSize: '22px',
+    fontWeight: 900,
     color: 'var(--dark-charcoal)',
+    letterSpacing: '-0.03em',
+    lineHeight: 1,
+    marginTop: '4px',
   },
   metricSub: {
-    fontSize: '9px',
+    fontSize: '9.5px',
     color: 'var(--muted-gray)',
+    fontWeight: 500,
+    marginTop: '2px',
   },
   section: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
+    gap: '10px',
   },
   sectionTitle: {
-    fontSize: '14px',
-    fontWeight: 800,
-    color: 'var(--dark-charcoal)',
+    fontSize: '11px',
+    fontWeight: 700,
+    color: 'var(--muted-gray)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.07em',
   },
   moduleCardNew: {
-    padding: '22px',
-    borderRadius: '28px',
+    padding: '20px',
+    borderRadius: '14px',
     cursor: 'pointer',
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
-    backgroundColor: 'rgba(255,255,255,0.68)',
-    border: '1.5px solid rgba(255,255,255,0.72)',
-    boxShadow: '0 26px 60px rgba(15, 23, 42, 0.08)',
-    transition: 'transform 0.22s ease, box-shadow 0.22s ease',
+    gap: '10px',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    border: '1px solid var(--card-border)',
+    boxShadow: '0 1px 3px rgba(15,23,42,0.04)',
+    transition: 'border-color 0.18s ease, box-shadow 0.18s ease',
   },
   moduleIconWrapper: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '14px',
+    width: '36px',
+    height: '36px',
+    borderRadius: '9px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
   moduleTitle: {
-    fontSize: '14.5px',
-    fontWeight: 900,
+    fontSize: '13px',
+    fontWeight: 800,
     color: 'var(--dark-charcoal)',
+    letterSpacing: '-0.01em',
   },
   moduleDesc: {
     fontSize: '11px',
     color: 'var(--muted-gray)',
-    lineHeight: '1.45',
+    lineHeight: 1.5,
+    fontWeight: 400,
   },
   textInputBox: {
     flex: 1,
-    padding: '12px 14px',
-    borderRadius: '14px',
-    border: '1.5px solid var(--card-border)',
-    fontSize: '12.5px',
+    padding: '11px 14px',
+    borderRadius: '10px',
+    border: '1px solid var(--card-border)',
+    fontSize: '13px',
     outline: 'none',
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
+    backgroundColor: 'rgba(255,255,255,0.7)',
     color: 'var(--dark-charcoal)',
     fontFamily: 'var(--font-family)',
+    fontWeight: 500,
   },
   saveSubmitBtn: {
-    padding: '14px',
-    borderRadius: '16px',
-    backgroundColor: 'var(--royal-gold)',
-    color: 'var(--dark-charcoal)',
+    padding: '13px 20px',
+    borderRadius: '10px',
+    backgroundColor: 'var(--dark-charcoal)',
+    color: '#ffffff',
     fontFamily: 'var(--font-family)',
-    fontSize: '13px',
-    fontWeight: 800,
+    fontSize: '12.5px',
+    fontWeight: 700,
     border: 'none',
     cursor: 'pointer',
-    boxShadow: 'var(--shadow-sm)',
     textAlign: 'center',
     marginTop: '8px',
+    letterSpacing: '0.01em',
   },
   sectionSubtitle: {
-    fontSize: '13px',
-    fontWeight: 800,
-    color: 'var(--dark-charcoal)',
+    fontSize: '11px',
+    fontWeight: 700,
+    color: 'var(--muted-gray)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.07em',
     marginTop: '8px',
+    marginBottom: '4px',
   },
   readOnlyBlock: {
-    padding: '18px',
-    borderRadius: '22px',
-    border: '1.5px solid rgba(255,255,255,0.65)',
-    backgroundColor: 'rgba(255,255,255,0.65)',
-    boxShadow: '0 22px 38px rgba(15, 23, 42, 0.06)',
+    padding: '16px 18px',
+    borderRadius: '12px',
+    border: '1px solid var(--card-border)',
+    backgroundColor: 'rgba(255,255,255,0.7)',
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
-    backdropFilter: 'blur(18px)',
   },
   metaRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    fontSize: '12px',
+    alignItems: 'center',
+    fontSize: '12.5px',
+    padding: '5px 0',
   },
   formLabel: {
-    fontSize: '10px',
-    fontWeight: 800,
+    fontSize: '9.5px',
+    fontWeight: 700,
     color: 'var(--muted-gray)',
     textTransform: 'uppercase',
+    letterSpacing: '0.07em',
+    display: 'block',
+    marginBottom: '4px',
   },
   selectInput: {
-    padding: '12px 14px',
-    borderRadius: '14px',
-    border: '1.5px solid var(--card-border)',
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    fontSize: '12.5px',
-    fontWeight: 700,
+    width: '100%',
+    padding: '11px 14px',
+    borderRadius: '10px',
+    border: '1px solid var(--card-border)',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    fontSize: '13px',
+    fontWeight: 600,
     color: 'var(--dark-charcoal)',
     outline: 'none',
     fontFamily: 'var(--font-family)',
@@ -3789,24 +3545,24 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '14px 16px',
-    border: '1px solid rgba(255, 255, 255, 0.72)',
-    backgroundColor: 'rgba(255, 255, 255, 0.72)',
-    borderRadius: '20px',
-    boxShadow: '0 18px 34px rgba(15, 23, 42, 0.05)',
+    border: '1px solid var(--card-border)',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderRadius: '12px',
   },
   actionItemBtn: {
     padding: '8px 14px',
-    borderRadius: '12px',
-    border: '1px solid rgba(0,0,0,0.08)',
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    borderRadius: '8px',
+    border: '1px solid var(--card-border)',
+    backgroundColor: 'rgba(255,255,255,0.9)',
     fontSize: '11px',
     fontWeight: 700,
     color: 'var(--dark-charcoal)',
     cursor: 'pointer',
+    fontFamily: 'var(--font-family)',
   },
   sheetBtn: {
     padding: '10px',
-    borderRadius: '10px',
+    borderRadius: '8px',
     border: 'none',
     fontFamily: 'var(--font-family)',
     fontSize: '12px',
@@ -3814,102 +3570,103 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: 'pointer',
   },
   toastContainer: {
-    position: 'absolute',
+    position: 'fixed',
     bottom: '24px',
-    left: '24px',
-    right: '24px',
+    left: '28px',
+    right: '28px',
     zIndex: 10000,
     pointerEvents: 'none',
   },
   toastCard: {
-    padding: '12px 18px',
+    padding: '13px 20px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    border: '1.5px solid rgba(212, 175, 55, 0.3)',
-    boxShadow: 'var(--shadow-lg)',
-    borderRadius: '16px',
+    backgroundColor: 'var(--dark-charcoal)',
+    border: 'none',
+    boxShadow: '0 8px 24px rgba(15,23,42,0.18)',
+    borderRadius: '10px',
   },
   statusBadge: {
     display: 'inline-flex',
     alignItems: 'center',
-    padding: '4px 10px',
+    padding: '3px 9px',
     borderRadius: '999px',
-    fontSize: '10px',
-    fontWeight: 800,
-    letterSpacing: '0.02em',
-    border: '1px solid rgba(0,0,0,0.06)',
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    fontSize: '9.5px',
+    fontWeight: 700,
+    letterSpacing: '0.04em',
+    border: '1px solid var(--card-border)',
+    backgroundColor: 'rgba(255,255,255,0.9)',
     color: 'var(--dark-charcoal)',
   },
   skeletonCard: {
-    minHeight: '130px',
-    borderRadius: '24px',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    border: '1px solid rgba(255,255,255,0.4)',
-    boxShadow: '0 22px 40px rgba(15, 23, 42, 0.05)',
+    minHeight: '120px',
+    borderRadius: '14px',
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    border: '1px solid var(--card-border)',
   },
   skeletonLine: {
     width: '100%',
-    height: '16px',
-    borderRadius: '10px',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    height: '14px',
+    borderRadius: '6px',
+    backgroundColor: 'rgba(255,255,255,0.5)',
   },
   toastText: {
     fontSize: '12px',
     fontWeight: 700,
-    color: 'var(--dark-charcoal)',
+    color: '#ffffff',
   },
   heroAvatar: {
-    width: '60px',
-    height: '60px',
-    borderRadius: '50%',
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+    width: '56px',
+    height: '56px',
+    borderRadius: '12px',
+    backgroundColor: 'var(--dark-charcoal)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '18px',
-    fontWeight: 850,
+    fontSize: '16px',
+    fontWeight: 900,
     color: 'var(--royal-gold)',
-    boxShadow: 'var(--shadow-sm)',
-    border: '1.5px solid rgba(212, 175, 55, 0.3)',
+    border: '1px solid rgba(212,175,55,0.2)',
+    letterSpacing: '0.04em',
   },
   studentName: {
-    fontSize: '17px',
+    fontSize: '16px',
     fontWeight: 800,
     color: 'var(--dark-charcoal)',
+    letterSpacing: '-0.015em',
   },
   studentID: {
-    fontSize: '12px',
+    fontSize: '11.5px',
     color: 'var(--muted-gray)',
-    fontWeight: 550,
+    fontWeight: 500,
     display: 'block',
     marginTop: '2px',
   },
   heroLineDivider: {
     width: '100%',
     height: '1px',
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    margin: '18px 0',
+    backgroundColor: 'var(--card-border)',
+    margin: '16px 0',
   },
   heroMetaGrid: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '10px',
   },
   logoutBtn: {
     width: '100%',
-    padding: '16px',
-    borderRadius: '16px',
-    backgroundColor: 'rgba(211, 47, 47, 0.08)',
-    border: '1.5px solid rgba(211, 47, 47, 0.25)',
+    padding: '14px',
+    borderRadius: '10px',
+    backgroundColor: 'transparent',
+    border: '1px solid rgba(211,47,47,0.25)',
     color: '#D32F2F',
     fontFamily: 'var(--font-family)',
-    fontSize: '15px',
-    fontWeight: 800,
+    fontSize: '13px',
+    fontWeight: 700,
     cursor: 'pointer',
     textAlign: 'center',
+    letterSpacing: '0.01em',
   },
   quickFillContainer: {
     padding: '4px 0',
@@ -3918,24 +3675,28 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '10px',
     fontWeight: 700,
     color: 'var(--royal-gold)',
-    backgroundColor: 'rgba(212,175,55,0.05)',
-    border: '1px solid rgba(212,175,55,0.3)',
-    borderRadius: '8px',
-    padding: '4px 8px',
+    backgroundColor: 'rgba(212,175,55,0.06)',
+    border: '1px solid rgba(212,175,55,0.25)',
+    borderRadius: '6px',
+    padding: '4px 9px',
     cursor: 'pointer',
     fontFamily: 'var(--font-family)',
   },
   backArrowBtn: {
     background: 'none',
     border: 'none',
-    color: 'var(--royal-gold)',
+    color: 'var(--muted-gray)',
     fontFamily: 'var(--font-family)',
-    fontSize: '13px',
-    fontWeight: 800,
+    fontSize: '12px',
+    fontWeight: 700,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
-    padding: 0
+    gap: '5px',
+    padding: 0,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
   }
 };
+
+

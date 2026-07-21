@@ -180,33 +180,37 @@
 }
 
 /* ─── NEO-2D CARD ──────────────────────────────────────────────────────────── */
-/* Premium neo-brutalist card with bold offset shadow */
 .neo-2d-card {
-  background: var(--card-bg);
-  border: 2px solid var(--card-border);
-  box-shadow: var(--shadow-md);
-  border-radius: var(--radius-md);
-  transition: box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.16,1,0.3,1);
+  background: rgba(255,255,255,0.9);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
   position: relative;
 }
 
 .neo-2d-card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
+  border-color: rgba(212,175,55,0.4);
+  box-shadow: 0 4px 16px rgba(15,23,42,0.06);
 }
 
 /* ─── HOVER GOLD BORDER ─────────────────────────────────────────────────────  */
-/* Add to any card or element to get gold border on hover */
 .hover-gold {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .hover-gold:hover {
-  border-color: var(--royal-gold) !important;
-  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.12) !important;
+  border-color: rgba(212,175,55,0.35) !important;
+  box-shadow: 0 2px 10px rgba(212,175,55,0.08) !important;
 }
 
-/* ─── GLASS METRIC CARD ─────────────────────────────────────────────────────  */
+/* ─── MODULE CARD HOVER ─────────────────────────────────────────────────────  */
+/* Applied to press-interactive module grid cards */
+.press-interactive[style*="moduleCardNew"],
+div.press-interactive:hover {
+  border-color: rgba(212,175,55,0.3) !important;
+}
+
+
 /* KPI / stats cards with colored top accent strip */
 .glass-metric-card {
   background: var(--card-bg);

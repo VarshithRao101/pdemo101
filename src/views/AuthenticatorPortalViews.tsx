@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿﻿import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
 import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
@@ -6,7 +6,6 @@ import { InspireLogo } from '../components/common/InspireLogo';
 import { onSocketEvent } from '../services/socketClient';
 import { authenticatorService } from '../services/authenticatorService';
 import type { 
-  SecurityKeyInfo, 
   BackupCodeInfo, 
   AccountInfo, 
   AuthenticatorStats,
@@ -28,7 +27,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
   };
 
   // Backend state
-  const [keys, setKeys] = useState<SecurityKeyInfo[]>([]);
+  const [keysData, setKeysData] = useState<any>(null);
+  const [otpPortal, setOtpPortal] = useState<'admin1' | 'admin2'>('admin1');
   const [backupCodes, setBackupCodes] = useState<BackupCodeInfo[]>([]);
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
   const [stats, setStats] = useState<AuthenticatorStats>({
@@ -87,7 +87,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
         authenticatorService.getStats(),
         authenticatorService.getSyncJournal()
       ]);
-      setKeys(keysRes);
+      setKeysData(keysRes);
       setBackupCodes(codesRes);
       setAccounts(accountsRes);
       setStats(statsRes);
@@ -382,8 +382,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
         )}
 
         {/* ─── TAB 2: SECURITY KEYS (OTP) ─── */}
-        {activeTab === 'keys' && (
-          <section className="anim-fade-in">
+        {activeTab === 'keys' && keysData && (
+          <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={styles.otpHeader}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.3rem' }}>Dynamic Security OTP Keys</h3>
@@ -395,26 +395,111 @@ export const AuthenticatorDashboardView: React.FC = () => {
               </div>
             </div>
 
-            <div style={styles.keysGrid}>
-              {keys.map((k) => (
-                <GlassCard key={k.role} hoverable={false} style={styles.keyCard}>
-                  <span style={styles.keyRoleLabel}>
-                    {k.role === 'accountant' && 'OPTION 3: ACCOUNTANTS'}
-                    {k.role === 'admin2' && 'OPTION 4: ADMIN 2'}
-                    {k.role === 'admin1' && 'OPTION 5: MAIN ADMIN (ADMIN 1)'}
-                    {k.role === 'admin3' && 'OPTION 6: ACADEMICS (ADMIN 3)'}
-                  </span>
+            {/* Section 1: Daily Login PINs */}
+            <div>
+              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, color: 'var(--royal-gold)', borderBottom: '1px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 1: Daily Login PINs</h4>
+              <div style={styles.keysGrid}>
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>RECTOR PORTAL (ADMIN 1)</span>
                   <div style={styles.keyDisplayBlock}>
-                    <strong style={styles.keyValue}>{k.key}</strong>
+                    <strong style={styles.keyValue}>{keysData.dailyPins?.admin1}</strong>
                   </div>
-                  <div style={styles.keyDesc}>
-                    {k.role === 'accountant' && 'Required for: bio editing, fee collection, hostel registration.'}
-                    {k.role === 'admin2' && 'Required for: fee override, staff salary update, expenditures, worker payments.'}
-                    {k.role === 'admin1' && 'Required for: student details edit, faculty salary payment, student fee waiver, campus logs.'}
-                    {k.role === 'admin3' && 'Required for: timetables upload, exam results upload, announcements schedule.'}
-                  </div>
+                  <div style={styles.keyDesc}>Daily 6-digit login PIN. Automatically resets at midnight.</div>
                 </GlassCard>
-              ))}
+
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>PRINCIPAL PORTAL (ADMIN 2)</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.dailyPins?.admin2}</strong>
+                  </div>
+                  <div style={styles.keyDesc}>Daily 6-digit login PIN. Automatically resets at midnight.</div>
+                </GlassCard>
+
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>ACCOUNTANT PORTAL</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.dailyPins?.accountant}</strong>
+                  </div>
+                  <div style={styles.keyDesc}>Daily 6-digit login PIN. Automatically resets at midnight.</div>
+                </GlassCard>
+
+                <GlassCard hoverable={false} style={styles.keyCard} className="glass-gold-ring">
+                  <span style={styles.keyRoleLabel}>AUTHENTICATOR PORTAL</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.dailyPins?.authenticator}</strong>
+                  </div>
+                  <div style={styles.keyDesc}>Predefined static login PIN. Does not rotate.</div>
+                </GlassCard>
+              </div>
+            </div>
+
+            {/* Section 2: Action Security OTPs */}
+            <div style={{ marginTop: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>
+                <h4 style={{ ...styles.sectionSubtitle, margin: 0, color: 'var(--royal-gold)' }}>Section 2: Action Security OTPs</h4>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button 
+                    onClick={() => setOtpPortal('admin1')} 
+                    style={{ ...styles.quickFillPill, padding: '4px 10px', height: 'auto', backgroundColor: otpPortal === 'admin1' ? 'var(--royal-gold)' : 'rgba(0,0,0,0.04)', color: otpPortal === 'admin1' ? '#fff' : 'var(--dark-charcoal)' }}
+                    className="press-interactive"
+                  >
+                    Admin 1 (Rector)
+                  </button>
+                  <button 
+                    onClick={() => setOtpPortal('admin2')} 
+                    style={{ ...styles.quickFillPill, padding: '4px 10px', height: 'auto', backgroundColor: otpPortal === 'admin2' ? 'var(--royal-gold)' : 'rgba(0,0,0,0.04)', color: otpPortal === 'admin2' ? '#fff' : 'var(--dark-charcoal)' }}
+                    className="press-interactive"
+                  >
+                    Admin 2 (Principal)
+                  </button>
+                </div>
+              </div>
+
+              {otpPortal === 'admin1' ? (
+                <div style={styles.keysGrid} className="anim-fade-in">
+                  <GlassCard hoverable={false} style={styles.keyCard}>
+                    <span style={styles.keyRoleLabel}>STUDENT ADMINISTRATIVE OTP</span>
+                    <div style={styles.keyDisplayBlock}>
+                      <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.students}</strong>
+                    </div>
+                    <div style={styles.keyDesc}>Required for student registry updates, creations, and profile saves.</div>
+                  </GlassCard>
+
+                  <GlassCard hoverable={false} style={styles.keyCard}>
+                    <span style={styles.keyRoleLabel}>NOTICES / PUBLISHING OTP</span>
+                    <div style={styles.keyDisplayBlock}>
+                      <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.publishing}</strong>
+                    </div>
+                    <div style={styles.keyDesc}>Required for creating, editing, and deleting campus notices/bulletins.</div>
+                  </GlassCard>
+
+                  <GlassCard hoverable={false} style={styles.keyCard}>
+                    <span style={styles.keyRoleLabel}>TIMETABLE & EXAMS OTP</span>
+                    <div style={styles.keyDisplayBlock}>
+                      <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.exams}</strong>
+                    </div>
+                    <div style={styles.keyDesc}>Required for timetables and exam result uploads, test scheduling, and status releases.</div>
+                  </GlassCard>
+                </div>
+              ) : (
+                <div style={styles.keysGrid} className="anim-fade-in">
+                  <GlassCard hoverable={false} style={styles.keyCard}>
+                    <span style={styles.keyRoleLabel}>MULTI-BRANCH EXPENDITURE OTP</span>
+                    <div style={styles.keyDisplayBlock}>
+                      <strong style={styles.keyValue}>{keysData.sectionOtps?.admin2?.expenditure}</strong>
+                    </div>
+                    <div style={styles.keyDesc}>Required for operational budget updates and creating/deleting branch expenditures.</div>
+                  </GlassCard>
+
+                  <GlassCard hoverable={false} style={styles.keyCard}>
+                    <span style={styles.keyRoleLabel}>STAFF SALARIES OTP</span>
+                    <div style={styles.keyDisplayBlock}>
+                      <strong style={styles.keyValue}>{keysData.sectionOtps?.admin2?.salaries}</strong>
+                    </div>
+                    <div style={styles.keyDesc}>Required for staff payroll status updates and salary release operations.</div>
+                  </GlassCard>
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -713,7 +798,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     }}
                     className="press-interactive"
                   >
-                    {isReconciling ? 'Reconciling...' : '🔄 Reconcile DB'}
+                    {isReconciling ? 'Reconciling...' : ' Reconcile DB'}
                   </button>
                   <button
                     onClick={handleBackup}
@@ -731,7 +816,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     }}
                     className="press-interactive"
                   >
-                    {isBackingUp ? 'Backing up...' : '💾 Create DB Backup'}
+                    {isBackingUp ? 'Backing up...' : ' Create DB Backup'}
                   </button>
                 </div>
               </div>
@@ -1168,5 +1253,23 @@ const styles = {
     fontWeight: '700',
     boxShadow: '0 10px 25px rgba(139, 92, 246, 0.4)',
     zIndex: 9999
+  },
+  sectionSubtitle: {
+    fontSize: '13px',
+    fontWeight: 800,
+    color: 'var(--dark-charcoal)',
+    margin: '0 0 12px 0',
+    letterSpacing: '0.02em'
+  },
+  quickFillPill: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: 'var(--royal-gold)',
+    backgroundColor: 'rgba(212,175,55,0.06)',
+    border: '1px solid rgba(212,175,55,0.35)',
+    borderRadius: '8px',
+    padding: '4px 10px',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-family)'
   }
 };

@@ -7,6 +7,7 @@ import { User } from '../models/user';
 import { Student } from '../models/student';
 import { Teacher } from '../models/teacher';
 import { SyncJournal } from '../models/syncJournal';
+import { getDailyPin, getDailyOtpForSection } from '../middleware/validateKey';
 
 const router = Router();
 const authenticatorGuard = [authenticateJWT, authorizeRoles('authenticator')];
@@ -21,41 +22,35 @@ const generateBackupCode = () => {
   return '111111';
 };
 
-// GET /api/authenticator/keys - Get daily security OTP keys
+// GET /api/authenticator/keys - Get daily login PINs and security OTP keys
 router.get('/keys', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const roles: ('accountant' | 'admin2' | 'admin1' | 'admin3')[] = ['accountant', 'admin2', 'admin1', 'admin3'];
-    const now = new Date();
-    
-    // Set expiration to midnight tonight
-    const expiresAt = new Date();
-    expiresAt.setHours(23, 59, 59, 999);
+    const dailyPins = {
+      admin1: getDailyPin('admin1'),
+      admin2: getDailyPin('admin2'),
+      accountant: getDailyPin('accountant'),
+      authenticator: '111111' // static login PIN
+    };
 
-    const keysList = [];
-
-    for (const role of roles) {
-      let activeKey = await SecurityKey.findOne({ role });
-
-      // Generate if not exists or expired
-      if (!activeKey || activeKey.expiresAt < now) {
-        const keyVal = generateOTPKey();
-        if (!activeKey) {
-          activeKey = await SecurityKey.create({ role, key: keyVal, expiresAt });
-        } else {
-          activeKey.key = keyVal;
-          activeKey.expiresAt = expiresAt;
-          await activeKey.save();
-        }
+    const sectionOtps = {
+      admin1: {
+        students: getDailyOtpForSection('admin1-students'),
+        publishing: getDailyOtpForSection('admin1-publishing'),
+        exams: getDailyOtpForSection('admin1-exams')
+      },
+      admin2: {
+        expenditure: getDailyOtpForSection('admin2-expenditure'),
+        salaries: getDailyOtpForSection('admin2-salaries')
       }
+    };
 
-      keysList.push({
-        role: activeKey.role,
-        key: activeKey.key,
-        expiresAt: activeKey.expiresAt
-      });
-    }
-
-    res.json({ status: 'success', data: keysList });
+    res.json({
+      status: 'success',
+      data: {
+        dailyPins,
+        sectionOtps
+      }
+    });
   } catch (error: any) {
     res.status(500).json({ status: 'error', message: error.message || 'Failed to fetch keys.' });
   }
