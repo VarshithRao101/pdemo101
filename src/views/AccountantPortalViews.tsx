@@ -1,4 +1,4 @@
-﻿﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -1737,7 +1737,6 @@ export const AccountantDashboardView: React.FC = () => {
             </div>
           </div>
           <LiveConnectionIndicator compact />
-          {/* VERY VISIBLE LOGO BRANDING */}
           <div style={{ paddingRight: '8px' }}>
             <InspireLogo size="md" />
           </div>
@@ -1745,148 +1744,86 @@ export const AccountantDashboardView: React.FC = () => {
       </header>
 
       <main style={{ ...styles.content, zIndex: 1 }}>
-        {/* Top Summary Metrics Cards */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {/* Summary Metrics */}
+        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={styles.metricsGrid}>
-            <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring neo-2d-card hover-gold ${livePulseKey === 'students' || livePulseKey === 'fees' ? 'anim-pulse-gold' : ''}`}>
-              <span style={styles.metricLabel}>Total Fee Collected Today</span>
-              <strong style={{ ...styles.metricValue, color: '#10B981' }}>₹{feeCollectedToday.toLocaleString('en-IN')}</strong>
+            <div style={styles.metricCard}>
+              <span style={styles.metricLabel}>Fee Collected Today</span>
+              <strong style={{ ...styles.metricValue, color: '#10B981' }}>
+                ₹{feeCollectedToday.toLocaleString('en-IN')}
+              </strong>
+              <span style={styles.metricSub}>Real-time ledger sync</span>
               <span className="glass-status-pill status-paid">Collected</span>
-            </GlassCard>
-            <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey === 'students' || livePulseKey === 'fees' ? 'anim-pulse-gold' : ''}`}>
+            </div>
+            <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Pending Fees Total</span>
-              <strong style={{ ...styles.metricValue, color: '#EF4444' }}>₹{pendingFeesTotal.toLocaleString('en-IN')}</strong>
+              <strong style={{ ...styles.metricValue, color: '#EF4444' }}>
+                ₹{pendingFeesTotal.toLocaleString('en-IN')}
+              </strong>
+              <span style={styles.metricSub}>Across all enrolled students</span>
               <span className="glass-status-pill status-unpaid">Pending</span>
-            </GlassCard>
+            </div>
           </div>
-
           <div style={styles.metricsGrid}>
-            <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring neo-2d-card hover-gold ${livePulseKey === 'attendance' ? 'anim-pulse-gold' : ''}`}>
+            <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Students Present Today</span>
-              <strong style={styles.metricValue}>{Math.max(0, students.length - dashboardSummary.absentCount)}</strong>
+              <strong style={styles.metricValue}>
+                {Math.max(0, students.length - dashboardSummary.absentCount)}
+              </strong>
+              <span style={styles.metricSub}>Live attendance sync</span>
               <span className="glass-status-pill status-present">Present</span>
-            </GlassCard>
-            <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey === 'attendance' ? 'anim-pulse-gold' : ''}`}>
+            </div>
+            <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Students Absent Today</span>
-              <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>{dashboardSummary.absentCount}</strong>
+              <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>
+                {dashboardSummary.absentCount}
+              </strong>
+              <span style={styles.metricSub}>Reported today</span>
               <span className="glass-status-pill status-absent">Absent</span>
-            </GlassCard>
+            </div>
           </div>
         </section>
 
-        {/* 2-Column Mosaic Grid of Cards with Unique Backgrounds */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '6px' }}>
+        {/* Module Grid */}
+        <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3 style={styles.sectionTitle}>Bursar Grid Modules</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-            
-            {/* 1. Student Search */}
-            <div
-              onClick={() => setActiveSubPage('student_search')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.09) 0%, rgba(16, 185, 129, 0.02) 100%)',
-                border: '1.5px solid rgba(16, 185, 129, 0.3)',
-                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+
+            <div onClick={() => setActiveSubPage('student_search')} style={styles.moduleCardNew} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               </div>
               <h4 style={styles.moduleTitle}>Student Search</h4>
               <p style={styles.moduleDesc}>Audit student address fields and details profiles.</p>
             </div>
 
-            {/* 2. Fee Collection */}
-            <div
-              onClick={() => setActiveSubPage('fee_collection')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.09) 0%, rgba(245, 158, 11, 0.02) 100%)',
-                border: '1.5px solid rgba(245, 158, 11, 0.3)',
-                boxShadow: '0 4px 14px rgba(245, 158, 11, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2.5">
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <line x1="12" y1="4" x2="12" y2="20" />
-                </svg>
+            <div onClick={() => setActiveSubPage('fee_collection')} style={styles.moduleCardNew} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
               </div>
               <h4 style={styles.moduleTitle}>Fee Collection</h4>
               <p style={styles.moduleDesc}>Search student records and log term payments.</p>
             </div>
 
-
-
-            {/* 4. Collection Reports */}
-            <div
-              onClick={() => setActiveSubPage('reports')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.09) 0%, rgba(239, 68, 68, 0.02) 100%)',
-                border: '1.5px solid rgba(239, 68, 68, 0.3)',
-                boxShadow: '0 4px 14px rgba(239, 68, 68, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5">
-                  <line x1="18" y1="20" x2="18" y2="10" />
-                  <line x1="12" y1="20" x2="12" y2="4" />
-                  <line x1="6" y1="20" x2="6" y2="14" />
-                </svg>
+            <div onClick={() => setActiveSubPage('reports')} style={styles.moduleCardNew} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
               </div>
               <h4 style={styles.moduleTitle}>Audit Reports</h4>
-              <p style={styles.moduleDesc}>Compile collections audits logs spreadsheets.</p>
+              <p style={styles.moduleDesc}>Compile collection audit logs and spreadsheets.</p>
             </div>
 
-            {/* 5. Hostel Admissions (Moved here!) */}
-            <div
-              onClick={() => setActiveSubPage('hostel')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.09) 0%, rgba(249, 115, 22, 0.02) 100%)',
-                border: '1.5px solid rgba(249, 115, 22, 0.3)',
-                boxShadow: '0 4px 14px rgba(249, 115, 22, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(249, 115, 22, 0.08)', border: '1px solid rgba(249, 115, 22, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.5">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
+            <div onClick={() => setActiveSubPage('hostel')} style={styles.moduleCardNew} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(249,115,22,0.07)', border: '1px solid rgba(249,115,22,0.18)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
               </div>
               <h4 style={styles.moduleTitle}>Hostel Registry</h4>
-              <p style={styles.moduleDesc}>Allocate blocks rooms and assign residents.</p>
+              <p style={styles.moduleDesc}>Allocate campus blocks, rooms and assign residents.</p>
             </div>
 
-            {/* 6. Switch Color Theme */}
-
-
-
-
-            {/* 9. Accountant Profile Info */}
-            <div
-              onClick={() => setActiveSubPage('profile')}
-              style={{
-                ...styles.moduleCardNew,
-                background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.09) 0%, rgba(30, 41, 59, 0.02) 100%)',
-                border: '1.5px solid rgba(30, 41, 59, 0.3)',
-                boxShadow: '0 4px 14px rgba(30, 41, 59, 0.08)'
-              }}
-              className="press-interactive"
-            >
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(30, 41, 59, 0.08)', border: '1px solid rgba(30, 41, 59, 0.2)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E293B" strokeWidth="2.5">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
+            <div onClick={() => setActiveSubPage('profile')} style={styles.moduleCardNew} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               </div>
               <h4 style={styles.moduleTitle}>Bursar Profile</h4>
               <p style={styles.moduleDesc}>Review registered cashier bio and access tokens.</p>
@@ -1895,31 +1832,16 @@ export const AccountantDashboardView: React.FC = () => {
           </div>
         </section>
 
-        {/* Terminate Session Trigger at the bottom of the page */}
-        <button onClick={handleLogout} style={{ ...styles.logoutBtn, marginTop: '20px' }} className="press-interactive">
+        {/* Terminate Session */}
+        <button onClick={handleLogout} style={{ ...styles.logoutBtn, marginTop: '8px' }} className="press-interactive">
           Terminate Bursar Session
         </button>
 
-        {/* Centered Logo Branding Footer */}
-        <footer style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '30px 24px 10px 24px',
-          marginTop: 'auto',
-          gap: '4px',
-          opacity: 0.9
-        }}>
+        {/* Footer */}
+        <footer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 28px 12px', gap: '4px', opacity: 0.6 }}>
           <InspireLogo size="sm" />
-          <span style={{
-            fontSize: '9px',
-            color: 'var(--muted-gray)',
-            textTransform: 'uppercase',
-            fontWeight: 700,
-            letterSpacing: '0.05em'
-          }}>
-            Inspire ERP General Portal • v2.6.4
+          <span style={{ fontSize: '9px', color: 'var(--muted-gray)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
+            Inspire ERP Bursar Portal v2.6.4
           </span>
         </footer>
 
@@ -1927,11 +1849,12 @@ export const AccountantDashboardView: React.FC = () => {
 
       {toastMessage && (
         <div style={styles.toastContainer} className="anim-slide-up">
-          <GlassCard hoverable={false} style={styles.toastCard} className="glass-gold-ring">
+          <div style={styles.toastCard}>
             <span style={styles.toastText}>{toastMessage}</span>
-          </GlassCard>
+          </div>
         </div>
       )}
+
     </div>
   );
 };
@@ -1944,388 +1867,180 @@ export const AccountantProfileView: React.FC = () => null;
 // --- STYLING COEFFICIENTS ---
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    backgroundColor: 'var(--bg-primary)',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    overflowY: 'auto',
+    width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+    backgroundColor: 'var(--bg-primary)', position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0, overflowY: 'auto',
   },
   header: {
-    padding: 'calc(24px + var(--safe-area-top)) 24px 16px 24px',
-    background: 'var(--glass-bg)',
-    borderBottom: '1.5px solid var(--card-border)',
-    position: 'sticky',
-    top: 0,
-    zIndex: 10,
+    padding: 'calc(20px + var(--safe-area-top)) 28px 18px 28px',
+    background: 'var(--glass-bg)', borderBottom: '1px solid var(--card-border)',
+    position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(20px)',
   },
   title: {
-    fontSize: '20px',
-    fontWeight: 850,
-    color: 'var(--dark-charcoal)',
-    letterSpacing: '-0.02em',
-    lineHeight: '1.15',
+    fontSize: '18px', fontWeight: 800, color: 'var(--dark-charcoal)',
+    letterSpacing: '-0.025em', lineHeight: 1.2,
   },
   subtitle: {
-    fontSize: '12px',
-    color: 'var(--muted-gray)',
-    fontWeight: 500,
-    marginTop: '3px',
+    fontSize: '11.5px', color: 'var(--muted-gray)', fontWeight: 500,
+    marginTop: '3px', letterSpacing: '0.005em',
   },
   content: {
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
+    padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px',
   },
-  parentWelcomeRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-  },
+  parentWelcomeRow: { display: 'flex', alignItems: 'center', gap: '14px' },
   avatarMini: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '50%',
-    backgroundColor: 'rgba(212,175,55,0.08)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '15px',
-    fontWeight: 850,
-    color: 'var(--royal-gold)',
-    boxShadow: 'var(--shadow-sm)',
-    border: '1px solid rgba(212,175,55,0.2)',
+    width: '42px', height: '42px', borderRadius: '10px',
+    backgroundColor: 'var(--dark-charcoal)', display: 'flex',
+    alignItems: 'center', justifyContent: 'center', fontSize: '13px',
+    fontWeight: 900, color: 'var(--royal-gold)',
+    border: '1px solid rgba(212,175,55,0.25)', letterSpacing: '0.04em', flexShrink: 0,
   },
   parentWelcomeTitle: {
-    fontSize: '16.5px',
-    fontWeight: 800,
-    color: 'var(--dark-charcoal)',
+    fontSize: '16px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.02em',
   },
   greetingText: {
-    fontSize: '10.5px',
-    color: 'var(--muted-gray)',
-    fontWeight: 500,
+    fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 600,
+    textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '3px',
   },
-  childMetaText: {
-    fontSize: '11.5px',
-    color: 'var(--muted-gray)',
-    fontWeight: 500,
-  },
-  metricsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '16px',
-  },
+  childMetaText: { fontSize: '11px', color: 'var(--muted-gray)', fontWeight: 500, marginTop: '1px' },
+  metricsGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' },
   metricCard: {
-    padding: '16px',
-    borderRadius: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-    backgroundColor: 'var(--card-bg)',
-    border: '1.5px solid var(--card-border)',
-    boxShadow: 'var(--shadow-sm)',
+    padding: '18px 20px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '4px',
+    backgroundColor: 'rgba(255,255,255,0.85)', border: '1px solid var(--card-border)',
+    boxShadow: '0 1px 3px rgba(15,23,42,0.05)',
   },
   metricLabel: {
-    fontSize: '10px',
-    fontWeight: 700,
-    color: 'var(--muted-gray)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.02em',
+    fontSize: '9.5px', fontWeight: 700, color: 'var(--muted-gray)',
+    textTransform: 'uppercase', letterSpacing: '0.08em',
   },
   metricValue: {
-    fontSize: '18px',
-    fontWeight: 900,
-    color: 'var(--dark-charcoal)',
+    fontSize: '22px', fontWeight: 900, color: 'var(--dark-charcoal)',
+    letterSpacing: '-0.03em', lineHeight: 1, marginTop: '4px',
   },
+  metricSub: { fontSize: '9.5px', color: 'var(--muted-gray)', fontWeight: 500, marginTop: '2px' },
   sectionTitle: {
-    fontSize: '14px',
-    fontWeight: 800,
-    color: 'var(--dark-charcoal)',
-  },
-  moduleCardNew: {
-    padding: '20px',
-    borderRadius: '24px',
-    cursor: 'pointer',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-    backgroundColor: 'var(--card-bg)',
-    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-  },
-  moduleIconWrapper: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  moduleTitle: {
-    fontSize: '14.5px',
-    fontWeight: 900,
-    color: 'var(--dark-charcoal)',
-  },
-  moduleDesc: {
-    fontSize: '11px',
-    color: 'var(--muted-gray)',
-    lineHeight: '1.45',
-  },
-  textInputBox: {
-    flex: 1,
-    padding: '12px 14px',
-    borderRadius: '14px',
-    border: '1.5px solid var(--card-border)',
-    fontSize: '12.5px',
-    outline: 'none',
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    color: 'var(--dark-charcoal)',
-    fontFamily: 'var(--font-family)',
-  },
-  saveSubmitBtn: {
-    padding: '14px',
-    borderRadius: '16px',
-    backgroundColor: 'var(--royal-gold)',
-    color: 'var(--dark-charcoal)',
-    fontFamily: 'var(--font-family)',
-    fontSize: '13px',
-    fontWeight: 800,
-    border: 'none',
-    cursor: 'pointer',
-    boxShadow: 'var(--shadow-sm)',
-    textAlign: 'center',
-    marginTop: '8px',
+    fontSize: '11px', fontWeight: 700, color: 'var(--muted-gray)',
+    textTransform: 'uppercase', letterSpacing: '0.07em',
   },
   sectionSubtitle: {
-    fontSize: '13px',
-    fontWeight: 800,
-    color: 'var(--dark-charcoal)',
-    marginTop: '8px',
+    fontSize: '11px', fontWeight: 700, color: 'var(--muted-gray)',
+    textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: '8px', marginBottom: '4px',
+  },
+  moduleCardNew: {
+    padding: '20px', borderRadius: '14px', cursor: 'pointer', display: 'flex',
+    flexDirection: 'column', gap: '10px', backgroundColor: 'rgba(255,255,255,0.9)',
+    border: '1px solid var(--card-border)', boxShadow: '0 1px 3px rgba(15,23,42,0.04)',
+    transition: 'border-color 0.18s ease, box-shadow 0.18s ease',
+  },
+  moduleIconWrapper: {
+    width: '36px', height: '36px', borderRadius: '9px', display: 'flex',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  moduleTitle: { fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.01em' },
+  moduleDesc: { fontSize: '11px', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 400 },
+  textInputBox: {
+    flex: 1, padding: '11px 14px', borderRadius: '10px', border: '1px solid var(--card-border)',
+    fontSize: '13px', outline: 'none', backgroundColor: 'rgba(255,255,255,0.7)',
+    color: 'var(--dark-charcoal)', fontFamily: 'var(--font-family)', fontWeight: 500,
+  },
+  saveSubmitBtn: {
+    padding: '13px 20px', borderRadius: '10px', backgroundColor: 'var(--dark-charcoal)',
+    color: '#ffffff', fontFamily: 'var(--font-family)', fontSize: '12.5px', fontWeight: 700,
+    border: 'none', cursor: 'pointer', textAlign: 'center', marginTop: '8px', letterSpacing: '0.01em',
   },
   readOnlyBlock: {
-    padding: '14px',
-    borderRadius: '16px',
-    border: '1px solid rgba(0,0,0,0.04)',
-    backgroundColor: 'rgba(0,0,0,0.02)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
+    padding: '16px 18px', borderRadius: '12px', border: '1px solid var(--card-border)',
+    backgroundColor: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', gap: '10px',
   },
   metaRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: '12px',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    fontSize: '12.5px', padding: '5px 0',
   },
   formLabel: {
-    fontSize: '10px',
-    fontWeight: 800,
-    color: 'var(--muted-gray)',
-    textTransform: 'uppercase',
+    fontSize: '9.5px', fontWeight: 700, color: 'var(--muted-gray)', textTransform: 'uppercase',
+    letterSpacing: '0.07em', display: 'block', marginBottom: '4px',
   },
   selectInput: {
-    padding: '12px 14px',
-    borderRadius: '14px',
-    border: '1.5px solid var(--card-border)',
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    fontSize: '12.5px',
-    fontWeight: 700,
-    color: 'var(--dark-charcoal)',
-    outline: 'none',
-    fontFamily: 'var(--font-family)',
+    width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid var(--card-border)',
+    backgroundColor: 'rgba(255,255,255,0.7)', fontSize: '13px', fontWeight: 600,
+    color: 'var(--dark-charcoal)', outline: 'none', fontFamily: 'var(--font-family)',
   },
   receiptRowItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '14px 16px',
-    border: '1px solid rgba(255, 255, 255, 0.72)',
-    backgroundColor: 'rgba(255, 255, 255, 0.72)',
-    borderRadius: '20px',
-    boxShadow: '0 18px 34px rgba(15, 23, 42, 0.05)',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    padding: '14px 16px', border: '1px solid var(--card-border)',
+    backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: '12px',
   },
   actionItemBtn: {
-    padding: '8px 14px',
-    borderRadius: '12px',
-    border: '1px solid rgba(0,0,0,0.08)',
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
-    fontSize: '11px',
-    fontWeight: 700,
-    color: 'var(--dark-charcoal)',
-    cursor: 'pointer',
+    padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--card-border)',
+    backgroundColor: 'rgba(255,255,255,0.9)', fontSize: '11px', fontWeight: 700,
+    color: 'var(--dark-charcoal)', cursor: 'pointer', fontFamily: 'var(--font-family)',
   },
   statusBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '4px 10px',
-    borderRadius: '999px',
-    fontSize: '10px',
-    fontWeight: 800,
-    letterSpacing: '0.02em',
-    border: '1px solid rgba(0,0,0,0.06)',
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    display: 'inline-flex', alignItems: 'center', padding: '3px 9px', borderRadius: '999px',
+    fontSize: '9.5px', fontWeight: 700, letterSpacing: '0.04em',
+    border: '1px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.9)',
     color: 'var(--dark-charcoal)',
   },
   skeletonCard: {
-    minHeight: '130px',
-    borderRadius: '24px',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    border: '1px solid rgba(255,255,255,0.4)',
-    boxShadow: '0 22px 40px rgba(15, 23, 42, 0.05)',
+    minHeight: '120px', borderRadius: '14px', backgroundColor: 'rgba(255,255,255,0.4)',
+    border: '1px solid var(--card-border)',
   },
   skeletonLine: {
-    width: '100%',
-    height: '16px',
-    borderRadius: '10px',
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    width: '100%', height: '14px', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.5)',
   },
   sheetBtn: {
-    padding: '10px',
-    borderRadius: '10px',
-    border: 'none',
-    fontFamily: 'var(--font-family)',
-    fontSize: '12px',
-    fontWeight: 700,
-    cursor: 'pointer',
+    padding: '10px', borderRadius: '8px', border: 'none',
+    fontFamily: 'var(--font-family)', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
   },
-  printableReceiptBlock: {
-    marginTop: '10px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
+  printableReceiptBlock: { marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' },
   toastContainer: {
-    position: 'absolute',
-    bottom: '24px',
-    left: '24px',
-    right: '24px',
-    zIndex: 10000,
-    pointerEvents: 'none',
+    position: 'fixed', bottom: '24px', left: '28px', right: '28px',
+    zIndex: 10000, pointerEvents: 'none',
   },
   toastCard: {
-    padding: '12px 18px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    border: '1.5px solid rgba(212, 175, 55, 0.3)',
-    boxShadow: 'var(--shadow-lg)',
-    borderRadius: '16px',
+    padding: '13px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'var(--dark-charcoal)', border: 'none',
+    boxShadow: '0 8px 24px rgba(15,23,42,0.18)', borderRadius: '10px',
   },
-  toastText: {
-    fontSize: '12px',
-    fontWeight: 700,
-    color: 'var(--dark-charcoal)',
-  },
+  toastText: { fontSize: '12px', fontWeight: 700, color: '#ffffff' },
   heroAvatar: {
-    width: '60px',
-    height: '60px',
-    borderRadius: '50%',
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '18px',
-    fontWeight: 850,
-    color: 'var(--royal-gold)',
-    boxShadow: 'var(--shadow-sm)',
-    border: '1.5px solid rgba(212, 175, 55, 0.3)',
+    width: '56px', height: '56px', borderRadius: '12px', backgroundColor: 'var(--dark-charcoal)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
+    fontWeight: 900, color: 'var(--royal-gold)', border: '1px solid rgba(212,175,55,0.2)',
+    letterSpacing: '0.04em',
   },
-  studentName: {
-    fontSize: '17px',
-    fontWeight: 800,
-    color: 'var(--dark-charcoal)',
-  },
-  studentID: {
-    fontSize: '12px',
-    color: 'var(--muted-gray)',
-    fontWeight: 550,
-    display: 'block',
-    marginTop: '2px',
-  },
-  heroLineDivider: {
-    width: '100%',
-    height: '1px',
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    margin: '18px 0',
-  },
-  heroMetaGrid: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
+  studentName: { fontSize: '16px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' },
+  studentID: { fontSize: '11.5px', color: 'var(--muted-gray)', fontWeight: 500, display: 'block', marginTop: '2px' },
+  heroLineDivider: { width: '100%', height: '1px', backgroundColor: 'var(--card-border)', margin: '16px 0' },
+  heroMetaGrid: { display: 'flex', flexDirection: 'column', gap: '10px' },
   logoutBtn: {
-    width: '100%',
-    padding: '16px',
-    borderRadius: '16px',
-    backgroundColor: 'rgba(211, 47, 47, 0.08)',
-    border: '1.5px solid rgba(211, 47, 47, 0.25)',
-    color: '#D32F2F',
-    fontFamily: 'var(--font-family)',
-    fontSize: '15px',
-    fontWeight: 800,
-    cursor: 'pointer',
-    textAlign: 'center',
+    width: '100%', padding: '14px', borderRadius: '10px', backgroundColor: 'transparent',
+    border: '1px solid rgba(211,47,47,0.25)', color: '#D32F2F',
+    fontFamily: 'var(--font-family)', fontSize: '13px', fontWeight: 700,
+    cursor: 'pointer', textAlign: 'center', letterSpacing: '0.01em',
   },
-  quickFillContainer: {
-    padding: '4px 0',
-  },
+  quickFillContainer: { padding: '4px 0' },
   quickFillPill: {
-    fontSize: '10px',
-    fontWeight: 700,
-    color: 'var(--royal-gold)',
-    backgroundColor: 'rgba(212,175,55,0.05)',
-    border: '1px solid rgba(212,175,55,0.3)',
-    borderRadius: '8px',
-    padding: '4px 8px',
-    cursor: 'pointer',
-    fontFamily: 'var(--font-family)',
+    fontSize: '10px', fontWeight: 700, color: 'var(--royal-gold)',
+    backgroundColor: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.25)',
+    borderRadius: '6px', padding: '4px 9px', cursor: 'pointer', fontFamily: 'var(--font-family)',
   },
   backArrowBtn: {
-    background: 'none',
-    border: 'none',
-    color: 'var(--royal-gold)',
-    fontFamily: 'var(--font-family)',
-    fontSize: '13px',
-    fontWeight: 800,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    padding: 0
+    background: 'none', border: 'none', color: 'var(--muted-gray)',
+    fontFamily: 'var(--font-family)', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', gap: '5px', padding: 0,
+    textTransform: 'uppercase', letterSpacing: '0.06em',
   },
   overlayOverlay: {
-    position: 'absolute',
-    inset: 0,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '24px',
-    zIndex: 1000,
-    backdropFilter: 'blur(4px)',
+    position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: '24px', zIndex: 1000, backdropFilter: 'blur(6px)',
   },
   overlaySheet: {
-    width: '100%',
-    maxWidth: '480px',
-    backgroundColor: 'var(--card-bg)',
-    borderRadius: '24px',
-    border: '1.5px solid var(--card-border)',
-    boxShadow: 'var(--shadow-lg)',
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    maxHeight: '90%',
-    overflowY: 'auto',
+    width: '100%', maxWidth: '480px', backgroundColor: 'rgba(255,255,255,0.97)',
+    borderRadius: '16px', border: '1px solid var(--card-border)',
+    boxShadow: '0 20px 50px rgba(15,23,42,0.15)', padding: '24px',
+    display: 'flex', flexDirection: 'column', maxHeight: '90%', overflowY: 'auto',
   },
-  modalTitle: {
-    fontSize: '16.5px',
-    fontWeight: 850,
-    color: 'var(--dark-charcoal)',
-  }
+  modalTitle: { fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' },
 };
