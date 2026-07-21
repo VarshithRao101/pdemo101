@@ -359,6 +359,9 @@ export const apiClient = {
   async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     await delay(60); // Fast mock delay for realistic loading states
     initializeMockDB();
+    if (activeSecurityKey) {
+      console.log('Mock request key auth:', activeSecurityKey);
+    }
 
     const cleanPath = endpoint.split('?')[0].replace(/\/$/, '');
     const method = options.method?.toUpperCase() || 'GET';

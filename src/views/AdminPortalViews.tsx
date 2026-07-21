@@ -109,6 +109,7 @@ interface WorkerItem {
   role: string;
   salary: number;
   paid: boolean;
+  branch?: string;
 }
 
 interface Student {
@@ -327,7 +328,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [newWorkerRole, setNewWorkerRole] = useState('');
   const [newWorkerWage, setNewWorkerWage] = useState('');
   const [newWorkerPeriod, setNewWorkerPeriod] = useState('July 2026');
-  const [enrollmentStats, setEnrollmentStats] = useState<any[]>([]);
+
 
   // ── Admin2 Fetch Helpers ──
   const fetchFeeSettings = async (branch?: string) => {
@@ -395,12 +396,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     }
   };
 
-  const fetchEnrollmentStats = async () => {
-    try {
-      const data = await admin2Service.getEnrollmentStats();
-      setEnrollmentStats(data);
-    } catch (err: any) { triggerToast(err.message || 'Failed to load enrollment stats.'); }
-  };
+
 
   const fetchLateScholarships = async () => {
     try {
@@ -1437,11 +1433,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   </div>
 
                   <button
-                    onClick={() => {
-                      setFacActionType('edit');
-                      setFacOtpInput('');
-                      setIsFacOtpModalOpen(true);
-                    }}
+                    onClick={() => handleTeacherSave(editTeacher)}
                     style={{ ...styles.saveSubmitBtn, marginTop: '8px' }}
                     className="press-interactive"
                   >
