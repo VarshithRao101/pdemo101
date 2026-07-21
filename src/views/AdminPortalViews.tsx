@@ -207,7 +207,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   // Students Registry States
   const [newStuName, setNewStuName] = useState('');
   const [newStuCourse, setNewStuCourse] = useState('MPC');
-  const [newStuSec, setNewStuSec] = useState('Section A');
+  const [newStuBranch, setNewStuBranch] = useState('Erragattugutta C1');
   const [newStuFather, setNewStuFather] = useState('');
   const [newStuMobile, setNewStuMobile] = useState('');
 
@@ -219,6 +219,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [newFacName, setNewFacName] = useState('');
   const [newFacSub, setNewFacSub] = useState('Physics');
   const [newFacSal, setNewFacSal] = useState('');
+  const [newFacBranch, setNewFacBranch] = useState('Erragattugutta C1');
+  const [newFacMobile, setNewFacMobile] = useState('');
+  const [filterFacCampus, setFilterFacCampus] = useState('All');
+  const [filterFacSubject, setFilterFacSubject] = useState('All');
+  const [isFacOtpModalOpen, setIsFacOtpModalOpen] = useState(false);
+  const [facOtpInput, setFacOtpInput] = useState('');
+  const [facActionType, setFacActionType] = useState<'add' | 'edit'>('edit');
+  const [isAddTeacherModalOpen, setIsAddTeacherModalOpen] = useState(false);
   const [assignClass, setAssignClass] = useState('Junior MPC');
   const [assignSec, setAssignSec] = useState('Section A');
   const [assignSub] = useState('Physics');
@@ -234,7 +242,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [newExamName, setNewExamName] = useState('');
   const [newExamDate, setNewExamDate] = useState('');
 
-  // Academic baseline fees state (Locked by default, only once editable)
   const [feeRates, setFeeRates] = useState({
     tuition: 0,
     hostel: 0,
@@ -242,9 +249,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     misc: 0,
     isLocked: false
   });
+  const [selectedFeeBranch, setSelectedFeeBranch] = useState<'Erragattugutta C1' | 'Erragattugutta C2' | 'Beemaram C1' | 'Beemaram C2'>('Erragattugutta C1');
   const [isEditingFees, setIsEditingFees] = useState(false);
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [otpInput, setOtpInput] = useState('');
+
+  // Marks Registry States
+  const [studentMarksList, setStudentMarksList] = useState<any[]>([]);
+  const [editingMark, setEditingMark] = useState<any | null>(null);
+  const [markSubject, setMarkSubject] = useState('Physics');
+  const [markMidterm, setMarkMidterm] = useState('');
+  const [markFinal, setMarkFinal] = useState('');
 
   // Calendars logs
   const [calendarEvents, setCalendarEvents] = useState<{ title: string; date: string }[]>([]);
@@ -315,9 +330,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [enrollmentStats, setEnrollmentStats] = useState<any[]>([]);
 
   // ── Admin2 Fetch Helpers ──
-  const fetchFeeSettings = async () => {
+  const fetchFeeSettings = async (branch?: string) => {
     try {
-      const data = await admin2Service.getFeeSettings();
+      const targetBranch = branch || selectedFeeBranch;
+      const data = await admin2Service.getFeeSettings(targetBranch);
       setFeeRates(data);
     } catch (err: any) { triggerToast(err.message || 'Failed to load fee settings.'); }
   };
@@ -347,6 +363,36 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       const data = await admin2Service.getStaffSalaries();
       setTeachers(data as any);
     } catch (err: any) { triggerToast(err.message || 'Failed to load staff salaries.'); }
+  };
+
+  const fetchStudentMarks = async () => {
+    try {
+      const res = await apiClient.get('/admin2/student-marks');
+      if (res.status === 'success') {
+        setStudentMarksList(res.data);
+      }
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to load student marks.');
+    }
+  };
+
+  const handleSaveStudentMark = async () => {
+    if (!editingMark) return;
+    try {
+      const res = await apiClient.patch('/admin2/student-marks', {
+        studentId: editingMark.studentId,
+        subject: markSubject,
+        midterm: markMidterm,
+        final: markFinal
+      });
+      if (res.status === 'success') {
+        triggerToast(`Marks updated successfully for ${editingMark.name}`);
+        setEditingMark(null);
+        fetchStudentMarks();
+      }
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to update student marks.');
+    }
   };
 
   const fetchEnrollmentStats = async () => {
@@ -559,7 +605,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       } else if (activePage === 'worker_payments') {
         await fetchWorkerPayments();
       } else if (activePage === 'enrollment_stats') {
-        await fetchEnrollmentStats();
+        await fetchStudentMarks();
       } else if (pulseKey === 'finance' || pulseKey === 'fees') {
         await Promise.all([fetchFeeSettings(), fetchStudents()]);
       } else if (pulseKey === 'bulletins') {
@@ -628,7 +674,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     } else if (activePage === 'worker_payments') {
       fetchWorkerPayments();
     } else if (activePage === 'enrollment_stats') {
-      fetchEnrollmentStats();
+      fetchStudentMarks();
     }
   }, [activePage, timetableSection, attendanceDate]);
 
@@ -676,18 +722,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   };
 
   const handleTeacherSave = async (updated: Teacher) => {
-    try {
-      setGlobalSecurityKey(securityKey);
-      const saved = await admin1Service.updateTeacher(updated.id, updated);
-      const next = teachers.map(t => t.id === saved.id ? saved : t);
-      setTeachers(next);
-      setSelectedTeacher(saved);
-      setEditTeacher({ ...saved });
-      triggerToast('Teacher credentials submitted and saved to database.');
-      setSecurityKey('');
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to save teacher details.');
-    }
+    setEditTeacher({ ...updated });
+    setFacActionType('edit');
+    setFacOtpInput('');
+    setIsFacOtpModalOpen(true);
   };
 
   const handleRegisterStudent = async () => {
@@ -696,8 +734,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       return;
     }
     const newAdm = `ADM2400${students.length + 1}`;
-    const secLetter = newStuSec.replace('Section ', '').trim();
-    const nextRollNum = `24${newStuCourse}${secLetter}${100 + students.length + 1}`;
+    
+    // Get campus-specific baseline fee settings
+    const allSettings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
+    const campusFee = allSettings[newStuBranch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
+
+    const resolvedTuition = campusFee.tuition;
+    const resolvedMisc = campusFee.misc;
+    const resolvedHostel = 0; // Default to day scholar
+    const resolvedTransport = 0;
+    const resolvedPending = 0;
+    const resolvedPaid = 0;
+    const remainingBalance = resolvedTuition + resolvedMisc;
+
+    const nextRollNum = `24${newStuCourse}A${100 + students.length + 1}`;
     const newStu: Student = {
       admissionNumber: newAdm,
       studentId: `STU-10${10 + students.length}`,
@@ -709,16 +759,23 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       mobile: newStuMobile,
       parentMobile: newStuMobile,
       email: `${newStuName.toLowerCase().replace(/ /g, '')}@inspire.edu`,
-      address: 'Erragattugutta Campus 1, Hyderabad',
+      address: `${newStuBranch} Campus, Telangana`,
       residentialAddress: 'Day Scholar',
       hostelStatus: 'Day Scholar',
       transportStatus: 'Self Transport',
       course: newStuCourse,
-      section: newStuSec,
-      branch: 'Erragattugutta C1',
+      section: 'Section A',
+      branch: newStuBranch,
       rollNumber: nextRollNum,
       status: 'Active',
-      documents: ['10th Marksheet.pdf', 'Aadhaar Card.pdf']
+      documents: ['10th Marksheet.pdf', 'Aadhaar Card.pdf'],
+      tuitionFee: resolvedTuition,
+      hostelFee: resolvedHostel,
+      transportFee: resolvedTransport,
+      miscellaneousFee: resolvedMisc,
+      previousPending: resolvedPending,
+      totalPaid: resolvedPaid,
+      remainingBalance: remainingBalance
     };
 
     try {
@@ -728,51 +785,67 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         newStu.tempPassword = pin;
         const next = [...students, newStu];
         setStudents(next);
-        // NOTE: We deliberately do NOT patch window._erpMockStudents or any other
-        // window-global here. The student is persisted in MongoDB (Student + User
-        // documents created by the backend). The Accountant Portal will pick up
-        // newly provisioned students when it is live-wired to the DB in Prompt 8.
-        // Until then, a newly registered student will NOT appear in Accountant
-        // search results — this is an expected, documented temporary gap, not a
-        // bug to work around with in-memory globals.
         setNewStuName('');
         setNewStuFather('');
         setNewStuMobile('');
         triggerToast(`Student registered! PIN: ${pin}`);
       } else {
-        triggerToast('Failed to register student on the backend.');
+        triggerToast('Failed to register student.');
       }
     } catch (err: any) {
       console.error(err);
-      triggerToast(err.message || 'Error during backend registration.');
+      triggerToast(err.message || 'Error during student registration.');
     }
   };
 
 
 
   const handleAddTeacher = async () => {
-    if (!newFacName || (role !== 'admin2' && !newFacSal)) {
-      triggerToast('Please enter faculty details.');
+    if (!newFacName || !newFacSal || !newFacMobile) {
+      triggerToast('Please complete all basic fields.');
       return;
     }
-    const newId = `FAC-20${teachers.length + 1}`;
+    setFacActionType('add');
+    setFacOtpInput('');
+    setIsFacOtpModalOpen(true);
+  };
+
+  const submitFacOtp = async () => {
+    if (facOtpInput !== '111111') {
+      triggerToast('Incorrect OTP. Please use 111111.');
+      return;
+    }
+
     try {
-      setGlobalSecurityKey(securityKey);
-      const saved = await admin1Service.createTeacher({
-        id: newId,
-        name: newFacName,
-        subject: newFacSub,
-        salary: role === 'admin2' ? 50000 : parseFloat(newFacSal),
-        mobile: '9000000000'
-      });
-      saved.branch = 'Erragattugutta C1';
-      setTeachers([...teachers, saved]);
-      setNewFacName('');
-      setNewFacSal('');
-      triggerToast(`Teacher ${newFacName} registered successfully!`);
-      setSecurityKey('');
+      setGlobalSecurityKey(facOtpInput);
+      if (facActionType === 'add') {
+        const newId = `FAC-20${teachers.length + 1}`;
+        const saved = await admin1Service.createTeacher({
+          id: newId,
+          name: newFacName,
+          subject: newFacSub,
+          salary: parseFloat(newFacSal) || 50000,
+          mobile: newFacMobile,
+          branch: newFacBranch
+        } as any);
+        setTeachers([...teachers, saved]);
+        setNewFacName('');
+        setNewFacSal('');
+        setNewFacMobile('');
+        setIsAddTeacherModalOpen(false);
+        triggerToast(`Faculty member ${newFacName} registered successfully!`);
+      } else if (facActionType === 'edit' && editTeacher) {
+        const saved = await admin1Service.updateTeacher(editTeacher.id, editTeacher);
+        const next = teachers.map(t => t.id === saved.id ? saved : t);
+        setTeachers(next);
+        setSelectedTeacher(null);
+        setEditTeacher(null);
+        triggerToast(`Faculty credentials for ${saved.name} saved successfully.`);
+      }
+      setIsFacOtpModalOpen(false);
+      setFacOtpInput('');
     } catch (err: any) {
-      triggerToast(err.message || 'Failed to register teacher.');
+      triggerToast(err.message || 'Verification failed.');
     }
   };
 
@@ -913,10 +986,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   const handleSaveAcademicFees = async () => {
     try {
-      const saved = await admin2Service.updateFeeSettings({ ...feeRates, isLocked: true });
+      const saved = await admin2Service.updateFeeSettings({ ...feeRates, isLocked: true, branch: selectedFeeBranch });
       setFeeRates(saved);
       setIsEditingFees(false);
-      triggerToast('Academic baseline fees finalized, LOCKED, and propagated to database successfully.');
+      triggerToast(`Academic baseline fees for ${selectedFeeBranch} finalized and locked.`);
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save fee settings.');
     }
@@ -924,10 +997,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   const handleUnlockFees = async () => {
     try {
-      const saved = await admin2Service.updateFeeSettings({ isLocked: false });
+      const saved = await admin2Service.updateFeeSettings({ isLocked: false, branch: selectedFeeBranch });
       setFeeRates(saved);
       setIsEditingFees(true);
-      triggerToast('Academic baseline fees unlocked for editing.');
+      triggerToast(`Academic baseline fees for ${selectedFeeBranch} unlocked for editing.`);
     } catch (err: any) {
       triggerToast(err.message || 'Failed to unlock fee settings.');
     }
@@ -1145,10 +1218,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     </select>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Select Section</label>
-                    <select value={newStuSec} onChange={(e) => setNewStuSec(e.target.value)} style={styles.selectInput}>
-                      <option value="Section A">Section A</option>
-                      <option value="Section B">Section B</option>
+                    <label style={styles.formLabel}>Select Campus</label>
+                    <select value={newStuBranch} onChange={(e) => setNewStuBranch(e.target.value)} style={styles.selectInput}>
+                      <option value="Erragattugutta C1">Erragattugutta Campus 1</option>
+                      <option value="Erragattugutta C2">Erragattugutta Campus 2</option>
+                      <option value="Beemaram C1">Beemaram Campus 1</option>
+                      <option value="Beemaram C2">Beemaram Campus 2</option>
                     </select>
                   </div>
                 </div>
@@ -1165,8 +1240,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   // ─── SUBPAGE 2: TEACHERS MANAGEMENT ───
   if (activePage === 'teachers') {
     const list = teachers
-      .filter(t => role === 'admin1' || t.branch === 'Erragattugutta C1')
-      .filter(t => t.name.toLowerCase().includes(searchFac.toLowerCase()) || t.subject.toLowerCase().includes(searchFac.toLowerCase()));
+      .filter(t => {
+        // Role filters
+        if (role === 'admin2' && t.branch !== 'Erragattugutta C1') return false;
+        // Search filter
+        const matchSearch = t.name.toLowerCase().includes(searchFac.toLowerCase()) || t.subject.toLowerCase().includes(searchFac.toLowerCase());
+        if (!matchSearch) return false;
+        // Campus filter
+        if (filterFacCampus !== 'All' && t.branch !== filterFacCampus) return false;
+        // Subject filter
+        if (filterFacSubject !== 'All' && t.subject !== filterFacSubject) return false;
+        return true;
+      });
 
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -1181,6 +1266,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
         <main style={styles.content}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1 }}>
+            {/* Search Bar at the top */}
             <input
               type="text"
               placeholder="Search faculty name or subject..."
@@ -1189,145 +1275,298 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               style={styles.textInputBox}
             />
 
+            {/* Add Faculty button below search bar */}
+            <button
+              onClick={() => {
+                setNewFacName('');
+                setNewFacSal('');
+                setNewFacMobile('');
+                setNewFacBranch(role === 'admin2' ? 'Erragattugutta C1' : 'Erragattugutta C1');
+                setNewFacSub('Physics');
+                setIsAddTeacherModalOpen(true);
+              }}
+              style={{ ...styles.saveSubmitBtn, marginTop: '4px', marginBottom: '4px' }}
+              className="press-interactive"
+            >
+              + Add Faculty Member
+            </button>
+
+            {/* Filters below Add Faculty button */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <label style={styles.formLabel}>Campus Filter</label>
+                <select
+                  value={filterFacCampus}
+                  onChange={(e) => setFilterFacCampus(e.target.value)}
+                  disabled={role === 'admin2'}
+                  style={styles.selectInput}
+                >
+                  <option value="All">All Campuses</option>
+                  <option value="Erragattugutta C1">Erragattugutta Campus 1</option>
+                  <option value="Erragattugutta C2">Erragattugutta Campus 2</option>
+                  <option value="Beemaram C1">Beemaram Campus 1</option>
+                  <option value="Beemaram C2">Beemaram Campus 2</option>
+                </select>
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <label style={styles.formLabel}>Subject Filter</label>
+                <select
+                  value={filterFacSubject}
+                  onChange={(e) => setFilterFacSubject(e.target.value)}
+                  style={styles.selectInput}
+                >
+                  <option value="All">All Subjects</option>
+                  <option value="Physics">Physics</option>
+                  <option value="Chemistry">Chemistry</option>
+                  <option value="Mathematics">Mathematics</option>
+                  <option value="English">English</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Faculty List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {list.map(t => (
-                <div key={t.id} style={styles.receiptRowItem}>
+                <div key={t.id || t._id} style={styles.receiptRowItem}>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <strong>{t.name} ({t.subject})</strong>
-                      <span style={{ ...styles.statusBadge, backgroundColor: t.status === 'Active' ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)', color: t.status === 'Active' ? '#10B981' : '#EF4444', borderColor: t.status === 'Active' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)' }}>{t.status}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <strong style={{ fontSize: '13px' }}>{t.name}</strong>
+                      <span style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 600 }}>({t.subject})</span>
                     </div>
-                    <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>Salary: ₹{(t.salary || 0).toLocaleString('en-IN')} • Code: {t.id} • Campus: {t.branch || 'Madhapur'}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>
+                      Salary: ₹{(t.salary || 0).toLocaleString('en-IN')} • Campus: {t.branch || 'Erragattugutta C1'}
+                    </div>
                   </div>
-                  <button onClick={() => { setSelectedTeacher(t); setEditTeacher({ ...t }); }} style={styles.actionItemBtn} className="press-interactive">Select</button>
+                  <button
+                    onClick={() => {
+                      setSelectedTeacher(t);
+                      setEditTeacher({ ...t });
+                    }}
+                    style={styles.actionItemBtn}
+                    className="press-interactive"
+                  >
+                    Select
+                  </button>
                 </div>
               ))}
+              {list.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted-gray)', fontSize: '12px' }}>
+                  No faculty records match your criteria.
+                </div>
+              )}
             </div>
           </div>
 
-          {selectedTeacher && editTeacher ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }} className="anim-fade-in">
-              <div style={styles.readOnlyBlock}>
-                <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Faculty Profile: {selectedTeacher.name}</h4>
-                <div style={styles.metaRow}><span>Campus/Branch</span><strong>{selectedTeacher.branch || 'Madhapur'}</strong></div>
-                <div style={styles.metaRow}><span>Subject Head</span><strong>{selectedTeacher.subject}</strong></div>
-                <div style={styles.metaRow}><span>Mobile Contact</span><strong>{selectedTeacher.mobile}</strong></div>
-                <div style={styles.metaRow}><span>Monthly Salary</span><strong>₹{(selectedTeacher.salary || 0).toLocaleString('en-IN')}</strong></div>
-                <div style={styles.metaRow}><span>Teacher Login Code</span><strong>{selectedTeacher.id}</strong></div>
-                <div style={styles.metaRow}><span>Account Status</span><span style={{ ...styles.statusBadge, backgroundColor: selectedTeacher.status === 'Active' ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)', color: selectedTeacher.status === 'Active' ? '#10B981' : '#EF4444', borderColor: selectedTeacher.status === 'Active' ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)' }}>{selectedTeacher.status}</span></div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Faculty Name</label>
-                  <input
-                    type="text"
-                    value={editTeacher.name}
-                    onChange={(e) => setEditTeacher({ ...editTeacher, name: e.target.value })}
-                    style={styles.textInputBox}
-                  />
+          {/* EDIT HOVER DETAILS MODAL */}
+          {selectedTeacher && editTeacher && !isFacOtpModalOpen && (
+            <div style={styles.overlayOverlay}>
+              <div style={styles.overlaySheet}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                  <h3 style={styles.modalTitle}>Edit Faculty Details</h3>
+                  <button
+                    onClick={() => { setSelectedTeacher(null); setEditTeacher(null); }}
+                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                  >
+                    ×
+                  </button>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Mobile Number</label>
-                  <input
-                    type="text"
-                    value={editTeacher.mobile}
-                    onChange={(e) => setEditTeacher({ ...editTeacher, mobile: e.target.value })}
-                    style={styles.textInputBox}
-                  />
-                </div>
-              </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px', marginBottom: '8px' }}>
-                <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
-                <input
-                  type="text"
-                  placeholder="Enter Admin Key (OTP) e.g. ADM-1234"
-                  value={securityKey}
-                  onChange={(e) => setSecurityKey(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleTeacherSave(editTeacher)}
-                  style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
-                />
-              </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Faculty Name</label>
+                    <input
+                      type="text"
+                      value={editTeacher.name}
+                      onChange={(e) => setEditTeacher({ ...editTeacher, name: e.target.value })}
+                      style={styles.textInputBox}
+                    />
+                  </div>
 
-              {/* SAVE / SUBMIT TEACHER PROFILE CHANGES */}
-              <button 
-                onClick={() => handleTeacherSave(editTeacher)} 
-                style={styles.saveSubmitBtn} 
-                className="press-interactive"
-              >
-                Save Faculty Profile Changes
-              </button>
-
-              <div style={styles.readOnlyBlock}>
-                <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Assign Academic Duties</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                      <label style={styles.formLabel}>Class</label>
-                      <select value={assignClass} onChange={(e) => setAssignClass(e.target.value)} style={styles.selectInput}>
-                        <option value="Junior MPC">Junior MPC</option>
-                        <option value="Senior MPC">Senior MPC</option>
-                        <option value="Junior BiPC">Junior BiPC</option>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Campus Branch</label>
+                      <select
+                        value={editTeacher.branch || 'Erragattugutta C1'}
+                        disabled={role === 'admin2'}
+                        onChange={(e) => setEditTeacher({ ...editTeacher, branch: e.target.value })}
+                        style={styles.selectInput}
+                      >
+                        <option value="Erragattugutta C1">Erragattugutta Campus 1</option>
+                        <option value="Erragattugutta C2">Erragattugutta Campus 2</option>
+                        <option value="Beemaram C1">Beemaram Campus 1</option>
+                        <option value="Beemaram C2">Beemaram Campus 2</option>
                       </select>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                      <label style={styles.formLabel}>Section</label>
-                      <select value={assignSec} onChange={(e) => setAssignSec(e.target.value)} style={styles.selectInput}>
-                        <option value="Section A">Section A</option>
-                        <option value="Section B">Section B</option>
+
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Subject Head</label>
+                      <select
+                        value={editTeacher.subject}
+                        onChange={(e) => setEditTeacher({ ...editTeacher, subject: e.target.value })}
+                        style={styles.selectInput}
+                      >
+                        <option value="Physics">Physics</option>
+                        <option value="Chemistry">Chemistry</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="English">English</option>
                       </select>
                     </div>
                   </div>
-                  {/* SUBMIT ASSIGNED DUTY BUTTON */}
-                  <button onClick={handleAssignTeacherDuty} style={styles.saveSubmitBtn} className="press-interactive">Submit Class & Section Assignment</button>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Monthly Salary (₹)</label>
+                      <input
+                        type="number"
+                        value={editTeacher.salary || ''}
+                        disabled={role === 'admin2'}
+                        onChange={(e) => setEditTeacher({ ...editTeacher, salary: parseFloat(e.target.value) || 0 })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Contact Mobile</label>
+                      <input
+                        type="text"
+                        value={editTeacher.mobile || ''}
+                        onChange={(e) => setEditTeacher({ ...editTeacher, mobile: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setFacActionType('edit');
+                      setFacOtpInput('');
+                      setIsFacOtpModalOpen(true);
+                    }}
+                    style={{ ...styles.saveSubmitBtn, marginTop: '8px' }}
+                    className="press-interactive"
+                  >
+                    Save Changes
+                  </button>
                 </div>
               </div>
             </div>
-          ) : (
-            <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
-              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Add New Faculty Member</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Faculty Name</label>
-                  <input type="text" placeholder="e.g. Mr. K. Sharma" value={newFacName} onChange={(e) => setNewFacName(e.target.value)} style={styles.textInputBox} />
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Subject</label>
-                    <select value={newFacSub} onChange={(e) => setNewFacSub(e.target.value)} style={styles.selectInput}>
-                      <option value="Physics">Physics</option>
-                      <option value="Chemistry">Chemistry</option>
-                      <option value="Mathematics">Mathematics</option>
-                      <option value="English">English</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Monthly Salary (₹)</label>
-                    <input 
-                      type="number" 
-                      placeholder={role === 'admin2' ? "Managed by Rector" : "e.g. 75000"} 
-                      value={role === 'admin2' ? "" : newFacSal} 
-                      disabled={role === 'admin2'}
-                      onChange={(e) => setNewFacSal(e.target.value)} 
-                      style={{ ...styles.textInputBox, backgroundColor: role === 'admin2' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)' }} 
-                    />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px', marginBottom: '8px' }}>
-                  <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
-                  <input
-                    type="text"
-                    placeholder="Enter Admin Key (OTP) e.g. ADM-1234"
-                    value={securityKey}
-                    onChange={(e) => setSecurityKey(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddTeacher()}
-                    style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
-                  />
+          )}
+
+          {/* ADD FACULTY HOVER MODAL */}
+          {isAddTeacherModalOpen && !isFacOtpModalOpen && (
+            <div style={styles.overlayOverlay}>
+              <div style={styles.overlaySheet}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                  <h3 style={styles.modalTitle}>Add New Faculty</h3>
+                  <button
+                    onClick={() => setIsAddTeacherModalOpen(false)}
+                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                  >
+                    ×
+                  </button>
                 </div>
 
-                <button onClick={handleAddTeacher} style={styles.saveSubmitBtn} className="press-interactive">Submit & Create Faculty Profile</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Faculty Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Mr. K. Sharma"
+                      value={newFacName}
+                      onChange={(e) => setNewFacName(e.target.value)}
+                      style={styles.textInputBox}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Campus Branch</label>
+                      <select
+                        value={newFacBranch}
+                        disabled={role === 'admin2'}
+                        onChange={(e) => setNewFacBranch(e.target.value)}
+                        style={styles.selectInput}
+                      >
+                        <option value="Erragattugutta C1">Erragattugutta Campus 1</option>
+                        <option value="Erragattugutta C2">Erragattugutta Campus 2</option>
+                        <option value="Beemaram C1">Beemaram Campus 1</option>
+                        <option value="Beemaram C2">Beemaram Campus 2</option>
+                      </select>
+                    </div>
+
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Subject Head</label>
+                      <select
+                        value={newFacSub}
+                        onChange={(e) => setNewFacSub(e.target.value)}
+                        style={styles.selectInput}
+                      >
+                        <option value="Physics">Physics</option>
+                        <option value="Chemistry">Chemistry</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="English">English</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Monthly Salary (₹)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 75000"
+                        value={newFacSal}
+                        onChange={(e) => setNewFacSal(e.target.value)}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Contact Mobile</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 9876543210"
+                        value={newFacMobile}
+                        onChange={(e) => setNewFacMobile(e.target.value)}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleAddTeacher}
+                    style={{ ...styles.saveSubmitBtn, marginTop: '8px' }}
+                    className="press-interactive"
+                  >
+                    Submit & Create
+                  </button>
+                </div>
               </div>
+            </div>
+          )}
+
+          {/* FACULTY OTP VERIFICATION OVERLAY (MODAL ON MODAL) */}
+          {isFacOtpModalOpen && (
+            <div style={{ ...styles.overlayOverlay, zIndex: 1100 }}>
+              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '16px', border: '1px solid var(--card-border)' }} className="anim-slide-up glass-gold-ring">
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Administrative OTP Gate</h3>
+                  <p style={{ margin: 0, fontSize: '11px', color: 'var(--muted-gray)' }}>A security passcode check is required to authorize this action.</p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <input
+                    type="password"
+                    placeholder="Enter Security OTP (111111)"
+                    value={facOtpInput}
+                    onChange={(e) => setFacOtpInput(e.target.value)}
+                    style={{ ...styles.textInputBox, textAlign: 'center', letterSpacing: '0.2em', fontSize: '15px', fontWeight: 800 }}
+                  />
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                    <button onClick={submitFacOtp} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1 }} className="press-interactive">Confirm</button>
+                    <button onClick={() => { setIsFacOtpModalOpen(false); setFacOtpInput(''); }} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">Cancel</button>
+                  </div>
+                </div>
+              </GlassCard>
             </div>
           )}
         </main>
@@ -1898,12 +2137,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 7: ACADEMIC FEES (Admin 2 only) ───
-  // FRONTEND ROUTE GUARD: even if admin1 manipulates client-side state to set
-  // activePage='academic_fees', this guard redirects them back to the menu
-  // immediately. The backend independently enforces this via admin2Guard (403).
+  // ─── SUBPAGE 7: ACADEMIC FEES ───
   if (activePage === 'academic_fees') {
-    if (role !== 'admin2') { setActivePage('menu'); return null; }
+    if (role !== 'admin1' && role !== 'admin2') { setActivePage('menu'); return null; }
 
     const locked = feeRates.isLocked && !isEditingFees;
     const feeBarItems = [
@@ -1920,13 +2156,41 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         <header style={styles.header}>
           <button onClick={() => { setActivePage('menu'); setIsEditingFees(false); }} style={styles.backArrowBtn} className="press-interactive">Back to Cockpit</button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Academic Fee Structure</h1>
-          <p style={styles.subtitle}>Configure annual fee components. Saving propagates to all student records.</p>
+          <p style={styles.subtitle}>Configure annual baseline fee components campus-wise.</p>
         </header>
 
         <main style={styles.content}>
+          {role === 'admin1' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', zIndex: 1 }}>
+              {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(b => {
+                const isActive = selectedFeeBranch === b;
+                return (
+                  <div
+                    key={b}
+                    onClick={() => { setSelectedFeeBranch(b as any); fetchFeeSettings(b); }}
+                    style={{
+                      padding: '10px 4px',
+                      borderRadius: '10px',
+                      border: isActive ? '2px solid var(--royal-gold)' : '1px solid var(--card-border)',
+                      background: isActive ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.6)',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '10px',
+                      color: isActive ? 'var(--royal-gold)' : 'var(--dark-charcoal)'
+                    }}
+                    className="press-interactive"
+                  >
+                    {b}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Fee Components</h4>
+              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Rector Baseline: {selectedFeeBranch}</h4>
               <span style={{ fontSize: '10px', fontWeight: 800, color: locked ? '#EF4444' : 'var(--royal-gold)', backgroundColor: locked ? 'rgba(239,68,68,0.06)' : 'rgba(212,175,55,0.06)', border: `1.5px solid ${locked ? '#EF4444' : 'var(--royal-gold)'}`, padding: '4px 8px', borderRadius: '8px' }}>
                 {locked ? 'Locked — Rates Finalized' : 'Edit Mode Active'}
               </span>
@@ -2809,71 +3073,144 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 17: YEARLY ENROLLMENT STATS (Admin 2) ───
+  // ─── SUBPAGE 17: CAMPUS MARKS REGISTRY (Admin 2) ───
   if (activePage === 'enrollment_stats') {
-    const yearData = [
-      { year: '2022-23', mpc: 480, bipc: 360, cec: 120 },
-      { year: '2023-24', mpc: 520, bipc: 390, cec: 140 },
-      { year: '2024-25', mpc: 580, bipc: 420, cec: 160 },
-      { year: '2025-26', mpc: 640, bipc: 450, cec: 180 },
-      { year: '2026-27', mpc: 680, bipc: 460, cec: 200 },
-    ];
-    // Overlay real DB stats for any matching year
-    enrollmentStats.forEach(stat => {
-      const idx = yearData.findIndex(y => y.year === stat.academicYear);
-      if (idx !== -1) yearData[idx] = { year: stat.academicYear, mpc: stat.mpc || 0, bipc: stat.bipc || 0, cec: stat.cec || 0 };
-    });
-    const activeYear = yearData.find(y => y.year === '2026-27') || { mpc: 0, bipc: 0, cec: 0 };
-    const liveTotal = activeYear.mpc + activeYear.bipc + activeYear.cec;
-    const maxTotal = Math.max(...yearData.map(d => d.mpc + d.bipc + d.cec));
+    const list = studentMarksList
+      .filter((s: any) => s.name.toLowerCase().includes(searchFac.toLowerCase()) || s.studentId.toLowerCase().includes(searchFac.toLowerCase()));
+
     return (
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('violet')}
         <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">Back to Finance Cockpit</button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Yearly Enrollment Stats</h1>
-          <p style={styles.subtitle}>Academic year-wise admission trends across MPC, BiPC & CEC</p>
+          <button onClick={() => { setActivePage('menu'); setEditingMark(null); }} style={styles.backArrowBtn} className="press-interactive">Back to Cockpit</button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Campus Marks</h1>
+          <p style={styles.subtitle}>View and update subject midterm/final grades for local campus students</p>
         </header>
+
         <main style={styles.content}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', zIndex: 1 }}>
-            {[
-              { label: 'Total Enrolled (2026-27)', value: liveTotal.toLocaleString('en-IN'), sub: 'Live database count', color: '#10B981' },
-              { label: 'MPC Stream', value: activeYear.mpc.toLocaleString('en-IN'), sub: 'Engineering intake', color: 'var(--royal-gold)' },
-              { label: 'BiPC Stream', value: activeYear.bipc.toLocaleString('en-IN'), sub: 'Medical intake', color: '#3B82F6' },
-              { label: 'CEC Stream', value: activeYear.cec.toLocaleString('en-IN'), sub: 'Commerce intake', color: '#8B5CF6' },
-            ].map((metric, i) => (
-              <GlassCard key={i} hoverable={false} style={{ padding: '16px', textAlign: 'center' }}>
-                <div style={{ fontSize: '10.5px', color: 'var(--muted-gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{metric.label}</div>
-                <div style={{ fontSize: '28px', fontWeight: 900, color: metric.color, marginTop: '6px', lineHeight: 1 }}>{metric.value}</div>
-                <div style={{ fontSize: '10.5px', color: 'var(--muted-gray)', marginTop: '6px' }}>{metric.sub}</div>
-              </GlassCard>
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1 }}>
+            {/* Search and Subject Filter */}
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <input
+                type="text"
+                placeholder="Search student name or ID..."
+                value={searchFac}
+                onChange={(e) => setSearchFac(e.target.value)}
+                style={{ ...styles.textInputBox, flex: 1, margin: 0 }}
+              />
+              <select
+                value={markSubject}
+                onChange={(e) => setMarkSubject(e.target.value)}
+                style={{ ...styles.selectInput, width: '130px', margin: 0 }}
+              >
+                <option value="Physics">Physics</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="Mathematics">Mathematics</option>
+                <option value="English">English</option>
+              </select>
+            </div>
+
+            {/* Marks List Table */}
+            <GlassCard hoverable={false} style={{ padding: '16px' }} className="neo-2d-card">
+              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, marginBottom: '14px' }}>Subject Ledgers: {markSubject}</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {list.map((s: any) => {
+                  const subMark = s.marks.find((m: any) => m.subject === markSubject) || { midterm: 0, final: 0 };
+                  return (
+                    <div key={s.studentId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{s.name}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>ID: {s.studentId}</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--dark-charcoal)' }}>Midterm: <span style={{ color: 'var(--royal-gold)' }}>{subMark.midterm}</span></div>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--dark-charcoal)' }}>Final Exam: <span style={{ color: '#10B981' }}>{subMark.final}</span></div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setEditingMark(s);
+                            setMarkMidterm(String(subMark.midterm));
+                            setMarkFinal(String(subMark.final));
+                          }}
+                          style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--card-border)', background: 'rgba(255,255,255,0.8)', cursor: 'pointer', fontSize: '11px', fontWeight: 700 }}
+                          className="press-interactive"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {list.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted-gray)', fontSize: '12px' }}>
+                    No student records found.
+                  </div>
+                )}
+              </div>
+            </GlassCard>
           </div>
-          <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
-            <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, marginBottom: '16px' }}>5-Year Enrollment Trends</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {yearData.map((d, i) => {
-                const total = d.mpc + d.bipc + d.cec;
-                const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
-                return (
-                  <div key={i}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--dark-charcoal)' }}>{d.year}</span>
-                      <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--royal-gold)' }}>{total.toLocaleString('en-IN')}</span>
+
+          {/* EDIT GRADES HOVER MODAL */}
+          {editingMark && (
+            <div style={styles.overlayOverlay}>
+              <div style={styles.overlaySheet}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                  <h3 style={styles.modalTitle}>Edit Student Grades</h3>
+                  <button
+                    onClick={() => setEditingMark(null)}
+                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>Student</div>
+                    <strong style={{ fontSize: '14px', color: 'var(--dark-charcoal)' }}>{editingMark.name} ({editingMark.studentId})</strong>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>Subject</div>
+                    <strong style={{ fontSize: '14px', color: 'var(--royal-gold)' }}>{markSubject}</strong>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Midterm Marks</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={markMidterm}
+                        onChange={(e) => setMarkMidterm(e.target.value)}
+                        style={styles.textInputBox}
+                      />
                     </div>
-                    <div style={{ height: '8px', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, borderRadius: '4px', background: 'linear-gradient(90deg, var(--royal-gold), #F97316)', transition: 'width 0.5s ease' }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
-                      {[['MPC', d.mpc, '#10B981'], ['BiPC', d.bipc, '#3B82F6'], ['CEC', d.cec, '#8B5CF6']].map(([name, val, color]: any) => (
-                        <span key={name} style={{ fontSize: '10px', color, fontWeight: 700 }}>{name}: {val}</span>
-                      ))}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Final Exam Marks</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={markFinal}
+                        onChange={(e) => setMarkFinal(e.target.value)}
+                        style={styles.textInputBox}
+                      />
                     </div>
                   </div>
-                );
-              })}
+
+                  <button
+                    onClick={handleSaveStudentMark}
+                    style={{ ...styles.saveSubmitBtn, marginTop: '12px' }}
+                    className="press-interactive"
+                  >
+                    Save Grades
+                  </button>
+                </div>
+              </div>
             </div>
-          </GlassCard>
+          )}
         </main>
       </div>
     );
@@ -3039,36 +3376,46 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               </div>
             </>
           ) : role === 'admin2' ? (
-            <>
-              <div style={styles.metricsGrid}>
-                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
-                  <span style={styles.metricLabel}>Monthly Fee Collected</span>
-                  <strong style={{ ...styles.metricValue, color: '#10B981' }}>₹48.2L</strong>
-                  <span style={styles.metricSub}>92.4% of target</span>
-                  <span className="glass-status-pill status-paid">On Target</span>
-                </GlassCard>
-                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-                  <span style={styles.metricLabel}>Monthly Expenditure</span>
-                  <strong style={{ ...styles.metricValue, color: '#EF4444' }}>₹15.7L</strong>
-                  <span style={styles.metricSub}>Jul 2026 Total</span>
-                  <span className="glass-status-pill status-warning">Budgeted</span>
-                </GlassCard>
-              </div>
-              <div style={styles.metricsGrid}>
-                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
-                  <span style={styles.metricLabel}>Fee Defaulters</span>
-                  <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>38</strong>
-                  <span style={styles.metricSub}>Pending since Term 1</span>
-                  <span className="glass-status-pill status-pending">Pending</span>
-                </GlassCard>
-                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-                  <span style={styles.metricLabel}>Worker Payments Pending</span>
-                  <strong style={styles.metricValue}>{workers.filter(w => !w.paid).length}</strong>
-                  <span style={styles.metricSub}>Awaiting approval</span>
-                  <span className="glass-status-pill status-pending">Payroll</span>
-                </GlassCard>
-              </div>
-            </>
+            (() => {
+              const localStudents = students.filter(s => s.branch === 'Erragattugutta C1');
+              const monthlyFeeCollectedVal = localStudents.reduce((sum, s) => sum + (s.totalPaid || 0), 0);
+              const localExpenditures = expenditures.filter(e => e.branch === 'Erragattugutta C1');
+              const monthlyExpenditureVal = localExpenditures.reduce((sum, e) => sum + (e.amount || 0), 0);
+              const defaultersCount = localStudents.filter(s => (s.remainingBalance || 0) > 0).length;
+
+              return (
+                <>
+                  <div style={styles.metricsGrid}>
+                    <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
+                      <span style={styles.metricLabel}>Monthly Fee Collected</span>
+                      <strong style={{ ...styles.metricValue, color: '#10B981' }}>₹{monthlyFeeCollectedVal.toLocaleString('en-IN')}</strong>
+                      <span style={styles.metricSub}>From {localStudents.length} campus profiles</span>
+                      <span className="glass-status-pill status-paid">Collected</span>
+                    </GlassCard>
+                    <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
+                      <span style={styles.metricLabel}>Monthly Expenditure</span>
+                      <strong style={{ ...styles.metricValue, color: '#EF4444' }}>₹{monthlyExpenditureVal.toLocaleString('en-IN')}</strong>
+                      <span style={styles.metricSub}>Local campus ledger total</span>
+                      <span className="glass-status-pill status-warning">Paid Out</span>
+                    </GlassCard>
+                  </div>
+                  <div style={styles.metricsGrid}>
+                    <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
+                      <span style={styles.metricLabel}>Fee Defaulters</span>
+                      <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>{defaultersCount}</strong>
+                      <span style={styles.metricSub}>Pending term payments</span>
+                      <span className="glass-status-pill status-pending">Pending</span>
+                    </GlassCard>
+                    <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
+                      <span style={styles.metricLabel}>Worker Payments Pending</span>
+                      <strong style={styles.metricValue}>{workers.filter(w => !w.paid && w.branch === 'Erragattugutta C1').length}</strong>
+                      <span style={styles.metricSub}>Awaiting Dean authorization</span>
+                      <span className="glass-status-pill status-pending">Payroll</span>
+                    </GlassCard>
+                  </div>
+                </>
+              );
+            })()
           ) : (
             <>
               <div style={styles.metricsGrid}>
@@ -3162,22 +3509,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
           ) : role === 'admin2' ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-              <div onClick={() => setActivePage('students')} style={styles.moduleCardNew} className="press-interactive">
-                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><circle cx="12" cy="7" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
-                </div>
-                <h4 style={styles.moduleTitle}>Campus Students Registry</h4>
-                <p style={styles.moduleDesc}>Edit student details for Erragattugutta C1 branch.</p>
-              </div>
-
-              <div onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
-                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                </div>
-                <h4 style={styles.moduleTitle}>Campus Faculty Roster</h4>
-                <p style={styles.moduleDesc}>Register instructors and assign classrooms.</p>
-              </div>
-
               <div onClick={() => setActivePage('expenditure')} style={styles.moduleCardNew} className="press-interactive">
                 <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.18)' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -3196,10 +3527,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
               <div onClick={() => setActivePage('enrollment_stats')} style={styles.moduleCardNew} className="press-interactive">
                 <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                 </div>
-                <h4 style={styles.moduleTitle}>Enrollment Stats</h4>
-                <p style={styles.moduleDesc}>View 5-year campus enrollment and admission trends.</p>
+                <h4 style={styles.moduleTitle}>Campus Marks</h4>
+                <p style={styles.moduleDesc}>View and update student subject grades for Erragattugutta C1.</p>
               </div>
 
               <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">

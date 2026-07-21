@@ -66,13 +66,13 @@ export interface FeeBreakdown {
 }
 
 export const admin2Service = {
-  // 1. Baseline Fee Settings
-  async getFeeSettings(): Promise<FeeSettings> {
-    const res = await apiClient.get<{ status: string; data: FeeSettings }>('/admin2/fee-settings');
+  async getFeeSettings(branch?: string): Promise<FeeSettings> {
+    const url = branch ? `/admin2/fee-settings?branch=${encodeURIComponent(branch)}` : '/admin2/fee-settings';
+    const res = await apiClient.get<{ status: string; data: FeeSettings }>(url);
     return res.data;
   },
 
-  async updateFeeSettings(settingsData: Partial<FeeSettings>): Promise<FeeSettings> {
+  async updateFeeSettings(settingsData: Partial<FeeSettings> & { branch?: string }): Promise<FeeSettings> {
     const res = await apiClient.patch<{ status: string; data: FeeSettings }>('/admin2/fee-settings', settingsData);
     return res.data;
   },
