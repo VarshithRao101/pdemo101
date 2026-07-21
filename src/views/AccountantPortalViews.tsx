@@ -482,50 +482,6 @@ export const AccountantDashboardView: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleQuickFill = async (admNo: string) => {
-    setSearchAdmNo(admNo);
-    setFeeCollectAdm(admNo);
-    const match = students.find(s => s.admissionNumber === admNo) || null;
-    if (match && match._id) {
-      setIsLoading(true);
-      try {
-        const fullProfile = await accountantService.getStudentProfile(match._id);
-        setSelectedStudent(fullProfile as any);
-        setEditStudent({ ...fullProfile } as any);
-        triggerToast(`Loaded ${fullProfile.name}`);
-      } catch (err: any) {
-        triggerToast('Failed to load profile.');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
-
-  const handleSearchSubmit = async () => {
-    if (!searchAdmNo) {
-      triggerToast('Please type an Admission Number.');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const list = await accountantService.searchStudents(searchAdmNo);
-      if (list.length > 0) {
-        const match = list[0];
-        const fullProfile = await accountantService.getStudentProfile(match._id);
-        setSelectedStudent(fullProfile as any);
-        setEditStudent({ ...fullProfile } as any);
-        triggerToast('Student loaded.');
-      } else {
-        triggerToast('No student found.');
-        setSelectedStudent(null);
-        setEditStudent(null);
-      }
-    } catch (err: any) {
-      triggerToast(err.message || 'Error searching student.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleStudentSave = async (updated: Student, otp: string) => {
     if (!updated._id) return;
@@ -700,23 +656,6 @@ export const AccountantDashboardView: React.FC = () => {
       triggerToast('Popup blocked by browser.');
       return;
     }
-
-    const totalFee = (student.tuitionFee || 0) + (student.hostelFee || 0) + (student.transportFee || 0) + (student.miscellaneousFee || 0) + (student.previousPending || 0);
-    const paidFee = student.totalPaid || 0;
-    const remainingFee = student.remainingBalance || 0;
-    const paidPct = totalFee > 0 ? (paidFee / totalFee) * 100 : 0;
-    const remainingPct = totalFee > 0 ? (remainingFee / totalFee) * 100 : 0;
-    
-    const svgChartHtml = `
-      <svg width="100%" height="64" viewBox="0 0 400 64" xmlns="http://www.w3.org/2000/svg" style="font-family: sans-serif; background: #fffdf8; border: 1.2px solid #EADFBF; border-radius: 10px; padding: 6px; box-sizing: border-box; margin-top: 6px;">
-        <text x="10" y="12" font-size="8" font-weight="900" fill="#8B6A14" letter-spacing="0.08em">FEE PROGRESS PROFILE</text>
-        <rect x="10" y="20" width="380" height="10" rx="5" fill="#cbd5e1" />
-        <rect x="10" y="20" width="${380 * (paidFee / (totalFee || 1))}" height="10" rx="5" fill="#10B981" />
-        <text x="10" y="46" font-size="9" font-weight="800" fill="#10B981">Paid: ₹${paidFee.toLocaleString('en-IN')} (${paidPct.toFixed(0)}%)</text>
-        <text x="180" y="46" font-size="9" font-weight="800" fill="#D97706">Due: ₹${remainingFee.toLocaleString('en-IN')} (${remainingPct.toFixed(0)}%)</text>
-        <text x="390" y="12" font-size="9" font-weight="900" fill="#475569" text-anchor="end">Total: ₹${totalFee.toLocaleString('en-IN')}</text>
-      </svg>
-    `;
 
     const receiptWords = numberToReceiptWords(receipt.amount);
     const studentClass = student.course || student.branch || 'Junior College';
@@ -1263,7 +1202,7 @@ export const AccountantDashboardView: React.FC = () => {
         </main>
       </div>
     );
-
+  }
 
   // ─── SUBPAGE 2: FEE COLLECTION DESK (Sub-page) ───
   if (activeSubPage === 'fee_collection') {

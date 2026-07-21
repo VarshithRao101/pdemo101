@@ -769,7 +769,7 @@ export const apiClient = {
     }
 
     // Validate request security keys / OTPs
-    const validateRequestOtp = (path: string, methodStr: string, currentCampus: string) => {
+    const validateRequestOtp = (path: string, methodStr: string) => {
       if (methodStr === 'GET' || path.startsWith('/auth') || path.startsWith('/authenticator')) {
         return;
       }
@@ -818,7 +818,7 @@ export const apiClient = {
 
     const targetCampusName = getTargetCampus(queryParams, bodyData);
     try {
-      validateRequestOtp(cleanPath, method, targetCampusName);
+      validateRequestOtp(cleanPath, method);
     } catch (err: any) {
       if (!err.message.includes('Verification rejected')) {
         logTransactionInJournal(`${method} ${cleanPath}`, targetCampusName, 'failed', err.message);

@@ -111,11 +111,14 @@ export interface SyncJournalEntry {
   targetNode: string;
   action: string;
   payload: any;
-  status: 'pending' | 'synced' | 'failed';
+  status: 'pending' | 'synced' | 'failed' | 'success';
   acknowledgedClients: string[];
   expectedClientsCount: number;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  timestamp?: string;
+  branch?: string;
+  errorDetails?: string;
 }
 
 export interface BackupResponse {

@@ -6,11 +6,9 @@ import { InspireLogo } from '../components/common/InspireLogo';
 import { onSocketEvent } from '../services/socketClient';
 import { authenticatorService } from '../services/authenticatorService';
 import type { 
-  BackupCodeInfo, 
   AccountInfo, 
   AuthenticatorStats,
-  SyncJournalEntry,
-  BackupResponse
+  SyncJournalEntry
 } from '../services/authenticatorService';
 
 export const AuthenticatorDashboardView: React.FC = () => {
@@ -28,8 +26,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
   // Backend state
   const [keysData, setKeysData] = useState<any>(null);
-  const [otpPortal, setOtpPortal] = useState<'admin1' | 'admin2'>('admin1');
-  const [backupCodes, setBackupCodes] = useState<BackupCodeInfo[]>([]);
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
   const [stats, setStats] = useState<AuthenticatorStats>({
     totalStudents: 0,
@@ -40,9 +36,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
   // Sync integrity & database management state
   const [syncLogs, setSyncLogs] = useState<SyncJournalEntry[]>([]);
-  const [isReconciling, setIsReconciling] = useState(false);
-  const [isBackingUp, setIsBackingUp] = useState(false);
-  const [backupDetails, setBackupDetails] = useState<BackupResponse | null>(null);
   const [ledgerFilter, setLedgerFilter] = useState<'all' | 'success' | 'failed'>('all');
   const [ledgerSearch, setLedgerSearch] = useState<string>('');
 
@@ -50,12 +43,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
   const [timeRemaining, setTimeRemaining] = useState<string>('');
 
   // Searches & Modals
-  const [studentSearch, setStudentSearch] = useState<string>('');
-  
+
   // Password reset state
-  const [resetUsername, setResetUsername] = useState<string>('');
-  const [resetBackupCode, setResetBackupCode] = useState<string>('');
-  const [resetNewPassword, setResetNewPassword] = useState<string>('');
 
   // Account creation/edit state
   const [accountUsername, setAccountUsername] = useState<string>('');
@@ -93,15 +82,13 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Load Initial Data
   const loadData = async () => {
     try {
-      const [keysRes, codesRes, accountsRes, statsRes, syncRes] = await Promise.all([
+      const [keysRes, accountsRes, statsRes, syncRes] = await Promise.all([
         authenticatorService.getKeys(),
-        authenticatorService.getBackupCodes(),
         authenticatorService.getAccounts(),
         authenticatorService.getStats(),
         authenticatorService.getSyncJournal()
       ]);
       setKeysData(keysRes);
-      setBackupCodes(codesRes);
       setAccounts(accountsRes);
       setStats(statsRes);
       setSyncLogs(syncRes);
@@ -168,28 +155,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
   }, []);
 
   // Password reset via backup code
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resetUsername || !resetBackupCode || !resetNewPassword) {
-      triggerToast('All credentials reset fields are required.');
-      return;
-    }
-
-    try {
-      const res = await authenticatorService.resetPassword({
-        username: resetUsername,
-        backupCode: resetBackupCode,
-        password: resetNewPassword
-      });
-      triggerToast(`Password reset! Next Backup Code: ${res.nextBackupCode}`);
-      setResetUsername('');
-      setResetBackupCode('');
-      setResetNewPassword('');
-      loadData(); // refresh codes list
-    } catch (err: any) {
-      triggerToast(err.message || 'Password reset failed.');
-    }
-  };
 
   // Create/Update Admin & Accountant Accounts
   const handleSaveAccount = async (e: React.FormEvent) => {
@@ -254,41 +219,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
     }
   };
 
-  // Reconcile pending/failed transaction sync entries
-  const handleReconcile = async () => {
-    setIsReconciling(true);
-    try {
-      const msg = await authenticatorService.reconcileDatabase();
-      triggerToast(msg);
-      // Reload logs
-      const syncRes = await authenticatorService.getSyncJournal();
-      setSyncLogs(syncRes);
-    } catch (err: any) {
-      triggerToast(err.message || 'Reconciliation failed.');
-    } finally {
-      setIsReconciling(false);
-    }
-  };
-
-  // Create database backup archive
-  const handleBackup = async () => {
-    setIsBackingUp(true);
-    setBackupDetails(null);
-    try {
-      const details = await authenticatorService.createBackup();
-      setBackupDetails(details);
-      triggerToast('System database backup snapshot archive created.');
-    } catch (err: any) {
-      triggerToast(err.message || 'Backup failed.');
-    } finally {
-      setIsBackingUp(false);
-    }
-  };
-
-  const filteredBackupCodes = backupCodes.filter(
-    c => c.username.toLowerCase().includes(studentSearch.toLowerCase()) || 
-         c.name.toLowerCase().includes(studentSearch.toLowerCase())
-  );
   const copyToClipboard = (text: string) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
