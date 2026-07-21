@@ -313,6 +313,83 @@ const initializeMockDB = () => {
       }
     ];
 
+    const defaultPayments = [
+      {
+        _id: 'PAY-3001',
+        studentId: 'STU-1001',
+        receiptNumber: 'REC-50011',
+        date: new Date().toISOString(),
+        category: 'Academic Fee',
+        installment: 'Installment 1',
+        amount: 65000,
+        balance: 60000,
+        mode: 'UPI',
+        cashier: 'Senior Accountant'
+      },
+      {
+        _id: 'PAY-3002',
+        studentId: 'STU-1002',
+        receiptNumber: 'REC-50012',
+        date: new Date().toISOString(),
+        category: 'Academic Fee',
+        installment: 'Full Payment',
+        amount: 210000,
+        balance: 0,
+        mode: 'Cash',
+        cashier: 'Senior Accountant'
+      },
+      {
+        _id: 'PAY-3003',
+        studentId: 'STU-1003',
+        receiptNumber: 'REC-50013',
+        date: new Date().toISOString(),
+        category: 'Academic Fee',
+        installment: 'Installment 1',
+        amount: 50000,
+        balance: 100000,
+        mode: 'Bank Transfer',
+        cashier: 'Senior Accountant'
+      }
+    ];
+
+    const defaultHostel = {
+      blocks: {
+        BlockA: { name: 'Block A (Boys)', capacity: 100, occupied: 1 },
+        BlockB: { name: 'Block B (Girls)', capacity: 100, occupied: 0 },
+        BlockC: { name: 'Block C (Staff)', capacity: 50, occupied: 0 }
+      },
+      rooms: [
+        {
+          _id: 'room_101',
+          roomNumber: '101',
+          block: 'BlockA',
+          capacity: 4,
+          occupants: []
+        },
+        {
+          _id: 'room_204',
+          roomNumber: '204',
+          block: 'BlockA',
+          capacity: 2,
+          occupants: [
+            {
+              studentId: 'STU-1002',
+              name: 'Karan Verma',
+              course: 'BiPC',
+              rollNumber: '24BIPCA102'
+            }
+          ]
+        },
+        {
+          _id: 'room_302',
+          roomNumber: '302',
+          block: 'BlockB',
+          capacity: 2,
+          occupants: []
+        }
+      ]
+    };
+
     localStorage.setItem('jc_students', JSON.stringify(defaultStudents));
     localStorage.setItem('jc_teachers', JSON.stringify(defaultTeachers));
     localStorage.setItem('jc_fee_settings', JSON.stringify(defaultFeeSettings));
@@ -320,6 +397,8 @@ const initializeMockDB = () => {
     localStorage.setItem('jc_worker_payments', JSON.stringify(defaultWorkerPayments));
     localStorage.setItem('jc_bulletins', JSON.stringify(defaultBulletins));
     localStorage.setItem('jc_student_marks', JSON.stringify(defaultStudentMarks));
+    localStorage.setItem('jc_payments', JSON.stringify(defaultPayments));
+    localStorage.setItem('jc_hostel', JSON.stringify(defaultHostel));
     localStorage.setItem('jc_db_initialized', 'true');
   }
 };
@@ -617,6 +696,255 @@ export const apiClient = {
     // --- TIMETABLE ROUTES ---
     if (cleanPath === '/admin1/timetable') {
       return { status: 'success', data: [] } as any;
+    }
+
+    // --- ACCOUNTANT PORTAL ROUTES ---
+    if (cleanPath === '/accountant/dashboard-summary') {
+      const studentsList = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      const paymentsList = JSON.parse(localStorage.getItem('jc_payments') || '[]');
+      
+      const pendingCount = studentsList.filter((s: any) => (s.remainingBalance || 0) > 0).length;
+      const pendingAmount = studentsList.reduce((sum: number, s: any) => sum + (s.remainingBalance || 0), 0);
+      
+      const todayStr = new Date().toISOString().split('T')[0];
+      const collectionToday = paymentsList
+        .filter((p: any) => p.date && p.date.startsWith(todayStr))
+        .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+
+      return {
+        status: 'success',
+        data: {
+          collectionToday,
+          pendingCount,
+          pendingAmount,
+          absentCount: 0
+        }
+      } as any;
+    }
+
+    if (cleanPath === '/accountant/students') {
+      const studentsList = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      const paymentsList = JSON.parse(localStorage.getItem('jc_payments') || '[]');
+      const search = queryParams.get('search')?.toLowerCase() || '';
+
+      const filtered = studentsList.filter((s: any) => 
+        s.name.toLowerCase().includes(search) || 
+        s.admissionNumber.toLowerCase().includes(search) ||
+        s.studentId.toLowerCase().includes(search)
+      );
+
+      const populated = filtered.map((student: any) => {
+        const studentReceipts = paymentsList.filter((p: any) => p.studentId === student.studentId || p.student === student._id).map((p: any) => ({
+          receiptNumber: p.receiptNumber || p._id || p.id,
+          date: p.date,
+          category: p.category,
+          installment: p.installment,
+          amount: p.amount,
+          balance: p.balance,
+          mode: p.mode,
+          cashier: p.cashier || 'Senior Accountant'
+        }));
+        return { ...student, receipts: studentReceipts };
+      });
+
+      return { status: 'success', data: populated } as any;
+    }
+
+    if (cleanPath.startsWith('/accountant/students/')) {
+      const remainingPath = cleanPath.replace('/accountant/students/', '');
+      const studentsList = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      const paymentsList = JSON.parse(localStorage.getItem('jc_payments') || '[]');
+
+      if (remainingPath.endsWith('/bio')) {
+        const studentId = remainingPath.replace('/bio', '');
+        const idx = studentsList.findIndex((s: any) => s._id === studentId || s.studentId === studentId || s.admissionNumber === studentId);
+        if (idx !== -1) {
+          const student = { ...studentsList[idx], ...bodyData };
+          
+          const settings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
+          const branchSettings = settings[student.branch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
+          
+          student.hostelFee = student.hostelStatus === 'Resident' ? (branchSettings.hostel || 85000) : 0;
+          student.transportFee = student.transportStatus === 'College Bus' ? (branchSettings.transport || 15000) : 0;
+          student.remainingBalance = (student.tuitionFee + student.hostelFee + student.transportFee + student.miscellaneousFee + student.previousPending) - student.totalPaid;
+          if (student.remainingBalance < 0) student.remainingBalance = 0;
+
+          studentsList[idx] = student;
+          localStorage.setItem('jc_students', JSON.stringify(studentsList));
+          return { status: 'success', data: student } as any;
+        }
+        throw new Error('Student profile not found');
+      }
+
+      if (remainingPath.endsWith('/payments')) {
+        const studentId = remainingPath.replace('/payments', '');
+        const idx = studentsList.findIndex((s: any) => s._id === studentId || s.studentId === studentId || s.admissionNumber === studentId);
+        if (idx !== -1) {
+          const student = studentsList[idx];
+          if (method === 'GET') {
+            const studentReceipts = paymentsList.filter((p: any) => p.studentId === student.studentId || p.student === student._id).map((p: any) => ({
+              receiptNumber: p.receiptNumber || p._id || p.id,
+              date: p.date,
+              category: p.category,
+              installment: p.installment,
+              amount: p.amount,
+              balance: p.balance,
+              mode: p.mode,
+              cashier: p.cashier || 'Senior Accountant'
+            }));
+            return { status: 'success', data: studentReceipts } as any;
+          }
+          if (method === 'POST') {
+            const amountPaid = Number(bodyData.amount);
+            student.totalPaid = (student.totalPaid || 0) + amountPaid;
+            student.remainingBalance = (student.tuitionFee + student.hostelFee + student.transportFee + student.miscellaneousFee + student.previousPending) - student.totalPaid;
+            if (student.remainingBalance < 0) student.remainingBalance = 0;
+
+            const receiptNo = `REC-5${Math.floor(Math.random() * 90000 + 10000)}`;
+            const newPayment = {
+              _id: `PAY-${Date.now()}`,
+              receiptNumber: receiptNo,
+              studentId: student.studentId,
+              student: student._id,
+              date: bodyData.date || new Date().toISOString(),
+              category: bodyData.category || 'Academic Fee',
+              installment: bodyData.installment || 'Installment',
+              amount: amountPaid,
+              balance: student.remainingBalance,
+              mode: bodyData.mode || 'Cash',
+              cashier: 'Senior Accountant'
+            };
+
+            paymentsList.push(newPayment);
+            localStorage.setItem('jc_payments', JSON.stringify(paymentsList));
+            
+            studentsList[idx] = student;
+            localStorage.setItem('jc_students', JSON.stringify(studentsList));
+
+            return { status: 'success', data: { payment: newPayment, student: student } } as any;
+          }
+        }
+        throw new Error('Student profile not found');
+      }
+
+      const studentId = remainingPath;
+      const idx = studentsList.findIndex((s: any) => s._id === studentId || s.studentId === studentId || s.admissionNumber === studentId);
+      if (idx !== -1) {
+        const student = studentsList[idx];
+        const studentReceipts = paymentsList.filter((p: any) => p.studentId === student.studentId || p.student === student._id).map((p: any) => ({
+          receiptNumber: p.receiptNumber || p._id || p.id,
+          date: p.date,
+          category: p.category,
+          installment: p.installment,
+          amount: p.amount,
+          balance: p.balance,
+          mode: p.mode,
+          cashier: p.cashier || 'Senior Accountant'
+        }));
+        return { status: 'success', data: { ...student, receipts: studentReceipts } } as any;
+      }
+      throw new Error('Student profile not found');
+    }
+
+    if (cleanPath === '/accountant/hostel') {
+      const hostelData = JSON.parse(localStorage.getItem('jc_hostel') || '{}');
+      return { status: 'success', data: hostelData } as any;
+    }
+
+    if (cleanPath.startsWith('/accountant/hostel/')) {
+      const roomId = cleanPath.split('/').pop();
+      const hostelData = JSON.parse(localStorage.getItem('jc_hostel') || '{}');
+      const studentsList = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      const targetStudentId = bodyData.studentId;
+
+      const roomIdx = hostelData.rooms.findIndex((r: any) => r._id === roomId || r.roomNumber === roomId);
+      const studentIdx = studentsList.findIndex((s: any) => s._id === targetStudentId || s.studentId === targetStudentId);
+
+      if (roomIdx !== -1 && studentIdx !== -1) {
+        const student = studentsList[studentIdx];
+        const room = hostelData.rooms[roomIdx];
+
+        student.hostelStatus = 'Resident';
+        student.hostelBlock = room.block;
+        student.hostelRoom = room.roomNumber;
+        
+        const settings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
+        const branchSettings = settings[student.branch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
+        student.hostelFee = branchSettings.hostel || 85000;
+        student.remainingBalance = (student.tuitionFee + student.hostelFee + student.transportFee + student.miscellaneousFee + student.previousPending) - student.totalPaid;
+        if (student.remainingBalance < 0) student.remainingBalance = 0;
+
+        room.occupants.push({
+          studentId: student.studentId,
+          name: student.name,
+          course: student.course,
+          rollNumber: student.rollNumber
+        });
+
+        hostelData.blocks[room.block].occupied = (hostelData.blocks[room.block].occupied || 0) + 1;
+        localStorage.setItem('jc_hostel', JSON.stringify(hostelData));
+
+        studentsList[studentIdx] = student;
+        localStorage.setItem('jc_students', JSON.stringify(studentsList));
+
+        return { status: 'success', data: { student, room } } as any;
+      }
+      throw new Error('Hostel room or student profile not found');
+    }
+
+    if (cleanPath === '/accountant/late-fees-settings') {
+      const settings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
+      const defaultBranch = 'Erragattugutta C1';
+      if (method === 'GET') {
+        return { status: 'success', data: { lateFeeRules: settings[defaultBranch]?.lateFeeRules || '₹100 per day after due date' } } as any;
+      }
+      if (method === 'PATCH') {
+        if (!settings[defaultBranch]) settings[defaultBranch] = { branch: defaultBranch };
+        settings[defaultBranch].lateFeeRules = bodyData.lateFeeRules;
+        localStorage.setItem('jc_fee_settings', JSON.stringify(settings));
+        return { status: 'success', data: { lateFeeRules: bodyData.lateFeeRules } } as any;
+      }
+    }
+
+    if (cleanPath === '/accountant/scholarships') {
+      const settings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
+      const defaultBranch = 'Erragattugutta C1';
+      if (method === 'GET') {
+        return { status: 'success', data: { scholarshipRules: settings[defaultBranch]?.scholarshipRules || 'Merit: 50% waiver, Sports: 30% waiver' } } as any;
+      }
+      if (method === 'PATCH') {
+        if (!settings[defaultBranch]) settings[defaultBranch] = { branch: defaultBranch };
+        settings[defaultBranch].scholarshipRules = bodyData.scholarshipRules;
+        localStorage.setItem('jc_fee_settings', JSON.stringify(settings));
+        return { status: 'success', data: { scholarshipRules: bodyData.scholarshipRules } } as any;
+      }
+    }
+
+    if (cleanPath === '/accountant/attendance') {
+      const date = queryParams.get('date') || new Date().toISOString().split('T')[0];
+      const attendanceDB = JSON.parse(localStorage.getItem('jc_attendance') || '{}');
+      const studentsList = JSON.parse(localStorage.getItem('jc_students') || '[]');
+
+      if (method === 'GET') {
+        const savedRecords = attendanceDB[date] || [];
+        const roster = studentsList.map((s: any) => {
+          const match = savedRecords.find((r: any) => r.id === s.studentId);
+          return {
+            id: s.studentId,
+            name: s.name,
+            type: 'student',
+            section: s.section,
+            status: match ? match.status : 'present'
+          };
+        });
+        return { status: 'success', data: roster } as any;
+      }
+
+      if (method === 'POST') {
+        attendanceDB[date] = bodyData.records;
+        localStorage.setItem('jc_attendance', JSON.stringify(attendanceDB));
+        return { status: 'success', message: 'Attendance records compiled and saved.' } as any;
+      }
     }
 
     // DEFAULT FALLBACK FOR GENERAL INTERCEPT
