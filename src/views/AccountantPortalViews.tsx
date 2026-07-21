@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -249,6 +250,9 @@ const escapeHtml = (value: string | number | null | undefined) =>
     .replace(/'/g, '&#39;');
 
 export const AccountantDashboardView: React.FC = () => {
+  const { user } = useNavigation();
+  const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Eragattur 1';
+
   const [isLoading, setIsLoading] = useState(true);
   const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'attendance' | 'reports' | 'late_fees' | 'scholarships' | 'profile' | 'hostel'>('menu');
   const [students, setStudents] = useState<Student[]>([]);
@@ -466,7 +470,15 @@ export const AccountantDashboardView: React.FC = () => {
   }, [allocateBlock, roomsList]);
 
   const triggerToast = (msg: string) => {
-    setToastMessage(msg);
+    const isError = msg.toLowerCase().includes('rejected') || 
+                    msg.toLowerCase().includes('failed') || 
+                    msg.toLowerCase().includes('denied') || 
+                    msg.toLowerCase().includes('invalid') || 
+                    msg.toLowerCase().includes('not found') || 
+                    msg.toLowerCase().includes('error') ||
+                    msg.toLowerCase().includes('incorrect');
+    const symbol = isError ? '❌ ' : '✓ ';
+    setToastMessage(symbol + msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
@@ -657,12 +669,54 @@ export const AccountantDashboardView: React.FC = () => {
     }
   };
 
+  const handleCheckoutRoom = async () => {
+    if (!selectedStudent || !selectedStudent._id) {
+      triggerToast('Select a student first.');
+      return;
+    }
+    if (!securityKey) {
+      triggerToast('Authenticator security key is required.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await accountantService.checkoutStudent(selectedStudent._id, securityKey);
+      triggerToast('Student checked out from hostel room successfully!');
+      fetchHostelData();
+      setSelectedStudent(res.student as any);
+      setEditStudent({ ...res.student } as any);
+      setStudents(prev => prev.map(s => s._id === res.student._id ? (res.student as any) : s));
+      setSecurityKey('');
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to check out student.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDownloadPDF = (receipt: Receipt, student: Student) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       triggerToast('Popup blocked by browser.');
       return;
     }
+
+    const totalFee = (student.tuitionFee || 0) + (student.hostelFee || 0) + (student.transportFee || 0) + (student.miscellaneousFee || 0) + (student.previousPending || 0);
+    const paidFee = student.totalPaid || 0;
+    const remainingFee = student.remainingBalance || 0;
+    const paidPct = totalFee > 0 ? (paidFee / totalFee) * 100 : 0;
+    const remainingPct = totalFee > 0 ? (remainingFee / totalFee) * 100 : 0;
+    
+    const svgChartHtml = `
+      <svg width="100%" height="64" viewBox="0 0 400 64" xmlns="http://www.w3.org/2000/svg" style="font-family: sans-serif; background: #fffdf8; border: 1.2px solid #EADFBF; border-radius: 10px; padding: 6px; box-sizing: border-box; margin-top: 6px;">
+        <text x="10" y="12" font-size="8" font-weight="900" fill="#8B6A14" letter-spacing="0.08em">FEE PROGRESS PROFILE</text>
+        <rect x="10" y="20" width="380" height="10" rx="5" fill="#cbd5e1" />
+        <rect x="10" y="20" width="${380 * (paidFee / (totalFee || 1))}" height="10" rx="5" fill="#10B981" />
+        <text x="10" y="46" font-size="9" font-weight="800" fill="#10B981">Paid: ₹${paidFee.toLocaleString('en-IN')} (${paidPct.toFixed(0)}%)</text>
+        <text x="180" y="46" font-size="9" font-weight="800" fill="#D97706">Due: ₹${remainingFee.toLocaleString('en-IN')} (${remainingPct.toFixed(0)}%)</text>
+        <text x="390" y="12" font-size="9" font-weight="900" fill="#475569" text-anchor="end">Total: ₹${totalFee.toLocaleString('en-IN')}</text>
+      </svg>
+    `;
 
     const receiptWords = numberToReceiptWords(receipt.amount);
     const studentClass = student.course || student.branch || 'Junior College';
@@ -759,6 +813,7 @@ export const AccountantDashboardView: React.FC = () => {
                 <div class="field"><span class="label">Mobile</span><span class="value">${escapeHtml(student.mobile)}</span></div>
                 <div class="field"><span class="label">Admission No.</span><span class="value">${escapeHtml(student.admissionNumber)}</span></div>
               </div>
+              \${svgChartHtml}
             </div>
             <div class="amount-wrap">
               <div class="amount-box">
@@ -842,6 +897,7 @@ export const AccountantDashboardView: React.FC = () => {
                 <div class="field"><span class="label">Mobile</span><span class="value">${escapeHtml(student.mobile)}</span></div>
                 <div class="field"><span class="label">Admission No.</span><span class="value">${escapeHtml(student.admissionNumber)}</span></div>
               </div>
+              \${svgChartHtml}
             </div>
             <div class="amount-wrap">
               <div class="amount-box">
@@ -1847,7 +1903,27 @@ export const AccountantDashboardView: React.FC = () => {
                   </div>
 
                   {/* EXPLICIT SUBMIT CHANGES BUTTON */}
-                  <button onClick={handleAllocateRoom} style={styles.saveSubmitBtn} className="press-interactive">Submit Room Allocation changes</button>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+                    <button onClick={handleAllocateRoom} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1 }} className="press-interactive">
+                      {selectedStudent.hostelStatus === 'Resident' ? 'Transfer / Update Room' : 'Allocate Room'}
+                    </button>
+                    {selectedStudent.hostelStatus === 'Resident' && (
+                      <button 
+                        onClick={handleCheckoutRoom} 
+                        style={{ 
+                          ...styles.saveSubmitBtn, 
+                          marginTop: 0, 
+                          flex: 1, 
+                          backgroundColor: 'rgba(239,68,68,0.06)', 
+                          border: '2px solid rgba(239,68,68,0.4)', 
+                          color: '#EF4444' 
+                        }} 
+                        className="press-interactive"
+                      >
+                        Check-out Student
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1936,12 +2012,12 @@ export const AccountantDashboardView: React.FC = () => {
         <main style={styles.content}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }}>
             <GlassCard hoverable={false} style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.45)' }}>
-              <div style={styles.heroAvatar}>VN</div>
-              <h3 style={{ ...styles.studentName, marginTop: '12px' }}>Venkatesh M.</h3>
-              <span style={styles.studentID}>Role: Senior Accountant & Bursar</span>
+              <div style={styles.heroAvatar}>{user?.name ? user.name.split(' ').map((n: any) => n[0]).join('').toUpperCase().slice(0, 2) : 'VN'}</div>
+              <h3 style={{ ...styles.studentName, marginTop: '12px' }}>{user?.name || 'Venkatesh M.'}</h3>
+              <span style={styles.studentID}>Role: Accountant ({loggedInCampus})</span>
               <div style={styles.heroLineDivider} />
               <div style={styles.heroMetaGrid}>
-                <div style={styles.metaRow}><span>Active ERP Registry</span><strong>Inspire Junior Campus</strong></div>
+                <div style={styles.metaRow}><span>Active ERP Registry</span><strong>{user?.campus ? `Inspire ${user.campus} Campus` : 'Inspire Junior Campus'}</strong></div>
                 <div style={styles.metaRow}><span>Academic Year</span><strong>{settings.academicYear}</strong></div>
                 <div style={styles.metaRow}><span>Installment Terms</span><strong>{settings.installments}</strong></div>
               </div>
@@ -1961,10 +2037,10 @@ export const AccountantDashboardView: React.FC = () => {
       <header style={styles.header}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', zIndex: 1 }}>
           <div style={styles.parentWelcomeRow}>
-            <div style={styles.avatarMini}>VN</div>
+            <div style={styles.avatarMini}>{user?.name ? user.name.split(' ').map((n: any) => n[0]).join('').toUpperCase().slice(0, 2) : 'VN'}</div>
             <div>
-              <span style={styles.greetingText}>Inspire ERP Control,</span>
-              <h2 style={styles.parentWelcomeTitle}>Accountant Console</h2>
+              <span style={styles.greetingText}>Inspire ERP Control, ({loggedInCampus})</span>
+              <h2 style={styles.parentWelcomeTitle}>{user?.name || 'Venkatesh M.'}</h2>
               <p style={styles.childMetaText}>Bursar Ledger Terminal</p>
             </div>
           </div>

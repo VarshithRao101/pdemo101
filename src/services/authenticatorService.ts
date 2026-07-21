@@ -18,13 +18,16 @@ export interface BackupCodeInfo {
 export interface AccountInfo {
   _id: string;
   username: string;
-  role: 'admin1' | 'admin2' | 'admin3' | 'accountant';
+  role: 'admin1' | 'admin2' | 'admin3' | 'accountant' | 'authenticator';
   backupCode?: string;
   usedBackupCodes?: string[];
   name?: string;
   email?: string;
   mobile?: string;
   department?: string;
+  address?: string;
+  campus?: string;
+  password?: string;
 }
 
 export interface AuthenticatorStats {
@@ -60,13 +63,13 @@ export const authenticatorService = {
   },
 
   // Create account
-  async createAccount(body: { username: string; role: string; password: string; name?: string; email?: string; mobile?: string; department?: string }): Promise<AccountInfo> {
+  async createAccount(body: Partial<AccountInfo>): Promise<AccountInfo> {
     const res = await apiClient.post<{ status: string; data: AccountInfo }>('/authenticator/accounts', body);
     return res.data;
   },
 
   // Update account
-  async updateAccount(id: string, body: { username?: string; name?: string; email?: string; mobile?: string; department?: string }): Promise<AccountInfo> {
+  async updateAccount(id: string, body: Partial<AccountInfo>): Promise<AccountInfo> {
     const res = await apiClient.put<{ status: string; data: AccountInfo }>(`/authenticator/accounts/${id}`, body);
     return res.data;
   },

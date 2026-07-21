@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -189,6 +190,9 @@ interface ExamItem {
 
 // ─── ADMIN DASHBOARD CONTROLLER ───
 export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3' }> = ({ role = 'admin1' }) => {
+  const { user } = useNavigation();
+  const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Eragattur 1';
+
   const [isLoading, setIsLoading] = useState(true);
   const [activePage, setActivePage] = useState<string>('menu');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -208,7 +212,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   // Students Registry States
   const [newStuName, setNewStuName] = useState('');
   const [newStuCourse, setNewStuCourse] = useState('MPC');
-  const [newStuBranch, setNewStuBranch] = useState('Erragattugutta C1');
+  const [newStuBranch, setNewStuBranch] = useState(loggedInCampus);
   const [newStuFather, setNewStuFather] = useState('');
   const [newStuMobile, setNewStuMobile] = useState('');
 
@@ -220,7 +224,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [newFacName, setNewFacName] = useState('');
   const [newFacSub, setNewFacSub] = useState('Physics');
   const [newFacSal, setNewFacSal] = useState('');
-  const [newFacBranch, setNewFacBranch] = useState('Erragattugutta C1');
+  const [newFacBranch, setNewFacBranch] = useState(loggedInCampus);
   const [newFacMobile, setNewFacMobile] = useState('');
   const [filterFacCampus, setFilterFacCampus] = useState('All');
   const [filterFacSubject, setFilterFacSubject] = useState('All');
@@ -250,7 +254,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     misc: 0,
     isLocked: false
   });
-  const [selectedFeeBranch, setSelectedFeeBranch] = useState<'Erragattugutta C1' | 'Erragattugutta C2' | 'Beemaram C1' | 'Beemaram C2'>('Erragattugutta C1');
+  const [selectedFeeBranch, setSelectedFeeBranch] = useState<'Eragattur 1' | 'Eragattur 2' | 'Indbimar 1' | 'Bhimaram 2'>(loggedInCampus as any);
   const [isEditingFees, setIsEditingFees] = useState(false);
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [otpInput, setOtpInput] = useState('');
@@ -297,7 +301,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   // --- ADMIN 2 FINANCE & Overheads States ---
   const [expenditures, setExpenditures] = useState<ExpenditureItem[]>([]);
-  const [selectedExpBranch, setSelectedExpBranch] = useState<'Erragattugutta C1' | 'Erragattugutta C2' | 'Beemaram C1' | 'Beemaram C2'>('Erragattugutta C1');
+  const [selectedExpBranch, setSelectedExpBranch] = useState<'Eragattur 1' | 'Eragattur 2' | 'Indbimar 1' | 'Bhimaram 2'>(loggedInCampus as any);
   const [newExpCat, setNewExpCat] = useState('Utilities');
   const [newExpAmt, setNewExpAmt] = useState('');
   const [newExpDesc, setNewExpDesc] = useState('');
@@ -319,6 +323,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [acadFeeOtpInput, setAcadFeeOtpInput] = useState('');
   const [isExpOtpOpen, setIsExpOtpOpen] = useState(false);
   const [expOtpInput, setExpOtpInput] = useState('');
+  const [isWorkerOtpOpen, setIsWorkerOtpOpen] = useState(false);
+  const [workerOtpInput, setWorkerOtpInput] = useState('');
+  const [workerPendingAction, setWorkerPendingAction] = useState<any>(null);
+
+  useEffect(() => {
+    if (user?.campus && user.campus !== 'All') {
+      setSelectedFeeBranch(user.campus as any);
+      setSelectedExpBranch(user.campus as any);
+      setNewStuBranch(user.campus);
+      setNewFacBranch(user.campus);
+    }
+  }, [user, loggedInCampus]);
 
   // ── Admin2 Live Wiring State ──
   const [feeBreakdownData, setFeeBreakdownData] = useState<any>(null);
@@ -675,7 +691,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   }, [activePage, timetableSection, attendanceDate]);
 
   const triggerToast = (msg: string) => {
-    setToastMessage(msg);
+    const isError = msg.toLowerCase().includes('rejected') || 
+                    msg.toLowerCase().includes('failed') || 
+                    msg.toLowerCase().includes('denied') || 
+                    msg.toLowerCase().includes('invalid') || 
+                    msg.toLowerCase().includes('not found') || 
+                    msg.toLowerCase().includes('error') ||
+                    msg.toLowerCase().includes('incorrect');
+    const symbol = isError ? '❌ ' : '✓ ';
+    setToastMessage(symbol + msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
@@ -688,7 +712,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     }
     const match = students.find(s => s.admissionNumber.toUpperCase().trim() === searchAdm.toUpperCase().trim() || s.registrationNumber.toUpperCase().trim() === searchAdm.toUpperCase().trim());
     if (match) {
-      if (role !== 'admin1' && match.branch !== 'Erragattugutta C1') {
+      if (role !== 'admin1' && match.branch !== loggedInCampus) {
         triggerToast('Access Denied: Student belongs to another branch.');
         return;
       }
@@ -1150,10 +1174,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       onChange={(e) => setEditStudent({ ...editStudent, branch: e.target.value })}
                       style={styles.selectInput}
                     >
-                      <option value="Erragattugutta C1">Erragattugutta Campus 1</option>
-                      <option value="Erragattugutta C2">Erragattugutta Campus 2</option>
-                      <option value="Beemaram C1">Beemaram Campus 1</option>
-                      <option value="Beemaram C2">Beemaram Campus 2</option>
+                      <option value="Eragattur 1">Eragattur Campus 1</option>
+                      <option value="Eragattur 2">Eragattur Campus 2</option>
+                      <option value="Indbimar 1">Indbimar Campus 1</option>
+                      <option value="Bhimaram 2">Bhimaram Campus 2</option>
                     </select>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
@@ -1216,10 +1240,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                     <label style={styles.formLabel}>Select Campus</label>
                     <select value={newStuBranch} onChange={(e) => setNewStuBranch(e.target.value)} style={styles.selectInput}>
-                      <option value="Erragattugutta C1">Erragattugutta Campus 1</option>
-                      <option value="Erragattugutta C2">Erragattugutta Campus 2</option>
-                      <option value="Beemaram C1">Beemaram Campus 1</option>
-                      <option value="Beemaram C2">Beemaram Campus 2</option>
+                      <option value="Eragattur 1">Eragattur Campus 1</option>
+                      <option value="Eragattur 2">Eragattur Campus 2</option>
+                      <option value="Indbimar 1">Indbimar Campus 1</option>
+                      <option value="Bhimaram 2">Bhimaram Campus 2</option>
                     </select>
                   </div>
                 </div>
@@ -1238,7 +1262,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     const list = teachers
       .filter(t => {
         // Role filters
-        if (role === 'admin2' && t.branch !== 'Erragattugutta C1') return false;
+        if (role === 'admin2' && t.branch !== loggedInCampus) return false;
         // Search filter
         const matchSearch = t.name.toLowerCase().includes(searchFac.toLowerCase()) || t.subject.toLowerCase().includes(searchFac.toLowerCase());
         if (!matchSearch) return false;
@@ -1277,7 +1301,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 setNewFacName('');
                 setNewFacSal('');
                 setNewFacMobile('');
-                setNewFacBranch(role === 'admin2' ? 'Erragattugutta C1' : 'Erragattugutta C1');
+                setNewFacBranch(loggedInCampus);
                 setNewFacSub('Physics');
                 setIsAddTeacherModalOpen(true);
               }}
@@ -1298,10 +1322,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   style={styles.selectInput}
                 >
                   <option value="All">All Campuses</option>
-                  <option value="Erragattugutta C1">Erragattugutta Campus 1</option>
-                  <option value="Erragattugutta C2">Erragattugutta Campus 2</option>
-                  <option value="Beemaram C1">Beemaram Campus 1</option>
-                  <option value="Beemaram C2">Beemaram Campus 2</option>
+                  <option value="Eragattur 1">Eragattur Campus 1</option>
+                  <option value="Eragattur 2">Eragattur Campus 2</option>
+                  <option value="Indbimar 1">Indbimar Campus 1</option>
+                  <option value="Bhimaram 2">Bhimaram Campus 2</option>
                 </select>
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -1354,7 +1378,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           </div>
 
           {/* EDIT HOVER DETAILS MODAL */}
-          {selectedTeacher && editTeacher && !isFacOtpModalOpen && (
+          {selectedTeacher && editTeacher && (
             <div style={styles.overlayOverlay}>
               <div style={styles.overlaySheet}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
@@ -1387,10 +1411,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                         onChange={(e) => setEditTeacher({ ...editTeacher, branch: e.target.value })}
                         style={styles.selectInput}
                       >
-                        <option value="Erragattugutta C1">Erragattugutta Campus 1</option>
-                        <option value="Erragattugutta C2">Erragattugutta Campus 2</option>
-                        <option value="Beemaram C1">Beemaram Campus 1</option>
-                        <option value="Beemaram C2">Beemaram Campus 2</option>
+                        <option value="Eragattur 1">Eragattur Campus 1</option>
+                        <option value="Eragattur 2">Eragattur Campus 2</option>
+                        <option value="Indbimar 1">Indbimar Campus 1</option>
+                        <option value="Bhimaram 2">Bhimaram Campus 2</option>
                       </select>
                     </div>
 
@@ -1445,7 +1469,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           )}
 
           {/* ADD FACULTY HOVER MODAL */}
-          {isAddTeacherModalOpen && !isFacOtpModalOpen && (
+          {isAddTeacherModalOpen && (
             <div style={styles.overlayOverlay}>
               <div style={styles.overlaySheet}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
@@ -1479,10 +1503,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                         onChange={(e) => setNewFacBranch(e.target.value)}
                         style={styles.selectInput}
                       >
-                        <option value="Erragattugutta C1">Erragattugutta Campus 1</option>
-                        <option value="Erragattugutta C2">Erragattugutta Campus 2</option>
-                        <option value="Beemaram C1">Beemaram Campus 1</option>
-                        <option value="Beemaram C2">Beemaram Campus 2</option>
+                        <option value="Eragattur 1">Eragattur Campus 1</option>
+                        <option value="Eragattur 2">Eragattur Campus 2</option>
+                        <option value="Indbimar 1">Indbimar Campus 1</option>
+                        <option value="Bhimaram 2">Bhimaram Campus 2</option>
                       </select>
                     </div>
 
@@ -2154,7 +2178,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         <main style={styles.content}>
           {role === 'admin1' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', zIndex: 1 }}>
-              {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(b => {
+              {['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'].map(b => {
                 const isActive = selectedFeeBranch === b;
                 return (
                   <div
@@ -2194,16 +2218,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 <div key={fee.key} style={{ display: 'flex', alignItems: 'center', padding: '14px 4px', borderBottom: idx < feeBarItems.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none', gap: '12px' }}>
                   <span style={{ fontSize: '20px', width: '32px', textAlign: 'center', flexShrink: 0 }}>{fee.icon}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {locked ? (
-                      <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--dark-charcoal)' }}>{fee.label}</span>
-                    ) : (
-                      <input
-                        type="text"
-                        value={fee.label}
-                        readOnly
-                        style={{ ...styles.textInputBox, padding: '8px 10px', fontSize: '13px', fontWeight: 700, border: '1.5px solid rgba(212,175,55,0.2)', cursor: 'default', backgroundColor: 'transparent' }}
-                      />
-                    )}
+                    <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--dark-charcoal)' }}>{fee.label}</span>
                   </div>
                   <div style={{ width: '140px', flexShrink: 0 }}>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -2214,7 +2229,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                         disabled={locked}
                         value={fee.value}
                         onChange={(e) => fee.setter(parseFloat(e.target.value) || 0)}
-                        style={{ ...styles.textInputBox, paddingLeft: '24px', textAlign: 'right', fontWeight: 800, fontSize: '14px', opacity: locked ? 0.65 : 1, borderColor: locked ? 'rgba(0,0,0,0.1)' : 'rgba(212,175,55,0.4)' }}
+                        style={{ ...styles.textInputBox, width: '100%', paddingLeft: '24px', textAlign: 'right', fontWeight: 800, fontSize: '14px', opacity: locked ? 0.65 : 1, borderColor: locked ? 'rgba(0,0,0,0.1)' : 'rgba(212,175,55,0.4)' }}
                       />
                     </div>
                   </div>
@@ -2720,6 +2735,132 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       } catch (err: any) { triggerToast(err.message || 'Failed to delete expenditure.'); }
     };
 
+    const handleDownloadExpenditureReport = () => {
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        triggerToast('Popup blocked by browser.');
+        return;
+      }
+
+      const campus = role === 'admin1' ? selectedExpBranch : loggedInCampus;
+      const list = role === 'admin1'
+        ? expenditures.filter(e => e.branch === selectedExpBranch)
+        : expenditures.filter(e => e.branch === loggedInCampus);
+
+      const catTotals: { [key: string]: number } = {};
+      let total = 0;
+      list.forEach(e => {
+        catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
+        total += e.amount;
+      });
+
+      const categories = Object.keys(catTotals);
+      let svgBars = '';
+      categories.forEach((cat, index) => {
+        const amt = catTotals[cat];
+        const width = total > 0 ? (amt / total) * 270 : 0;
+        const y = 30 + index * 24;
+        
+        svgBars += `
+          <text x="10" y="${y + 12}" font-size="9" font-weight="bold" fill="#475569">${cat}</text>
+          <rect x="90" y="${y}" width="280" height="14" rx="4" fill="#cbd5e1" />
+          <rect x="90" y="${y}" width="${width}" height="14" rx="4" fill="#0D9488" />
+          <text x="${95 + width}" y="${y + 11}" font-size="8.5" font-weight="bold" fill="#0D9488">₹${amt.toLocaleString('en-IN')}</text>
+        `;
+      });
+
+      const chartHeight = 40 + categories.length * 24;
+      const svgChart = `
+        <svg width="100%" height="${chartHeight}" viewBox="0 0 400 ${chartHeight}" xmlns="http://www.w3.org/2000/svg" style="font-family: sans-serif; background: #fafafa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+          <text x="10" y="18" font-size="11" font-weight="bold" fill="#0F766E">CAMPUS EXPENDITURES BY CATEGORY</text>
+          ${svgBars}
+        </svg>
+      `;
+
+      const reportHtml = `
+        <html>
+        <head>
+          <title>Expenditure Report — ${campus}</title>
+          <style>
+            @page { size: A4; margin: 20mm; }
+            body { font-family: Inter, ui-sans-serif, sans-serif; color: #1E293B; margin: 0; padding: 0; background: #ffffff; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0D9488; padding-bottom: 12px; margin-bottom: 20px; }
+            .brand-name { font-size: 18px; font-weight: 900; color: #0F766E; text-transform: uppercase; }
+            .brand-sub { font-size: 10px; color: #64748B; margin-top: 2px; }
+            .report-title { font-size: 16px; font-weight: 800; text-align: right; }
+            .report-meta { font-size: 10px; color: #64748B; text-align: right; margin-top: 4px; }
+            .chart-container { margin: 20px 0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border-bottom: 1px solid #E2E8F0; padding: 8px 10px; text-align: left; }
+            th { background: #F1F5F9; color: #0F766E; font-size: 9px; text-transform: uppercase; font-weight: 800; }
+            td { font-size: 11px; }
+            .total-row { font-weight: 800; background: #F8FAFC; border-top: 2px solid #0D9488; }
+            .no-print { text-align: right; margin-bottom: 10px; }
+            .print-btn { padding: 8px 16px; background: #0D9488; border: none; border-radius: 6px; color: #fff; font-weight: 700; cursor: pointer; }
+            @media print {
+              .no-print { display: none !important; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="no-print">
+            <button onclick="window.print()" class="print-btn">Print Report</button>
+          </div>
+          <div class="header">
+            <div>
+              <div class="brand-name">Inspire Group of Colleges</div>
+              <div class="brand-sub">Campus: ${campus} • Expenditure Audit System</div>
+            </div>
+            <div>
+              <div class="report-title">Expenditure Summary Report</div>
+              <div class="report-meta">Generated on: ${new Date().toLocaleDateString('en-GB')}</div>
+            </div>
+          </div>
+
+          <div class="chart-container">
+            ${list.length > 0 ? svgChart : '<div style="padding: 20px; text-align: center; color: #64748B;">No category chart data.</div>'}
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th style="text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(e => `
+                <tr>
+                  <td>${typeof e.date === 'string' ? e.date.split('T')[0] : e.date}</td>
+                  <td>${e.category}</td>
+                  <td>${e.description}</td>
+                  <td style="text-align: right;">₹${e.amount.toLocaleString('en-IN')}</td>
+                </tr>
+              `).join('')}
+              <tr class="total-row">
+                <td colspan="3">Grand Total</td>
+                <td style="text-align: right;">₹${total.toLocaleString('en-IN')}</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <script>
+            window.addEventListener('load', function () {
+              setTimeout(function () {
+                window.print();
+              }, 250);
+            });
+          </script>
+        </body>
+        </html>
+      `;
+      printWindow.document.write(reportHtml);
+      printWindow.document.close();
+      printWindow.focus();
+    };
+
     const handleDownloadBill = (exp: ExpenditureItem) => {
       const dateStr = typeof exp.date === 'string' ? exp.date.split('T')[0] : String(exp.date || '');
       const html = `<!DOCTYPE html>
@@ -2795,7 +2936,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     // Filter recent entries based on role
     const filteredExpenditures = role === 'admin1'
       ? expenditures.filter(e => e.branch === selectedExpBranch)
-      : expenditures.filter(e => e.branch === 'Erragattugutta C1');
+      : expenditures.filter(e => e.branch === loggedInCampus);
 
     const totalFiltered = filteredExpenditures.reduce((s, e) => s + e.amount, 0);
 
@@ -2813,7 +2954,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           {/* Admin 1 Branch Overview Cards */}
           {role === 'admin1' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px', zIndex: 1 }}>
-              {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(b => {
+              {['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'].map(b => {
                 const total = getBranchTotal(b);
                 const isActive = selectedExpBranch === b;
                 return (
@@ -2829,7 +2970,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           {/* Log form */}
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>
-              Log New Expenditure {role === 'admin1' ? `(For ${selectedExpBranch})` : `(Campus: Erragattugutta C1)`}
+              Log New Expenditure {role === 'admin1' ? `(For ${selectedExpBranch})` : `(Campus: ${loggedInCampus})`}
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -2854,9 +2995,28 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
           {/* Recent entries */}
           <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
-            <h4 style={styles.sectionSubtitle}>
-              Recent Entries {role === 'admin1' ? `(${selectedExpBranch})` : '(Erragattugutta C1)'} — Total: ₹{totalFiltered.toLocaleString('en-IN')}
-            </h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>
+                Recent Entries {role === 'admin1' ? `(${selectedExpBranch})` : `(${loggedInCampus})`} — Total: ₹{totalFiltered.toLocaleString('en-IN')}
+              </h4>
+              <button 
+                onClick={handleDownloadExpenditureReport} 
+                style={{ 
+                  padding: '6px 12px', 
+                  borderRadius: '8px', 
+                  border: '2px solid rgba(13,148,136,0.3)', 
+                  backgroundColor: 'rgba(13,148,136,0.08)', 
+                  color: '#0D9488', 
+                  fontWeight: 800, 
+                  fontSize: '11px', 
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-family)'
+                }} 
+                className="press-interactive"
+              >
+                Download PDF Report
+              </button>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
               {filteredExpenditures.length === 0 ? (
                 <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '12px' }}>No expenditure entries logged for this branch.</div>
@@ -2976,38 +3136,50 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   // ─── SUBPAGE 16: WORKER PAYMENT DETAILS (Admin 2) ───
   if (activePage === 'worker_payments') {
-    const handleAddWorker = async () => {
-      if (!newWorkerName || !newWorkerRole || !newWorkerWage) { triggerToast('Please fill in name, role and wage.'); return; }
-      try {
-        setGlobalSecurityKey(securityKey);
-        const saved = await admin2Service.createWorkerPayment({ workerName: newWorkerName, role: newWorkerRole, amount: Number(newWorkerWage), monthPeriod: newWorkerPeriod, paid: false });
-        const mapped = { ...saved, name: saved.workerName, salary: saved.amount, id: saved._id };
-        setWorkers([mapped, ...workers]);
-        setNewWorkerName(''); setNewWorkerRole(''); setNewWorkerWage('');
-        triggerToast('Worker entry added.');
-        setSecurityKey('');
-      } catch (err: any) { triggerToast(err.message || 'Failed to add worker.'); }
+    const triggerWorkerAction = (actionType: 'add' | 'toggle' | 'delete', data: any) => {
+      if (actionType === 'add' && (!newWorkerName || !newWorkerRole || !newWorkerWage)) {
+        triggerToast('Please fill in name, role and wage.');
+        return;
+      }
+      setWorkerPendingAction({ type: actionType, data });
+      setWorkerOtpInput('');
+      setIsWorkerOtpOpen(true);
     };
-    const handleToggleWorker = async (w: any) => {
-      if (!w._id) return;
+
+    const confirmWorkerAction = async () => {
+      if (!workerPendingAction) return;
+      const { type, data } = workerPendingAction;
       try {
-        setGlobalSecurityKey(securityKey);
-        const updated = await admin2Service.updateWorkerPayment(w._id, { paid: !w.paid });
-        setWorkers(workers.map(ww => ww._id === w._id ? { ...updated, name: updated.workerName, salary: updated.amount, id: updated._id } : ww));
-        triggerToast(`${w.workerName || w.name} marked ${!w.paid ? 'Paid' : 'Pending'}.`);
-        setSecurityKey('');
-      } catch (err: any) { triggerToast(err.message || 'Failed to update.'); }
+        setGlobalSecurityKey(workerOtpInput);
+        if (type === 'add') {
+          const saved = await admin2Service.createWorkerPayment({
+            workerName: data.name,
+            role: data.role,
+            amount: Number(data.wage),
+            monthPeriod: data.period,
+            paid: false
+          });
+          const mapped = { ...saved, name: saved.workerName, salary: saved.amount, id: saved._id };
+          setWorkers([mapped, ...workers]);
+          setNewWorkerName(''); setNewWorkerRole(''); setNewWorkerWage('');
+          triggerToast('Worker entry added.');
+        } else if (type === 'toggle') {
+          const updated = await admin2Service.updateWorkerPayment(data._id, { paid: !data.paid });
+          setWorkers(workers.map(ww => ww._id === data._id ? { ...updated, name: updated.workerName, salary: updated.amount, id: updated._id } : ww));
+          triggerToast(`${data.workerName || data.name} marked ${!data.paid ? 'Paid' : 'Unpaid'}.`);
+        } else if (type === 'delete') {
+          await admin2Service.deleteWorkerPayment(data._id);
+          setWorkers(workers.filter(ww => ww._id !== data._id));
+          triggerToast('Worker entry deleted.');
+        }
+        setIsWorkerOtpOpen(false);
+        setWorkerPendingAction(null);
+        setWorkerOtpInput('');
+      } catch (err: any) {
+        triggerToast(err.message || 'Verification failed / action rejected.');
+      }
     };
-    const handleDeleteWorker = async (w: any) => {
-      if (!w._id) return;
-      try {
-        setGlobalSecurityKey(securityKey);
-        await admin2Service.deleteWorkerPayment(w._id);
-        setWorkers(workers.filter(ww => ww._id !== w._id));
-        triggerToast('Worker entry deleted.');
-        setSecurityKey('');
-      } catch (err: any) { triggerToast(err.message || 'Failed to delete.'); }
-    };
+
     return (
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('emerald')}
@@ -3017,19 +3189,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           <p style={styles.subtitle}>Manage and record non-teaching staff payroll for the month</p>
         </header>
         <main style={styles.content}>
-          <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
-              <input
-                type="text"
-                placeholder="Enter Finance Key (OTP) e.g. FIN-1234"
-                value={securityKey}
-                onChange={(e) => setSecurityKey(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddWorker()}
-                style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
-              />
-            </div>
-          </div>
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>Add Worker Entry</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
@@ -3038,7 +3197,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Monthly Wage (₹)</label><input type="number" min="0" value={newWorkerWage} onChange={(e) => setNewWorkerWage(e.target.value)} style={styles.textInputBox} placeholder="e.g. 15000" /></div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Period</label><input type="text" value={newWorkerPeriod} onChange={(e) => setNewWorkerPeriod(e.target.value)} style={styles.textInputBox} placeholder="e.g. July 2026" /></div>
             </div>
-            <button onClick={handleAddWorker} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">Add Worker Entry</button>
+            <button onClick={() => triggerWorkerAction('add', { name: newWorkerName, role: newWorkerRole, wage: newWorkerWage, period: newWorkerPeriod })} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">Add Worker Entry</button>
           </GlassCard>
           <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -3053,13 +3212,39 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{w.role} • {w.monthPeriod} • ₹{(w.amount || w.salary || 0).toLocaleString('en-IN')}/mo</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button onClick={() => handleToggleWorker(w)} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', backgroundColor: w.paid ? 'rgba(16,185,129,0.12)' : 'var(--royal-gold)', color: w.paid ? '#10B981' : '#000', fontWeight: 800, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }} className="press-interactive">{w.paid ? ' Paid' : 'Mark Paid'}</button>
-                    <button onClick={() => handleDeleteWorker(w)} style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
+                    <button onClick={() => triggerWorkerAction('toggle', w)} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', backgroundColor: w.paid ? 'rgba(16,185,129,0.12)' : 'var(--royal-gold)', color: w.paid ? '#10B981' : '#000', fontWeight: 800, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }} className="press-interactive">{w.paid ? '🟢 Paid' : '🔴 Unpaid'}</button>
+                    <button onClick={() => triggerWorkerAction('delete', w)} style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
                   </div>
                 </div>
               ))}
             </div>
           </GlassCard>
+
+          {/* Worker OTP verification modal overlay */}
+          {isWorkerOtpOpen && (
+            <div style={styles.overlayOverlay}>
+              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '16px', border: '1px solid var(--card-border)' }} className="anim-slide-up glass-gold-ring">
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Finance OTP Authorization</h3>
+                  <p style={{ margin: 0, fontSize: '11px', color: 'var(--muted-gray)' }}>A security passcode check is required to authorize this worker payroll action.</p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <input
+                    type="password"
+                    placeholder="Enter Security OTP"
+                    value={workerOtpInput}
+                    onChange={(e) => setWorkerOtpInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && confirmWorkerAction()}
+                    style={{ ...styles.textInputBox, textAlign: 'center', letterSpacing: '0.2em', fontSize: '15px', fontWeight: 800 }}
+                  />
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                    <button onClick={confirmWorkerAction} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1 }} className="press-interactive">Confirm</button>
+                    <button onClick={() => { setIsWorkerOtpOpen(false); setWorkerPendingAction(null); setWorkerOtpInput(''); }} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">Cancel</button>
+                  </div>
+                </div>
+              </GlassCard>
+            </div>
+          )}
         </main>
       </div>
     );
@@ -3222,9 +3407,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       } else if (role === 'admin2') {
         return {
           initials: 'CP',
-          name: 'Dr. Ramesh Rao (Dean)',
-          title: 'Erragattugutta C1 Campus Principal Dean',
-          clearance: 'Level 2 Operations Clearance (Erragattugutta C1)',
+          name: user?.name || 'Dr. Ramesh Rao (Dean)',
+          title: `${loggedInCampus} Campus Principal Dean`,
+          clearance: `Level 2 Operations Clearance (${loggedInCampus})`,
           registry: 'Campus Operations ERP Cockpit'
         };
       } else {
@@ -3304,7 +3489,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 {role === 'admin1'
                   ? 'Superintendent Coordinator (All 4 Campuses)'
                   : role === 'admin2'
-                  ? 'Principal Coordinator (Erragattugutta C1)'
+                  ? `Principal Coordinator (${loggedInCampus})`
                   : 'Independent Student Data Registrar'}
               </p>
             </div>
@@ -3369,9 +3554,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             </>
           ) : role === 'admin2' ? (
             (() => {
-              const localStudents = students.filter(s => s.branch === 'Erragattugutta C1');
+              const localStudents = students.filter(s => s.branch === loggedInCampus);
               const monthlyFeeCollectedVal = localStudents.reduce((sum, s) => sum + (s.totalPaid || 0), 0);
-              const localExpenditures = expenditures.filter(e => e.branch === 'Erragattugutta C1');
+              const localExpenditures = expenditures.filter(e => e.branch === loggedInCampus);
               const monthlyExpenditureVal = localExpenditures.reduce((sum, e) => sum + (e.amount || 0), 0);
               const defaultersCount = localStudents.filter(s => (s.remainingBalance || 0) > 0).length;
 
@@ -3400,7 +3585,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     </GlassCard>
                     <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
                       <span style={styles.metricLabel}>Worker Payments Pending</span>
-                      <strong style={styles.metricValue}>{workers.filter(w => !w.paid && w.branch === 'Erragattugutta C1').length}</strong>
+                      <strong style={styles.metricValue}>{workers.filter(w => !w.paid && w.branch === loggedInCampus).length}</strong>
                       <span style={styles.metricSub}>Awaiting Dean authorization</span>
                       <span className="glass-status-pill status-pending">Payroll</span>
                     </GlassCard>
@@ -3506,7 +3691,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                 </div>
                 <h4 style={styles.moduleTitle}>Campus Expenditures</h4>
-                <p style={styles.moduleDesc}>Log and track local expenditures of Erragattugutta C1.</p>
+                <p style={styles.moduleDesc}>Log and track local expenditures of {loggedInCampus}.</p>
               </div>
 
               <div onClick={() => setActivePage('worker_payments')} style={styles.moduleCardNew} className="press-interactive">
@@ -3517,20 +3702,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 <p style={styles.moduleDesc}>Record and mark non-teaching staff payroll payouts.</p>
               </div>
 
-              <div onClick={() => setActivePage('enrollment_stats')} style={styles.moduleCardNew} className="press-interactive">
-                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                </div>
-                <h4 style={styles.moduleTitle}>Campus Marks</h4>
-                <p style={styles.moduleDesc}>View and update student subject grades for Erragattugutta C1.</p>
-              </div>
+
 
               <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
                 <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </div>
                 <h4 style={styles.moduleTitle}>Campus Dean Profile</h4>
-                <p style={styles.moduleDesc}>Review Erragattugutta C1 principal dean credentials.</p>
+                <p style={styles.moduleDesc}>Review {loggedInCampus} principal dean credentials.</p>
               </div>
             </div>
 
@@ -4023,7 +4202,31 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: 0,
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
-  }
+  },
+  overlayOverlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '24px',
+    zIndex: 1000,
+    backdropFilter: 'blur(6px)',
+  },
+  overlaySheet: {
+    width: '100%',
+    maxWidth: '480px',
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    borderRadius: '16px',
+    border: '2px solid var(--card-border)',
+    boxShadow: 'none',
+    padding: '24px',
+    display: 'flex',
+    flexDirection: 'column',
+    maxHeight: '90%',
+    overflowY: 'auto',
+  },
 };
 
 

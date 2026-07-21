@@ -43,6 +43,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
   const [isReconciling, setIsReconciling] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [backupDetails, setBackupDetails] = useState<BackupResponse | null>(null);
+  const [ledgerFilter, setLedgerFilter] = useState<'all' | 'success' | 'failed'>('all');
+  const [ledgerSearch, setLedgerSearch] = useState<string>('');
 
   // Countdown timer for daily keys expiration
   const [timeRemaining, setTimeRemaining] = useState<string>('');
@@ -57,17 +59,28 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
   // Account creation/edit state
   const [accountUsername, setAccountUsername] = useState<string>('');
-  const [accountRole, setAccountRole] = useState<'admin1' | 'admin2' | 'admin3' | 'accountant'>('accountant');
+  const [accountRole, setAccountRole] = useState<'admin1' | 'admin2' | 'admin3' | 'accountant' | 'authenticator'>('accountant');
   const [accountPassword, setAccountPassword] = useState<string>('');
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [accountName, setAccountName] = useState<string>('');
   const [accountEmail, setAccountEmail] = useState<string>('');
   const [accountMobile, setAccountMobile] = useState<string>('');
   const [accountDepartment, setAccountDepartment] = useState<string>('');
+  const [accountAddress, setAccountAddress] = useState<string>('');
+  const [accountCampus, setAccountCampus] = useState<string>('');
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
 
   // Trigger Toast Notification
   const triggerToast = (msg: string) => {
-    setToast(msg);
+    const isError = msg.toLowerCase().includes('rejected') || 
+                    msg.toLowerCase().includes('failed') || 
+                    msg.toLowerCase().includes('denied') || 
+                    msg.toLowerCase().includes('invalid') || 
+                    msg.toLowerCase().includes('not found') || 
+                    msg.toLowerCase().includes('error') ||
+                    msg.toLowerCase().includes('incorrect');
+    const symbol = isError ? '❌ ' : '✓ ';
+    setToast(symbol + msg);
   };
 
   useEffect(() => {
@@ -190,10 +203,13 @@ export const AuthenticatorDashboardView: React.FC = () => {
       if (editingAccountId) {
         await authenticatorService.updateAccount(editingAccountId, {
           username: accountUsername,
+          password: accountPassword || undefined,
           name: accountName,
           email: accountEmail,
           mobile: accountMobile,
-          department: accountDepartment
+          department: accountDepartment,
+          address: accountAddress,
+          campus: accountCampus
         });
         triggerToast('Staff account updated successfully.');
       } else {
@@ -204,7 +220,9 @@ export const AuthenticatorDashboardView: React.FC = () => {
           name: accountName,
           email: accountEmail,
           mobile: accountMobile,
-          department: accountDepartment
+          department: accountDepartment,
+          address: accountAddress,
+          campus: accountCampus
         });
         triggerToast(`Created login for ${u.role}. Backup code: ${u.backupCode}`);
       }
@@ -214,7 +232,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
       setAccountEmail('');
       setAccountMobile('');
       setAccountDepartment('');
+      setAccountAddress('');
+      setAccountCampus('');
       setEditingAccountId(null);
+      setIsEditModalOpen(false);
       loadData(); // reload
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save account.');
@@ -321,9 +342,9 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 }} />
                 {tab === 'dashboard' && 'Dashboard Overview'}
                 {tab === 'keys' && 'Security Keys (OTP)'}
-                {tab === 'backup_codes' && 'User Backup Codes'}
+                {tab === 'backup_codes' && 'Passwords & Backup Keys'}
                 {tab === 'accounts' && 'Account Control'}
-                {tab === 'sync_integrity' && 'Sync Integrity Console'}
+                {tab === 'sync_integrity' && 'Transaction Ledger'}
               </button>
             ))}
           </nav>
@@ -348,16 +369,16 @@ export const AuthenticatorDashboardView: React.FC = () => {
             <h1 style={styles.workspaceTitle}>
               {activeTab === 'dashboard' && 'Security Shield Status'}
               {activeTab === 'keys' && 'Dynamic Authorization Keys'}
-              {activeTab === 'backup_codes' && 'User Recovery & Backups'}
+              {activeTab === 'backup_codes' && 'Portal Credentials & Backup Keys'}
               {activeTab === 'accounts' && 'Staff Access Registry'}
-              {activeTab === 'sync_integrity' && 'Database Sync Integrity'}
+              {activeTab === 'sync_integrity' && 'Transaction Ledger Console'}
             </h1>
             <p style={styles.workspaceSubtitle}>
               {activeTab === 'dashboard' && 'Real-time security metrics, active web sessions, and system threat analysis.'}
               {activeTab === 'keys' && 'Check daily operational override passwords and active 6-digit login security keys.'}
-              {activeTab === 'backup_codes' && 'Search client credentials and override student password lock profiles.'}
+              {activeTab === 'backup_codes' && 'Monitor logins, daily passwords, and emergency backup codes side-by-side.'}
               {activeTab === 'accounts' && 'Provision, update, and manage login authorization credentials for staff.'}
-              {activeTab === 'sync_integrity' && 'Audit decentralized transaction logs and trigger secure database backups.'}
+              {activeTab === 'sync_integrity' && 'Audit real-time transaction ledger for successful commits and verification rejections.'}
             </p>
           </div>
         </header>
@@ -422,11 +443,11 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
         {/* ─── TAB 2: SECURITY KEYS (OTP) ─── */}
         {activeTab === 'keys' && keysData && (
-          <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <GlassCard hoverable={false} style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', backgroundColor: 'rgba(255,255,255,0.7)' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Dynamic Security OTP Keys</h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'var(--muted-gray)' }}>Keys generated automatically for daily operations override authorization.</p>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Daily Login Security PINs</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'var(--muted-gray)' }}>Login override credentials. Dynamic PINs rotate automatically every 12 hours.</p>
               </div>
               <div style={styles.timerBlock}>
                 <span style={{ fontSize: '9px', color: '#64748B', fontWeight: '850', letterSpacing: '0.08em' }}>ROTATION COUNTDOWN</span>
@@ -434,554 +455,726 @@ export const AuthenticatorDashboardView: React.FC = () => {
               </div>
             </GlassCard>
 
-            {/* Section 1: Daily Login PINs */}
+            {/* Core Administrative Credentials */}
             <div>
-              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 1: Daily Login PINs</h4>
+              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 1: Core System Logins</h4>
               <div style={styles.keysGrid}>
                 <GlassCard hoverable={false} style={styles.keyCard}>
-                  <span style={styles.keyRoleLabel}>RECTOR PORTAL (ADMIN 1)</span>
+                  <span style={styles.keyRoleLabel}>Rector (Admin 1) Login PIN</span>
                   <div style={styles.keyDisplayBlock}>
                     <strong style={styles.keyValue}>{keysData.dailyPins?.admin1}</strong>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                    <button onClick={() => copyToClipboard(keysData.dailyPins?.admin1)} style={styles.copyBtn} className="press-interactive">Copy PIN</button>
+                    <button onClick={() => { copyToClipboard(keysData.dailyPins?.admin1); triggerToast('Copied Rector PIN'); }} style={styles.copyBtn} className="press-interactive">Copy PIN</button>
                   </div>
-                  <div style={styles.keyDesc}>Daily 6-digit login PIN. Resets at midnight.</div>
-                </GlassCard>
-
-                <GlassCard hoverable={false} style={styles.keyCard}>
-                  <span style={styles.keyRoleLabel}>PRINCIPAL PORTAL (ADMIN 2)</span>
-                  <div style={styles.keyDisplayBlock}>
-                    <strong style={styles.keyValue}>{keysData.dailyPins?.admin2}</strong>
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                    <button onClick={() => copyToClipboard(keysData.dailyPins?.admin2)} style={styles.copyBtn} className="press-interactive">Copy PIN</button>
-                  </div>
-                  <div style={styles.keyDesc}>Daily 6-digit login PIN. Resets at midnight.</div>
-                </GlassCard>
-
-                <GlassCard hoverable={false} style={styles.keyCard}>
-                  <span style={styles.keyRoleLabel}>ACCOUNTANT PORTAL</span>
-                  <div style={styles.keyDisplayBlock}>
-                    <strong style={styles.keyValue}>{keysData.dailyPins?.accountant}</strong>
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                    <button onClick={() => copyToClipboard(keysData.dailyPins?.accountant)} style={styles.copyBtn} className="press-interactive">Copy PIN</button>
-                  </div>
-                  <div style={styles.keyDesc}>Daily 6-digit login PIN. Resets at midnight.</div>
+                  <div style={styles.keyDesc}>Rotates dynamically every 12 hours.</div>
                 </GlassCard>
 
                 <GlassCard hoverable={false} style={{ ...styles.keyCard, borderColor: 'var(--royal-gold)' }}>
-                  <span style={styles.keyRoleLabel}>AUTHENTICATOR PORTAL</span>
+                  <span style={styles.keyRoleLabel}>Security Admin (Authenticator)</span>
                   <div style={styles.keyDisplayBlock}>
                     <strong style={styles.keyValue}>{keysData.dailyPins?.authenticator}</strong>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                    <button onClick={() => copyToClipboard(keysData.dailyPins?.authenticator)} style={styles.copyBtn} className="press-interactive">Copy PIN</button>
+                    <button onClick={() => { copyToClipboard(keysData.dailyPins?.authenticator); triggerToast('Copied Authenticator PIN'); }} style={styles.copyBtn} className="press-interactive">Copy PIN</button>
                   </div>
-                  <div style={styles.keyDesc}>Predefined static login PIN. Does not rotate.</div>
+                  <div style={styles.keyDesc}>Portal configuration credentials. Does not rotate daily.</div>
                 </GlassCard>
               </div>
             </div>
 
-            {/* Section 2: Action Security OTPs */}
-            <div style={{ marginTop: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '16px' }}>
-                <h4 style={{ ...styles.sectionSubtitle, margin: 0, color: 'var(--royal-gold)' }}>Section 2: Action Security OTPs</h4>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button 
-                    onClick={() => setOtpPortal('admin1')} 
-                    style={{ ...styles.quickFillPill, backgroundColor: otpPortal === 'admin1' ? 'var(--dark-charcoal)' : 'rgba(0,0,0,0.06)', color: otpPortal === 'admin1' ? '#fff' : 'var(--dark-charcoal)' }}
-                    className="press-interactive"
-                  >
-                    Admin 1 (Rector)
-                  </button>
-                  <button 
-                    onClick={() => setOtpPortal('admin2')} 
-                    style={{ ...styles.quickFillPill, backgroundColor: otpPortal === 'admin2' ? 'var(--dark-charcoal)' : 'rgba(0,0,0,0.06)', color: otpPortal === 'admin2' ? '#fff' : 'var(--dark-charcoal)' }}
-                    className="press-interactive"
-                  >
-                    Admin 2 (Principal)
-                  </button>
-                </div>
+            {/* Admin 2 Principal Deans Accounts */}
+            <div>
+              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 2: Admin 2 (Principal Deans) – 4 Campuses</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                {['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'].map(campusName => {
+                  const suffix = campusName.toLowerCase().replace(/\s+/g, '');
+                  const username = `admin2_${suffix}`;
+                  const dailyPin = keysData.dailyPins?.[username];
+
+                  return (
+                    <GlassCard key={campusName} hoverable={false} style={styles.keyCard}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{campusName}</span>
+                        <span style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>{username}</span>
+                      </div>
+                      <div style={{ ...styles.keyDisplayBlock, padding: '8px 12px' }}>
+                        <span style={{ fontSize: '8px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase' }}>Daily Login PIN</span>
+                        <strong style={{ fontSize: '1.2rem', color: 'var(--dark-charcoal)', letterSpacing: '0.05em' }}>{dailyPin || '111111'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => { copyToClipboard(dailyPin); triggerToast(`Copied Login PIN for ${campusName}`); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy Login PIN</button>
+                      </div>
+                    </GlassCard>
+                  );
+                })}
               </div>
+            </div>
 
-              {otpPortal === 'admin1' ? (
-                <div style={styles.keysGrid} className="anim-fade-in">
-                  <GlassCard hoverable={false} style={styles.keyCard}>
-                    <span style={styles.keyRoleLabel}>STUDENT ADMINISTRATIVE OTP</span>
-                    <div style={styles.keyDisplayBlock}>
-                      <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.students}</strong>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                      <button onClick={() => copyToClipboard(keysData.sectionOtps?.admin1?.students)} style={styles.copyBtn} className="press-interactive">Copy OTP</button>
-                    </div>
-                    <div style={styles.keyDesc}>Required for student registry updates and profile saves.</div>
-                  </GlassCard>
+            {/* Accountant Campus Security OTPs */}
+            <div>
+              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 3: Accountant Portals – 8 Accounts</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                {['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'].map(campusName => {
+                  const suffix = campusName.toLowerCase().replace(/\s+/g, '');
+                  
+                  return [1, 2].map(num => {
+                    const username = `accountant_${suffix}_${num}`;
+                    const dailyPin = keysData.dailyPins?.[username];
 
-                  <GlassCard hoverable={false} style={styles.keyCard}>
-                    <span style={styles.keyRoleLabel}>NOTICES / PUBLISHING OTP</span>
-                    <div style={styles.keyDisplayBlock}>
-                      <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.publishing}</strong>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                      <button onClick={() => copyToClipboard(keysData.sectionOtps?.admin1?.publishing)} style={styles.copyBtn} className="press-interactive">Copy OTP</button>
-                    </div>
-                    <div style={styles.keyDesc}>Required for creating and publishing campus bulletins.</div>
-                  </GlassCard>
-
-                  <GlassCard hoverable={false} style={styles.keyCard}>
-                    <span style={styles.keyRoleLabel}>TIMETABLE & EXAMS OTP</span>
-                    <div style={styles.keyDisplayBlock}>
-                      <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.exams}</strong>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                      <button onClick={() => copyToClipboard(keysData.sectionOtps?.admin1?.exams)} style={styles.copyBtn} className="press-interactive">Copy OTP</button>
-                    </div>
-                    <div style={styles.keyDesc}>Required for exam result uploads and status releases.</div>
-                  </GlassCard>
-                </div>
-              ) : (
-                <div style={styles.keysGrid} className="anim-fade-in">
-                  <GlassCard hoverable={false} style={styles.keyCard}>
-                    <span style={styles.keyRoleLabel}>MULTI-BRANCH EXPENDITURE OTP</span>
-                    <div style={styles.keyDisplayBlock}>
-                      <strong style={styles.keyValue}>{keysData.sectionOtps?.admin2?.expenditure}</strong>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                      <button onClick={() => copyToClipboard(keysData.sectionOtps?.admin2?.expenditure)} style={styles.copyBtn} className="press-interactive">Copy OTP</button>
-                    </div>
-                    <div style={styles.keyDesc}>Required for operational budget updates and expenditures.</div>
-                  </GlassCard>
-
-                  <GlassCard hoverable={false} style={styles.keyCard}>
-                    <span style={styles.keyRoleLabel}>STAFF SALARIES OTP</span>
-                    <div style={styles.keyDisplayBlock}>
-                      <strong style={styles.keyValue}>{keysData.sectionOtps?.admin2?.salaries}</strong>
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                      <button onClick={() => copyToClipboard(keysData.sectionOtps?.admin2?.salaries)} style={styles.copyBtn} className="press-interactive">Copy OTP</button>
-                    </div>
-                    <div style={styles.keyDesc}>Required for staff payroll and salary release operations.</div>
-                  </GlassCard>
-                </div>
-              )}
+                    return (
+                      <GlassCard key={username} hoverable={false} style={styles.keyCard}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{campusName}</span>
+                          <span style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Accountant {num}</span>
+                        </div>
+                        <div style={{ ...styles.keyDisplayBlock, padding: '8px 12px' }}>
+                          <span style={{ fontSize: '8px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase' }}>Daily Login PIN</span>
+                          <strong style={{ fontSize: '1.2rem', color: 'var(--dark-charcoal)', letterSpacing: '0.05em' }}>{dailyPin || '111111'}</strong>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => { copyToClipboard(dailyPin); triggerToast(`Copied Login PIN for ${username}`); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy Login PIN</button>
+                        </div>
+                      </GlassCard>
+                    );
+                  });
+                })}
+              </div>
             </div>
           </section>
         )}
 
-        {/* ─── TAB 3: USER BACKUP CODES ─── */}
-        {activeTab === 'backup_codes' && (
-          <section className="anim-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-            {/* Backup Codes Search */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <input
-                type="text"
-                placeholder="Search students or faculty by name or ID..."
-                value={studentSearch}
-                onChange={(e) => setStudentSearch(e.target.value)}
-                style={styles.formInput}
-              />
+        {/* ─── TAB 3: OPERATION PASSWORDS & SECURE KEYS ─── */}
+        {activeTab === 'backup_codes' && keysData && (
+          <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <GlassCard hoverable={false} style={{ padding: '20px 24px', backgroundColor: 'rgba(255,255,255,0.75)' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Administrative Action Security Keys (OTPs)</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'var(--muted-gray)' }}>
+                  Use these 6-digit dynamic section authorization keys to verify and execute secure database changes. Same for all branches.
+                </p>
+              </div>
+            </GlassCard>
 
-              <div style={styles.backupCodesList}>
-                {filteredBackupCodes.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: 'var(--muted-gray)', padding: '40px', fontSize: '12px' }}>
-                    No student/faculty records match search.
+            {/* Admin 1 (Rector) Section */}
+            <div>
+              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Admin 1 (Rector) Passwords</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>Student Registry</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.studentRegistry}</strong>
                   </div>
-                ) : (
-                  filteredBackupCodes.map((c) => (
-                    <GlassCard key={c.username} hoverable={false} style={{ ...styles.backupCodeCard, backgroundColor: 'rgba(255,255,255,0.7)' }}>
-                      <div>
-                        <strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>{c.name}</strong>
-                        <div style={{ fontSize: '10.5px', color: 'var(--muted-gray)', marginTop: '3px' }}>
-                          ID: <span style={{ color: 'var(--royal-gold)', fontWeight: 800 }}>{c.username.toUpperCase()}</span> • Role: {c.role.toUpperCase()}
-                        </div>
-                      </div>
-                      <div style={styles.backupCodeValBlock}>
-                        <span style={{ fontSize: '9px', color: '#64748B', fontWeight: '850', letterSpacing: '0.05em' }}>BACKUP CODE</span>
-                        <strong style={styles.backupCodeVal}>{c.backupCode}</strong>
-                        <button onClick={() => copyToClipboard(c.backupCode)} style={{ ...styles.copyBtn, marginTop: '4px', padding: '3px 8px', fontSize: '9px' }} className="press-interactive">Copy</button>
-                      </div>
-                    </GlassCard>
-                  ))
-                )}
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.admin1?.studentRegistry); triggerToast('Copied Student Registry OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                </GlassCard>
+
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>Faculty Management</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.facultyManagement}</strong>
+                  </div>
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.admin1?.facultyManagement); triggerToast('Copied Faculty Management OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                </GlassCard>
+
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>Student Fee Structure Updation</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.feeStructure}</strong>
+                  </div>
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.admin1?.feeStructure); triggerToast('Copied Fee Structure OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                </GlassCard>
+
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>Multi-Branch Expenditure</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.expenditure}</strong>
+                  </div>
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.admin1?.expenditure); triggerToast('Copied Expenditure OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                </GlassCard>
               </div>
             </div>
 
-            {/* Password Reset Console */}
-            <GlassCard hoverable={false} style={{ padding: '20px', height: 'fit-content', backgroundColor: 'rgba(255,255,255,0.7)' }}>
-              <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--card-border)', paddingBottom: '8px' }}>Password Recovery Desk</h4>
-              <p style={{ fontSize: '11px', color: 'var(--muted-gray)', lineHeight: '1.5', margin: '0 0 16px 0' }}>
-                Verify backup code to reset student passcode. Re-generates a new backup code upon submission.
-              </p>
+            {/* Admin 2 Section */}
+            <div>
+              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Admin 2 (Principal Deans) Passwords</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>Campus Expenditure</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.admin2?.expenditure}</strong>
+                  </div>
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.admin2?.expenditure); triggerToast('Copied Campus Expenditure OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                </GlassCard>
 
-              <form onSubmit={handleResetPassword} style={styles.resetForm}>
-                <div style={styles.formGroup}>
-                  <label style={styles.inputLabel}>User Roll / ID Card</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. STU-2421604"
-                    value={resetUsername}
-                    onChange={(e) => setResetUsername(e.target.value)}
-                    style={styles.formInput}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.inputLabel}>Verify Backup Code</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 123456"
-                    value={resetBackupCode}
-                    onChange={(e) => setResetBackupCode(e.target.value)}
-                    style={styles.formInput}
-                  />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.inputLabel}>New Login PIN (6-digits)</label>
-                  <input
-                    type="password"
-                    placeholder="e.g. 111111"
-                    maxLength={6}
-                    value={resetNewPassword}
-                    onChange={(e) => setResetNewPassword(e.target.value)}
-                    style={styles.formInput}
-                  />
-                </div>
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>Worker Payments</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.admin2?.workerPayments}</strong>
+                  </div>
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.admin2?.workerPayments); triggerToast('Copied Worker Payments OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                </GlassCard>
+              </div>
+            </div>
 
-                <button type="submit" style={styles.resetSubmitBtn} className="press-interactive">
-                  Submit & Set Password
-                </button>
-              </form>
-            </GlassCard>
+            {/* Accountant Section */}
+            <div>
+              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Accountant Passwords</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>Update Student Details</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.accountant?.studentDetails}</strong>
+                  </div>
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.accountant?.studentDetails); triggerToast('Copied Student Details OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                </GlassCard>
+
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>Student Fee Payment</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.accountant?.fees}</strong>
+                  </div>
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.accountant?.fees); triggerToast('Copied Fee Payment OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                </GlassCard>
+
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>Hostel Registry</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.accountant?.hostel}</strong>
+                  </div>
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.accountant?.hostel); triggerToast('Copied Hostel OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                </GlassCard>
+              </div>
+            </div>
           </section>
         )}
 
         {/* ─── TAB 4: ACCOUNT CONTROL ─── */}
         {activeTab === 'accounts' && (
-          <section className="anim-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-            {/* Accounts Listing */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={styles.accountsGrid}>
-                {accounts.map((acc) => (
-                  <GlassCard
-                    key={acc._id}
-                    hoverable={true}
-                    onClick={() => {
-                      setEditingAccountId(acc._id);
-                      setAccountUsername(acc.username);
-                      setAccountRole(acc.role);
-                      setAccountPassword('');
-                      setAccountName(acc.name || '');
-                      setAccountEmail(acc.email || '');
-                      setAccountMobile(acc.mobile || '');
-                      setAccountDepartment(acc.department || '');
-                      triggerToast(`Loaded credentials for ${acc.username}`);
-                    }}
-                    style={{
-                      ...styles.accountCard,
-                      backgroundColor: 'rgba(255,255,255,0.7)',
-                      cursor: 'pointer',
-                      border: editingAccountId === acc._id ? '2px solid var(--royal-gold)' : '2px solid var(--card-border)',
-                      transition: 'all 0.15s ease',
-                      flexDirection: 'row' as const,
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <strong style={{ fontSize: '13.5px', color: 'var(--dark-charcoal)' }}>{acc.name || 'Unnamed Staff'}</strong>
-                        <span style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>@{acc.username}</span>
+          <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '28px', width: '100%' }}>
+            {/* ADMIN 2 SECTION */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '2.5px solid var(--card-border)', paddingBottom: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--dark-charcoal)' }}>
+                  Admin 2 (Campus Principals)
+                </h3>
+                <span style={{ fontSize: '11px', color: 'var(--muted-gray)', fontWeight: 700 }}>4 Campus Portals</span>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                {['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'].map(campus => {
+                  const acc = accounts.find(a => a.role === 'admin2' && a.campus === campus);
+                  return (
+                    <GlassCard
+                      key={`admin2-${campus}`}
+                      hoverable={true}
+                      onClick={() => {
+                        if (acc) {
+                          setEditingAccountId(acc._id);
+                          setAccountUsername(acc.username);
+                          setAccountRole('admin2');
+                          setAccountPassword(acc.password || '');
+                          setAccountName(acc.name || '');
+                          setAccountEmail(acc.email || '');
+                          setAccountMobile(acc.mobile || '');
+                          setAccountDepartment(acc.department || '');
+                          setAccountAddress(acc.address || '');
+                          setAccountCampus(campus);
+                        } else {
+                          setEditingAccountId(null);
+                          setAccountUsername(`admin2_${campus.toLowerCase().replace(/\s+/g, '')}`);
+                          setAccountRole('admin2');
+                          setAccountPassword('111111');
+                          setAccountName('');
+                          setAccountEmail('');
+                          setAccountMobile('');
+                          setAccountDepartment('Administration');
+                          setAccountAddress('');
+                          setAccountCampus(campus);
+                        }
+                        setIsEditModalOpen(true);
+                      }}
+                      style={{
+                        padding: '20px',
+                        cursor: 'pointer',
+                        border: acc ? '2.5px solid var(--card-border)' : '2.5px dashed rgba(0,0,0,0.15)',
+                        backgroundColor: acc ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)',
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        minHeight: '140px'
+                      }}
+                      className="neo-2d-card hover-gold"
+                    >
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '9px', fontWeight: '850', padding: '3px 8px', borderRadius: '6px', border: '1.5px solid var(--card-border)', backgroundColor: 'rgba(212,175,55,0.08)', color: 'var(--royal-gold)', letterSpacing: '0.04em' }}>
+                            {campus.toUpperCase()}
+                          </span>
+                          {acc && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteAccount(acc._id);
+                              }}
+                              style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#EF4444' }}
+                              title="Delete Account"
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                          )}
+                        </div>
+                        <h4 style={{ margin: '8px 0 4px 0', fontSize: '13px', fontWeight: 800 }}>
+                          {acc ? acc.name : 'Not Provisioned'}
+                        </h4>
+                        <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '4px' }}>
+                          {acc ? (
+                            <>
+                              <div>ID: <strong>{acc.username}</strong></div>
+                              <div style={{ marginTop: '2px' }}>PIN: <strong style={{ color: 'var(--royal-gold)', fontSize: '11.5px', fontFamily: 'monospace' }}>{acc.password || '******'}</strong></div>
+                            </>
+                          ) : (
+                            <span>Click to provision credentials</span>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--dark-charcoal)', marginTop: '6px', display: 'flex', flexWrap: 'wrap' as const, gap: '8px' }}>
-                        <span>Role: <strong style={{ textTransform: 'uppercase', color: 'var(--royal-gold)' }}>{acc.role}</strong></span>
-                        {acc.department && <span>• Dept: <strong>{acc.department}</strong></span>}
-                        {acc.email && <span>• Email: <strong>{acc.email}</strong></span>}
-                        {acc.mobile && <span>• Mobile: <strong>{acc.mobile}</strong></span>}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', marginLeft: '12px' }}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteAccount(acc._id);
-                        }}
-                        style={styles.deleteBtn}
-                        className="press-interactive"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </GlassCard>
-                ))}
+                    </GlassCard>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Account Form */}
-            <GlassCard hoverable={false} style={{ padding: '20px', height: 'fit-content', backgroundColor: 'rgba(255,255,255,0.7)' }}>
-              <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--card-border)', paddingBottom: '8px' }}>
-                {editingAccountId ? 'Edit Credentials' : 'Provision Staff Account'}
-              </h4>
-
-              <form onSubmit={handleSaveAccount} style={styles.resetForm}>
-                <div style={styles.formGroup}>
-                  <label style={styles.inputLabel}>Login ID / Username</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. admin1"
-                    value={accountUsername}
-                    onChange={(e) => setAccountUsername(e.target.value)}
-                    style={styles.formInput}
-                  />
-                </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.inputLabel}>Full Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Mr. Varshith Rao"
-                    value={accountName}
-                    onChange={(e) => setAccountName(e.target.value)}
-                    style={styles.formInput}
-                  />
-                </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.inputLabel}>Email Address</label>
-                  <input
-                    type="email"
-                    placeholder="e.g. email@inspirehnk.org"
-                    value={accountEmail}
-                    onChange={(e) => setAccountEmail(e.target.value)}
-                    style={styles.formInput}
-                  />
-                </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.inputLabel}>Mobile Number</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. +91 9988776655"
-                    value={accountMobile}
-                    onChange={(e) => setAccountMobile(e.target.value)}
-                    style={styles.formInput}
-                  />
-                </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.inputLabel}>Department / Designation</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Campus Administration"
-                    value={accountDepartment}
-                    onChange={(e) => setAccountDepartment(e.target.value)}
-                    style={styles.formInput}
-                  />
-                </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.inputLabel}>Portal Role Access {editingAccountId && ' (Cannot modify)'}</label>
-                  <select
-                    value={accountRole}
-                    onChange={(e: any) => setAccountRole(e.target.value)}
-                    style={{ ...styles.formSelect, opacity: editingAccountId ? 0.6 : 1, cursor: editingAccountId ? 'not-allowed' : 'pointer' }}
-                    disabled={!!editingAccountId}
-                  >
-                    <option value="admin1">Admin 1 (Rector Operations)</option>
-                    <option value="admin2">Admin 2 (Campus Principal)</option>
-                    <option value="admin3">Admin 3 (Academics & Exam Desk)</option>
-                    <option value="accountant">Accountant</option>
-                  </select>
-                </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.inputLabel}>
-                    {editingAccountId ? 'Password (Cannot edit here)' : 'Login PIN / Password'}
-                  </label>
-                  <input
-                    type="password"
-                    placeholder={editingAccountId ? "Password edit disabled" : "e.g. 111111"}
-                    value={accountPassword}
-                    onChange={(e) => setAccountPassword(e.target.value)}
-                    style={{ ...styles.formInput, opacity: editingAccountId ? 0.6 : 1, cursor: editingAccountId ? 'not-allowed' : 'text' }}
-                    disabled={!!editingAccountId}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                  <button type="submit" style={styles.resetSubmitBtn} className="press-interactive">
-                    {editingAccountId ? 'Update Details' : 'Provision Account'}
-                  </button>
-                  {editingAccountId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingAccountId(null);
-                        setAccountUsername('');
-                        setAccountPassword('');
-                        setAccountName('');
-                        setAccountEmail('');
-                        setAccountMobile('');
-                        setAccountDepartment('');
-                      }}
-                      style={styles.cancelBtn}
-                      className="press-interactive"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </div>
-              </form>
-            </GlassCard>
+            {/* ACCOUNTANTS SECTION */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '2.5px solid var(--card-border)', paddingBottom: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--dark-charcoal)' }}>
+                  Accountant Portals
+                </h3>
+                <span style={{ fontSize: '11px', color: 'var(--muted-gray)', fontWeight: 700 }}>8 Campus Accounts (2 per Campus)</span>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                {['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'].map(campus => {
+                  const campusAccs = accounts.filter(a => a.role === 'accountant' && a.campus === campus);
+                  
+                  return [0, 1].map(index => {
+                    const acc = campusAccs[index];
+                    return (
+                      <GlassCard
+                        key={`accountant-${campus}-${index}`}
+                        hoverable={true}
+                        onClick={() => {
+                          if (acc) {
+                            setEditingAccountId(acc._id);
+                            setAccountUsername(acc.username);
+                            setAccountRole('accountant');
+                            setAccountPassword(acc.password || '');
+                            setAccountName(acc.name || '');
+                            setAccountEmail(acc.email || '');
+                            setAccountMobile(acc.mobile || '');
+                            setAccountDepartment(acc.department || '');
+                            setAccountAddress(acc.address || '');
+                            setAccountCampus(campus);
+                          } else {
+                            setEditingAccountId(null);
+                            setAccountUsername(`accountant_${campus.toLowerCase().replace(/\s+/g, '')}_${index + 1}`);
+                            setAccountRole('accountant');
+                            setAccountPassword('111111');
+                            setAccountName('');
+                            setAccountEmail('');
+                            setAccountMobile('');
+                            setAccountDepartment('Finance Department');
+                            setAccountAddress('');
+                            setAccountCampus(campus);
+                          }
+                          setIsEditModalOpen(true);
+                        }}
+                        style={{
+                          padding: '20px',
+                          cursor: 'pointer',
+                          border: acc ? '2.5px solid var(--card-border)' : '2.5px dashed rgba(0,0,0,0.15)',
+                          backgroundColor: acc ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)',
+                          transition: 'all 0.15s ease',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          minHeight: '140px'
+                        }}
+                        className="neo-2d-card hover-gold"
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '9px', fontWeight: '850', padding: '3px 8px', borderRadius: '6px', border: '1.5px solid var(--card-border)', backgroundColor: 'rgba(59,130,246,0.08)', color: '#2563EB', letterSpacing: '0.04em' }}>
+                              {campus.toUpperCase()} - ACC {index + 1}
+                            </span>
+                            {acc && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteAccount(acc._id);
+                                }}
+                                style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#EF4444' }}
+                                title="Delete Account"
+                              >
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                              </button>
+                            )}
+                          </div>
+                          <h4 style={{ margin: '8px 0 4px 0', fontSize: '13px', fontWeight: 800 }}>
+                            {acc ? acc.name : `Accountant ${index + 1} Not Provisioned`}
+                          </h4>
+                          <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '4px' }}>
+                            {acc ? (
+                              <>
+                                <div>ID: <strong>{acc.username}</strong></div>
+                                <div style={{ marginTop: '2px' }}>PIN: <strong style={{ color: 'var(--royal-gold)', fontSize: '11.5px', fontFamily: 'monospace' }}>{acc.password || '******'}</strong></div>
+                              </>
+                            ) : (
+                              <span>Click to provision credentials</span>
+                            )}
+                          </div>
+                        </div>
+                      </GlassCard>
+                    );
+                  });
+                })}
+              </div>
+            </div>
           </section>
         )}
 
         {/* ─── TAB 5: SYNC INTEGRITY & DATABASE OVERVIEW ─── */}
         {activeTab === 'sync_integrity' && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <GlassCard hoverable={false} style={{ padding: '24px', backgroundColor: 'rgba(255,255,255,0.7)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <GlassCard hoverable={false} style={{ padding: '24px', backgroundColor: 'rgba(255,255,255,0.75)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px', borderBottom: '2px solid rgba(0,0,0,0.05)', paddingBottom: '16px' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '13.5px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Sync Integrity & Database Fallback</h3>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Transaction Sync Ledger</h3>
                   <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: 'var(--muted-gray)' }}>
-                    Real-time transaction status audit ledger. Reconcile database nodes or trigger manual backups.
+                    Real-time transactional audit log monitoring system modifications and rejected operations.
                   </p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <button
-                    onClick={handleReconcile}
-                    disabled={isReconciling}
-                    style={{
-                      padding: '10px 16px',
-                      borderRadius: '10px',
-                      border: '2px solid var(--card-border)',
-                      backgroundColor: 'var(--royal-gold)',
-                      color: '#000',
-                      fontWeight: 800,
-                      fontSize: '11.5px',
-                      cursor: 'pointer',
-                      opacity: isReconciling ? 0.6 : 1
-                    }}
-                    className="press-interactive"
-                  >
-                    {isReconciling ? 'Reconciling...' : ' Reconcile DB'}
-                  </button>
-                  <button
-                    onClick={handleBackup}
-                    disabled={isBackingUp}
-                    style={{
-                      padding: '10px 16px',
-                      borderRadius: '10px',
-                      border: '2px solid var(--card-border)',
-                      backgroundColor: '#10B981',
-                      color: '#fff',
-                      fontWeight: 800,
-                      fontSize: '11.5px',
-                      cursor: 'pointer',
-                      opacity: isBackingUp ? 0.6 : 1
-                    }}
-                    className="press-interactive"
-                  >
-                    {isBackingUp ? 'Backing up...' : ' Create DB Backup'}
-                  </button>
+                
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {/* Filter Pills */}
+                  <div style={{ display: 'flex', backgroundColor: 'rgba(0,0,0,0.05)', padding: '4px', borderRadius: '10px', gap: '4px' }}>
+                    <button
+                      onClick={() => setLedgerFilter('all')}
+                      style={{
+                        padding: '6px 12px',
+                        border: 'none',
+                        borderRadius: '8px',
+                        backgroundColor: ledgerFilter === 'all' ? '#fff' : 'transparent',
+                        fontWeight: 800,
+                        fontSize: '11px',
+                        color: ledgerFilter === 'all' ? 'var(--dark-charcoal)' : 'var(--muted-gray)',
+                        cursor: 'pointer',
+                        boxShadow: ledgerFilter === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                      }}
+                      className="press-interactive"
+                    >
+                      All Logs
+                    </button>
+                    <button
+                      onClick={() => setLedgerFilter('success')}
+                      style={{
+                        padding: '6px 12px',
+                        border: 'none',
+                        borderRadius: '8px',
+                        backgroundColor: ledgerFilter === 'success' ? '#fff' : 'transparent',
+                        fontWeight: 800,
+                        fontSize: '11px',
+                        color: ledgerFilter === 'success' ? '#10B981' : 'var(--muted-gray)',
+                        cursor: 'pointer',
+                        boxShadow: ledgerFilter === 'success' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                      }}
+                      className="press-interactive"
+                    >
+                      Successful
+                    </button>
+                    <button
+                      onClick={() => setLedgerFilter('failed')}
+                      style={{
+                        padding: '6px 12px',
+                        border: 'none',
+                        borderRadius: '8px',
+                        backgroundColor: ledgerFilter === 'failed' ? '#fff' : 'transparent',
+                        fontWeight: 800,
+                        fontSize: '11px',
+                        color: ledgerFilter === 'failed' ? '#EF4444' : 'var(--muted-gray)',
+                        cursor: 'pointer',
+                        boxShadow: ledgerFilter === 'failed' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                      }}
+                      className="press-interactive"
+                    >
+                      Failed / Rejected
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Search transaction ID or action..."
+                    value={ledgerSearch}
+                    onChange={(e) => setLedgerSearch(e.target.value)}
+                    style={{ ...styles.formInput, maxWidth: '240px', margin: 0, padding: '8px 12px', borderRadius: '10px', fontSize: '12px' }}
+                  />
                 </div>
               </div>
 
-              {backupDetails && (
-                <div style={{
-                  marginTop: '20px',
-                  padding: '16px',
-                  borderRadius: '12px',
-                  border: '2px solid #10B981',
-                  backgroundColor: 'rgba(16, 185, 129, 0.05)',
-                  animation: 'fade-in 0.3s ease'
-                }}>
-                  <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#10B981', fontWeight: 800 }}>
-                    ✓ Database Backup Archive Created Successfully
-                  </h4>
-                  <div style={{ fontSize: '11px', color: 'var(--dark-charcoal)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span><strong>Archive:</strong> {backupDetails.archiveName}</span>
-                    <span><strong>Size:</strong> {(backupDetails.sizeBytes / 1024 / 1024).toFixed(2)} MB</span>
-                    <span><strong>Checksum (SHA256):</strong> <code style={{ backgroundColor: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px', fontSize: '10.5px', wordBreak: 'break-all' }}>{backupDetails.checksum}</code></span>
-                  </div>
-                </div>
-              )}
-            </GlassCard>
-
-            <GlassCard hoverable={false} style={{ padding: '20px', overflowX: 'auto', backgroundColor: 'rgba(255,255,255,0.7)' }}>
-              <h4 style={{ margin: '0 0 16px 0', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--card-border)', paddingBottom: '8px' }}>
-                Sync Audit Trail Ledger ({syncLogs.length} transactions)
-              </h4>
-
+              {/* Transactions Table */}
               {syncLogs.length === 0 ? (
                 <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '12px' }}>
-                  No transaction sync entries recorded in this session.
+                  No transaction log entries recorded in this session.
                 </div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid var(--card-border)' }}>
-                      <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '800' }}>Timestamp</th>
-                      <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '800' }}>Transaction ID</th>
-                      <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '800' }}>Action / Event</th>
-                      <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '800' }}>Source → Target</th>
-                      <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '800' }}>Client Acks</th>
-                      <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '800' }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {syncLogs.map((log) => {
-                      const date = new Date(log.createdAt);
-                      const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                      const isPending = log.status === 'pending';
-                      const isSynced = log.status === 'synced';
-                      
-                      let badgeBg = '#EF4444';
-                      let badgeColor = '#ffffff';
-                      if (isSynced) {
-                        badgeBg = '#10B981';
-                      } else if (isPending) {
-                        badgeBg = '#F59E0B';
-                      }
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid rgba(0,0,0,0.06)' }}>
+                        <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '850', textTransform: 'uppercase', fontSize: '10px' }}>Timestamp</th>
+                        <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '850', textTransform: 'uppercase', fontSize: '10px' }}>Transaction ID</th>
+                        <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '850', textTransform: 'uppercase', fontSize: '10px' }}>Action / Event</th>
+                        <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '850', textTransform: 'uppercase', fontSize: '10px' }}>Scope / Branch</th>
+                        <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '850', textTransform: 'uppercase', fontSize: '10px' }}>Status</th>
+                        <th style={{ padding: '12px 8px', color: 'var(--muted-gray)', fontWeight: '850', textTransform: 'uppercase', fontSize: '10px' }}>Details / Reasons</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {syncLogs
+                        .filter(log => {
+                          const matchesSearch = 
+                            (log.transactionId || '').toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+                            (log.action || '').toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+                            (log.branch || '').toLowerCase().includes(ledgerSearch.toLowerCase());
+                          
+                          if (ledgerFilter === 'success') return matchesSearch && log.status === 'success';
+                          if (ledgerFilter === 'failed') return matchesSearch && log.status === 'failed';
+                          return matchesSearch;
+                        })
+                        .map((log) => {
+                          const date = new Date(log.timestamp || log.createdAt || Date.now());
+                          const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                          const isSuccess = log.status === 'success';
+                          
+                          const badgeBg = isSuccess ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
+                          const badgeColor = isSuccess ? '#10B981' : '#EF4444';
+                          const trBg = isSuccess ? 'transparent' : 'rgba(239,68,68,0.02)';
 
-                      return (
-                        <tr key={log._id || log.transactionId} style={{ borderBottom: '1px solid var(--card-border)' }}>
-                          <td style={{ padding: '12px 8px', whiteSpace: 'nowrap' }}>{timeStr}</td>
-                          <td style={{ padding: '12px 8px', fontFamily: 'monospace', fontWeight: 600 }}>{log.transactionId}</td>
-                          <td style={{ padding: '12px 8px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{log.action}</td>
-                          <td style={{ padding: '12px 8px', color: 'var(--muted-gray)' }}>
-                            <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{log.sourceNode}</span>
-                            {' → '}
-                            <span style={{ fontWeight: 800, color: '#3B82F6' }}>{log.targetNode}</span>
-                          </td>
-                          <td style={{ padding: '12px 8px' }}>
-                            <strong>{log.acknowledgedClients ? log.acknowledgedClients.length : 0}</strong> / {log.expectedClientsCount || 0}
-                          </td>
-                          <td style={{ padding: '12px 8px' }}>
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '4px 8px',
-                              borderRadius: '6px',
-                              fontSize: '10px',
-                              fontWeight: 800,
-                              textTransform: 'uppercase',
-                              backgroundColor: badgeBg,
-                              color: badgeColor,
-                              letterSpacing: '0.05em'
-                            }}>
-                              {log.status}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          return (
+                            <tr key={log._id || log.transactionId} style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', backgroundColor: trBg }}>
+                              <td style={{ padding: '12px 8px', whiteSpace: 'nowrap', fontSize: '11px', color: 'var(--muted-gray)' }}>{timeStr}</td>
+                              <td style={{ padding: '12px 8px', fontFamily: 'monospace', fontWeight: 700, fontSize: '11.5px' }}>{log.transactionId}</td>
+                              <td style={{ padding: '12px 8px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{log.action}</td>
+                              <td style={{ padding: '12px 8px', color: 'var(--dark-charcoal)', fontWeight: 600 }}>{log.branch || 'Central Node'}</td>
+                              <td style={{ padding: '12px 8px' }}>
+                                <span style={{
+                                  display: 'inline-block',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  textTransform: 'uppercase',
+                                  backgroundColor: badgeBg,
+                                  color: badgeColor,
+                                  letterSpacing: '0.05em'
+                                }}>
+                                  {log.status}
+                                </span>
+                              </td>
+                              <td style={{ padding: '12px 8px', color: isSuccess ? 'var(--muted-gray)' : '#DC2626', fontSize: '11px', fontWeight: isSuccess ? 500 : 700 }}>
+                                {isSuccess ? 'Transaction committed successfully.' : (log.errorDetails || 'Failed to authenticate request.')}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </GlassCard>
           </section>
         )}
       </main>
+
+      {isEditModalOpen && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContent} className="anim-scale-up neo-2d">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2.5px solid var(--card-border)', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>
+                {editingAccountId ? `Edit Profile - ${accountCampus}` : `Provision Account - ${accountCampus}`}
+              </h3>
+              <button
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingAccountId(null);
+                  setAccountUsername('');
+                  setAccountPassword('');
+                  setAccountName('');
+                  setAccountEmail('');
+                  setAccountMobile('');
+                  setAccountDepartment('');
+                  setAccountAddress('');
+                  setAccountCampus('');
+                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-gray)' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Login ID / Username</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. admin2_eragattur1"
+                    value={accountUsername}
+                    onChange={(e) => setAccountUsername(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Login PIN / Password</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 111111"
+                    value={accountPassword}
+                    onChange={(e) => setAccountPassword(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.inputLabel}>Full Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Mr. Varshith Rao"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  style={styles.formInput}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. email@inspire.edu"
+                    value={accountEmail}
+                    onChange={(e) => setAccountEmail(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Mobile Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 9988776655"
+                    value={accountMobile}
+                    onChange={(e) => setAccountMobile(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.inputLabel}>Department / Designation</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Campus Administration"
+                  value={accountDepartment}
+                  onChange={(e) => setAccountDepartment(e.target.value)}
+                  style={styles.formInput}
+                />
+              </div>
+
+              <div style={styles.formGroup}>
+                <label style={styles.inputLabel}>Address</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Warangal, Telangana"
+                  value={accountAddress}
+                  onChange={(e) => setAccountAddress(e.target.value)}
+                  style={styles.formInput}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Portal Role Access</label>
+                  <input
+                    type="text"
+                    value={accountRole === 'admin2' ? 'Admin 2 (Campus Principal)' : 'Accountant'}
+                    style={{ ...styles.formInput, backgroundColor: 'rgba(0,0,0,0.04)', color: 'var(--muted-gray)', cursor: 'not-allowed' }}
+                    disabled
+                  />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.inputLabel}>Campus Access</label>
+                  <input
+                    type="text"
+                    value={accountCampus}
+                    style={{ ...styles.formInput, backgroundColor: 'rgba(0,0,0,0.04)', color: 'var(--muted-gray)', cursor: 'not-allowed' }}
+                    disabled
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingAccountId(null);
+                    setAccountUsername('');
+                    setAccountPassword('');
+                    setAccountName('');
+                    setAccountEmail('');
+                    setAccountMobile('');
+                    setAccountDepartment('');
+                    setAccountAddress('');
+                    setAccountCampus('');
+                  }}
+                  style={{
+                    padding: '12px 20px',
+                    borderRadius: '12px',
+                    border: '2px solid var(--card-border)',
+                    backgroundColor: '#fff',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontFamily: 'var(--font-family)',
+                    fontSize: '12.5px'
+                  }}
+                  className="press-interactive"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    backgroundColor: 'var(--royal-gold)',
+                    color: '#000',
+                    cursor: 'pointer',
+                    fontWeight: 800,
+                    fontFamily: 'var(--font-family)',
+                    fontSize: '12.5px',
+                    boxShadow: 'var(--shadow-sm)'
+                  }}
+                  className="press-interactive"
+                >
+                  {editingAccountId ? 'Save Changes' : 'Provision Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1376,5 +1569,27 @@ const styles = {
     padding: '6px 12px',
     cursor: 'pointer',
     fontFamily: 'var(--font-family)'
+  },
+  modalOverlay: {
+    position: 'fixed' as const,
+    inset: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backdropFilter: 'blur(8px)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 99999
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: '520px',
+    maxHeight: '90vh',
+    overflowY: 'auto' as const,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(24px)',
+    border: '2px solid var(--card-border)',
+    borderRadius: '24px',
+    padding: '30px',
+    boxShadow: '0 24px 48px rgba(0,0,0,0.16)'
   }
 };

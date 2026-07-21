@@ -88,6 +88,15 @@ export const allocateRoom = async (roomId: string, studentId: string, securityKe
   return res.data;
 };
 
+export const checkoutStudent = async (studentId: string, securityKey?: string): Promise<{ student: StudentProfile }> => {
+  const res = await apiClient.patch<{ status: string; data: { student: StudentProfile } }>(
+    `/accountant/hostel/checkout/${studentId}`,
+    {},
+    securityKey ? { headers: { 'x-security-key': securityKey } } : {}
+  );
+  return res.data;
+};
+
 export const getLateFees = async (): Promise<{ lateFeeRules: string }> => {
   const res = await apiClient.get<{ status: string; data: { lateFeeRules: string } }>('/accountant/late-fees-settings');
   return res.data;

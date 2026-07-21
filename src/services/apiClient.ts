@@ -21,385 +21,694 @@ export const setGlobalSecurityKey = (key: string) => {
 const delay = (ms = 100) => new Promise(resolve => setTimeout(resolve, ms));
 
 // INITIAL STORAGE SEEDER
+const normalizeCampusName = (campusName: string): string => {
+  if (!campusName) return 'eragattur1';
+  const norm = campusName.toLowerCase().replace(/\s+/g, '');
+  if (norm.includes('eragattur1') || norm.includes('erragattuguttac1')) return 'eragattur1';
+  if (norm.includes('eragattur2') || norm.includes('erragattuguttac2')) return 'eragattur2';
+  if (norm.includes('indbimar1') || norm.includes('beemaramc1')) return 'indbimar1';
+  if (norm.includes('bhimaram2') || norm.includes('beemaramc2')) return 'bhimaram2';
+  return norm;
+};
+
+export const getOrGenerateSecurityKeys = () => {
+  const stored = localStorage.getItem('jc_security_keys');
+  const now = Date.now();
+  const rotationInterval = 12 * 60 * 60 * 1000;
+  
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed.generatedAt && (now - parsed.generatedAt < rotationInterval)) {
+        return parsed;
+      }
+    } catch (e) {
+      // JSON parse error, regenerate
+    }
+  }
+  
+  const genOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+  
+  const keys = {
+    generatedAt: now,
+    dailyPins: {
+      admin1: '882211',
+      authenticator: '998811',
+      admin2_eragattur1: genOtp(),
+      admin2_eragattur2: genOtp(),
+      admin2_indbimar1: genOtp(),
+      admin2_bhimaram2: genOtp(),
+      accountant_eragattur1_1: genOtp(),
+      accountant_eragattur1_2: genOtp(),
+      accountant_eragattur2_1: genOtp(),
+      accountant_eragattur2_2: genOtp(),
+      accountant_indbimar1_1: genOtp(),
+      accountant_indbimar1_2: genOtp(),
+      accountant_bhimaram2_1: genOtp(),
+      accountant_bhimaram2_2: genOtp(),
+    },
+    sectionOtps: {
+      admin1: {
+        studentRegistry: genOtp(),
+        facultyManagement: genOtp(),
+        feeStructure: genOtp(),
+        expenditure: genOtp()
+      },
+      admin2: {
+        expenditure: genOtp(),
+        workerPayments: genOtp()
+      },
+      accountant: {
+        studentDetails: genOtp(),
+        fees: genOtp(),
+        hostel: genOtp()
+      }
+    }
+  };
+  
+  localStorage.setItem('jc_security_keys', JSON.stringify(keys));
+  return keys;
+};
+
+export const logTransactionInJournal = (action: string, branch: string, status: 'success' | 'failed', errorDetails = '') => {
+  const list = JSON.parse(localStorage.getItem('jc_sync_journal') || '[]');
+  const newLog = {
+    _id: `tx_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    transactionId: `TX-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`,
+    timestamp: new Date().toISOString(),
+    sourceNode: 'Inspire ERP Central Node',
+    action,
+    branch,
+    status,
+    errorDetails
+  };
+  list.unshift(newLog);
+  localStorage.setItem('jc_sync_journal', JSON.stringify(list.slice(0, 100)));
+};
+
+const seedSyncJournal = () => {
+  if (localStorage.getItem('jc_sync_journal')) return;
+  const initialLogs = [
+    {
+      _id: "tx_init_1",
+      transactionId: "TX-948271380",
+      timestamp: new Date(Date.now() - 10 * 60000).toISOString(),
+      sourceNode: "Inspire ERP Central Node",
+      action: "POST /accountant/students/stu_101/payments",
+      branch: "Eragattur 1",
+      status: "success",
+      errorDetails: ""
+    },
+    {
+      _id: "tx_init_2",
+      transactionId: "TX-948271381",
+      timestamp: new Date(Date.now() - 25 * 60000).toISOString(),
+      sourceNode: "Inspire ERP Central Node",
+      action: "POST /admin2/expenditure",
+      branch: "Eragattur 2",
+      status: "failed",
+      errorDetails: "Verification rejected: Invalid Campus Expenditure OTP. Please check keys in the Authenticator."
+    },
+    {
+      _id: "tx_init_3",
+      transactionId: "TX-948271382",
+      timestamp: new Date(Date.now() - 40 * 60000).toISOString(),
+      sourceNode: "Inspire ERP Central Node",
+      action: "POST /admin1/teachers",
+      branch: "Indbimar 1",
+      status: "success",
+      errorDetails: ""
+    },
+    {
+      _id: "tx_init_4",
+      transactionId: "TX-948271383",
+      timestamp: new Date(Date.now() - 55 * 60000).toISOString(),
+      sourceNode: "Inspire ERP Central Node",
+      action: "POST /admin2/worker-payment",
+      branch: "Bhimaram 2",
+      status: "failed",
+      errorDetails: "Verification rejected: Invalid Worker Payroll OTP. Please check keys in the Authenticator."
+    }
+  ];
+  localStorage.setItem('jc_sync_journal', JSON.stringify(initialLogs));
+};
+
+const getCampusKey = (campus: string, key: string): string => {
+  return `jc_${key}_${normalizeCampusName(campus)}`;
+};
+
+const getTargetCampus = (queryParams: URLSearchParams, bodyData: any) => {
+  const token = sessionStorage.getItem('auth_token') || '';
+  const username = token.split('-for-')[1] || '';
+  
+  if (username === 'admin1' || username === 'authenticator') {
+    const branch = queryParams.get('branch') || bodyData?.branch;
+    if (branch) return branch;
+    return 'Eragattur 1';
+  }
+  
+  const accounts = JSON.parse(localStorage.getItem('jc_accounts') || '[]');
+  const matched = accounts.find((a: any) => a.username.toLowerCase() === username.toLowerCase());
+  if (matched && matched.campus) {
+    return matched.campus;
+  }
+  
+  if (username === 'admin2') return 'Eragattur 1';
+  if (username === 'accountant') return 'Eragattur 1';
+  
+  return 'Eragattur 1';
+};
+
+const checkAndRotateAllPins = () => {
+  const accountsList = JSON.parse(localStorage.getItem('jc_accounts') || '[]');
+  let updated = false;
+  const now = Date.now();
+  const resetInterval = 12 * 60 * 60 * 1000;
+  
+  const rotatedAccounts = accountsList.map((a: any) => {
+    if ((a.role === 'admin2' || a.role === 'accountant') && (!a.lastPinReset || (now - a.lastPinReset > resetInterval))) {
+      a.password = Math.floor(100000 + Math.random() * 900000).toString();
+      a.lastPinReset = now;
+      updated = true;
+    }
+    return a;
+  });
+  
+  if (updated) {
+    localStorage.setItem('jc_accounts', JSON.stringify(rotatedAccounts));
+  }
+};
+
+// INITIAL STORAGE SEEDER
 const initializeMockDB = () => {
-  if (!localStorage.getItem('jc_db_initialized')) {
-    const defaultStudents = [
+  if (!localStorage.getItem('jc_db_initialized_v2')) {
+    const campuses = ['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'];
+    
+    // 1. Seed Accounts
+    const defaultAccounts = [
+      // 4 Admin 2 accounts
       {
-        admissionNumber: 'ADM24001',
-        studentId: 'STU-1001',
-        qrId: 'QR-8101',
-        registrationNumber: 'REG20240101',
-        name: 'Rahul Sharma',
-        fatherName: 'Mr. Ramesh Sharma',
-        motherName: 'Mrs. Devika Sharma',
-        mobile: '9876543210',
-        parentMobile: '9876543210',
-        email: 'rahul.sharma@inspire.edu',
-        address: 'Erragattugutta Campus 1, Warangal',
-        residentialAddress: 'Day Scholar',
-        hostelStatus: 'Day Scholar',
-        transportStatus: 'Self Transport',
-        course: 'MPC',
-        section: 'Section A',
-        branch: 'Erragattugutta C1',
-        rollNumber: '24MPCA101',
-        status: 'Active',
-        documents: ['10th Marksheet.pdf', 'Aadhaar Card.pdf'],
-        tuitionFee: 120000,
-        hostelFee: 0,
-        transportFee: 0,
-        miscellaneousFee: 5000,
-        previousPending: 0,
-        totalPaid: 65000,
-        remainingBalance: 60000
+        _id: 'acc_admin2_eragattur1',
+        username: 'admin2_eragattur1',
+        password: '111111',
+        role: 'admin2',
+        campus: 'Eragattur 1',
+        name: 'Dean Eragattur 1',
+        email: 'dean.e1@inspire.edu',
+        mobile: '9988770011',
+        department: 'Administration',
+        address: 'Eragattur Campus 1, Warangal',
+        lastPinReset: Date.now()
       },
       {
-        admissionNumber: 'ADM24002',
-        studentId: 'STU-1002',
-        qrId: 'QR-8102',
-        registrationNumber: 'REG20240102',
-        name: 'Karan Verma',
-        fatherName: 'Mr. Sanjay Verma',
-        motherName: 'Mrs. Shalini Verma',
-        mobile: '9123456789',
-        parentMobile: '9123456789',
-        email: 'karan.verma@inspire.edu',
-        address: 'Erragattugutta Campus 2, Warangal',
-        residentialAddress: 'Hostel Resident',
-        hostelStatus: 'Resident',
-        hostelBlock: 'Block A',
-        hostelRoom: 'Room 204',
-        transportStatus: 'Self Transport',
-        course: 'BiPC',
-        section: 'Section A',
-        branch: 'Erragattugutta C2',
-        rollNumber: '24BIPCA102',
-        status: 'Active',
-        documents: ['10th Marksheet.pdf'],
-        tuitionFee: 120000,
-        hostelFee: 85000,
-        transportFee: 0,
-        miscellaneousFee: 5000,
-        previousPending: 0,
-        totalPaid: 210000,
-        remainingBalance: 0
+        _id: 'acc_admin2_eragattur2',
+        username: 'admin2_eragattur2',
+        password: '111111',
+        role: 'admin2',
+        campus: 'Eragattur 2',
+        name: 'Dean Eragattur 2',
+        email: 'dean.e2@inspire.edu',
+        mobile: '9988770022',
+        department: 'Administration',
+        address: 'Eragattur Campus 2, Warangal',
+        lastPinReset: Date.now()
       },
       {
-        admissionNumber: 'ADM24003',
-        studentId: 'STU-1003',
-        qrId: 'QR-8103',
-        registrationNumber: 'REG20240103',
-        name: 'Sneha Reddy',
-        fatherName: 'Mr. Mohan Reddy',
-        motherName: 'Mrs. Laxmi Reddy',
-        mobile: '9345678901',
-        parentMobile: '9345678901',
-        email: 'sneha.reddy@inspire.edu',
-        address: 'Beemaram Campus 1, Hanamkonda',
-        residentialAddress: 'Day Scholar',
-        hostelStatus: 'Day Scholar',
-        transportStatus: 'College Bus',
-        course: 'CEC',
-        section: 'Section B',
-        branch: 'Beemaram C1',
-        rollNumber: '24CECB103',
-        status: 'Active',
-        documents: ['10th Marksheet.pdf', 'Aadhaar Card.pdf'],
-        tuitionFee: 120000,
-        hostelFee: 0,
-        transportFee: 15000,
-        miscellaneousFee: 5000,
-        previousPending: 10000,
-        totalPaid: 50000,
-        remainingBalance: 100000
+        _id: 'acc_admin2_indbimar1',
+        username: 'admin2_indbimar1',
+        password: '111111',
+        role: 'admin2',
+        campus: 'Indbimar 1',
+        name: 'Dean Indbimar 1',
+        email: 'dean.i1@inspire.edu',
+        mobile: '9988770033',
+        department: 'Administration',
+        address: 'Indbimar Campus 1, Warangal',
+        lastPinReset: Date.now()
+      },
+      {
+        _id: 'acc_admin2_bhimaram2',
+        username: 'admin2_bhimaram2',
+        password: '111111',
+        role: 'admin2',
+        campus: 'Bhimaram 2',
+        name: 'Dean Bhimaram 2',
+        email: 'dean.b2@inspire.edu',
+        mobile: '9988770044',
+        department: 'Administration',
+        address: 'Bhimaram Campus 2, Hanamkonda',
+        lastPinReset: Date.now()
+      },
+      
+      // 8 Accountant accounts (2 per campus)
+      {
+        _id: 'acc_accountant_eragattur1_1',
+        username: 'accountant_eragattur1_1',
+        password: '111111',
+        role: 'accountant',
+        campus: 'Eragattur 1',
+        name: 'Acc 1 Eragattur 1',
+        email: 'acc1.e1@inspire.edu',
+        mobile: '9988771101',
+        department: 'Finance Dept',
+        address: 'Eragattur Campus 1, Warangal',
+        lastPinReset: Date.now()
+      },
+      {
+        _id: 'acc_accountant_eragattur1_2',
+        username: 'accountant_eragattur1_2',
+        password: '111111',
+        role: 'accountant',
+        campus: 'Eragattur 1',
+        name: 'Acc 2 Eragattur 1',
+        email: 'acc2.e1@inspire.edu',
+        mobile: '9988771102',
+        department: 'Finance Dept',
+        address: 'Eragattur Campus 1, Warangal',
+        lastPinReset: Date.now()
+      },
+      {
+        _id: 'acc_accountant_eragattur2_1',
+        username: 'accountant_eragattur2_1',
+        password: '111111',
+        role: 'accountant',
+        campus: 'Eragattur 2',
+        name: 'Acc 1 Eragattur 2',
+        email: 'acc1.e2@inspire.edu',
+        mobile: '9988772201',
+        department: 'Finance Dept',
+        address: 'Eragattur Campus 2, Warangal',
+        lastPinReset: Date.now()
+      },
+      {
+        _id: 'acc_accountant_eragattur2_2',
+        username: 'accountant_eragattur2_2',
+        password: '111111',
+        role: 'accountant',
+        campus: 'Eragattur 2',
+        name: 'Acc 2 Eragattur 2',
+        email: 'acc2.e2@inspire.edu',
+        mobile: '9988772202',
+        department: 'Finance Dept',
+        address: 'Eragattur Campus 2, Warangal',
+        lastPinReset: Date.now()
+      },
+      {
+        _id: 'acc_accountant_indbimar1_1',
+        username: 'accountant_indbimar1_1',
+        password: '111111',
+        role: 'accountant',
+        campus: 'Indbimar 1',
+        name: 'Acc 1 Indbimar 1',
+        email: 'acc1.i1@inspire.edu',
+        mobile: '9988773301',
+        department: 'Finance Dept',
+        address: 'Indbimar Campus 1, Warangal',
+        lastPinReset: Date.now()
+      },
+      {
+        _id: 'acc_accountant_indbimar1_2',
+        username: 'accountant_indbimar1_2',
+        password: '111111',
+        role: 'accountant',
+        campus: 'Indbimar 1',
+        name: 'Acc 2 Indbimar 1',
+        email: 'acc2.i1@inspire.edu',
+        mobile: '9988773302',
+        department: 'Finance Dept',
+        address: 'Indbimar Campus 1, Warangal',
+        lastPinReset: Date.now()
+      },
+      {
+        _id: 'acc_accountant_bhimaram2_1',
+        username: 'accountant_bhimaram2_1',
+        password: '111111',
+        role: 'accountant',
+        campus: 'Bhimaram 2',
+        name: 'Acc 1 Bhimaram 2',
+        email: 'acc1.b2@inspire.edu',
+        mobile: '9988774401',
+        department: 'Finance Dept',
+        address: 'Bhimaram Campus 2, Hanamkonda',
+        lastPinReset: Date.now()
+      },
+      {
+        _id: 'acc_accountant_bhimaram2_2',
+        username: 'accountant_bhimaram2_2',
+        password: '111111',
+        role: 'accountant',
+        campus: 'Bhimaram 2',
+        name: 'Acc 2 Bhimaram 2',
+        email: 'acc2.b2@inspire.edu',
+        mobile: '9988774402',
+        department: 'Finance Dept',
+        address: 'Bhimaram Campus 2, Hanamkonda',
+        lastPinReset: Date.now()
       }
     ];
+    localStorage.setItem('jc_accounts', JSON.stringify(defaultAccounts));
 
-    const defaultTeachers = [
-      {
-        id: 'FAC-201',
-        name: 'Mr. M. Srinivas',
-        subject: 'Physics',
-        mobile: '9988776655',
-        salary: 75000,
-        assignedClasses: ['Junior MPC'],
-        assignedSections: ['Section A'],
-        assignedSubjects: ['Physics'],
-        status: 'Active',
-        branch: 'Erragattugutta C1'
-      },
-      {
-        id: 'FAC-202',
-        name: 'Mrs. K. Shanthi',
-        subject: 'Chemistry',
-        mobile: '9944332211',
-        salary: 65000,
-        assignedClasses: ['Senior BiPC'],
-        assignedSections: ['Section A', 'Section B'],
-        assignedSubjects: ['Chemistry'],
-        status: 'Active',
-        branch: 'Erragattugutta C2'
-      },
-      {
-        id: 'FAC-203',
-        name: 'Mr. P. Raghav',
-        subject: 'Mathematics',
-        mobile: '9866554433',
-        salary: 80000,
-        assignedClasses: ['Junior MPC', 'Senior MPC'],
-        assignedSections: ['Section A'],
-        assignedSubjects: ['Mathematics'],
-        status: 'Active',
-        branch: 'Beemaram C1'
+    // 2. Seed default data for each campus database
+    campuses.forEach(campus => {
+      const keySuffix = normalizeCampusName(campus);
+      
+      // Student seed
+      let students = [];
+      if (keySuffix === 'eragattur1') {
+        students = [{
+          admissionNumber: 'ADM24001',
+          studentId: 'STU-1001',
+          qrId: 'QR-8101',
+          registrationNumber: 'REG20240101',
+          name: 'Rahul Sharma',
+          fatherName: 'Mr. Ramesh Sharma',
+          motherName: 'Mrs. Devika Sharma',
+          mobile: '9876543210',
+          parentMobile: '9876543210',
+          email: 'rahul.sharma@inspire.edu',
+          address: 'Eragattur Campus 1, Warangal',
+          residentialAddress: 'Day Scholar',
+          hostelStatus: 'Day Scholar',
+          transportStatus: 'Self Transport',
+          course: 'MPC',
+          section: 'Section A',
+          branch: 'Eragattur 1',
+          rollNumber: '24MPCA101',
+          status: 'Active',
+          documents: ['10th Marksheet.pdf', 'Aadhaar Card.pdf'],
+          tuitionFee: 120000,
+          hostelFee: 0,
+          transportFee: 0,
+          miscellaneousFee: 5000,
+          previousPending: 0,
+          totalPaid: 65000,
+          remainingBalance: 60000
+        }];
+      } else if (keySuffix === 'eragattur2') {
+        students = [{
+          admissionNumber: 'ADM24002',
+          studentId: 'STU-1002',
+          qrId: 'QR-8102',
+          registrationNumber: 'REG20240102',
+          name: 'Karan Verma',
+          fatherName: 'Mr. Sanjay Verma',
+          motherName: 'Mrs. Shalini Verma',
+          mobile: '9123456789',
+          parentMobile: '9123456789',
+          email: 'karan.verma@inspire.edu',
+          address: 'Eragattur Campus 2, Warangal',
+          residentialAddress: 'Hostel Resident',
+          hostelStatus: 'Resident',
+          hostelBlock: 'Block A',
+          hostelRoom: 'Room 204',
+          transportStatus: 'Self Transport',
+          course: 'BiPC',
+          section: 'Section A',
+          branch: 'Eragattur 2',
+          rollNumber: '24BIPCA102',
+          status: 'Active',
+          documents: ['10th Marksheet.pdf'],
+          tuitionFee: 125000,
+          hostelFee: 90000,
+          transportFee: 0,
+          miscellaneousFee: 5000,
+          previousPending: 0,
+          totalPaid: 210000,
+          remainingBalance: 10000
+        }];
+      } else if (keySuffix === 'indbimar1') {
+        students = [{
+          admissionNumber: 'ADM24003',
+          studentId: 'STU-1003',
+          qrId: 'QR-8103',
+          registrationNumber: 'REG20240103',
+          name: 'Sneha Reddy',
+          fatherName: 'Mr. Mohan Reddy',
+          motherName: 'Mrs. Laxmi Reddy',
+          mobile: '9345678901',
+          parentMobile: '9345678901',
+          email: 'sneha.reddy@inspire.edu',
+          address: 'Indbimar Campus 1, Warangal',
+          residentialAddress: 'Day Scholar',
+          hostelStatus: 'Day Scholar',
+          transportStatus: 'College Bus',
+          course: 'CEC',
+          section: 'Section B',
+          branch: 'Indbimar 1',
+          rollNumber: '24CECB103',
+          status: 'Active',
+          documents: ['10th Marksheet.pdf', 'Aadhaar Card.pdf'],
+          tuitionFee: 110000,
+          hostelFee: 0,
+          transportFee: 12000,
+          miscellaneousFee: 4000,
+          previousPending: 10000,
+          totalPaid: 50000,
+          remainingBalance: 86000
+        }];
+      } else {
+        students = [{
+          admissionNumber: 'ADM24004',
+          studentId: 'STU-1004',
+          qrId: 'QR-8104',
+          registrationNumber: 'REG20240104',
+          name: 'Ananya Rao',
+          fatherName: 'Mr. Varshith Rao',
+          motherName: 'Mrs. Srilatha Rao',
+          mobile: '9866551122',
+          parentMobile: '9866551122',
+          email: 'ananya.rao@inspire.edu',
+          address: 'Bhimaram Campus 2, Hanamkonda',
+          residentialAddress: 'Day Scholar',
+          hostelStatus: 'Day Scholar',
+          transportStatus: 'Self Transport',
+          course: 'MPC',
+          section: 'Section A',
+          branch: 'Bhimaram 2',
+          rollNumber: '24MPCA104',
+          status: 'Active',
+          documents: ['10th Marksheet.pdf', 'Aadhaar Card.pdf'],
+          tuitionFee: 115000,
+          hostelFee: 0,
+          transportFee: 12000,
+          miscellaneousFee: 4000,
+          previousPending: 0,
+          totalPaid: 40000,
+          remainingBalance: 91000
+        }];
       }
-    ];
+      localStorage.setItem(`jc_students_${keySuffix}`, JSON.stringify(students));
 
-    const defaultFeeSettings = {
-      'Erragattugutta C1': {
-        tuition: 120000,
-        hostel: 85000,
-        transport: 15000,
-        misc: 5000,
-        isLocked: false,
-        academicYear: '2026-27',
-        installments: '3 Installments',
-        lateFeeRules: '₹100 per day after due date',
-        scholarshipRules: 'Merit: 50% waiver, Sports: 30% waiver',
-        discountRules: 'Sibling: 10% waiver',
-        branch: 'Erragattugutta C1'
-      },
-      'Erragattugutta C2': {
-        tuition: 125000,
-        hostel: 90000,
-        transport: 15000,
-        misc: 5000,
-        isLocked: false,
-        academicYear: '2026-27',
-        installments: '3 Installments',
-        lateFeeRules: '₹100 per day after due date',
-        scholarshipRules: 'Merit: 50% waiver, Sports: 30% waiver',
-        discountRules: 'Sibling: 10% waiver',
-        branch: 'Erragattugutta C2'
-      },
-      'Beemaram C1': {
-        tuition: 110000,
-        hostel: 80000,
-        transport: 12000,
-        misc: 4000,
-        isLocked: false,
-        academicYear: '2026-27',
-        installments: '3 Installments',
-        lateFeeRules: '₹100 per day after due date',
-        scholarshipRules: 'Merit: 50% waiver, Sports: 30% waiver',
-        discountRules: 'Sibling: 10% waiver',
-        branch: 'Beemaram C1'
-      },
-      'Beemaram C2': {
-        tuition: 115000,
-        hostel: 80000,
-        transport: 12000,
-        misc: 4000,
-        isLocked: false,
-        academicYear: '2026-27',
-        installments: '3 Installments',
-        lateFeeRules: '₹100 per day after due date',
-        scholarshipRules: 'Merit: 50% waiver, Sports: 30% waiver',
-        discountRules: 'Sibling: 10% waiver',
-        branch: 'Beemaram C2'
+      // Teachers seed
+      let teachers = [];
+      if (keySuffix === 'eragattur1') {
+        teachers = [{
+          id: 'FAC-201',
+          name: 'Mr. M. Srinivas',
+          subject: 'Physics',
+          mobile: '9988776655',
+          salary: 75000,
+          assignedClasses: ['Junior MPC'],
+          assignedSections: ['Section A'],
+          assignedSubjects: ['Physics'],
+          status: 'Active',
+          branch: 'Eragattur 1'
+        }];
+      } else if (keySuffix === 'eragattur2') {
+        teachers = [{
+          id: 'FAC-202',
+          name: 'Mrs. K. Shanthi',
+          subject: 'Chemistry',
+          mobile: '9944332211',
+          salary: 65000,
+          assignedClasses: ['Senior BiPC'],
+          assignedSections: ['Section A', 'Section B'],
+          assignedSubjects: ['Chemistry'],
+          status: 'Active',
+          branch: 'Eragattur 2'
+        }];
+      } else {
+        teachers = [{
+          id: 'FAC-203',
+          name: 'Mr. P. Raghav',
+          subject: 'Mathematics',
+          mobile: '9866554433',
+          salary: 80000,
+          assignedClasses: ['Junior MPC', 'Senior MPC'],
+          assignedSections: ['Section A'],
+          assignedSubjects: ['Mathematics'],
+          status: 'Active',
+          branch: 'Indbimar 1'
+        }];
       }
-    };
+      localStorage.setItem(`jc_teachers_${keySuffix}`, JSON.stringify(teachers));
 
-    const defaultExpenditures = [
-      {
-        id: 'EXP-9001',
-        category: 'Utilities',
-        amount: 15000,
-        description: 'Electricity bill June 2026',
-        branch: 'Erragattugutta C1',
-        date: '2026-07-10'
-      },
-      {
-        id: 'EXP-9002',
-        category: 'Maintenance',
-        amount: 8000,
-        description: 'Lab equipment repair',
-        branch: 'Erragattugutta C1',
-        date: '2026-07-15'
-      },
-      {
-        id: 'EXP-9003',
-        category: 'Mess & Food',
-        amount: 45000,
-        description: 'Hostel mess supplies',
-        branch: 'Erragattugutta C2',
-        date: '2026-07-18'
+      // Fee Settings seed
+      let feeSettings = {};
+      if (keySuffix === 'eragattur1') {
+        feeSettings = {
+          tuition: 120000,
+          hostel: 85000,
+          transport: 15000,
+          misc: 5000,
+          isLocked: false,
+          academicYear: '2026-27',
+          installments: '3 Installments',
+          lateFeeRules: '₹100 per day after due date',
+          scholarshipRules: 'Merit: 50% waiver, Sports: 30% waiver',
+          discountRules: 'Sibling: 10% waiver',
+          branch: 'Eragattur 1'
+         };
+      } else if (keySuffix === 'eragattur2') {
+        feeSettings = {
+          tuition: 125000,
+          hostel: 90000,
+          transport: 15000,
+          misc: 5000,
+          isLocked: false,
+          academicYear: '2026-27',
+          installments: '3 Installments',
+          lateFeeRules: '₹100 per day after due date',
+          scholarshipRules: 'Merit: 50% waiver, Sports: 30% waiver',
+          discountRules: 'Sibling: 10% waiver',
+          branch: 'Eragattur 2'
+        };
+      } else if (keySuffix === 'indbimar1') {
+        feeSettings = {
+          tuition: 110000,
+          hostel: 80000,
+          transport: 12000,
+          misc: 4000,
+          isLocked: false,
+          academicYear: '2026-27',
+          installments: '3 Installments',
+          lateFeeRules: '₹100 per day after due date',
+          scholarshipRules: 'Merit: 50% waiver, Sports: 30% waiver',
+          discountRules: 'Sibling: 10% waiver',
+          branch: 'Indbimar 1'
+        };
+      } else {
+        feeSettings = {
+          tuition: 115000,
+          hostel: 80000,
+          transport: 12000,
+          misc: 4000,
+          isLocked: false,
+          academicYear: '2026-27',
+          installments: '3 Installments',
+          lateFeeRules: '₹100 per day after due date',
+          scholarshipRules: 'Merit: 50% waiver, Sports: 30% waiver',
+          discountRules: 'Sibling: 10% waiver',
+          branch: 'Bhimaram 2'
+        };
       }
-    ];
+      localStorage.setItem(`jc_fee_settings_${keySuffix}`, JSON.stringify(feeSettings));
 
-    const defaultWorkerPayments = [
-      {
-        id: 'WP-8001',
-        name: 'Suresh Kumar',
-        role: 'Security Guard',
-        salary: 15000,
-        paid: false,
-        branch: 'Erragattugutta C1',
-        period: 'July 2026'
-      },
-      {
-        id: 'WP-8002',
-        name: 'Laxmi Bai',
-        role: 'Hostel Warden',
-        salary: 25000,
-        paid: true,
-        branch: 'Erragattugutta C1',
-        period: 'July 2026'
-      },
-      {
-        id: 'WP-8003',
-        name: 'Ramu Yadav',
-        role: 'Bus Driver',
-        salary: 18000,
-        paid: false,
-        branch: 'Beemaram C1',
-        period: 'July 2026'
-      }
-    ];
-
-    const defaultBulletins = [
-      {
-        id: 'BUL-7001',
-        category: 'announcement',
-        title: 'Welcome to Academic Year 2026-27',
-        content: 'Classes commence on July 25th. All students must report to their respective campuses.',
-        date: '21 Jul 2026'
-      },
-      {
-        id: 'BUL-7002',
-        category: 'holiday',
-        title: 'Independence Day Holiday',
-        content: 'Campuses will remain closed on August 15th in observance of Independence Day.',
-        date: '21 Jul 2026'
-      }
-    ];
-
-    const defaultStudentMarks = [
-      {
-        studentId: 'STU-1001',
-        name: 'Rahul Sharma',
-        marks: [
-          { subject: 'Physics', midterm: 82, final: 88 },
-          { subject: 'Chemistry', midterm: 85, final: 89 },
-          { subject: 'Mathematics', midterm: 95, final: 97 },
-          { subject: 'English', midterm: 80, final: 84 }
-        ]
-      },
-      {
-        studentId: 'STU-1002',
-        name: 'Karan Verma',
-        marks: [
-          { subject: 'Physics', midterm: 82, final: 85 },
-          { subject: 'Chemistry', midterm: 88, final: 90 },
-          { subject: 'English', midterm: 78, final: 81 }
-        ]
-      },
-      {
-        studentId: 'STU-1003',
-        name: 'Sneha Reddy',
-        marks: [
-          { subject: 'Mathematics', midterm: 78, final: 82 },
-          { subject: 'English', midterm: 85, final: 87 }
-        ]
-      }
-    ];
-
-    const defaultPayments = [
-      {
-        _id: 'PAY-3001',
-        studentId: 'STU-1001',
-        receiptNumber: 'REC-50011',
-        date: new Date().toISOString(),
-        category: 'Academic Fee',
-        installment: 'Installment 1',
-        amount: 65000,
-        balance: 60000,
-        mode: 'UPI',
-        cashier: 'Senior Accountant'
-      },
-      {
-        _id: 'PAY-3002',
-        studentId: 'STU-1002',
-        receiptNumber: 'REC-50012',
-        date: new Date().toISOString(),
-        category: 'Academic Fee',
-        installment: 'Full Payment',
-        amount: 210000,
-        balance: 0,
-        mode: 'Cash',
-        cashier: 'Senior Accountant'
-      },
-      {
-        _id: 'PAY-3003',
-        studentId: 'STU-1003',
-        receiptNumber: 'REC-50013',
-        date: new Date().toISOString(),
-        category: 'Academic Fee',
-        installment: 'Installment 1',
-        amount: 50000,
-        balance: 100000,
-        mode: 'Bank Transfer',
-        cashier: 'Senior Accountant'
-      }
-    ];
-
-    const defaultHostel = {
-      blocks: {
-        BlockA: { name: 'Block A (Boys)', capacity: 100, occupied: 1 },
-        BlockB: { name: 'Block B (Girls)', capacity: 100, occupied: 0 },
-        BlockC: { name: 'Block C (Staff)', capacity: 50, occupied: 0 }
-      },
-      rooms: [
+      // Expenditures seed
+      const expenditures = [
         {
-          _id: 'room_101',
-          roomNumber: '101',
-          block: 'BlockA',
-          capacity: 4,
-          occupants: []
-        },
-        {
-          _id: 'room_204',
-          roomNumber: '204',
-          block: 'BlockA',
-          capacity: 2,
-          occupants: [
-            {
-              studentId: 'STU-1002',
-              name: 'Karan Verma',
-              course: 'BiPC',
-              rollNumber: '24BIPCA102'
-            }
-          ]
-        },
-        {
-          _id: 'room_302',
-          roomNumber: '302',
-          block: 'BlockB',
-          capacity: 2,
-          occupants: []
+          id: `EXP-900${keySuffix === 'eragattur1' ? '1' : keySuffix === 'eragattur2' ? '2' : '3'}`,
+          category: 'Utilities',
+          amount: 15000,
+          description: 'Electricity bill June 2026',
+          branch: campus,
+          date: '2026-07-10'
         }
-      ]
-    };
+      ];
+      localStorage.setItem(`jc_expenditures_${keySuffix}`, JSON.stringify(expenditures));
 
-    localStorage.setItem('jc_students', JSON.stringify(defaultStudents));
-    localStorage.setItem('jc_teachers', JSON.stringify(defaultTeachers));
-    localStorage.setItem('jc_fee_settings', JSON.stringify(defaultFeeSettings));
-    localStorage.setItem('jc_expenditures', JSON.stringify(defaultExpenditures));
-    localStorage.setItem('jc_worker_payments', JSON.stringify(defaultWorkerPayments));
-    localStorage.setItem('jc_bulletins', JSON.stringify(defaultBulletins));
-    localStorage.setItem('jc_student_marks', JSON.stringify(defaultStudentMarks));
-    localStorage.setItem('jc_payments', JSON.stringify(defaultPayments));
-    localStorage.setItem('jc_hostel', JSON.stringify(defaultHostel));
-    localStorage.setItem('jc_db_initialized', 'true');
+      // Worker Payments seed
+      const workerPayments = [
+        {
+          id: `WP-800${keySuffix === 'eragattur1' ? '1' : keySuffix === 'eragattur2' ? '2' : '3'}`,
+          name: 'Suresh Kumar',
+          role: 'Security Guard',
+          salary: 15000,
+          paid: false,
+          branch: campus,
+          period: 'July 2026'
+        }
+      ];
+      localStorage.setItem(`jc_worker_payments_${keySuffix}`, JSON.stringify(workerPayments));
+
+      // Bulletins seed
+      const bulletins = [
+        {
+          id: 'BUL-7001',
+          category: 'announcement',
+          title: `Welcome to ${campus}`,
+          content: 'Classes commence on July 25th.',
+          date: '21 Jul 2026'
+        }
+      ];
+      localStorage.setItem(`jc_bulletins_${keySuffix}`, JSON.stringify(bulletins));
+
+      // Student Marks seed
+      const marks = [
+        {
+          studentId: keySuffix === 'eragattur1' ? 'STU-1001' : keySuffix === 'eragattur2' ? 'STU-1002' : keySuffix === 'indbimar1' ? 'STU-1003' : 'STU-1004',
+          name: keySuffix === 'eragattur1' ? 'Rahul Sharma' : keySuffix === 'eragattur2' ? 'Karan Verma' : keySuffix === 'indbimar1' ? 'Sneha Reddy' : 'Ananya Rao',
+          marks: [
+            { subject: 'Physics', midterm: 82, final: 88 },
+            { subject: 'Chemistry', midterm: 85, final: 89 }
+          ]
+        }
+      ];
+      localStorage.setItem(`jc_student_marks_${keySuffix}`, JSON.stringify(marks));
+
+      // Payments seed
+      const payments = [
+        {
+          _id: `PAY-300${keySuffix === 'eragattur1' ? '1' : keySuffix === 'eragattur2' ? '2' : '3'}`,
+          studentId: keySuffix === 'eragattur1' ? 'STU-1001' : keySuffix === 'eragattur2' ? 'STU-1002' : keySuffix === 'indbimar1' ? 'STU-1003' : 'STU-1004',
+          receiptNumber: `REC-5001${keySuffix === 'eragattur1' ? '1' : keySuffix === 'eragattur2' ? '2' : '3'}`,
+          date: new Date().toISOString(),
+          category: 'Academic Fee',
+          installment: 'Installment 1',
+          amount: 50000,
+          balance: 20000,
+          mode: 'UPI',
+          cashier: 'Senior Accountant'
+        }
+      ];
+      localStorage.setItem(`jc_payments_${keySuffix}`, JSON.stringify(payments));
+
+      // Hostel seed
+      const hostel = {
+        blocks: {
+          BlockA: { name: 'Block A (Boys)', capacity: 100, occupied: keySuffix === 'eragattur2' ? 1 : 0 },
+          BlockB: { name: 'Block B (Girls)', capacity: 100, occupied: 0 },
+          BlockC: { name: 'Block C (Staff)', capacity: 50, occupied: 0 }
+        },
+        rooms: [
+          {
+            _id: 'room_101',
+            roomNumber: '101',
+            block: 'BlockA',
+            capacity: 4,
+            occupants: []
+          },
+          {
+            _id: 'room_204',
+            roomNumber: '204',
+            block: 'BlockA',
+            capacity: 2,
+            occupants: keySuffix === 'eragattur2' ? [
+              {
+                studentId: 'STU-1002',
+                name: 'Karan Verma',
+                course: 'BiPC',
+                rollNumber: '24BIPCA102'
+              }
+            ] : []
+          }
+        ]
+      };
+      localStorage.setItem(`jc_hostel_${keySuffix}`, JSON.stringify(hostel));
+    });
+
+    seedSyncJournal();
+    localStorage.setItem('jc_db_initialized_v2', 'true');
   }
 };
 
@@ -459,58 +768,325 @@ export const apiClient = {
       });
     }
 
+    // Validate request security keys / OTPs
+    const validateRequestOtp = (path: string, methodStr: string, currentCampus: string) => {
+      if (methodStr === 'GET' || path.startsWith('/auth') || path.startsWith('/authenticator')) {
+        return;
+      }
+      
+      const keys = getOrGenerateSecurityKeys();
+      
+      let expectedOtp = '';
+      let actionLabel = '';
+      
+      if (path === '/admin1/teachers') {
+        expectedOtp = keys.sectionOtps.admin1.facultyManagement;
+        actionLabel = 'Faculty Management OTP';
+      } else if (path === '/admin1/students' || path === '/admin1/student') {
+        expectedOtp = keys.sectionOtps.admin1.studentRegistry;
+        actionLabel = 'Student Registry OTP';
+      } else if (path === '/admin2/fee-settings') {
+        expectedOtp = keys.sectionOtps.admin1.feeStructure;
+        actionLabel = 'Academic Fee Structure OTP';
+      } else if (path === '/admin2/expenditures' || path === '/admin2/expenditure') {
+        const activeUser = JSON.parse(localStorage.getItem('jc_active_user') || '{}');
+        if (activeUser.role === 'admin1') {
+          expectedOtp = keys.sectionOtps.admin1.expenditure;
+          actionLabel = 'Multi-Branch Expenditure OTP';
+        } else {
+          expectedOtp = keys.sectionOtps.admin2.expenditure;
+          actionLabel = 'Campus Expenditure OTP';
+        }
+      } else if (path === '/admin2/worker-payments' || path === '/admin2/worker-payment') {
+        expectedOtp = keys.sectionOtps.admin2.workerPayments;
+        actionLabel = 'Worker Payments OTP';
+      } else if (path.startsWith('/accountant/students/') && path.endsWith('/bio')) {
+        expectedOtp = keys.sectionOtps.accountant.studentDetails;
+        actionLabel = 'Student Details Update OTP';
+      } else if (path.startsWith('/accountant/students/') && path.endsWith('/payments')) {
+        expectedOtp = keys.sectionOtps.accountant.fees;
+        actionLabel = 'Fee Collection OTP';
+      } else if (path.startsWith('/accountant/hostel')) {
+        expectedOtp = keys.sectionOtps.accountant.hostel;
+        actionLabel = 'Hostel Registry OTP';
+      }
+
+      if (expectedOtp && activeSecurityKey !== expectedOtp) {
+        throw new Error(`Verification rejected: Invalid ${actionLabel}. Please check keys in the Authenticator.`);
+      }
+    };
+
+    const targetCampusName = getTargetCampus(queryParams, bodyData);
+    try {
+      validateRequestOtp(cleanPath, method, targetCampusName);
+    } catch (err: any) {
+      if (!err.message.includes('Verification rejected')) {
+        logTransactionInJournal(`${method} ${cleanPath}`, targetCampusName, 'failed', err.message);
+      }
+      throw err;
+    }
+
     // --- AUTH ROUTES ---
     if (cleanPath === '/auth/login') {
       const { identifier, password } = bodyData;
-      const validRoles = ['admin1', 'admin2', 'accountant', 'authenticator'];
-      if (validRoles.includes(identifier) && password === '111111') {
-        const mockUser = {
-          id: `USR-${identifier.toUpperCase()}`,
-          username: identifier,
-          role: identifier,
-          name: identifier === 'admin1' ? 'Rector' : identifier === 'admin2' ? 'Principal Dean' : identifier === 'accountant' ? 'Bursar Senior' : 'Security Admin'
-        };
-        return {
-          status: 'success',
-          token: `mock-jwt-token-for-${identifier}`,
-          user: mockUser
-        } as any;
+      initializeMockDB();
+      const accountsList = JSON.parse(localStorage.getItem('jc_accounts') || '[]');
+      
+      let matchedAccount = accountsList.find((a: any) => a.username.toLowerCase() === identifier.toLowerCase());
+      
+      if (!matchedAccount) {
+        if (identifier === 'admin1' && password === '111111') {
+          matchedAccount = { _id: 'acc_admin1', username: 'admin1', password: '111111', role: 'admin1', campus: 'All', name: 'Rector' };
+        } else if (identifier === 'authenticator' && password === '111111') {
+          matchedAccount = { _id: 'acc_authenticator', username: 'authenticator', password: '111111', role: 'authenticator', campus: 'All', name: 'Security Admin' };
+        }
       }
-      throw new Error('Invalid credentials. Use role name and pin 111111.');
+      
+      if (matchedAccount) {
+        // Rotate 12 hours check (only for admin2 and accountant profiles)
+        const now = Date.now();
+        const resetInterval = 12 * 60 * 60 * 1000;
+        if ((matchedAccount.role === 'admin2' || matchedAccount.role === 'accountant') && 
+            (!matchedAccount.lastPinReset || (now - matchedAccount.lastPinReset > resetInterval))) {
+          matchedAccount.password = Math.floor(100000 + Math.random() * 900000).toString();
+          matchedAccount.lastPinReset = now;
+          const idx = accountsList.findIndex((a: any) => a._id === matchedAccount._id);
+          if (idx !== -1) {
+            accountsList[idx] = matchedAccount;
+            localStorage.setItem('jc_accounts', JSON.stringify(accountsList));
+          }
+        }
+        
+        if (password === matchedAccount.password) {
+          const mockUser = {
+            id: matchedAccount._id,
+            username: matchedAccount.username,
+            role: matchedAccount.role,
+            campus: matchedAccount.campus,
+            name: matchedAccount.name || (matchedAccount.role === 'admin2' ? 'Principal Dean' : 'Accountant')
+          };
+          return {
+            status: 'success',
+            token: `mock-jwt-token-for-${matchedAccount.username}`,
+            user: mockUser
+          } as any;
+        }
+      }
+      
+      throw new Error('Invalid credentials. Use your account ID and PIN.');
     }
 
     if (cleanPath === '/auth/me') {
       const token = sessionStorage.getItem('auth_token') || '';
-      const matchedRole = token.split('-for-')[1] || 'admin1';
+      const matchedUsername = token.split('-for-')[1] || 'admin1';
+      
+      const accountsList = JSON.parse(localStorage.getItem('jc_accounts') || '[]');
+      let matchedAccount = accountsList.find((a: any) => a.username.toLowerCase() === matchedUsername.toLowerCase());
+      
+      if (!matchedAccount) {
+        if (matchedUsername === 'admin1') {
+          matchedAccount = { _id: 'acc_admin1', username: 'admin1', role: 'admin1', campus: 'All', name: 'Rector' };
+        } else if (matchedUsername === 'authenticator') {
+          matchedAccount = { _id: 'acc_authenticator', username: 'authenticator', role: 'authenticator', campus: 'All', name: 'Security Admin' };
+        }
+      }
+      
+      if (matchedAccount) {
+        return {
+          status: 'success',
+          user: {
+            id: matchedAccount._id,
+            username: matchedAccount.username,
+            role: matchedAccount.role,
+            campus: matchedAccount.campus,
+            name: matchedAccount.name || (matchedAccount.role === 'admin2' ? 'Principal Dean' : 'Accountant')
+          }
+        } as any;
+      }
+      throw new Error('User not found.');
+    }
+
+    // --- AUTHENTICATOR ACCOUNTS CONTROL ---
+    if (cleanPath === '/authenticator/accounts') {
+      checkAndRotateAllPins();
+      const accountsList = JSON.parse(localStorage.getItem('jc_accounts') || '[]');
+      if (method === 'GET') {
+        return { status: 'success', data: accountsList } as any;
+      }
+      if (method === 'POST') {
+        const newAcc = { ...bodyData };
+        newAcc._id = `acc_${Date.now()}`;
+        newAcc.lastPinReset = Date.now();
+        accountsList.push(newAcc);
+        localStorage.setItem('jc_accounts', JSON.stringify(accountsList));
+        return { status: 'success', data: newAcc } as any;
+      }
+    }
+
+    if (cleanPath.startsWith('/authenticator/accounts/')) {
+      const id = cleanPath.split('/').pop();
+      const accountsList = JSON.parse(localStorage.getItem('jc_accounts') || '[]');
+      const idx = accountsList.findIndex((a: any) => a._id === id);
+      
+      if (method === 'PUT') {
+        if (idx !== -1) {
+          accountsList[idx] = { ...accountsList[idx], ...bodyData };
+          if (bodyData.password) {
+            accountsList[idx].lastPinReset = Date.now();
+          }
+          localStorage.setItem('jc_accounts', JSON.stringify(accountsList));
+          return { status: 'success', data: accountsList[idx] } as any;
+        }
+        throw new Error('Account not found');
+      }
+      
+      if (method === 'DELETE') {
+        if (idx !== -1) {
+          accountsList.splice(idx, 1);
+          localStorage.setItem('jc_accounts', JSON.stringify(accountsList));
+          return { status: 'success', message: 'Account deleted.' } as any;
+        }
+        throw new Error('Account not found');
+      }
+    }
+
+    if (cleanPath === '/authenticator/keys') {
+      const keys = getOrGenerateSecurityKeys();
+      const accountsList = JSON.parse(localStorage.getItem('jc_accounts') || '[]');
+      
+      const dailyPins: any = {
+        admin1: '882211',
+        authenticator: '998811'
+      };
+      
+      accountsList.forEach((a: any) => {
+        if (a.role === 'admin2') {
+          dailyPins[`admin2_${normalizeCampusName(a.campus)}`] = a.password;
+        } else if (a.role === 'accountant') {
+          dailyPins[a.username] = a.password;
+        }
+      });
+
       return {
         status: 'success',
-        user: {
-          id: `USR-${matchedRole.toUpperCase()}`,
-          username: matchedRole,
-          role: matchedRole,
-          name: matchedRole === 'admin1' ? 'Rector' : matchedRole === 'admin2' ? 'Principal Dean' : matchedRole === 'accountant' ? 'Bursar Senior' : 'Security Admin'
+        data: {
+          dailyPins,
+          sectionOtps: keys.sectionOtps
         }
       } as any;
     }
 
+    if (cleanPath === '/authenticator/backup-codes') {
+      const accountsList = JSON.parse(localStorage.getItem('jc_accounts') || '[]');
+      const keys = getOrGenerateSecurityKeys();
+      
+      const codes = [
+        {
+          name: 'Rector (Admin 1)',
+          username: 'admin1',
+          role: 'admin1',
+          password: keys.dailyPins.admin1,
+          backupCode: 'REC-BK-991',
+          campus: 'All'
+        },
+        {
+          name: 'Security Admin (Authenticator)',
+          username: 'authenticator',
+          role: 'authenticator',
+          password: keys.dailyPins.authenticator,
+          backupCode: 'SEC-BK-882',
+          campus: 'All'
+        }
+      ];
+
+      accountsList.forEach((a: any) => {
+        let backup = '';
+        if (a.role === 'admin2') {
+          const suffix = normalizeCampusName(a.campus).toUpperCase();
+          backup = `ADM2-BK-${suffix}`;
+        } else if (a.role === 'accountant') {
+          const parts = a.username.split('_');
+          const suffix = parts[1]?.toUpperCase() || 'CAMP';
+          const num = parts[2] || '1';
+          backup = `ACT-BK-${suffix}-${num}`;
+        }
+
+        codes.push({
+          name: a.name || (a.role === 'admin2' ? 'Principal Dean' : 'Accountant'),
+          username: a.username,
+          role: a.role,
+          password: a.password,
+          backupCode: backup || `BK-${a.username.toUpperCase()}`,
+          campus: a.campus
+        });
+      });
+
+      return {
+        status: 'success',
+        data: codes
+      } as any;
+    }
+
+    if (cleanPath === '/authenticator/sync-journal') {
+      const list = JSON.parse(localStorage.getItem('jc_sync_journal') || '[]');
+      return { status: 'success', data: list } as any;
+    }
+
+    if (cleanPath === '/authenticator/stats') {
+      let totalStudents = 0;
+      let totalTeachers = 0;
+      let totalStaff = 8;
+      
+      ['eragattur1', 'eragattur2', 'indbimar1', 'bhimaram2'].forEach(c => {
+        const studentsList = JSON.parse(localStorage.getItem(`jc_students_${c}`) || '[]');
+        const teachersList = JSON.parse(localStorage.getItem(`jc_teachers_${c}`) || '[]');
+        const workersList = JSON.parse(localStorage.getItem(`jc_worker_payments_${c}`) || '[]');
+        totalStudents += studentsList.length;
+        totalTeachers += teachersList.length;
+        totalStaff += workersList.length;
+      });
+
+      return {
+        status: 'success',
+        data: {
+          totalStudents,
+          totalTeachers,
+          totalStaff,
+          activeDevices: 12
+        }
+      } as any;
+    }
+
+    // Resolve current campus context
+    const branch = getTargetCampus(queryParams, bodyData);
+    const studentsKey = getCampusKey(branch, 'students');
+    const teachersKey = getCampusKey(branch, 'teachers');
+    const feeSettingsKey = getCampusKey(branch, 'fee_settings');
+    const expendituresKey = getCampusKey(branch, 'expenditures');
+    const workerPaymentsKey = getCampusKey(branch, 'worker_payments');
+    const studentMarksKey = getCampusKey(branch, 'student_marks');
+    const bulletinsKey = getCampusKey(branch, 'bulletins');
+    const paymentsKey = getCampusKey(branch, 'payments');
+    const hostelKey = getCampusKey(branch, 'hostel');
+    const attendanceKey = getCampusKey(branch, 'attendance');
+
     // --- STUDENT ROUTES ---
     if (cleanPath === '/admin1/students' || cleanPath === '/admin/students') {
-      const list = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      const list = JSON.parse(localStorage.getItem(studentsKey) || '[]');
       if (method === 'GET') {
         const search = queryParams.get('search')?.toLowerCase() || '';
         const filtered = list.filter((s: any) => s.name.toLowerCase().includes(search) || s.admissionNumber.toLowerCase().includes(search));
         return { status: 'success', data: filtered } as any;
       }
       if (method === 'POST') {
-        // Provision Student
         const newStu = { ...bodyData };
         newStu._id = `stu_${Date.now()}`;
         newStu.tempPassword = '111111'; // Default pin
         list.push(newStu);
-        localStorage.setItem('jc_students', JSON.stringify(list));
+        localStorage.setItem(studentsKey, JSON.stringify(list));
 
         // Create empty marks profile
-        const marksList = JSON.parse(localStorage.getItem('jc_student_marks') || '[]');
+        const marksList = JSON.parse(localStorage.getItem(studentMarksKey) || '[]');
         marksList.push({
           studentId: newStu.studentId,
           name: newStu.name,
@@ -521,21 +1097,22 @@ export const apiClient = {
             { subject: 'Mathematics', midterm: 0, final: 0 }
           ]
         });
-        localStorage.setItem('jc_student_marks', JSON.stringify(marksList));
-
+        localStorage.setItem(studentMarksKey, JSON.stringify(marksList));
+        logTransactionInJournal('POST /admin1/students', branch, 'success');
         return { status: 'success', data: newStu, credential: { pin: '111111', username: newStu.rollNumber } } as any;
       }
     }
 
     if (cleanPath.startsWith('/admin1/students/')) {
       const id = cleanPath.split('/').pop();
-      const list = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      const list = JSON.parse(localStorage.getItem(studentsKey) || '[]');
       const idx = list.findIndex((s: any) => s.admissionNumber === id || s.studentId === id || s._id === id);
 
       if (method === 'PATCH') {
         if (idx !== -1) {
           list[idx] = { ...list[idx], ...bodyData };
-          localStorage.setItem('jc_students', JSON.stringify(list));
+          localStorage.setItem(studentsKey, JSON.stringify(list));
+          logTransactionInJournal(`PATCH /admin1/students/${id}`, branch, 'success');
           return { status: 'success', data: list[idx] } as any;
         }
         throw new Error('Student not found');
@@ -543,7 +1120,8 @@ export const apiClient = {
       if (method === 'DELETE') {
         if (idx !== -1) {
           list[idx].status = 'Inactive';
-          localStorage.setItem('jc_students', JSON.stringify(list));
+          localStorage.setItem(studentsKey, JSON.stringify(list));
+          logTransactionInJournal(`DELETE /admin1/students/${id}`, branch, 'success');
           return { status: 'success', message: 'Student deactivated.' } as any;
         }
         throw new Error('Student not found');
@@ -552,7 +1130,7 @@ export const apiClient = {
 
     // --- TEACHER / STAFF ROUTES ---
     if (cleanPath === '/admin1/teachers') {
-      const list = JSON.parse(localStorage.getItem('jc_teachers') || '[]');
+      const list = JSON.parse(localStorage.getItem(teachersKey) || '[]');
       if (method === 'GET') {
         return { status: 'success', data: list } as any;
       }
@@ -561,19 +1139,21 @@ export const apiClient = {
         newTeacher._id = `t_${Date.now()}`;
         newTeacher.status = 'Active';
         list.push(newTeacher);
-        localStorage.setItem('jc_teachers', JSON.stringify(list));
+        localStorage.setItem(teachersKey, JSON.stringify(list));
+        logTransactionInJournal('POST /admin1/teachers', branch, 'success');
         return { status: 'success', data: newTeacher } as any;
       }
     }
 
     if (cleanPath.startsWith('/admin1/teachers/')) {
       const id = cleanPath.split('/').pop();
-      const list = JSON.parse(localStorage.getItem('jc_teachers') || '[]');
+      const list = JSON.parse(localStorage.getItem(teachersKey) || '[]');
       const idx = list.findIndex((t: any) => t.id === id || t._id === id);
       if (method === 'PATCH') {
         if (idx !== -1) {
           list[idx] = { ...list[idx], ...bodyData };
-          localStorage.setItem('jc_teachers', JSON.stringify(list));
+          localStorage.setItem(teachersKey, JSON.stringify(list));
+          logTransactionInJournal(`PATCH /admin1/teachers/${id}`, branch, 'success');
           return { status: 'success', data: list[idx] } as any;
         }
         throw new Error('Teacher not found');
@@ -581,45 +1161,41 @@ export const apiClient = {
     }
 
     if (cleanPath === '/admin1/sections' || cleanPath === '/admin2/staff-salaries') {
-      const list = JSON.parse(localStorage.getItem('jc_teachers') || '[]');
+      const list = JSON.parse(localStorage.getItem(teachersKey) || '[]');
       return { status: 'success', data: { sections: ['Section A', 'Section B'], teachers: list } } as any;
     }
 
     // --- FEE SETTINGS ROUTES ---
     if (cleanPath === '/admin2/fee-settings') {
-      const settings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
+      const settings = JSON.parse(localStorage.getItem(feeSettingsKey) || '{}');
       if (method === 'GET') {
-        const branch = queryParams.get('branch') || 'Erragattugutta C1';
-        return { status: 'success', data: settings[branch] || settings['Erragattugutta C1'] } as any;
+        return { status: 'success', data: settings } as any;
       }
       if (method === 'PATCH') {
-        const branch = bodyData.branch || 'Erragattugutta C1';
-        const current = settings[branch] || { branch };
-        settings[branch] = { ...current, ...bodyData };
-        localStorage.setItem('jc_fee_settings', JSON.stringify(settings));
+        const current = settings || { branch };
+        const merged = { ...current, ...bodyData };
+        localStorage.setItem(feeSettingsKey, JSON.stringify(merged));
 
         // Propagate baseline fees to students in this branch
-        const stuList = JSON.parse(localStorage.getItem('jc_students') || '[]');
+        const stuList = JSON.parse(localStorage.getItem(studentsKey) || '[]');
         const updatedStudents = stuList.map((student: any) => {
-          if (student.branch === branch) {
-            student.tuitionFee = settings[branch].tuition;
-            student.hostelFee = student.hostelStatus === 'Resident' ? settings[branch].hostel : 0;
-            student.transportFee = student.transportStatus === 'College Bus' ? settings[branch].transport : 0;
-            student.miscellaneousFee = settings[branch].misc;
-            student.remainingBalance = (student.tuitionFee + student.hostelFee + student.transportFee + student.miscellaneousFee + student.previousPending) - student.totalPaid;
-            if (student.remainingBalance < 0) student.remainingBalance = 0;
-          }
+          student.tuitionFee = merged.tuition;
+          student.hostelFee = student.hostelStatus === 'Resident' ? merged.hostel : 0;
+          student.transportFee = student.transportStatus === 'College Bus' ? merged.transport : 0;
+          student.miscellaneousFee = merged.misc;
+          student.remainingBalance = (student.tuitionFee + student.hostelFee + student.transportFee + student.miscellaneousFee + student.previousPending) - student.totalPaid;
+          if (student.remainingBalance < 0) student.remainingBalance = 0;
           return student;
         });
-        localStorage.setItem('jc_students', JSON.stringify(updatedStudents));
-
-        return { status: 'success', data: settings[branch] } as any;
+        localStorage.setItem(studentsKey, JSON.stringify(updatedStudents));
+        logTransactionInJournal('PATCH /admin2/fee-settings', branch, 'success');
+        return { status: 'success', data: merged } as any;
       }
     }
 
     // --- EXPENDITURES ROUTES ---
-    if (cleanPath === '/admin2/expenditures') {
-      const list = JSON.parse(localStorage.getItem('jc_expenditures') || '[]');
+    if (cleanPath === '/admin2/expenditures' || cleanPath === '/admin2/expenditure') {
+      const list = JSON.parse(localStorage.getItem(expendituresKey) || '[]');
       if (method === 'GET') {
         return { status: 'success', data: list } as any;
       }
@@ -627,14 +1203,39 @@ export const apiClient = {
         const newExp = { ...bodyData };
         newExp.id = `EXP-${Date.now()}`;
         list.push(newExp);
-        localStorage.setItem('jc_expenditures', JSON.stringify(list));
+        localStorage.setItem(expendituresKey, JSON.stringify(list));
+        logTransactionInJournal('POST /admin2/expenditure', branch, 'success');
         return { status: 'success', data: newExp } as any;
+      }
+    }
+
+    if (cleanPath.startsWith('/admin2/expenditures/') || cleanPath.startsWith('/admin2/expenditure/')) {
+      const id = cleanPath.split('/').pop();
+      const list = JSON.parse(localStorage.getItem(expendituresKey) || '[]');
+      const idx = list.findIndex((e: any) => e.id === id || e._id === id);
+      if (method === 'PATCH') {
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...bodyData };
+          localStorage.setItem(expendituresKey, JSON.stringify(list));
+          logTransactionInJournal(`PATCH /admin2/expenditure/${id}`, branch, 'success');
+          return { status: 'success', data: list[idx] } as any;
+        }
+        throw new Error('Expenditure not found');
+      }
+      if (method === 'DELETE') {
+        if (idx !== -1) {
+          list.splice(idx, 1);
+          localStorage.setItem(expendituresKey, JSON.stringify(list));
+          logTransactionInJournal(`DELETE /admin2/expenditure/${id}`, branch, 'success');
+          return { status: 'success', message: 'Expenditure deleted.' } as any;
+        }
+        throw new Error('Expenditure not found');
       }
     }
 
     // --- WORKER PAYMENTS ROUTES ---
     if (cleanPath === '/admin2/worker-payments') {
-      const list = JSON.parse(localStorage.getItem('jc_worker_payments') || '[]');
+      const list = JSON.parse(localStorage.getItem(workerPaymentsKey) || '[]');
       if (method === 'GET') {
         return { status: 'success', data: list } as any;
       }
@@ -642,14 +1243,39 @@ export const apiClient = {
         const newWP = { ...bodyData };
         newWP.id = `WP-${Date.now()}`;
         list.push(newWP);
-        localStorage.setItem('jc_worker_payments', JSON.stringify(list));
+        localStorage.setItem(workerPaymentsKey, JSON.stringify(list));
+        logTransactionInJournal('POST /admin2/worker-payment', branch, 'success');
         return { status: 'success', data: newWP } as any;
       }
     }
 
-    // --- MARKS REGISTRY ROUTES (NEW!) ---
+    if (cleanPath.startsWith('/admin2/worker-payments/')) {
+      const id = cleanPath.split('/').pop();
+      const list = JSON.parse(localStorage.getItem(workerPaymentsKey) || '[]');
+      const idx = list.findIndex((w: any) => w.id === id || w._id === id);
+      if (method === 'PATCH') {
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...bodyData };
+          localStorage.setItem(workerPaymentsKey, JSON.stringify(list));
+          logTransactionInJournal(`PATCH /admin2/worker-payments/${id}`, branch, 'success');
+          return { status: 'success', data: list[idx] } as any;
+        }
+        throw new Error('Worker payment not found');
+      }
+      if (method === 'DELETE') {
+        if (idx !== -1) {
+          list.splice(idx, 1);
+          localStorage.setItem(workerPaymentsKey, JSON.stringify(list));
+          logTransactionInJournal(`DELETE /admin2/worker-payments/${id}`, branch, 'success');
+          return { status: 'success', message: 'Worker payment deleted.' } as any;
+        }
+        throw new Error('Worker payment not found');
+      }
+    }
+
+    // --- MARKS REGISTRY ROUTES ---
     if (cleanPath === '/admin2/student-marks') {
-      const list = JSON.parse(localStorage.getItem('jc_student_marks') || '[]');
+      const list = JSON.parse(localStorage.getItem(studentMarksKey) || '[]');
       if (method === 'GET') {
         return { status: 'success', data: list } as any;
       }
@@ -665,7 +1291,8 @@ export const apiClient = {
           } else {
             sMarks.push({ subject, midterm: Number(midterm), final: Number(final) });
           }
-          localStorage.setItem('jc_student_marks', JSON.stringify(list));
+          localStorage.setItem(studentMarksKey, JSON.stringify(list));
+          logTransactionInJournal('PATCH /admin2/student-marks', branch, 'success');
           return { status: 'success', data: list[idx] } as any;
         }
         throw new Error('Student marks entry not found');
@@ -674,7 +1301,7 @@ export const apiClient = {
 
     // --- BULLETINS ROUTES ---
     if (cleanPath === '/admin1/bulletins') {
-      const list = JSON.parse(localStorage.getItem('jc_bulletins') || '[]');
+      const list = JSON.parse(localStorage.getItem(bulletinsKey) || '[]');
       if (method === 'GET') {
         return { status: 'success', data: list } as any;
       }
@@ -683,7 +1310,8 @@ export const apiClient = {
         newBul.id = `BUL-${Date.now()}`;
         newBul.date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
         list.push(newBul);
-        localStorage.setItem('jc_bulletins', JSON.stringify(list));
+        localStorage.setItem(bulletinsKey, JSON.stringify(list));
+        logTransactionInJournal('POST /admin1/bulletins', branch, 'success');
         return { status: 'success', data: newBul } as any;
       }
     }
@@ -700,8 +1328,8 @@ export const apiClient = {
 
     // --- ACCOUNTANT PORTAL ROUTES ---
     if (cleanPath === '/accountant/dashboard-summary') {
-      const studentsList = JSON.parse(localStorage.getItem('jc_students') || '[]');
-      const paymentsList = JSON.parse(localStorage.getItem('jc_payments') || '[]');
+      const studentsList = JSON.parse(localStorage.getItem(studentsKey) || '[]');
+      const paymentsList = JSON.parse(localStorage.getItem(paymentsKey) || '[]');
       
       const pendingCount = studentsList.filter((s: any) => (s.remainingBalance || 0) > 0).length;
       const pendingAmount = studentsList.reduce((sum: number, s: any) => sum + (s.remainingBalance || 0), 0);
@@ -723,8 +1351,8 @@ export const apiClient = {
     }
 
     if (cleanPath === '/accountant/students') {
-      const studentsList = JSON.parse(localStorage.getItem('jc_students') || '[]');
-      const paymentsList = JSON.parse(localStorage.getItem('jc_payments') || '[]');
+      const studentsList = JSON.parse(localStorage.getItem(studentsKey) || '[]');
+      const paymentsList = JSON.parse(localStorage.getItem(paymentsKey) || '[]');
       const search = queryParams.get('search')?.toLowerCase() || '';
 
       const filtered = studentsList.filter((s: any) => 
@@ -752,8 +1380,8 @@ export const apiClient = {
 
     if (cleanPath.startsWith('/accountant/students/')) {
       const remainingPath = cleanPath.replace('/accountant/students/', '');
-      const studentsList = JSON.parse(localStorage.getItem('jc_students') || '[]');
-      const paymentsList = JSON.parse(localStorage.getItem('jc_payments') || '[]');
+      const studentsList = JSON.parse(localStorage.getItem(studentsKey) || '[]');
+      const paymentsList = JSON.parse(localStorage.getItem(paymentsKey) || '[]');
 
       if (remainingPath.endsWith('/bio')) {
         const studentId = remainingPath.replace('/bio', '');
@@ -761,8 +1389,8 @@ export const apiClient = {
         if (idx !== -1) {
           const student = { ...studentsList[idx], ...bodyData };
           
-          const settings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
-          const branchSettings = settings[student.branch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
+          const settings = JSON.parse(localStorage.getItem(feeSettingsKey) || '{}');
+          const branchSettings = settings || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
           
           student.hostelFee = student.hostelStatus === 'Resident' ? (branchSettings.hostel || 85000) : 0;
           student.transportFee = student.transportStatus === 'College Bus' ? (branchSettings.transport || 15000) : 0;
@@ -770,7 +1398,8 @@ export const apiClient = {
           if (student.remainingBalance < 0) student.remainingBalance = 0;
 
           studentsList[idx] = student;
-          localStorage.setItem('jc_students', JSON.stringify(studentsList));
+          localStorage.setItem(studentsKey, JSON.stringify(studentsList));
+          logTransactionInJournal(`PATCH /accountant/students/${studentId}/bio`, branch, 'success');
           return { status: 'success', data: student } as any;
         }
         throw new Error('Student profile not found');
@@ -797,6 +1426,9 @@ export const apiClient = {
           if (method === 'POST') {
             const amountPaid = Number(bodyData.amount);
             student.totalPaid = (student.totalPaid || 0) + amountPaid;
+            const settings = JSON.parse(localStorage.getItem(feeSettingsKey) || '{}');
+            student.hostelFee = student.hostelStatus === 'Resident' ? (settings.hostel || 85000) : 0;
+            student.transportFee = student.transportStatus === 'College Bus' ? (settings.transport || 15000) : 0;
             student.remainingBalance = (student.tuitionFee + student.hostelFee + student.transportFee + student.miscellaneousFee + student.previousPending) - student.totalPaid;
             if (student.remainingBalance < 0) student.remainingBalance = 0;
 
@@ -816,11 +1448,11 @@ export const apiClient = {
             };
 
             paymentsList.push(newPayment);
-            localStorage.setItem('jc_payments', JSON.stringify(paymentsList));
+            localStorage.setItem(paymentsKey, JSON.stringify(paymentsList));
             
             studentsList[idx] = student;
-            localStorage.setItem('jc_students', JSON.stringify(studentsList));
-
+            localStorage.setItem(studentsKey, JSON.stringify(studentsList));
+            logTransactionInJournal(`POST /accountant/students/${studentId}/payments`, branch, 'success');
             return { status: 'success', data: { payment: newPayment, student: student } } as any;
           }
         }
@@ -846,15 +1478,60 @@ export const apiClient = {
       throw new Error('Student profile not found');
     }
 
+    if (cleanPath.startsWith('/accountant/hostel/checkout/')) {
+      const studentId = cleanPath.split('/').pop();
+      const hostelData = JSON.parse(localStorage.getItem(hostelKey) || '{}');
+      const studentsList = JSON.parse(localStorage.getItem(studentsKey) || '[]');
+      
+      const studentIdx = studentsList.findIndex((s: any) => s._id === studentId || s.studentId === studentId);
+      
+      if (studentIdx !== -1) {
+        const student = studentsList[studentIdx];
+        
+        let roomBlock = student.hostelBlock;
+        student.hostelStatus = 'Day Scholar';
+        student.hostelBlock = '';
+        student.hostelRoom = '';
+        student.hostelFee = 0;
+        
+        student.remainingBalance = (student.tuitionFee + student.hostelFee + student.transportFee + student.miscellaneousFee + student.previousPending) - student.totalPaid;
+        if (student.remainingBalance < 0) student.remainingBalance = 0;
+        
+        if (hostelData.rooms) {
+          hostelData.rooms.forEach((r: any) => {
+            if (r.occupants) {
+              const occIdx = r.occupants.findIndex((o: any) => o.studentId === student.studentId);
+              if (occIdx !== -1) {
+                r.occupants.splice(occIdx, 1);
+                roomBlock = r.block;
+              }
+            }
+          });
+        }
+        
+        if (roomBlock && hostelData.blocks && hostelData.blocks[roomBlock]) {
+          hostelData.blocks[roomBlock].occupied = Math.max(0, (hostelData.blocks[roomBlock].occupied || 1) - 1);
+        }
+        
+        localStorage.setItem(hostelKey, JSON.stringify(hostelData));
+        studentsList[studentIdx] = student;
+        localStorage.setItem(studentsKey, JSON.stringify(studentsList));
+        
+        logTransactionInJournal(`DELETE /accountant/hostel/checkout/${studentId}`, branch, 'success');
+        return { status: 'success', data: { student } } as any;
+      }
+      throw new Error('Student profile not found');
+    }
+
     if (cleanPath === '/accountant/hostel') {
-      const hostelData = JSON.parse(localStorage.getItem('jc_hostel') || '{}');
+      const hostelData = JSON.parse(localStorage.getItem(hostelKey) || '{}');
       return { status: 'success', data: hostelData } as any;
     }
 
     if (cleanPath.startsWith('/accountant/hostel/')) {
       const roomId = cleanPath.split('/').pop();
-      const hostelData = JSON.parse(localStorage.getItem('jc_hostel') || '{}');
-      const studentsList = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      const hostelData = JSON.parse(localStorage.getItem(hostelKey) || '{}');
+      const studentsList = JSON.parse(localStorage.getItem(studentsKey) || '[]');
       const targetStudentId = bodyData.studentId;
 
       const roomIdx = hostelData.rooms.findIndex((r: any) => r._id === roomId || r.roomNumber === roomId);
@@ -868,9 +1545,8 @@ export const apiClient = {
         student.hostelBlock = room.block;
         student.hostelRoom = room.roomNumber;
         
-        const settings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
-        const branchSettings = settings[student.branch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
-        student.hostelFee = branchSettings.hostel || 85000;
+        const settings = JSON.parse(localStorage.getItem(feeSettingsKey) || '{}');
+        student.hostelFee = settings.hostel || 85000;
         student.remainingBalance = (student.tuitionFee + student.hostelFee + student.transportFee + student.miscellaneousFee + student.previousPending) - student.totalPaid;
         if (student.remainingBalance < 0) student.remainingBalance = 0;
 
@@ -882,48 +1558,45 @@ export const apiClient = {
         });
 
         hostelData.blocks[room.block].occupied = (hostelData.blocks[room.block].occupied || 0) + 1;
-        localStorage.setItem('jc_hostel', JSON.stringify(hostelData));
+        localStorage.setItem(hostelKey, JSON.stringify(hostelData));
 
         studentsList[studentIdx] = student;
-        localStorage.setItem('jc_students', JSON.stringify(studentsList));
+        localStorage.setItem(studentsKey, JSON.stringify(studentsList));
 
+        logTransactionInJournal(`POST /accountant/hostel/allocate/${roomId}`, branch, 'success');
         return { status: 'success', data: { student, room } } as any;
       }
       throw new Error('Hostel room or student profile not found');
     }
 
     if (cleanPath === '/accountant/late-fees-settings') {
-      const settings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
-      const defaultBranch = 'Erragattugutta C1';
+      const settings = JSON.parse(localStorage.getItem(feeSettingsKey) || '{}');
       if (method === 'GET') {
-        return { status: 'success', data: { lateFeeRules: settings[defaultBranch]?.lateFeeRules || '₹100 per day after due date' } } as any;
+        return { status: 'success', data: { lateFeeRules: settings?.lateFeeRules || '₹100 per day after due date' } } as any;
       }
       if (method === 'PATCH') {
-        if (!settings[defaultBranch]) settings[defaultBranch] = { branch: defaultBranch };
-        settings[defaultBranch].lateFeeRules = bodyData.lateFeeRules;
-        localStorage.setItem('jc_fee_settings', JSON.stringify(settings));
+        settings.lateFeeRules = bodyData.lateFeeRules;
+        localStorage.setItem(feeSettingsKey, JSON.stringify(settings));
         return { status: 'success', data: { lateFeeRules: bodyData.lateFeeRules } } as any;
       }
     }
 
     if (cleanPath === '/accountant/scholarships') {
-      const settings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
-      const defaultBranch = 'Erragattugutta C1';
+      const settings = JSON.parse(localStorage.getItem(feeSettingsKey) || '{}');
       if (method === 'GET') {
-        return { status: 'success', data: { scholarshipRules: settings[defaultBranch]?.scholarshipRules || 'Merit: 50% waiver, Sports: 30% waiver' } } as any;
+        return { status: 'success', data: { scholarshipRules: settings?.scholarshipRules || 'Merit: 50% waiver, Sports: 30% waiver' } } as any;
       }
       if (method === 'PATCH') {
-        if (!settings[defaultBranch]) settings[defaultBranch] = { branch: defaultBranch };
-        settings[defaultBranch].scholarshipRules = bodyData.scholarshipRules;
-        localStorage.setItem('jc_fee_settings', JSON.stringify(settings));
+        settings.scholarshipRules = bodyData.scholarshipRules;
+        localStorage.setItem(feeSettingsKey, JSON.stringify(settings));
         return { status: 'success', data: { scholarshipRules: bodyData.scholarshipRules } } as any;
       }
     }
 
     if (cleanPath === '/accountant/attendance') {
       const date = queryParams.get('date') || new Date().toISOString().split('T')[0];
-      const attendanceDB = JSON.parse(localStorage.getItem('jc_attendance') || '{}');
-      const studentsList = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      const attendanceDB = JSON.parse(localStorage.getItem(attendanceKey) || '{}');
+      const studentsList = JSON.parse(localStorage.getItem(studentsKey) || '[]');
 
       if (method === 'GET') {
         const savedRecords = attendanceDB[date] || [];
@@ -942,7 +1615,7 @@ export const apiClient = {
 
       if (method === 'POST') {
         attendanceDB[date] = bodyData.records;
-        localStorage.setItem('jc_attendance', JSON.stringify(attendanceDB));
+        localStorage.setItem(attendanceKey, JSON.stringify(attendanceDB));
         return { status: 'success', message: 'Attendance records compiled and saved.' } as any;
       }
     }
