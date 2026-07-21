@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -260,6 +260,9 @@ export const AccountantDashboardView: React.FC = () => {
   const [searchAdmNo, setSearchAdmNo] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [editStudent, setEditStudent] = useState<Student | null>(null);
+  const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+  const [isStuOtpModalOpen, setIsStuOtpModalOpen] = useState(false);
+  const [stuOtpInput, setStuOtpInput] = useState('');
 
   // Fee collection parameters
   const [feeCollectAdm, setFeeCollectAdm] = useState('');
@@ -269,6 +272,9 @@ export const AccountantDashboardView: React.FC = () => {
   const [collectMode, setCollectMode] = useState('UPI / NetBanking');
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [activeOverlay, setActiveOverlay] = useState<string | null>(null);
+  const [isPayOtpModalOpen, setIsPayOtpModalOpen] = useState(false);
+  const [payOtpInput, setPayOtpInput] = useState('');
+  const [pendingPayType, setPendingPayType] = useState<'partial' | 'full' | 'collect'>('collect');
 
   // Attendance management parameters
   const [attTab, setAttTab] = useState<'students' | 'faculty' | 'summary'>('students');
@@ -277,10 +283,10 @@ export const AccountantDashboardView: React.FC = () => {
   const [attendanceRoster, setAttendanceRoster] = useState<Attendee[]>([]);
 
   // Hostel blocks parameters (Moved from admin)
-  const [hostelBlocks, setHostelBlocks] = useState({
-    BlockA: { name: 'Block A (Boys)', capacity: 150, occupied: 120 },
-    BlockB: { name: 'Block B (Girls)', capacity: 120, occupied: 98 },
-    BlockC: { name: 'Block C (Girls)', capacity: 100, occupied: 65 }
+  const [hostelBlocks, setHostelBlocks] = useState<any>({
+    BlockA: { name: 'Block A (Boys)', capacity: 0, occupied: 0 },
+    BlockB: { name: 'Block B (Girls)', capacity: 0, occupied: 0 },
+    BlockC: { name: 'Block C (Girls)', capacity: 0, occupied: 0 }
   });
   const [roomsList, setRoomsList] = useState<any[]>([]);
   const [allocateBlock, setAllocateBlock] = useState('Block A');
@@ -509,23 +515,31 @@ export const AccountantDashboardView: React.FC = () => {
     }
   };
 
-  const handleStudentSave = async (updated: Student) => {
+  const handleStudentSave = async (updated: Student, otp: string) => {
     if (!updated._id) return;
     setIsLoading(true);
     try {
       const res = await accountantService.updateStudentBio(updated._id, {
+        name: updated.name,
+        fatherName: updated.fatherName,
+        motherName: updated.motherName,
+        mobile: updated.mobile,
+        parentMobile: updated.parentMobile,
+        email: updated.email,
         address: updated.address,
+        residentialAddress: updated.residentialAddress,
         hostelStatus: updated.hostelStatus,
         transportStatus: updated.transportStatus,
         hostelBlock: updated.hostelBlock,
-        hostelRoom: updated.hostelRoom,
-        residentialAddress: updated.residentialAddress
-      }, securityKey);
+        hostelRoom: updated.hostelRoom
+      }, otp);
       setSelectedStudent(res as any);
       setEditStudent({ ...res } as any);
       setStudents(prev => prev.map(s => s._id === res._id ? (res as any) : s));
-      triggerToast('Profile bio updated successfully.');
-      setSecurityKey('');
+      triggerToast('Student profile bio details submitted and saved to database.');
+      setIsStudentModalOpen(false);
+      setIsStuOtpModalOpen(false);
+      setStuOtpInput('');
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save changes.');
     } finally {
@@ -574,7 +588,7 @@ export const AccountantDashboardView: React.FC = () => {
     }
   };
 
-  const handleFeePayment = async (type: 'partial' | 'full' | 'collect') => {
+  const handleFeePayment = async (type: 'partial' | 'full' | 'collect', otp?: string) => {
     if (!selectedStudent || !selectedStudent._id) return;
     let paymentAmount = 0;
     
@@ -603,7 +617,7 @@ export const AccountantDashboardView: React.FC = () => {
         installment: collectInstallment,
         mode: collectMode,
         category: collectCategory
-      }, securityKey);
+      }, otp || securityKey);
       
       const updatedStudent = res.student;
       setSelectedStudent(updatedStudent as any);
@@ -611,7 +625,8 @@ export const AccountantDashboardView: React.FC = () => {
       setStudents(prev => prev.map(s => s._id === updatedStudent._id ? (updatedStudent as any) : s));
       setCollectAmount('');
       triggerToast(`Payment logged: ₹${paymentAmount.toLocaleString('en-IN')}`);
-      setSecurityKey('');
+      setIsPayOtpModalOpen(false);
+      setPayOtpInput('');
       fetchDashboardSummary();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to submit payment.');
@@ -914,13 +929,17 @@ export const AccountantDashboardView: React.FC = () => {
     );
   }
 
-  // ─── SUBPAGE 1: STUDENT SEARCH CONSOLE (Sub-page) ───
   if (activeSubPage === 'student_search') {
+    const filteredSearchList = students.filter(s => {
+      const q = searchAdmNo.toLowerCase();
+      return !q || s.name.toLowerCase().includes(q) || s.admissionNumber.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q);
+    });
+
     return (
       <div style={styles.container} className="view-container anim-slide-up">
         {renderBackgroundDesign('emerald')}
         <header style={styles.header}>
-          <button onClick={() => { setActiveSubPage('menu'); setSelectedStudent(null); setEditStudent(null); }} style={styles.backArrowBtn} className="press-interactive">
+          <button onClick={() => { setActiveSubPage('menu'); setSelectedStudent(null); setEditStudent(null); setSearchAdmNo(''); }} style={styles.backArrowBtn} className="press-interactive">
             ← Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Student Search Console</h1>
@@ -932,177 +951,276 @@ export const AccountantDashboardView: React.FC = () => {
             <div style={{ display: 'flex', gap: '10px' }}>
               <input
                 type="text"
-                placeholder="Enter Admission Number e.g. ADM24001"
+                placeholder="Search Student by Name, ID, or Adm No..."
                 value={searchAdmNo}
                 onChange={(e) => setSearchAdmNo(e.target.value)}
                 style={styles.textInputBox}
               />
-              <button onClick={handleSearchSubmit} style={{ ...styles.saveSubmitBtn, marginTop: 0 }} className="press-interactive">Search</button>
+              {searchAdmNo && (
+                <button
+                  onClick={() => setSearchAdmNo('')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--muted-gray)',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    marginRight: '8px',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  Clear
+                </button>
+              )}
             </div>
             
-            <div style={styles.quickFillContainer}>
-              <span style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 700 }}>Quick Selection:</span>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
-                {students.map(s => (
-                  <button key={s.admissionNumber} onClick={() => handleQuickFill(s.admissionNumber)} style={styles.quickFillPill} className="press-interactive">
-                    {s.admissionNumber} ({s.name.split(' ')[0]})
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+              {filteredSearchList.map(s => (
+                <GlassCard key={s.studentId} hoverable={true} style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.7)' }}>
+                  <div>
+                    <strong style={{ fontSize: '14px', color: 'var(--dark-charcoal)' }}>{s.name}</strong>
+                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '3px' }}>
+                      ID: {s.studentId} • Adm: {s.admissionNumber} • Branch: {s.branch} ({s.course})
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '1px' }}>
+                      Contact: {s.mobile} • Status: <span style={{ fontWeight: 800, color: s.hostelStatus === 'Resident' ? 'var(--royal-gold)' : '#10B981' }}>{s.hostelStatus}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setIsLoading(true);
+                      try {
+                        const fullProfile = await accountantService.getStudentProfile(s._id || s.studentId);
+                        setSelectedStudent(fullProfile as any);
+                        setEditStudent({ ...fullProfile } as any);
+                        setIsStudentModalOpen(true);
+                      } catch (err: any) {
+                        triggerToast('Failed to load profile.');
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                    style={{ ...styles.actionItemBtn, border: '1.5px solid var(--royal-gold)', color: 'var(--royal-gold)', background: 'transparent' }}
+                    className="press-interactive"
+                  >
+                    Edit Profile
                   </button>
-                ))}
-              </div>
+                </GlassCard>
+              ))}
+              {filteredSearchList.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted-gray)', fontSize: '12px' }}>
+                  No student records match your query. Try searching by Name or Admission Number.
+                </div>
+              )}
             </div>
           </div>
 
-          {selectedStudent && editStudent ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }} className="anim-fade-in">
-              <div style={styles.readOnlyBlock}>
-                <div style={styles.metaRow}><span>Admission Number</span><strong>{selectedStudent.admissionNumber}</strong></div>
-                <div style={styles.metaRow}><span>Student ID</span><strong>{selectedStudent.studentId}</strong></div>
-                <div style={styles.metaRow}><span>QR ID</span><strong>{selectedStudent.qrId}</strong></div>
-                <div style={styles.metaRow}><span>Registration Number</span><strong>{selectedStudent.registrationNumber}</strong></div>
-              </div>
+          {/* STUDENT EDIT MODAL OVERLAY */}
+          {isStudentModalOpen && selectedStudent && editStudent && !isStuOtpModalOpen && (
+            <div style={styles.overlayOverlay}>
+              <div style={{ ...styles.overlaySheet, maxWidth: '520px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                  <h3 style={styles.modalTitle}>Edit Student Details</h3>
+                  <button
+                    onClick={() => { setIsStudentModalOpen(false); setSelectedStudent(null); setEditStudent(null); }}
+                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                  >
+                    ×
+                  </button>
+                </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Student Name</label>
-                  <input
-                    type="text"
-                    value={editStudent.name}
-                    onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })}
-                    style={styles.textInputBox}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Father Name</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Student Name</label>
                     <input
                       type="text"
-                      value={editStudent.fatherName}
-                      onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })}
+                      value={editStudent.name}
+                      onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })}
                       style={styles.textInputBox}
                     />
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Mother Name</label>
-                    <input
-                      type="text"
-                      value={editStudent.motherName}
-                      onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Mobile Number</label>
-                    <input
-                      type="text"
-                      value={editStudent.mobile}
-                      onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Parent Contact</label>
-                    <input
-                      type="text"
-                      value={editStudent.parentMobile}
-                      onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Email Address</label>
-                  <input
-                    type="email"
-                    value={editStudent.email}
-                    onChange={(e) => setEditStudent({ ...editStudent, email: e.target.value })}
-                    style={styles.textInputBox}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Correspondence Address</label>
-                  <input
-                    type="text"
-                    value={editStudent.address}
-                    onChange={(e) => setEditStudent({ ...editStudent, address: e.target.value })}
-                    style={styles.textInputBox}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Residential Address</label>
-                  <input
-                    type="text"
-                    value={editStudent.residentialAddress}
-                    onChange={(e) => setEditStudent({ ...editStudent, residentialAddress: e.target.value })}
-                    style={styles.textInputBox}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Hostel Status</label>
-                    <select
-                      value={editStudent.hostelStatus}
-                      onChange={(e) => setEditStudent({ ...editStudent, hostelStatus: e.target.value as any })}
-                      style={styles.selectInput}
-                    >
-                      <option value="Resident">Resident</option>
-                      <option value="Day Scholar">Day Scholar</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Transport Status</label>
-                    <select
-                      value={editStudent.transportStatus}
-                      onChange={(e) => setEditStudent({ ...editStudent, transportStatus: e.target.value as any })}
-                      style={styles.selectInput}
-                    >
-                      <option value="College Bus">College Bus</option>
-                      <option value="Self Transport">Self Transport</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px' }}>
-                <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Father Name</label>
+                      <input
+                        type="text"
+                        value={editStudent.fatherName}
+                        onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Mother Name</label>
+                      <input
+                        type="text"
+                        value={editStudent.motherName}
+                        onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Mobile Number</label>
+                      <input
+                        type="text"
+                        value={editStudent.mobile}
+                        onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Parent Contact</label>
+                      <input
+                        type="text"
+                        value={editStudent.parentMobile}
+                        onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Email Address</label>
+                    <input
+                      type="email"
+                      value={editStudent.email || ''}
+                      onChange={(e) => setEditStudent({ ...editStudent, email: e.target.value })}
+                      style={styles.textInputBox}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Correspondence Address</label>
+                    <input
+                      type="text"
+                      value={editStudent.address}
+                      onChange={(e) => setEditStudent({ ...editStudent, address: e.target.value })}
+                      style={styles.textInputBox}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Residential Address</label>
+                    <input
+                      type="text"
+                      value={editStudent.residentialAddress}
+                      onChange={(e) => setEditStudent({ ...editStudent, residentialAddress: e.target.value })}
+                      style={styles.textInputBox}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Hostel Status</label>
+                      <select
+                        value={editStudent.hostelStatus}
+                        onChange={(e) => setEditStudent({ ...editStudent, hostelStatus: e.target.value as any })}
+                        style={styles.selectInput}
+                      >
+                        <option value="Resident">Resident</option>
+                        <option value="Day Scholar">Day Scholar</option>
+                      </select>
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Transport Status</label>
+                      <select
+                        value={editStudent.transportStatus}
+                        onChange={(e) => setEditStudent({ ...editStudent, transportStatus: e.target.value as any })}
+                        style={styles.selectInput}
+                      >
+                        <option value="College Bus">College Bus</option>
+                        <option value="Self Transport">Self Transport</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setStuOtpInput('');
+                    setIsStuOtpModalOpen(true);
+                  }}
+                  style={{ ...styles.saveSubmitBtn, marginTop: '16px' }}
+                  className="press-interactive"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STUDENT EDIT OTP VERIFICATION HOVER OVERLAY */}
+          {isStuOtpModalOpen && selectedStudent && editStudent && (
+            <div style={{ ...styles.overlayOverlay, zIndex: 1100 }}>
+              <div style={{ ...styles.overlaySheet, maxWidth: '380px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h3 style={styles.modalTitle}>Security Verification Required</h3>
+                  <button
+                    onClick={() => setIsStuOtpModalOpen(false)}
+                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
+                  Please enter your security authentication key to authorize student profile updates for <strong>{editStudent.name}</strong>.
+                </p>
+
                 <input
                   type="text"
-                  placeholder="Enter Accountant Key (OTP) e.g. ACC-1234"
-                  value={securityKey}
-                  onChange={(e) => setSecurityKey(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleStudentSave(editStudent)}
-                  style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
+                  placeholder="Enter 6-digit OTP code (e.g. 111111)"
+                  value={stuOtpInput}
+                  onChange={(e) => setStuOtpInput(e.target.value)}
+                  style={{ ...styles.textInputBox, width: '100%', marginBottom: '12px' }}
                 />
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => {
+                      if (stuOtpInput === '111111' || stuOtpInput === '222222') {
+                        handleStudentSave(editStudent, stuOtpInput);
+                      } else {
+                        triggerToast('Invalid security authentication key.');
+                      }
+                    }}
+                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0 }}
+                    className="press-interactive"
+                  >
+                    Confirm Update
+                  </button>
+                  <button
+                    onClick={() => setIsStuOtpModalOpen(false)}
+                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
+                    className="press-interactive"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-
-              {/* SAVE / SUBMIT CHANGES BUTTON */}
-              <button 
-                onClick={() => handleStudentSave(editStudent)} 
-                style={styles.saveSubmitBtn} 
-                className="press-interactive"
-              >
-                Submit Student Profile Changes
-              </button>
-
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted-gray)' }}>
-              Enter or select a student admission tag to display their full profile settings.
             </div>
           )}
         </main>
       </div>
     );
-  }
+
 
   // ─── SUBPAGE 2: FEE COLLECTION DESK (Sub-page) ───
   if (activeSubPage === 'fee_collection') {
+    const filteredCollectList = students.filter(s => {
+      const q = feeCollectAdm.toLowerCase();
+      return !q || s.name.toLowerCase().includes(q) || s.admissionNumber.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q);
+    });
+
     return (
       <div style={styles.container} className="view-container anim-slide-up">
         {renderBackgroundDesign('gold')}
         <header style={styles.header}>
-          <button onClick={() => { setActiveSubPage('menu'); setSelectedStudent(null); setEditStudent(null); }} style={styles.backArrowBtn} className="press-interactive">
+          <button onClick={() => { setActiveSubPage('menu'); setSelectedStudent(null); setEditStudent(null); setFeeCollectAdm(''); }} style={styles.backArrowBtn} className="press-interactive">
             ← Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Fee Collection Desk</h1>
@@ -1110,163 +1228,276 @@ export const AccountantDashboardView: React.FC = () => {
         </header>
 
         <main style={styles.content}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
-            <div style={{ display: 'flex', gap: '10px' }}>
+          {!selectedStudent ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
               <input
                 type="text"
-                placeholder="Search Student Adm No e.g. ADM24001"
+                placeholder="Search Student to Load Fees by Name, ID, or Adm No..."
                 value={feeCollectAdm}
                 onChange={(e) => setFeeCollectAdm(e.target.value)}
                 style={styles.textInputBox}
               />
-              <button
-                onClick={() => {
-                  const match = students.find(s => s.admissionNumber === feeCollectAdm);
-                  if (match) {
-                    setSelectedStudent(match);
-                    setEditStudent({ ...match });
-                  } else triggerToast('Not found.');
-                }}
-                style={{ ...styles.saveSubmitBtn, marginTop: 0 }}
-                className="press-interactive"
-              >
-                Load
-              </button>
-            </div>
-            
-            <div style={styles.quickFillContainer}>
-              <span style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 700 }}>Quick Selection:</span>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
-                {students.map(s => (
-                  <button key={s.admissionNumber} onClick={() => handleQuickFill(s.admissionNumber)} style={styles.quickFillPill} className="press-interactive">
-                    {s.admissionNumber} ({s.name.split(' ')[0]})
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {selectedStudent && editStudent ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }} className="anim-fade-in">
-              <div style={styles.readOnlyBlock}>
-                <div style={styles.metaRow}><span>Student Name</span><strong>{selectedStudent.name}</strong></div>
-                <div style={styles.metaRow}><span>Admission No</span><strong>{selectedStudent.admissionNumber}</strong></div>
-                <div style={styles.metaRow}><span>Mobile Contact</span><strong>{selectedStudent.mobile}</strong></div>
-              </div>
-
-              {/* Fee Breakdown */}
-              <div style={styles.readOnlyBlock}>
-                <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Fee Balance breakdown</h4>
-                <div style={styles.metaRow}><span>Tuition Fee</span><strong>₹{selectedStudent.tuitionFee.toLocaleString('en-IN')}</strong></div>
-                <div style={styles.metaRow}><span>Hostel Fee</span><strong>₹{selectedStudent.hostelFee.toLocaleString('en-IN')}</strong></div>
-                <div style={styles.metaRow}><span>Transport Fee</span><strong>₹{selectedStudent.transportFee.toLocaleString('en-IN')}</strong></div>
-                <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>₹{selectedStudent.miscellaneousFee.toLocaleString('en-IN')}</strong></div>
-                <div style={styles.metaRow}><span>Previous Pending</span><strong style={{ color: '#EF4444' }}>₹{selectedStudent.previousPending.toLocaleString('en-IN')}</strong></div>
-                <div style={{ ...styles.metaRow, borderTop: '1.5px solid var(--card-border)', paddingTop: '6px' }}><span>Total Paid</span><strong style={{ color: '#10B981' }}>₹{selectedStudent.totalPaid.toLocaleString('en-IN')}</strong></div>
-                <div style={styles.metaRow}><span style={{ fontWeight: 800 }}>Remaining Balance</span><strong style={{ fontSize: '15px', color: '#B45309' }}>₹{selectedStudent.remainingBalance.toLocaleString('en-IN')}</strong></div>
-              </div>
-
-              {/* Collect Cash */}
-              {selectedStudent.remainingBalance > 0 ? (
-                <div style={styles.readOnlyBlock}>
-                  <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Collect Cash</h4>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                      <label style={styles.formLabel}>Amount (₹)</label>
-                      <input
-                        type="number"
-                        placeholder="e.g. 15000"
-                        value={collectAmount}
-                        onChange={(e) => setCollectAmount(e.target.value)}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                      <label style={styles.formLabel}>Installment Slot</label>
-                      <select value={collectInstallment} onChange={(e) => setCollectInstallment(e.target.value)} style={styles.selectInput}>
-                        <option value="Installment 1">Installment 1</option>
-                        <option value="Installment 2">Installment 2</option>
-                        <option value="Installment 3">Installment 3</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                      <label style={styles.formLabel}>Category</label>
-                      <select value={collectCategory} onChange={(e) => setCollectCategory(e.target.value)} style={styles.selectInput}>
-                        <option value="Tuition Fee">Tuition Fee</option>
-                        <option value="Hostel Fee">Hostel Fee</option>
-                        <option value="Transport Fee">Transport Fee</option>
-                        <option value="Miscellaneous Fee">Miscellaneous Fee</option>
-                      </select>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                      <label style={styles.formLabel}>Mode</label>
-                      <select value={collectMode} onChange={(e) => setCollectMode(e.target.value)} style={styles.selectInput}>
-                        <option value="UPI / NetBanking">UPI / NetBanking</option>
-                        <option value="Cash Payment">Cash Payment</option>
-                        <option value="Credit Card">Credit Card</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px', marginBottom: '8px' }}>
-                    <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
-                    <input
-                      type="text"
-                      placeholder="Enter Accountant Key (OTP) e.g. ACC-1234"
-                      value={securityKey}
-                      onChange={(e) => setSecurityKey(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleFeePayment('collect')}
-                      style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
-                    <button onClick={() => handleFeePayment('partial')} style={{ ...styles.sheetBtn, backgroundColor: '#E2E8F0', color: 'var(--dark-charcoal)' }} className="press-interactive">Partial Pay</button>
-                    <button onClick={() => handleFeePayment('full')} style={{ ...styles.sheetBtn, backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #D4AF37' }} className="press-interactive">Full Pay</button>
-                  </div>
-                  {/* EXPLICIT SUBMIT PAYMENT BUTTON */}
-                  <button onClick={() => handleFeePayment('collect')} style={styles.saveSubmitBtn} className="press-interactive">Submit & Collect Custom Fee Payment</button>
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', color: '#10B981', fontWeight: 800, padding: '16px' }}>
-                  ✓ Student fees settled. Balance is zero.
-                </div>
-              )}
-
-              {/* Receipt Logs */}
-              <h4 style={styles.sectionSubtitle}>Receipt Logs</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {selectedStudent.receipts.map((receipt) => (
-                  <div key={receipt.receiptNumber} style={styles.receiptRowItem}>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+                {filteredCollectList.map(s => (
+                  <GlassCard
+                    key={s.studentId}
+                    hoverable={true}
+                    onClick={async () => {
+                      setIsLoading(true);
+                      try {
+                        const fullProfile = await accountantService.getStudentProfile(s._id || s.studentId);
+                        setSelectedStudent(fullProfile as any);
+                        setEditStudent({ ...fullProfile } as any);
+                        triggerToast(`Loaded fee details for ${fullProfile.name}`);
+                      } catch (err: any) {
+                        triggerToast('Failed to load profile.');
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                    style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}
+                  >
                     <div>
-                      <strong>{receipt.installment} ({receipt.category})</strong>
-                      <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>{receipt.date} • {receipt.mode}</div>
+                      <strong style={{ fontSize: '14px', color: 'var(--dark-charcoal)' }}>{s.name}</strong>
+                      <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '3px' }}>
+                        ID: {s.studentId} • Adm: {s.admissionNumber} • Branch: {s.branch}
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontWeight: 800 }}>₹{receipt.amount.toLocaleString('en-IN')}</span>
-                      <button
-                        onClick={() => {
-                          setSelectedReceipt(receipt);
-                          setActiveOverlay('receipt_view');
-                        }}
-                        style={styles.actionItemBtn}
-                        className="press-interactive"
-                      >
-                        Receipt
-                      </button>
-                    </div>
-                  </div>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: s.remainingBalance > 0 ? '#EF4444' : '#10B981' }}>
+                      {s.remainingBalance > 0 ? `Pending: ₹${s.remainingBalance.toLocaleString('en-IN')}` : 'Sattled'}
+                    </span>
+                  </GlassCard>
                 ))}
+                {filteredCollectList.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted-gray)', fontSize: '12px' }}>
+                    No student records match your query. Try searching by Name or Admission Number.
+                  </div>
+                )}
               </div>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted-gray)' }}>
-              Select one of the student admission tags above to load their fees and payment console.
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }} className="anim-fade-in">
+              {/* Profile Bar */}
+              <GlassCard hoverable={false} style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.85)' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{selectedStudent.name}</h4>
+                  <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                    Adm No: {selectedStudent.admissionNumber} • Roll: {selectedStudent.rollNumber || 'N/A'} • Branch: {selectedStudent.branch}
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setSelectedStudent(null); setEditStudent(null); }}
+                  style={{ ...styles.actionItemBtn, border: '1px solid rgba(0,0,0,0.1)', color: 'var(--muted-gray)' }}
+                  className="press-interactive"
+                >
+                  Change Student
+                </button>
+              </GlassCard>
+
+              {/* Double Column Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+                {/* Column 1: Fee Breakdown */}
+                <div style={styles.readOnlyBlock}>
+                  <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '6px' }}>Fee Balance Breakdown</h4>
+                  <div style={styles.metaRow}><span>Tuition Fee</span><strong>₹{selectedStudent.tuitionFee.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Hostel Fee</span><strong>₹{selectedStudent.hostelFee.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Transport Fee</span><strong>₹{selectedStudent.transportFee.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>₹{selectedStudent.miscellaneousFee.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Previous Pending</span><strong style={{ color: '#EF4444' }}>₹{selectedStudent.previousPending.toLocaleString('en-IN')}</strong></div>
+                  <div style={{ ...styles.metaRow, borderTop: '1.5px solid var(--card-border)', paddingTop: '6px' }}><span>Total Paid</span><strong style={{ color: '#10B981' }}>₹{selectedStudent.totalPaid.toLocaleString('en-IN')}</strong></div>
+                  <div style={{ ...styles.metaRow, borderTop: '2px solid var(--royal-gold)', paddingTop: '8px', marginTop: '4px' }}>
+                    <span style={{ fontWeight: 800 }}>Remaining Balance</span>
+                    <strong style={{ fontSize: '18px', color: selectedStudent.remainingBalance > 0 ? '#B45309' : '#10B981' }}>
+                      ₹{selectedStudent.remainingBalance.toLocaleString('en-IN')}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Column 2: Collect Fees Form */}
+                <div style={styles.readOnlyBlock}>
+                  <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '6px' }}>Collect Fee Payment</h4>
+                  {selectedStudent.remainingBalance > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                          <label style={styles.formLabel}>Amount (₹)</label>
+                          <input
+                            type="number"
+                            placeholder="e.g. 15000"
+                            value={collectAmount}
+                            onChange={(e) => setCollectAmount(e.target.value)}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                          <label style={styles.formLabel}>Installment Slot</label>
+                          <select value={collectInstallment} onChange={(e) => setCollectInstallment(e.target.value)} style={styles.selectInput}>
+                            <option value="Installment 1">Installment 1</option>
+                            <option value="Installment 2">Installment 2</option>
+                            <option value="Installment 3">Installment 3</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                          <label style={styles.formLabel}>Category</label>
+                          <select value={collectCategory} onChange={(e) => setCollectCategory(e.target.value)} style={styles.selectInput}>
+                            <option value="Tuition Fee">Tuition Fee</option>
+                            <option value="Hostel Fee">Hostel Fee</option>
+                            <option value="Transport Fee">Transport Fee</option>
+                            <option value="Miscellaneous Fee">Miscellaneous Fee</option>
+                          </select>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                          <label style={styles.formLabel}>Mode</label>
+                          <select value={collectMode} onChange={(e) => setCollectMode(e.target.value)} style={styles.selectInput}>
+                            <option value="UPI / NetBanking">UPI / NetBanking</option>
+                            <option value="Cash Payment">Cash Payment</option>
+                            <option value="Credit Card">Credit Card</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
+                        <button
+                          onClick={() => {
+                            setPendingPayType('partial');
+                            setPayOtpInput('');
+                            setIsPayOtpModalOpen(true);
+                          }}
+                          style={{ ...styles.sheetBtn, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
+                          className="press-interactive"
+                        >
+                          Partial Pay (50%)
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPendingPayType('full');
+                            setPayOtpInput('');
+                            setIsPayOtpModalOpen(true);
+                          }}
+                          style={{ ...styles.sheetBtn, backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #D4AF37' }}
+                          className="press-interactive"
+                        >
+                          Full Pay (100%)
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (!collectAmount || parseFloat(collectAmount) <= 0) {
+                            triggerToast('Please enter a valid payment amount.');
+                            return;
+                          }
+                          setPendingPayType('collect');
+                          setPayOtpInput('');
+                          setIsPayOtpModalOpen(true);
+                        }}
+                        style={{ ...styles.saveSubmitBtn, marginTop: '8px' }}
+                        className="press-interactive"
+                      >
+                        Submit Custom Payment
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', color: '#10B981', fontWeight: 800, padding: '30px 10px' }}>
+                      ✓ All student baseline fees have been fully settled. Remaining balance is zero.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Receipt Logs */}
+              <div style={{ marginTop: '10px' }}>
+                <h4 style={{ ...styles.sectionSubtitle, borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '6px' }}>Receipt Logs / Transaction History</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                  {selectedStudent.receipts && selectedStudent.receipts.map((receipt) => (
+                    <div key={receipt.receiptNumber} style={styles.receiptRowItem}>
+                      <div>
+                        <strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>{receipt.installment} ({receipt.category})</strong>
+                        <div style={{ fontSize: '10px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                          Ref ID: {receipt.receiptNumber} • {new Date(receipt.date).toLocaleDateString('en-GB')} • Mode: {receipt.mode}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontWeight: 800, fontSize: '14px', color: '#10B981' }}>₹{receipt.amount.toLocaleString('en-IN')}</span>
+                        <button
+                          onClick={() => {
+                            setSelectedReceipt(receipt);
+                            setActiveOverlay('receipt_view');
+                          }}
+                          style={{ ...styles.actionItemBtn, border: '1.5px solid var(--royal-gold)', color: 'var(--royal-gold)', background: 'transparent' }}
+                          className="press-interactive"
+                        >
+                          Print / PDF
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {(!selectedStudent.receipts || selectedStudent.receipts.length === 0) && (
+                    <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted-gray)', fontSize: '11px' }}>
+                      No payments have been recorded for this student account yet.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
-        </main>
+
+          {/* PAYMENT OTP HOVER OVERLAY */}
+          {isPayOtpModalOpen && selectedStudent && (
+            <div style={{ ...styles.overlayOverlay, zIndex: 1100 }}>
+              <div style={{ ...styles.overlaySheet, maxWidth: '380px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h3 style={styles.modalTitle}>Confirm Fee Payment</h3>
+                  <button
+                    onClick={() => setIsPayOtpModalOpen(false)}
+                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
+                  You are logging a fee payment of <strong>₹{(pendingPayType === 'full' ? selectedStudent.remainingBalance : pendingPayType === 'partial' ? Math.floor(selectedStudent.remainingBalance / 2) : parseFloat(collectAmount)).toLocaleString('en-IN')}</strong> for student <strong>{selectedStudent.name}</strong>. Enter your Accountant authorization OTP to confirm.
+                </p>
+
+                <input
+                  type="text"
+                  placeholder="Enter 6-digit OTP code (e.g. 111111)"
+                  value={payOtpInput}
+                  onChange={(e) => setPayOtpInput(e.target.value)}
+                  style={{ ...styles.textInputBox, width: '100%', marginBottom: '12px' }}
+                />
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => {
+                      if (payOtpInput === '111111' || payOtpInput === '222222') {
+                        handleFeePayment(pendingPayType, payOtpInput);
+                      } else {
+                        triggerToast('Invalid security authentication key.');
+                      }
+                    }}
+                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0 }}
+                    className="press-interactive"
+                  >
+                    Authorize Payment
+                  </button>
+                  <button
+                    onClick={() => setIsPayOtpModalOpen(false)}
+                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
+                    className="press-interactive"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
 
         {/* Ack Receipt popup */}
         {activeOverlay === 'receipt_view' && selectedReceipt && selectedStudent && (
@@ -1318,6 +1549,7 @@ export const AccountantDashboardView: React.FC = () => {
             </div>
           </div>
         )}
+        </main>
       </div>
     );
   }
@@ -1906,8 +2138,8 @@ const styles: { [key: string]: React.CSSProperties } = {
   metricsGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' },
   metricCard: {
     padding: '18px 20px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '4px',
-    backgroundColor: 'rgba(255,255,255,0.85)', border: '1px solid var(--card-border)',
-    boxShadow: '0 1px 3px rgba(15,23,42,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.7)', border: '2px solid var(--card-border)',
+    boxShadow: 'none',
   },
   metricLabel: {
     fontSize: '9.5px', fontWeight: 700, color: 'var(--muted-gray)',
@@ -1928,9 +2160,9 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   moduleCardNew: {
     padding: '20px', borderRadius: '14px', cursor: 'pointer', display: 'flex',
-    flexDirection: 'column', gap: '10px', backgroundColor: 'rgba(255,255,255,0.9)',
-    border: '1px solid var(--card-border)', boxShadow: '0 1px 3px rgba(15,23,42,0.04)',
-    transition: 'border-color 0.18s ease, box-shadow 0.18s ease',
+    flexDirection: 'column', gap: '10px', backgroundColor: 'rgba(255,255,255,0.7)',
+    border: '2px solid var(--card-border)', boxShadow: 'none',
+    transition: 'border-color 0.15s ease, transform 0.15s ease',
   },
   moduleIconWrapper: {
     width: '36px', height: '36px', borderRadius: '9px', display: 'flex',
@@ -1939,7 +2171,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   moduleTitle: { fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.01em' },
   moduleDesc: { fontSize: '11px', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 400 },
   textInputBox: {
-    flex: 1, padding: '11px 14px', borderRadius: '10px', border: '1px solid var(--card-border)',
+    flex: 1, padding: '11px 14px', borderRadius: '10px', border: '2px solid var(--card-border)',
     fontSize: '13px', outline: 'none', backgroundColor: 'rgba(255,255,255,0.7)',
     color: 'var(--dark-charcoal)', fontFamily: 'var(--font-family)', fontWeight: 500,
   },
@@ -1949,7 +2181,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: 'none', cursor: 'pointer', textAlign: 'center', marginTop: '8px', letterSpacing: '0.01em',
   },
   readOnlyBlock: {
-    padding: '16px 18px', borderRadius: '12px', border: '1px solid var(--card-border)',
+    padding: '16px 18px', borderRadius: '12px', border: '2px solid var(--card-border)',
     backgroundColor: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', gap: '10px',
   },
   metaRow: {
@@ -1961,29 +2193,29 @@ const styles: { [key: string]: React.CSSProperties } = {
     letterSpacing: '0.07em', display: 'block', marginBottom: '4px',
   },
   selectInput: {
-    width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid var(--card-border)',
+    width: '100%', padding: '11px 14px', borderRadius: '10px', border: '2px solid var(--card-border)',
     backgroundColor: 'rgba(255,255,255,0.7)', fontSize: '13px', fontWeight: 600,
     color: 'var(--dark-charcoal)', outline: 'none', fontFamily: 'var(--font-family)',
   },
   receiptRowItem: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '14px 16px', border: '1px solid var(--card-border)',
+    padding: '14px 16px', border: '2px solid var(--card-border)',
     backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: '12px',
   },
   actionItemBtn: {
-    padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--card-border)',
+    padding: '8px 14px', borderRadius: '8px', border: '2px solid var(--card-border)',
     backgroundColor: 'rgba(255,255,255,0.9)', fontSize: '11px', fontWeight: 700,
     color: 'var(--dark-charcoal)', cursor: 'pointer', fontFamily: 'var(--font-family)',
   },
   statusBadge: {
     display: 'inline-flex', alignItems: 'center', padding: '3px 9px', borderRadius: '999px',
     fontSize: '9.5px', fontWeight: 700, letterSpacing: '0.04em',
-    border: '1px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.9)',
+    border: '2px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.9)',
     color: 'var(--dark-charcoal)',
   },
   skeletonCard: {
     minHeight: '120px', borderRadius: '14px', backgroundColor: 'rgba(255,255,255,0.4)',
-    border: '1px solid var(--card-border)',
+    border: '2px solid var(--card-border)',
   },
   skeletonLine: {
     width: '100%', height: '14px', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.5)',
@@ -2006,23 +2238,23 @@ const styles: { [key: string]: React.CSSProperties } = {
   heroAvatar: {
     width: '56px', height: '56px', borderRadius: '12px', backgroundColor: 'var(--dark-charcoal)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
-    fontWeight: 900, color: 'var(--royal-gold)', border: '1px solid rgba(212,175,55,0.2)',
+    fontWeight: 900, color: 'var(--royal-gold)', border: '2px solid rgba(212,175,55,0.25)',
     letterSpacing: '0.04em',
   },
   studentName: { fontSize: '16px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' },
   studentID: { fontSize: '11.5px', color: 'var(--muted-gray)', fontWeight: 500, display: 'block', marginTop: '2px' },
-  heroLineDivider: { width: '100%', height: '1px', backgroundColor: 'var(--card-border)', margin: '16px 0' },
+  heroLineDivider: { width: '100%', height: '2px', backgroundColor: 'var(--card-border)', margin: '16px 0' },
   heroMetaGrid: { display: 'flex', flexDirection: 'column', gap: '10px' },
   logoutBtn: {
     width: '100%', padding: '14px', borderRadius: '10px', backgroundColor: 'transparent',
-    border: '1px solid rgba(211,47,47,0.25)', color: '#D32F2F',
+    border: '2px solid rgba(211,47,47,0.25)', color: '#D32F2F',
     fontFamily: 'var(--font-family)', fontSize: '13px', fontWeight: 700,
     cursor: 'pointer', textAlign: 'center', letterSpacing: '0.01em',
   },
   quickFillContainer: { padding: '4px 0' },
   quickFillPill: {
     fontSize: '10px', fontWeight: 700, color: 'var(--royal-gold)',
-    backgroundColor: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.25)',
+    backgroundColor: 'rgba(212,175,55,0.06)', border: '2px solid rgba(212,175,55,0.25)',
     borderRadius: '6px', padding: '4px 9px', cursor: 'pointer', fontFamily: 'var(--font-family)',
   },
   backArrowBtn: {
@@ -2038,8 +2270,8 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   overlaySheet: {
     width: '100%', maxWidth: '480px', backgroundColor: 'rgba(255,255,255,0.97)',
-    borderRadius: '16px', border: '1px solid var(--card-border)',
-    boxShadow: '0 20px 50px rgba(15,23,42,0.15)', padding: '24px',
+    borderRadius: '16px', border: '2px solid var(--card-border)',
+    boxShadow: 'none', padding: '24px',
     display: 'flex', flexDirection: 'column', maxHeight: '90%', overflowY: 'auto',
   },
   modalTitle: { fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' },
