@@ -281,7 +281,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   // --- ADMIN 2 FINANCE & Overheads States ---
   const [expenditures, setExpenditures] = useState<ExpenditureItem[]>([]);
-  const [selectedExpBranch, setSelectedExpBranch] = useState<'Madhapur' | 'Jubilee Hills' | 'Gachibowli' | 'Kukatpally' | 'Secunderabad'>('Madhapur');
+  const [selectedExpBranch, setSelectedExpBranch] = useState<'Erragattugutta C1' | 'Erragattugutta C2' | 'Beemaram C1' | 'Beemaram C2'>('Erragattugutta C1');
   const [newExpCat, setNewExpCat] = useState('Utilities');
   const [newExpAmt, setNewExpAmt] = useState('');
   const [newExpDesc, setNewExpDesc] = useState('');
@@ -646,7 +646,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     }
     const match = students.find(s => s.admissionNumber.toUpperCase().trim() === searchAdm.toUpperCase().trim() || s.registrationNumber.toUpperCase().trim() === searchAdm.toUpperCase().trim());
     if (match) {
-      if (role !== 'admin1' && match.branch !== 'Madhapur') {
+      if (role !== 'admin1' && match.branch !== 'Erragattugutta C1') {
         triggerToast('Access Denied: Student belongs to another branch.');
         return;
       }
@@ -709,13 +709,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       mobile: newStuMobile,
       parentMobile: newStuMobile,
       email: `${newStuName.toLowerCase().replace(/ /g, '')}@inspire.edu`,
-      address: 'Madhapur Campus, Hyderabad',
+      address: 'Erragattugutta Campus 1, Hyderabad',
       residentialAddress: 'Day Scholar',
       hostelStatus: 'Day Scholar',
       transportStatus: 'Self Transport',
       course: newStuCourse,
       section: newStuSec,
-      branch: 'Madhapur',
+      branch: 'Erragattugutta C1',
       rollNumber: nextRollNum,
       status: 'Active',
       documents: ['10th Marksheet.pdf', 'Aadhaar Card.pdf']
@@ -765,7 +765,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         salary: role === 'admin2' ? 50000 : parseFloat(newFacSal),
         mobile: '9000000000'
       });
-      saved.branch = 'Madhapur';
+      saved.branch = 'Erragattugutta C1';
       setTeachers([...teachers, saved]);
       setNewFacName('');
       setNewFacSal('');
@@ -1075,13 +1075,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Branch</label>
-                    <input
-                      type="text"
+                    <label style={styles.formLabel}>Campus</label>
+                    <select
                       value={editStudent.branch}
                       onChange={(e) => setEditStudent({ ...editStudent, branch: e.target.value })}
-                      style={styles.textInputBox}
-                    />
+                      style={styles.selectInput}
+                    >
+                      <option value="Erragattugutta C1">Erragattugutta Campus 1</option>
+                      <option value="Erragattugutta C2">Erragattugutta Campus 2</option>
+                      <option value="Beemaram C1">Beemaram Campus 1</option>
+                      <option value="Beemaram C2">Beemaram Campus 2</option>
+                    </select>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                     <label style={styles.formLabel}>Roll Number</label>
@@ -1161,7 +1165,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   // ─── SUBPAGE 2: TEACHERS MANAGEMENT ───
   if (activePage === 'teachers') {
     const list = teachers
-      .filter(t => role === 'admin1' || t.branch === 'Madhapur')
+      .filter(t => role === 'admin1' || t.branch === 'Erragattugutta C1')
       .filter(t => t.name.toLowerCase().includes(searchFac.toLowerCase()) || t.subject.toLowerCase().includes(searchFac.toLowerCase()));
 
     return (
@@ -2535,7 +2539,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     // Filter recent entries based on role
     const filteredExpenditures = role === 'admin1'
       ? expenditures.filter(e => e.branch === selectedExpBranch)
-      : expenditures.filter(e => e.branch === 'Madhapur');
+      : expenditures.filter(e => e.branch === 'Erragattugutta C1');
 
     const totalFiltered = filteredExpenditures.reduce((s, e) => s + e.amount, 0);
 
@@ -2552,8 +2556,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         <main style={styles.content}>
           {/* Admin 1 Branch Overview Cards */}
           {role === 'admin1' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginBottom: '16px', zIndex: 1 }}>
-              {['Madhapur', 'Jubilee Hills', 'Gachibowli', 'Kukatpally', 'Secunderabad'].map(b => {
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px', zIndex: 1 }}>
+              {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(b => {
                 const total = getBranchTotal(b);
                 const isActive = selectedExpBranch === b;
                 return (
@@ -2569,7 +2573,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           {/* Log form */}
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>
-              Log New Expenditure {role === 'admin1' ? `(For ${selectedExpBranch})` : '(Campus: Madhapur)'}
+              Log New Expenditure {role === 'admin1' ? `(For ${selectedExpBranch})` : `(Campus: Erragattugutta C1)`}
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -2595,7 +2599,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           {/* Recent entries */}
           <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>
-              Recent Entries {role === 'admin1' ? `(${selectedExpBranch})` : '(Madhapur)'} — Total: ₹{totalFiltered.toLocaleString('en-IN')}
+              Recent Entries {role === 'admin1' ? `(${selectedExpBranch})` : '(Erragattugutta C1)'} — Total: ₹{totalFiltered.toLocaleString('en-IN')}
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
               {filteredExpenditures.length === 0 ? (
@@ -2883,15 +2887,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           initials: 'RC',
           name: 'Mr. Satish Varma (Rector)',
           title: 'General Principal Superintendent Rector',
-          clearance: 'Level 1 Executive Clearance (All 5 Branches)',
+          clearance: 'Level 1 Executive Clearance (All 4 Branches)',
           registry: 'Global Institutional ERP Cockpit'
         };
       } else if (role === 'admin2') {
         return {
           initials: 'CP',
           name: 'Dr. Ramesh Rao (Dean)',
-          title: 'Madhapur Campus Principal Dean',
-          clearance: 'Level 2 Operations Clearance (Madhapur Campus)',
+          title: 'Erragattugutta C1 Campus Principal Dean',
+          clearance: 'Level 2 Operations Clearance (Erragattugutta C1)',
           registry: 'Campus Operations ERP Cockpit'
         };
       } else {
@@ -2969,9 +2973,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               </h2>
               <p style={styles.childMetaText}>
                 {role === 'admin1'
-                  ? 'Superintendent Coordinator (All 5 Campuses)'
+                  ? 'Superintendent Coordinator (All 4 Campuses)'
                   : role === 'admin2'
-                  ? 'Principal Coordinator (Madhapur Campus)'
+                  ? 'Principal Coordinator (Erragattugutta C1)'
                   : 'Independent Student Data Registrar'}
               </p>
             </div>
@@ -3112,7 +3116,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><circle cx="12" cy="7" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
                 </div>
                 <h4 style={styles.moduleTitle}>Students Registry</h4>
-                <p style={styles.moduleDesc}>Register admissions, view records across all 5 branches.</p>
+                <p style={styles.moduleDesc}>Register admissions, view records across all 4 campuses.</p>
               </div>
 
               <div onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
@@ -3144,7 +3148,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                 </div>
                 <h4 style={styles.moduleTitle}>Multi-Branch Expenditure</h4>
-                <p style={styles.moduleDesc}>Compare totals and log expenses across all 5 branches.</p>
+                <p style={styles.moduleDesc}>Compare totals and log expenses across all 4 campuses.</p>
               </div>
 
               <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
@@ -3163,7 +3167,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><circle cx="12" cy="7" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
                 </div>
                 <h4 style={styles.moduleTitle}>Campus Students Registry</h4>
-                <p style={styles.moduleDesc}>Edit student details for Madhapur branch.</p>
+                <p style={styles.moduleDesc}>Edit student details for Erragattugutta C1 branch.</p>
               </div>
 
               <div onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
@@ -3179,7 +3183,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                 </div>
                 <h4 style={styles.moduleTitle}>Campus Expenditures</h4>
-                <p style={styles.moduleDesc}>Log and track local expenditures of Madhapur branch.</p>
+                <p style={styles.moduleDesc}>Log and track local expenditures of Erragattugutta C1.</p>
               </div>
 
               <div onClick={() => setActivePage('worker_payments')} style={styles.moduleCardNew} className="press-interactive">
@@ -3203,7 +3207,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </div>
                 <h4 style={styles.moduleTitle}>Campus Dean Profile</h4>
-                <p style={styles.moduleDesc}>Review Madhapur principal dean credentials.</p>
+                <p style={styles.moduleDesc}>Review Erragattugutta C1 principal dean credentials.</p>
               </div>
             </div>
 
