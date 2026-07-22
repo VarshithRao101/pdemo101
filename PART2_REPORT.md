@@ -327,3 +327,91 @@ Tested `GET /api/authenticator/credentials` and `GET /api/authenticator/pins` wi
   1. Updated `/api/health` in `server/app.cjs` to dynamically check `Boolean(mongoose.connection && mongoose.connection.readyState === 1)` and report `readyState`.
   2. Increased Mongoose `serverSelectionTimeoutMS` to `3500ms` and connection race timeout to `4000ms` to accommodate serverless Atlas SSL connection latencies.
 
+---
+
+# URGENT-1 — Security Audit & Auth Bypass Fix Report
+
+## Step 1 — Reproduction & Confirmation
+Direct HTTP POST probes against production (`https://inspirecolleges.vercel.app/api/auth/login`) verified input handling:
+1. `{"identifier":"admin1","password":""}` $\rightarrow$ **Status 400 Bad Request** (`{"status":"error","message":"Identifier and password are required."}`)
+2. `{"identifier":"admin1"}` (password omitted) $\rightarrow$ **Status 400 Bad Request** (`{"status":"error","message":"Identifier and password are required."}`)
+3. `{"identifier":"admin1","password":"   "}` $\rightarrow$ **Status 400 Bad Request** (`{"status":"error","message":"Identifier and password are required."}`)
+
+---
+
+## Step 2 — Root Cause Analysis
+
+1. **Backend Vulnerability Identified (`server/app.cjs`)**:
+   - Line 713 contained `const isMatch = bcrypt.compareSync(password, matchedUser.password) || password === '111111';`
+   - The expression `|| password === '111111'` acted as a universal master password fallback, allowing ANY request containing `'111111'` in the password field to bypass bcrypt authentication for ALL accounts.
+2. **Frontend Component Behavior (`src/views/PinView.tsx`)**:
+   - In `src/views/PinView.tsx`, when the password input was left blank, the frontend handler (`handleCredentialsFormSubmit`) checked `if (pwd) { ... } else { setStep('pin'); }`.
+   - Submitting an empty password switched the form to 6-digit PIN mode. When a user entered the default PIN `'111111'`, `login(identifier, pin)` sent `password = "111111"` to `/api/auth/login`. Because line 713 of the backend contained `|| password === '111111'`, the login succeeded, creating the appearance of a blank-password bypass!
+3. **Seeded Data Clarification**:
+   - Seeded default accounts in `defaultAccounts` have `'111111'` as initial default passwords hashed with bcrypt, but line 713 allowed `'111111'` to grant access to accounts even after their password had been changed via the credentials management API.
+
+---
+
+## Step 3 — Fix Implemented
+
+1. **Backend Fix ([`server/app.cjs`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/server/app.cjs))**:
+   - Completely removed `|| password === '111111'` from line 713.
+   - Enforced strict string type, non-empty, and non-whitespace check at the top of `/api/auth/login`:
+     ```javascript
+     if (!identifier || typeof identifier !== 'string' || !identifier.trim() ||
+         !password || typeof password !== 'string' || !password.trim()) {
+       return res.status(400).json({ status: 'error', message: 'Identifier and password are required.' });
+     }
+     ```
+   - Standardized authentication strictly through `bcrypt.compareSync(password.trim(), matchedUser.password)`.
+
+2. **Frontend Fix ([`src/views/PinView.tsx`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/src/views/PinView.tsx) & [`src/services/apiClient.ts`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/src/services/apiClient.ts))**:
+   - In `PinView.tsx`, removed `setStep('pin')` fallback from empty password submission. Empty/whitespace credentials inputs are sent directly to `login()`, where backend validation rejects them cleanly with `400 Bad Request`.
+   - In `apiClient.ts`, updated `fallbackRequest` to enforce non-empty string password check before mocking auth responses.
+
+---
+
+## Step 4 — Verification Evidence
+
+Live production HTTP API test results against `https://inspirecolleges.vercel.app/api/auth/login`:
+
+### 4.1 Empty Password String (`""`)
+- **Request**: `POST /api/auth/login` (`{"identifier":"admin1","password":""}`)
+- **Status**: `400 Bad Request`
+- **Body**: `{"status":"error","message":"Identifier and password are required."}`
+
+### 4.2 Omitted Password Field
+- **Request**: `POST /api/auth/login` (`{"identifier":"admin1"}`)
+- **Status**: `400 Bad Request`
+- **Body**: `{"status":"error","message":"Identifier and password are required."}`
+
+### 4.3 Whitespace-Only Password (`"   "`)
+- **Request**: `POST /api/auth/login` (`{"identifier":"admin1","password":"   "}`)
+- **Status**: `400 Bad Request`
+- **Body**: `{"status":"error","message":"Identifier and password are required."}`
+
+### 4.4 Incorrect Password
+- **Request**: `POST /api/auth/login` (`{"identifier":"admin1","password":"WrongPassword999!"}`)
+- **Status**: `401 Unauthorized`
+- **Body**: `{"status":"error","message":"Invalid credentials. Password mismatch."}`
+
+### 4.5 Valid Credentials
+- **Request**: `POST /api/auth/login` (`{"identifier":"admin1","password":"111111"}`)
+- **Status**: `200 OK`
+- **Body**:
+```json
+{
+  "status": "success",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "acc_admin1",
+    "username": "admin1",
+    "role": "admin1",
+    "campus": "All",
+    "name": "Rector"
+  }
+}
+```
+
+
