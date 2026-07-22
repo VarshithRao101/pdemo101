@@ -17,7 +17,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const [lastKeypadIndex, setLastKeypadIndex] = useState<number | null>(null);
   const { isMobile, portalRole, login } = useNavigation();
 
-  const currentMode = mode || (window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
+  const currentMode = mode || (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
 
   const [userId, setUserId] = useState<string>('');
   const [step, setStep] = useState<'credentials' | 'pin'>('credentials');

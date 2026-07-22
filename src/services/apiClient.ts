@@ -221,20 +221,44 @@ export const apiClient = {
         throw err;
       }
       const identifier = bodyData.identifier.toLowerCase();
-      const role = identifier.includes('admin2') ? 'admin2' : identifier.includes('accountant') ? 'accountant' : identifier.includes('authenticator') ? 'authenticator' : 'admin1';
+      const digitsOnly = identifier.replace(/[^0-9]/g, '');
+      const loginContext = bodyData.loginContext || 'universal';
+
+      let role: 'admin1' | 'admin2' | 'accountant' | 'authenticator' = 'admin1';
+
+      if (identifier === '9059068384' || digitsOnly === '9059068384' || identifier.includes('authenticator') || loginContext === 'authenticator') {
+        role = 'authenticator';
+      } else if (identifier.includes('admin2')) {
+        role = 'admin2';
+      } else if (identifier.includes('accountant')) {
+        role = 'accountant';
+      } else {
+        role = 'admin1';
+      }
+
       return {
         status: 'success',
         token: `mock-jwt-token-for-${identifier}`,
         refreshToken: `mock-refresh-token-for-${identifier}`,
-        user: { id: `acc_${identifier}`, username: identifier, role, campus: 'Erragattugutta C1', name: identifier }
+        user: { id: `acc_${identifier}`, username: identifier, role, campus: 'All', name: role === 'authenticator' ? 'Security Authenticator' : identifier }
       } as any;
     }
 
     if (cleanPath === '/auth/me') {
-      const role = username.includes('admin2') ? 'admin2' : username.includes('accountant') ? 'accountant' : username.includes('authenticator') ? 'authenticator' : 'admin1';
+      let role: 'admin1' | 'admin2' | 'accountant' | 'authenticator' = 'admin1';
+      const isAuthUrl = typeof window !== 'undefined' && (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator'));
+
+      if (username === '9059068384' || username.includes('authenticator') || isAuthUrl) {
+        role = 'authenticator';
+      } else if (username.includes('admin2')) {
+        role = 'admin2';
+      } else if (username.includes('accountant')) {
+        role = 'accountant';
+      }
+
       return {
         status: 'success',
-        user: { id: `acc_${username}`, username, role, campus: 'Erragattugutta C1', name: username }
+        user: { id: `acc_${username}`, username, role, campus: role === 'authenticator' ? 'All' : 'Erragattugutta C1', name: role === 'authenticator' ? 'Security Authenticator' : username }
       } as any;
     }
 

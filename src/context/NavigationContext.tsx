@@ -55,7 +55,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
   const login = async (identifier: string, pin: string, loginContext?: string) => {
     setIsAuthLoading(true);
     try {
-      const resolvedContext = loginContext || (window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
+      const resolvedContext = loginContext || (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
       const response = await apiClient.post('/auth/login', {
         identifier,
         password: pin,
