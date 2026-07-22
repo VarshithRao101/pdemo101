@@ -513,6 +513,24 @@ function enforceCampusIsolation(req, res, next) {
   next();
 }
 
+function requireSecurityOtp(req, res, next) {
+  const otp = req.headers['x-security-otp'] || req.body?.otp;
+  if (!otp || typeof otp !== 'string' || !otp.trim()) {
+    return res.status(400).json({ status: 'error', message: 'Security authentication OTP/PIN is required for this action.' });
+  }
+
+  const username = req.user?.username || 'admin1';
+  const dateKey = new Date().toISOString().split('T')[0];
+  const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${username}:${dateKey}`).digest('hex');
+  const numericVal = parseInt(hmac.substring(0, 8), 16);
+  const currentDailyPin = (100000 + (numericVal % 900000)).toString();
+
+  if (otp.trim() !== currentDailyPin) {
+    return res.status(403).json({ status: 'error', message: 'Invalid security authentication OTP/PIN.' });
+  }
+  next();
+}
+
 function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
@@ -1040,7 +1058,7 @@ app.get('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation, a
   return res.json({ status: 'success', data: settings });
 });
 
-app.patch('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.patch('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
   const branch = req.targetCampus;
   const updated = { ...req.body, branch };
   if (isMongoConnected) {
@@ -1060,7 +1078,7 @@ app.get(['/api/admin2/expenditure', '/api/admin2/expenditures'], authenticateTok
   return res.json({ status: 'success', data: list });
 });
 
-app.post(['/api/admin2/expenditure', '/api/admin2/expenditures'], authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.post(['/api/admin2/expenditure', '/api/admin2/expenditures'], authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
   const branch = req.targetCampus;
   const newExp = { ...req.body, _id: `EXP-${Date.now()}`, id: `EXP-${Date.now()}`, branch };
   if (isMongoConnected) {
@@ -1113,7 +1131,7 @@ app.get('/api/admin2/staff-salaries', authenticateToken, enforceCampusIsolation,
   return res.json({ status: 'success', data: teachersList });
 });
 
-app.patch('/api/admin2/staff-salaries/:id', authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.patch('/api/admin2/staff-salaries/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
   const { id } = req.params;
   let teachersList = inMemoryStore.teachers[req.targetCampus] || [];
   const idx = teachersList.findIndex(t => t._id === id || t.id === id);
