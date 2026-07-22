@@ -38,21 +38,36 @@ export const getOrGenerateSecurityKeys = () => {
   }
   
   const genOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+  const generatePinForUser = (uname: string) => {
+    if (uname === 'authenticator' || uname === '9059068384') return '080200';
+    const dateStr = new Date().toISOString().split('T')[0];
+    let hash = 0;
+    const str = `${uname}:${dateStr}`;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return (100000 + (Math.abs(hash) % 900000)).toString();
+  };
   
   const keys = {
     generatedAt: now,
     dailyPins: {
-      admin1: '111111',
-      authenticator: '111111',
-      admin2_erragattugutta_c1: '111111',
-      admin2_erragattugutta_c2: '111111',
-      admin2_beemaram_c1: '111111',
-      admin2_beemaram_c2: '111111',
-      accountant_erragattugutta_c1_1: '111111',
-      accountant_erragattugutta_c1_2: '111111',
-      accountant_erragattugutta_c2_1: '111111',
-      accountant_beemaram_c1_1: '111111',
-      accountant_beemaram_c2_1: '111111',
+      admin1: generatePinForUser('admin1'),
+      authenticator: '080200',
+      admin2_erragattugutta_c1: generatePinForUser('admin2_erragattugutta_c1'),
+      admin2_erragattugutta_c2: generatePinForUser('admin2_erragattugutta_c2'),
+      admin2_beemaram_c1: generatePinForUser('admin2_beemaram_c1'),
+      admin2_beemaram_c2: generatePinForUser('admin2_beemaram_c2'),
+      accountant_erragattugutta_c1_1: generatePinForUser('accountant_erragattugutta_c1_1'),
+      accountant_erragattugutta_c1_2: generatePinForUser('accountant_erragattugutta_c1_2'),
+      accountant_erragattugutta_c2_1: generatePinForUser('accountant_erragattugutta_c2_1'),
+      accountant_erragattugutta_c2_2: generatePinForUser('accountant_erragattugutta_c2_2'),
+      accountant_beemaram_c1_1: generatePinForUser('accountant_beemaram_c1_1'),
+      accountant_beemaram_c1_2: generatePinForUser('accountant_beemaram_c1_2'),
+      accountant_beemaram_c2_1: generatePinForUser('accountant_beemaram_c2_1'),
+      accountant_beemaram_c2_2: generatePinForUser('accountant_beemaram_c2_2'),
     },
     sectionOtps: {
       admin1: {
@@ -279,6 +294,23 @@ export const apiClient = {
     if (cleanPath === '/authenticator/keys') {
       const keys = getOrGenerateSecurityKeys();
       return { status: 'success', data: keys } as any;
+    }
+
+    if (cleanPath === '/authenticator/accounts') {
+      const accountsList = [
+        { _id: 'acc_admin1', username: 'admin1', password: 'RectorPass#2026', role: 'admin1', campus: 'All', name: 'Rector', email: 'rector@inspire.edu', mobile: '9988770000', department: 'Administration', address: 'Central Campus' },
+        { _id: 'acc_admin2_e1', username: 'admin2_erragattugutta_c1', password: 'DeanE1#8492', role: 'admin2', campus: 'Erragattugutta C1', name: 'Dean Erragattugutta C1', email: 'dean.e1@inspire.edu', mobile: '9988770011', department: 'Administration', address: 'Erragattugutta Campus C1' },
+        { _id: 'acc_admin2_e2', username: 'admin2_erragattugutta_c2', password: 'DeanE2#5713', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2', email: 'dean.e2@inspire.edu', mobile: '9988770022', department: 'Administration', address: 'Erragattugutta Campus C2' },
+        { _id: 'acc_admin2_b1', username: 'admin2_beemaram_c1', password: 'DeanB1#3920', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1', email: 'dean.i1@inspire.edu', mobile: '9988770033', department: 'Administration', address: 'Beemaram Campus C1' },
+        { _id: 'acc_admin2_b2', username: 'admin2_beemaram_c2', password: 'DeanB2#6184', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2', email: 'dean.b2@inspire.edu', mobile: '9988770044', department: 'Administration', address: 'Beemaram Campus C2' },
+        { _id: 'acc_accountant_e1_1', username: 'accountant_erragattugutta_c1_1', password: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1', email: 'acc1.e1@inspire.edu', mobile: '9988771101', department: 'Finance Dept', address: 'Erragattugutta Campus C1' },
+        { _id: 'acc_accountant_e1_2', username: 'accountant_erragattugutta_c1_2', password: 'AccE1#9381', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1', email: 'acc2.e1@inspire.edu', mobile: '9988771102', department: 'Finance Dept', address: 'Erragattugutta Campus C1' },
+        { _id: 'acc_accountant_e2_1', username: 'accountant_erragattugutta_c2_1', password: 'AccE2#7294', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2', email: 'acc1.e2@inspire.edu', mobile: '9988772201', department: 'Finance Dept', address: 'Erragattugutta Campus C2' },
+        { _id: 'acc_accountant_b1_1', username: 'accountant_beemaram_c1_1', password: 'AccB1#6530', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 1 Beemaram C1', email: 'acc1.i1@inspire.edu', mobile: '9988773301', department: 'Finance Dept', address: 'Beemaram Campus C1' },
+        { _id: 'acc_accountant_b2_1', username: 'accountant_beemaram_c2_1', password: 'AccB2#8163', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2', email: 'acc1.b2@inspire.edu', mobile: '9988774401', department: 'Finance Dept', address: 'Beemaram Campus C2' },
+        { _id: 'acc_authenticator', username: '9059068384', password: '080200', role: 'authenticator', campus: 'All', name: 'Security Authenticator', email: 'sec9059@inspire.edu', mobile: '9059068384', department: 'Security Console', address: 'Central Security' }
+      ];
+      return { status: 'success', data: accountsList } as any;
     }
 
     if (cleanPath === '/authenticator/sync-journal') {

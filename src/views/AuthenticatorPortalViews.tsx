@@ -430,7 +430,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       </div>
                       <div style={{ ...styles.keyDisplayBlock, padding: '8px 12px' }}>
                         <span style={{ fontSize: '8px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase' }}>Daily Login PIN</span>
-                        <strong style={{ fontSize: '1.2rem', color: 'var(--dark-charcoal)', letterSpacing: '0.05em' }}>{dailyPin || '111111'}</strong>
+                        <strong style={{ fontSize: '1.2rem', color: 'var(--dark-charcoal)', letterSpacing: '0.05em' }}>{dailyPin || '784920'}</strong>
                       </div>
                       <div style={{ display: 'flex', gap: '6px' }}>
                         <button onClick={() => { copyToClipboard(dailyPin); triggerToast(`Copied Login PIN for ${campusName}`); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy Login PIN</button>
@@ -460,7 +460,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         </div>
                         <div style={{ ...styles.keyDisplayBlock, padding: '8px 12px' }}>
                           <span style={{ fontSize: '8px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase' }}>Daily Login PIN</span>
-                          <strong style={{ fontSize: '1.2rem', color: 'var(--dark-charcoal)', letterSpacing: '0.05em' }}>{dailyPin || '111111'}</strong>
+                          <strong style={{ fontSize: '1.2rem', color: 'var(--dark-charcoal)', letterSpacing: '0.05em' }}>{dailyPin || '319482'}</strong>
                         </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button onClick={() => { copyToClipboard(dailyPin); triggerToast(`Copied Login PIN for ${username}`); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy Login PIN</button>
@@ -613,7 +613,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           setEditingAccountId(null);
                           setAccountUsername(`admin2_${campus.toLowerCase().replace(/\s+/g, '')}`);
                           setAccountRole('admin2');
-                          setAccountPassword('111111');
+                          setAccountPassword('DeanPass#' + Math.floor(1000 + Math.random() * 9000));
                           setAccountName('');
                           setAccountEmail('');
                           setAccountMobile('');
@@ -709,7 +709,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                             setEditingAccountId(null);
                             setAccountUsername(`accountant_${campus.toLowerCase().replace(/\s+/g, '')}_${index + 1}`);
                             setAccountRole('accountant');
-                            setAccountPassword('111111');
+                            setAccountPassword('AccPass#' + Math.floor(1000 + Math.random() * 9000));
                             setAccountName('');
                             setAccountEmail('');
                             setAccountMobile('');

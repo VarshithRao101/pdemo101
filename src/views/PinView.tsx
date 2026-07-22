@@ -54,44 +54,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const handleDirectLogin = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-
-    let identifier = userId.trim();
-    if (currentMode === 'authenticator') {
-      identifier = '9059068384';
-    } else if (!identifier) {
-      triggerError('Please enter your User ID');
-      return;
-    }
-
-    if (!passwordInput.trim()) {
-      // If password field is empty, transition to 6-digit keypad screen
-      setStep('pin');
-      return;
-    }
-
-    setIsChecking(true);
-    try {
-      await login(identifier, passwordInput.trim(), currentMode);
-      setIsSuccess(true);
-      setTimeout(() => {
-        onComplete();
-      }, 1500);
-    } catch (err: any) {
-      const msg =
-        err?.data?.message || err?.message || (err?.status === 429
-          ? 'Too many attempts. Please wait 15 minutes.'
-          : 'Incorrect password or PIN. Please try again.');
-      triggerError(msg);
-    } finally {
-      setIsChecking(false);
-    }
-  };
-
   const handleConfirm = async () => {
     if (pin.length !== 6) {
-      triggerError('Please enter a 6-digit PIN');
+      triggerError('Please enter your 6-digit Security PIN');
       return;
     }
 
@@ -104,10 +69,16 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       return;
     }
 
+    if (!passwordInput.trim()) {
+      triggerError('Please enter your Password first');
+      setStep('credentials');
+      return;
+    }
+
     setIsChecking(true);
 
     try {
-      await login(identifier, pin, currentMode);
+      await login(identifier, pin, currentMode, passwordInput.trim());
       // On success: trigger custom success animation
       setIsSuccess(true);
       setTimeout(() => {
@@ -117,7 +88,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       const msg =
         err?.data?.message || err?.message || (err?.status === 429
           ? 'Too many attempts. Please wait 15 minutes.'
-          : 'Incorrect PIN. Please try again.');
+          : 'Incorrect password or 6-digit PIN. Please try again.');
       triggerError(msg);
     } finally {
       setIsChecking(false);
@@ -160,11 +131,13 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       return;
     }
 
-    if (passwordInput.trim()) {
-      handleDirectLogin();
-    } else {
-      setStep('pin');
+    if (!passwordInput.trim()) {
+      triggerError('Please enter your Account Password first');
+      return;
     }
+
+    // Advance to Phase 2: 6-Digit Security PIN Keypad
+    setStep('pin');
   };
 
   // Shared credentials layout page
@@ -253,7 +226,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
               background: 'var(--gold-gradient)',
               color: '#fff',
               boxShadow: '0 4px 14px rgba(212, 175, 55, 0.3)',
-              marginTop: '4px',
+              marginTop: '8px',
               transition: 'transform 0.2s ease, box-shadow 0.2s ease',
               display: 'flex',
               alignItems: 'center',
@@ -262,27 +235,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             }}
             className="press-interactive"
           >
-            Log In Directly →
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setStep('pin')}
-            style={{
-              width: '100%',
-              padding: '10px',
-              borderRadius: '12px',
-              border: '1px solid rgba(0,0,0,0.1)',
-              cursor: 'pointer',
-              fontWeight: 700,
-              fontSize: '12px',
-              backgroundColor: 'rgba(255,255,255,0.4)',
-              color: 'var(--dark-charcoal)',
-              transition: 'all 0.2s ease',
-            }}
-            className="press-interactive"
-          >
-            Or Use 6-Digit PIN Keypad →
+            Continue to 6-Digit PIN Keypad →
           </button>
         </form>
       </>
