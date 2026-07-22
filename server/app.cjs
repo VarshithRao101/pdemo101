@@ -24,7 +24,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 
 // Disable Mongoose model query buffering globally for serverless environments
 mongoose.set('bufferCommands', false);
-mongoose.set('bufferTimeoutMS', 2000);
+mongoose.set('bufferTimeoutMS', 5000);
 
 // --- SERVERLESS MONGOOSE CONNECTION CACHING ---
 let cachedConnPromise = global.mongooseConnPromise || null;
@@ -44,7 +44,7 @@ async function connectToDatabase() {
   if (!cachedConnPromise || (mongoose.connection && mongoose.connection.readyState === 0)) {
     const opts = {
       dbName: process.env.MONGODB_DB_NAME || 'jc_erp_prod',
-      serverSelectionTimeoutMS: 2000,
+      serverSelectionTimeoutMS: 3000,
       bufferCommands: false
     };
     cachedConnPromise = mongoose.connect(MONGODB_URI, opts)
@@ -60,7 +60,7 @@ async function connectToDatabase() {
   }
 
   try {
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 1500));
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 4000));
     const conn = await Promise.race([cachedConnPromise, timeout]);
     if (conn && conn.readyState === 1) {
       isMongoConnected = true;
@@ -113,14 +113,14 @@ function parseCookies(req) {
   return list;
 }
 
-// Connect Mongo on every serverless invocation with 1.5s max wait timeout
+// Connect Mongo on every serverless invocation with 4s max wait timeout
 app.use(async (req, res, next) => {
   if (mongoose.connection && mongoose.connection.readyState === 1) {
     isMongoConnected = true;
     return next();
   }
   const dbPromise = connectToDatabase();
-  const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 1500));
+  const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 4000));
   await Promise.race([dbPromise, timeoutPromise]);
   next();
 });
