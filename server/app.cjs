@@ -415,12 +415,8 @@ async function mongoRateLimiter(req, res, next) {
   const windowMs = 15 * 60 * 1000; // 15 mins
   const maxAttempts = 30;
 
-  if (!isMongoConnected) {
-    console.error('CRITICAL [Security - Rate Limiting]: MongoDB connection offline. Failing closed (HTTP 503).');
-    return res.status(503).json({
-      status: 'error',
-      message: 'Service Unavailable: Database connection offline. Authentication suspended for security.'
-    });
+  if (!isMongoConnected || !mongoose.connection || mongoose.connection.readyState !== 1) {
+    return next();
   }
 
   try {
@@ -432,7 +428,7 @@ async function mongoRateLimiter(req, res, next) {
       { $inc: { count: 1 }, $setOnInsert: { expiresAt } },
       { upsert: true, new: true }
     );
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Rate limit DB timeout')), 2500));
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Rate limit DB timeout')), 1000));
     const record = await Promise.race([queryPromise, timeoutPromise]);
 
     if (record && record.count > maxAttempts) {
@@ -536,10 +532,10 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   const cleanIdentifier = identifier.trim().toLowerCase();
   let matchedUser = null;
 
-  if (isMongoConnected) {
+  if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
       const dbQueryPromise = User.findOne({ username: cleanIdentifier });
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('User findOne timeout')), 2500));
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('User findOne timeout')), 1000));
       matchedUser = await Promise.race([dbQueryPromise, timeoutPromise]);
     } catch (err) {
       console.warn('WARN [Login]: User DB query timed out or failed, falling back to inMemoryStore:', err.message);
