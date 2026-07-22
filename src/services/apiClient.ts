@@ -223,10 +223,24 @@ export const apiClient = {
       const identifier = bodyData.identifier.toLowerCase();
       const digitsOnly = identifier.replace(/[^0-9]/g, '');
       const loginContext = bodyData.loginContext || 'universal';
+      const isAuthIdent = identifier === '9059068384' || digitsOnly === '9059068384' || identifier.includes('authenticator');
+
+      // Strict URL role isolation check
+      if (loginContext === 'universal' && isAuthIdent) {
+        const err: ApiError = new Error('Authenticator login is restricted to the dedicated Security Authenticator URL.');
+        err.status = 403;
+        throw err;
+      }
+
+      if (loginContext === 'authenticator' && !isAuthIdent) {
+        const err: ApiError = new Error('Universal accounts must log in via the Universal Portal URL.');
+        err.status = 403;
+        throw err;
+      }
 
       let role: 'admin1' | 'admin2' | 'accountant' | 'authenticator' = 'admin1';
 
-      if (identifier === '9059068384' || digitsOnly === '9059068384' || identifier.includes('authenticator') || loginContext === 'authenticator') {
+      if (isAuthIdent) {
         role = 'authenticator';
       } else if (identifier.includes('admin2')) {
         role = 'admin2';
@@ -240,7 +254,7 @@ export const apiClient = {
         status: 'success',
         token: `mock-jwt-token-for-${identifier}`,
         refreshToken: `mock-refresh-token-for-${identifier}`,
-        user: { id: `acc_${identifier}`, username: identifier, role, campus: 'All', name: role === 'authenticator' ? 'Security Authenticator' : identifier }
+        user: { id: `acc_${identifier}`, username: identifier, role, campus: role === 'authenticator' ? 'All' : 'Erragattugutta C1', name: role === 'authenticator' ? 'Security Authenticator' : identifier }
       } as any;
     }
 

@@ -20,9 +20,8 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const currentMode = mode || (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
 
   const [userId, setUserId] = useState<string>('');
+  const [passwordInput, setPasswordInput] = useState<string>('');
   const [step, setStep] = useState<'credentials' | 'pin'>('credentials');
-
-
 
   // Clear toast after 3 seconds
   useEffect(() => {
@@ -54,6 +53,41 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   };
 
   const [isSuccess, setIsSuccess] = useState(false);
+
+  const handleDirectLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    let identifier = userId.trim();
+    if (currentMode === 'authenticator') {
+      identifier = '9059068384';
+    } else if (!identifier) {
+      triggerError('Please enter your User ID');
+      return;
+    }
+
+    if (!passwordInput.trim()) {
+      // If password field is empty, transition to 6-digit keypad screen
+      setStep('pin');
+      return;
+    }
+
+    setIsChecking(true);
+    try {
+      await login(identifier, passwordInput.trim(), currentMode);
+      setIsSuccess(true);
+      setTimeout(() => {
+        onComplete();
+      }, 1500);
+    } catch (err: any) {
+      const msg =
+        err?.data?.message || err?.message || (err?.status === 429
+          ? 'Too many attempts. Please wait 15 minutes.'
+          : 'Incorrect password or PIN. Please try again.');
+      triggerError(msg);
+    } finally {
+      setIsChecking(false);
+    }
+  };
 
   const handleConfirm = async () => {
     if (pin.length !== 6) {
@@ -118,8 +152,6 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     setToastMessage('PIN reset link sent to your registered mobile number');
   };
 
-  // PIN boxes are now rendered by the shared `PinEntry` component.
-
   const handleCredentialsFormSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
@@ -128,8 +160,11 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       return;
     }
 
-    // Always transition to 6-digit Security PIN keypad screen
-    setStep('pin');
+    if (passwordInput.trim()) {
+      handleDirectLogin();
+    } else {
+      setStep('pin');
+    }
   };
 
   // Shared credentials layout page
@@ -159,17 +194,42 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             </label>
             <input
               type="text"
-              placeholder={currentMode === 'authenticator' ? '9059068384' : 'e.g. ADM24001'}
+              placeholder={currentMode === 'authenticator' ? '9059068384' : 'e.g. admin1 / admin2 / accountant'}
               value={currentMode === 'authenticator' ? '9059068384' : userId}
               onChange={(e) => setUserId(e.target.value)}
               readOnly={currentMode === 'authenticator'}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCredentialsFormSubmit(); } }}
               style={{
                 width: '100%',
                 padding: '12px 14px',
                 borderRadius: '12px',
                 border: '1.5px solid rgba(0, 0, 0, 0.08)',
                 backgroundColor: currentMode === 'authenticator' ? 'rgba(240, 240, 240, 0.8)' : 'rgba(255, 255, 255, 0.6)',
+                fontFamily: 'var(--font-family)',
+                fontSize: '13px',
+                color: 'var(--dark-charcoal)',
+                outline: 'none',
+                boxShadow: 'var(--shadow-sm)',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+            <label style={{ fontSize: '10.5px', color: 'var(--muted-gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Password / Security PIN
+            </label>
+            <input
+              type="password"
+              placeholder={currentMode === 'authenticator' ? 'Enter Security Password (080200)' : 'Enter Password or 6-digit PIN'}
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCredentialsFormSubmit(); } }}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: '12px',
+                border: '1.5px solid rgba(0, 0, 0, 0.08)',
+                backgroundColor: 'rgba(255, 255, 255, 0.6)',
                 fontFamily: 'var(--font-family)',
                 fontSize: '13px',
                 color: 'var(--dark-charcoal)',
@@ -193,7 +253,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
               background: 'var(--gold-gradient)',
               color: '#fff',
               boxShadow: '0 4px 14px rgba(212, 175, 55, 0.3)',
-              marginTop: '8px',
+              marginTop: '4px',
               transition: 'transform 0.2s ease, box-shadow 0.2s ease',
               display: 'flex',
               alignItems: 'center',
@@ -202,7 +262,27 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             }}
             className="press-interactive"
           >
-            Continue to 6-Digit PIN Keypad →
+            Log In Directly →
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStep('pin')}
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '12px',
+              border: '1px solid rgba(0,0,0,0.1)',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '12px',
+              backgroundColor: 'rgba(255,255,255,0.4)',
+              color: 'var(--dark-charcoal)',
+              transition: 'all 0.2s ease',
+            }}
+            className="press-interactive"
+          >
+            Or Use 6-Digit PIN Keypad →
           </button>
         </form>
       </>
@@ -245,13 +325,13 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             <InspireLogo size="md" />
           </div>
           <p style={{ ...styles.subtitle, color: styles.subtitle.color }}>
-            {portalRole === 'admin1'
-              ? 'Admin 1 (Rector) Portal'
+            {currentMode === 'authenticator'
+              ? 'Security Authenticator Portal'
               : portalRole === 'admin2'
               ? 'Admin 2 (Campus Principal) Portal'
               : portalRole === 'accountant'
               ? 'Accountant Portal'
-              : 'Authenticator Portal'}
+              : 'Universal Administrative Portal'}
           </p>
           <p style={{ fontSize: '11px', color: 'var(--muted-gray)', fontWeight: 500, marginTop: '2px', opacity: 0.8 }}>
             Enter your 6-digit access PIN
