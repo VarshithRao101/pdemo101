@@ -214,7 +214,12 @@ export const apiClient = {
     if (cleanPath === '/auth/login') {
       let bodyData: any = {};
       try { bodyData = JSON.parse(options.body as string); } catch { /* ignore */ }
-      const identifier = (bodyData.identifier || 'admin1').toLowerCase();
+      if (!bodyData.identifier || typeof bodyData.password !== 'string' || !bodyData.password.trim()) {
+        const err: ApiError = new Error('Identifier and password are required.');
+        err.status = 400;
+        throw err;
+      }
+      const identifier = bodyData.identifier.toLowerCase();
       const role = identifier.includes('admin2') ? 'admin2' : identifier.includes('accountant') ? 'accountant' : identifier.includes('authenticator') ? 'authenticator' : 'admin1';
       return {
         status: 'success',

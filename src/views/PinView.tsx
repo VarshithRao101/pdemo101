@@ -137,22 +137,17 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
   const handleCredentialsFormSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const identifier = userId.trim() || SEGMENT_TO_IDENTIFIER[portalRole] || 'admin1';
-    const pwd = password.trim();
-    if (pwd) {
-      setIsChecking(true);
-      login(identifier, pwd)
-        .then(() => {
-          setIsSuccess(true);
-          setTimeout(() => onComplete(), 1500);
-        })
-        .catch((err: any) => {
-          const msg = err?.status === 429 ? 'Too many attempts. Please wait 15 minutes.' : 'Invalid credentials. Please try again.';
-          triggerError(msg);
-        })
-        .finally(() => setIsChecking(false));
-    } else {
-      setStep('pin');
-    }
+    setIsChecking(true);
+    login(identifier, password)
+      .then(() => {
+        setIsSuccess(true);
+        setTimeout(() => onComplete(), 1500);
+      })
+      .catch((err: any) => {
+        const msg = err?.status === 429 ? 'Too many attempts. Please wait 15 minutes.' : 'Invalid credentials. Please try again.';
+        triggerError(msg);
+      })
+      .finally(() => setIsChecking(false));
   };
 
   // Shared credentials layout page
