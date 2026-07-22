@@ -519,9 +519,23 @@ function requireSecurityOtp(req, res, next) {
     return res.status(400).json({ status: 'error', message: 'Security authentication OTP/PIN is required for this action.' });
   }
 
-  const username = req.user?.username || 'admin1';
+  const usernameAliasMap = {
+    admin2_eragattur1: 'admin2_erragattugutta_c1',
+    admin2_eragattur2: 'admin2_erragattugutta_c2',
+    admin2_indbimar1: 'admin2_beemaram_c1',
+    admin2_bhimaram2: 'admin2_beemaram_c2',
+    accountant_eragattur1_1: 'accountant_erragattugutta_c1_1',
+    accountant_eragattur1_2: 'accountant_erragattugutta_c1_2',
+    accountant_eragattur2_1: 'accountant_erragattugutta_c2_1',
+    accountant_indbimar1_1: 'accountant_beemaram_c1_1',
+    accountant_bhimaram2_1: 'accountant_beemaram_c2_1'
+  };
+
+  const rawUsername = (req.user?.username || 'admin1').toLowerCase();
+  const cleanUsername = usernameAliasMap[rawUsername] || rawUsername;
+
   const dateKey = new Date().toISOString().split('T')[0];
-  const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${username}:${dateKey}`).digest('hex');
+  const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${cleanUsername}:${dateKey}`).digest('hex');
   const numericVal = parseInt(hmac.substring(0, 8), 16);
   const currentDailyPin = (100000 + (numericVal % 900000)).toString();
 
