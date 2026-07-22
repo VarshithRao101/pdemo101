@@ -22,9 +22,10 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'inspire_secure_jwt
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
 const MONGODB_URI = process.env.MONGODB_URI;
 
-// Disable Mongoose model query buffering globally for serverless environments
+// Disable Mongoose model query buffering and autoIndex globally for serverless environments
 mongoose.set('bufferCommands', false);
 mongoose.set('bufferTimeoutMS', 5000);
+mongoose.set('autoIndex', false);
 
 // --- SERVERLESS MONGOOSE CONNECTION CACHING ---
 let cachedConnPromise = global.mongooseConnPromise || null;
