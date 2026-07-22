@@ -667,6 +667,21 @@ app.put('/api/authenticator/credentials/:id', authenticateToken, requireRole('au
   res.json({ status: 'success', message: 'Credentials updated successfully.', user: { id: targetUser._id, username: targetUser.username, role: targetUser.role, campus: targetUser.campus } });
 });
 
+app.delete('/api/authenticator/credentials/:id', authenticateToken, requireRole('authenticator'), async (req, res) => {
+  const { id } = req.params;
+  try { await connectToDatabase(); } catch (e) {}
+
+  if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
+    try {
+      await User.deleteMany({ $or: [{ _id: id }, { username: id }, { username: id.replace(/^acc_/, '') }] });
+    } catch (e) {}
+  }
+  inMemoryStore.users = inMemoryStore.users.filter(u => u._id !== id && u.username !== id && u.username !== id.replace(/^acc_/, ''));
+
+  await logSyncJournal('DELETE_ACCOUNT', 'All', 'success', `Deleted account ${id}`);
+  res.json({ status: 'success', message: 'Account deleted successfully.' });
+});
+
 // Daily Cryptographic PIN Rotation Dashboard API
 app.get('/api/authenticator/pins', authenticateToken, requireRole('authenticator'), (req, res) => {
   const dateKey = new Date().toISOString().split('T')[0]; // Rotates daily at midnight UTC
