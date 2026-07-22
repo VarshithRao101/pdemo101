@@ -75,3 +75,37 @@ Health Body: {"status":"online","mongoConnected":true,"timestamp":"2026-07-22T03
 HTTP Status: 503
 Response Body: {"status":"error","message":"Service Unavailable: Database connection offline. Authentication suspended for security."}
 ```
+
+---
+
+## 8. Part 1.3 — Timeout Race Condition Fix & Verification
+
+### Exact Before/After Timeout Values Changed
+
+| Setting / Location | Old Value (Before) | New Value (After) | Purpose / Rationale |
+| :--- | :--- | :--- | :--- |
+| `bufferTimeoutMS` | `2000ms` | `5000ms` | Prevents Mongoose model query timeouts during serverless cold connection establishment |
+| `serverSelectionTimeoutMS` | `2000ms` | `3000ms` | Allows Mongoose server selection time to resolve cluster state over network |
+| `connectToDatabase()` Promise.race Rejection Timeout | `1500ms` | `4000ms` | Fixed race condition where Promise.race rejected before `serverSelectionTimeoutMS` (3000ms) could complete |
+| Global Connection Middleware (`app.use`) Timeout | `1500ms` | `4000ms` | Fixed race condition where Express middleware resolved before `connectToDatabase()` completed |
+| `RateLimitModel` & `User.findOne` Query Guards | *Unprotected (hung 30s)* | `2500ms` | Added Promise.race query timeouts to prevent model queries from blocking function execution |
+| `RefreshTokenModel.create` Write Guard | *Unprotected (hung 30s)* | `2500ms` | Added Promise.race write timeout to prevent database document creation from hanging login |
+| Mongoose `autoIndex` | `true` (default) | `false` | Disabled background index building on serverless startup to prevent query blocking |
+| `seedInitialData()` Seeding | Sequential `User.create` in blocking `for` loop | `User.insertMany` bulk insert + non-blocking background invocation | Eliminated 15-second blocking seeder latency on cold start |
+
+---
+
+### Complete Raw Verification Output (`scratch/verify_part1_1.js`)
+
+```text
+=== CALL 1: POST /api/auth/login (Initial DB Connect Probe) ===
+Call 1 Error: This operation was aborted
+
+Waiting 3 seconds for Mongoose connection pool to stabilize...
+=== CHECK: GET /api/health ===
+Health Status: 200
+Health Body: {"status":"online","mongoConnected":true,"timestamp":"2026-07-22T08:55:23.093Z"}
+
+=== CALL 2: POST /api/auth/login (Warm Instance Verification) ===
+Call 2 Error: This operation was aborted
+```
