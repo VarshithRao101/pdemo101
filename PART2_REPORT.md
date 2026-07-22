@@ -482,5 +482,56 @@ Full ripgrep search performed across all files in the repository:
 - **Finding**: Initial default accounts (`admin1`, `admin2`, `accountant`, `authenticator`) are seeded with `"111111"` as initial default passwords.
 - **Security Recommendation**: Before real production handoff, enforce a "Change Password on First Login" policy or have the security administrator manually set unique strong passwords for all accounts via the Credentials Management Editor in the Authenticator Portal.
 
+---
+
+# URGENT-2 — Financial Actions Server-Side OTP Enforcement Audit Report
+
+## Step 1 — Reproduction & Confirmation
+Before the fix, sending an arbitrary string (`"x"`) to financial endpoints (e.g. `POST /api/admin2/expenditure`) succeeded with **HTTP 200 OK** (`{"status":"success","data":{"title":"Test Unverified Exp","amount":5000,"otp":"x"...}}`), confirming that client-side non-empty string checks allowed unverified execution of financial operations.
+
+---
+
+## Step 2 — OTP Architecture Design & Server-Side Enforcement
+
+- **Design Chosen**: Integrated the **Cryptographic Daily Rotating 6-Digit PIN (HMAC-SHA256)** mechanism directly into backend request validation.
+- **Rationale**: The application is strictly used by internal university staff (Deans, Rector, Accountants). Daily rotating 6-digit PINs generated via HMAC-SHA256 (`JWT_SECRET` + `YYYY-MM-DD`) provide deterministic, zero-dependency, time-bound security enforced on the server without relying on external SMS gateways or volatile serverless session state.
+- **Backend Middleware Implemented (`requireSecurityOtp`)**:
+  - Attached to all sensitive financial routes:
+    1. `POST /api/admin2/expenditure` (Expenditure Posting)
+    2. `PATCH /api/admin2/fee-settings` (Fee Structure & Locking)
+    3. `PATCH /api/admin2/staff-salaries/:id` (Faculty Salary / Payroll Approvals)
+  - Extracts OTP from `x-security-otp` header or `otp` body parameter.
+  - Normalizes calling username, computes the exact daily rotating 6-digit PIN for that profile, and rejects invalid/missing OTPs with `400 Bad Request` or `403 Forbidden` BEFORE route execution.
+
+---
+
+## Step 3 — Live Production Verification Evidence
+
+Live HTTP probe results against `https://inspirecolleges.vercel.app`:
+
+### 3.1 Gate 1: Expenditure Post (`POST /api/admin2/expenditure`)
+- **No OTP Header**: `HTTP 400 Bad Request` $\rightarrow$ `{"status":"error","message":"Security authentication OTP/PIN is required for this action."}`
+- **Arbitrary OTP (`"x"`)**: `HTTP 403 Forbidden` $\rightarrow$ `{"status":"error","message":"Invalid security authentication OTP/PIN."}`
+- **Valid Daily OTP (`"662762"`)**: `HTTP 200 OK` $\rightarrow$ `{"status":"success","data":{"title":"Verified Exp","amount":1000,"_id":"EXP-1784715217099","branch":"Erragattugutta C1"}}`
+
+### 3.2 Gate 2: Fee Lock Settings (`PATCH /api/admin2/fee-settings`)
+- **No OTP Header**: `HTTP 400 Bad Request` $\rightarrow$ `{"status":"error","message":"Security authentication OTP/PIN is required for this action."}`
+- **Arbitrary OTP (`"wrong"`)**: `HTTP 403 Forbidden` $\rightarrow$ `{"status":"error","message":"Invalid security authentication OTP/PIN."}`
+- **Valid Daily OTP (`"662762"`)**: `HTTP 200 OK` $\rightarrow$ `{"status":"success","data":{"isLocked":true,"branch":"Erragattugutta C1"}}`
+
+### 3.3 Gate 3: Staff Salary / Payroll Approval (`PATCH /api/admin2/staff-salaries/FAC-201`)
+- **No OTP Header**: `HTTP 400 Bad Request` $\rightarrow$ `{"status":"error","message":"Security authentication OTP/PIN is required for this action."}`
+- **Arbitrary OTP (`"123456"`)**: `HTTP 403 Forbidden` $\rightarrow$ `{"status":"error","message":"Invalid security authentication OTP/PIN."}`
+- **Valid Daily OTP (`"662762"`)**: `HTTP 200 OK` $\rightarrow$ `{"status":"success","message":"Salary status updated."}`
+
+---
+
+## Step 4 — Codebase Re-Audit Findings
+
+1. **Server Routes**: All 3 financial action routes (`fee-settings`, `expenditure`, `staff-salaries`) enforce `requireSecurityOtp` server-side middleware.
+2. **Client API Layer**: [`src/services/apiClient.ts`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/src/services/apiClient.ts) automatically attaches `x-security-otp` header when `activeSecurityKey` is provided by user input modals.
+3. **Hardcoded Bypasses**: All `111111` and `222222` hardcoded bypass checks have been completely removed across `server/app.cjs`, `AdminPortalViews.tsx`, and `AccountantPortalViews.tsx`. Zero dummy or always-true OTP checks remain in active code.
+
+
 
 
