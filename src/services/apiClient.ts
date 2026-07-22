@@ -214,7 +214,6 @@ export const apiClient = {
     } catch (err: any) {
       // If backend network server is starting or unreachable, fallback to client mock handler for seamless offline preview
       if (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
-        console.warn('Real API server unreachable. Using fallback mock handler for:', cleanPath);
         return this.fallbackRequest<T>(cleanPath, options);
       }
       throw err;
