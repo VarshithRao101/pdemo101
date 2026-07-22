@@ -72,7 +72,7 @@ export const PortfolioView: React.FC = () => {
           
           {/* Universal Portal Login Link */}
           <a 
-            href="#/portal" 
+            href="#/v1-portal-gate-x89f2a7b" 
             style={{ 
               backgroundColor: '#087FBC', 
               color: '#FFFFFF', 
@@ -168,7 +168,7 @@ export const PortfolioView: React.FC = () => {
               State-of-the-art interactive smart boards, computer science testing bays, and high-tech science laboratories.
             </p>
             <div style={{ display: 'flex', gap: '16px' }}>
-              <a href="#/portal" style={{ backgroundColor: '#087FBC', color: '#fff', padding: '12px 28px', borderRadius: '8px', fontWeight: 700, textDecoration: 'none' }}>
+              <a href="#/v1-portal-gate-x89f2a7b" style={{ backgroundColor: '#087FBC', color: '#fff', padding: '12px 28px', borderRadius: '8px', fontWeight: 700, textDecoration: 'none' }}>
                 Launch Staff Dashboard
               </a>
             </div>
@@ -348,7 +348,7 @@ export const PortfolioView: React.FC = () => {
                 <div style={{ fontWeight: 800, fontSize: '1rem', color: '#fff' }}>Authorized Faculty & Admin Access</div>
                 <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>Rector, Principals, Accountants & Security Authenticator portals</div>
               </div>
-              <a href="#/portal" style={{ backgroundColor: '#087FBC', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              <a href="#/v1-portal-gate-x89f2a7b" style={{ backgroundColor: '#087FBC', color: '#fff', padding: '10px 20px', borderRadius: '8px', fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
                 Launch Portal →
               </a>
             </div>
@@ -407,8 +407,8 @@ export const PortfolioView: React.FC = () => {
               <div>
                 <h4 style={{ fontSize: '0.95rem', fontWeight: 700, textTransform: 'uppercase', color: '#F68627', marginBottom: '1rem' }}>Portals</h4>
                 <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <li><a href="#/portal" style={{ fontSize: '0.88rem', color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Universal Administrative Gateway</a></li>
-                  <li><a href="#/authenticator" style={{ fontSize: '0.88rem', color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Security Authenticator Gateway</a></li>
+                  <li><a href="#/v1-portal-gate-x89f2a7b" style={{ fontSize: '0.88rem', color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Universal Administrative Gateway</a></li>
+                  <li><a href="#/sec-auth-sys-9i0j7k8l" style={{ fontSize: '0.88rem', color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Security Authenticator Gateway</a></li>
                 </ul>
               </div>
 

@@ -7,6 +7,9 @@ import { AdminDashboardView } from './views/AdminPortalViews';
 import { AccountantDashboardView } from './views/AccountantPortalViews';
 import { AuthenticatorDashboardView } from './views/AuthenticatorPortalViews';
 
+const UNIVERSAL_HASH = '#/v1-portal-gate-x89f2a7b';
+const AUTHENTICATOR_HASH = '#/sec-auth-sys-9i0j7k8l';
+
 const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
   const { portalRole, checkSession, logout, isAuthenticated, setPortalRole } = useNavigation();
   const [flowStage, setFlowStage] = useState<'portfolio' | 'pin' | 'authenticated'>('portfolio');
@@ -18,7 +21,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       const hash = window.location.hash;
       setCurrentHash(hash);
       if (!isAuthenticated) {
-        if (hash.includes('authenticator') || hash.includes('portal') || hash.includes('login')) {
+        if (hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l') || hash === UNIVERSAL_HASH || hash.includes('v1-portal-gate-x89f2a7b')) {
           setFlowStage('pin');
         } else {
           setFlowStage('portfolio');
@@ -70,7 +73,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
   useEffect(() => {
     if (!isAuthenticated && flowStage === 'authenticated') {
       const hash = window.location.hash;
-      if (hash.includes('authenticator') || hash.includes('portal') || hash.includes('login')) {
+      if (hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l') || hash === UNIVERSAL_HASH || hash.includes('v1-portal-gate-x89f2a7b')) {
         setFlowStage('pin');
       } else {
         setFlowStage('portfolio');
@@ -117,7 +120,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
   }
 
   if (flowStage === 'pin') {
-    const isAuthMode = currentHash.includes('authenticator');
+    const isAuthMode = currentHash.includes('sec-auth-sys-9i0j7k8l') || currentHash.includes('authenticator');
     return <PinView mode={isAuthMode ? 'authenticator' : 'universal'} onComplete={() => setFlowStage('authenticated')} />;
   }
 
