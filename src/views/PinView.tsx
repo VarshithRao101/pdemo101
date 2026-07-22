@@ -20,8 +20,6 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const currentMode = mode || (window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
 
   const [userId, setUserId] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [step, setStep] = useState<'credentials' | 'pin'>('credentials');
 
 
@@ -124,36 +122,14 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
   const handleCredentialsFormSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
-    // If password is not entered, switch to 6-digit PIN keypad entry
-    if (!password.trim()) {
-      if (currentMode === 'universal' && !userId.trim()) {
-        triggerError('Please enter your User ID first');
-        return;
-      }
-      setStep('pin');
-      return;
-    }
 
-    let identifier = userId.trim();
-    if (currentMode === 'authenticator') {
-      identifier = '9059068384';
-    } else if (!identifier) {
+    if (currentMode === 'universal' && !userId.trim()) {
       triggerError('Please enter your User ID first');
       return;
     }
 
-    setIsChecking(true);
-    login(identifier, password, currentMode)
-      .then(() => {
-        setIsSuccess(true);
-        setTimeout(() => onComplete(), 1500);
-      })
-      .catch((err: any) => {
-        const msg = err?.data?.message || err?.message || (err?.status === 429 ? 'Too many attempts. Please wait 15 minutes.' : 'Invalid credentials. Please try again.');
-        triggerError(msg);
-      })
-      .finally(() => setIsChecking(false));
+    // Always transition to 6-digit Security PIN keypad screen
+    setStep('pin');
   };
 
   // Shared credentials layout page
@@ -178,19 +154,22 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           style={{ display: 'flex', flexDirection: 'column', gap: '14px', margin: '24px 0', width: '100%', maxWidth: '340px', marginLeft: 'auto', marginRight: 'auto' }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-            <label style={{ fontSize: '10.5px', color: 'var(--muted-gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>User ID / ID Card No</label>
+            <label style={{ fontSize: '10.5px', color: 'var(--muted-gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {currentMode === 'authenticator' ? 'Fixed Authenticator Account ID' : 'User ID / ID Card No'}
+            </label>
             <input
               type="text"
-              placeholder="e.g. ADM24001"
-              value={userId}
+              placeholder={currentMode === 'authenticator' ? '9059068384' : 'e.g. ADM24001'}
+              value={currentMode === 'authenticator' ? '9059068384' : userId}
               onChange={(e) => setUserId(e.target.value)}
+              readOnly={currentMode === 'authenticator'}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCredentialsFormSubmit(); } }}
               style={{
                 width: '100%',
                 padding: '12px 14px',
                 borderRadius: '12px',
                 border: '1.5px solid rgba(0, 0, 0, 0.08)',
-                backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                backgroundColor: currentMode === 'authenticator' ? 'rgba(240, 240, 240, 0.8)' : 'rgba(255, 255, 255, 0.6)',
                 fontFamily: 'var(--font-family)',
                 fontSize: '13px',
                 color: 'var(--dark-charcoal)',
@@ -199,62 +178,6 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                 boxSizing: 'border-box'
               }}
             />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-            <label style={{ fontSize: '10.5px', color: 'var(--muted-gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCredentialsFormSubmit(); } }}
-                style={{
-                  width: '100%',
-                  padding: '12px 44px 12px 14px',
-                  borderRadius: '12px',
-                  border: '1.5px solid rgba(0, 0, 0, 0.08)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                  fontFamily: 'var(--font-family)',
-                  fontSize: '13px',
-                  color: 'var(--dark-charcoal)',
-                  outline: 'none',
-                  boxShadow: 'var(--shadow-sm)',
-                  boxSizing: 'border-box'
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  padding: '4px',
-                  cursor: 'pointer',
-                  color: 'var(--muted-gray)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  transition: 'color 0.2s ease',
-                }}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                )}
-              </button>
-            </div>
           </div>
 
           <button
@@ -279,8 +202,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             }}
             className="press-interactive"
           >
-            {password ? 'Sign In' : 'Continue to PIN'}
-            <span style={{ fontSize: '11px', opacity: 0.75, fontWeight: 600 }}>↵ Enter</span>
+            Continue to 6-Digit PIN Keypad →
           </button>
         </form>
       </>
