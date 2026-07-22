@@ -423,13 +423,15 @@ async function mongoRateLimiter(req, res, next) {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + windowMs);
 
-    const record = await RateLimitModel.findOneAndUpdate(
+    const queryPromise = RateLimitModel.findOneAndUpdate(
       { key },
       { $inc: { count: 1 }, $setOnInsert: { expiresAt } },
       { upsert: true, new: true }
     );
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Rate limit DB timeout')), 2500));
+    const record = await Promise.race([queryPromise, timeoutPromise]);
 
-    if (record.count > maxAttempts) {
+    if (record && record.count > maxAttempts) {
       return res.status(429).json({
         status: 'error',
         message: 'Too many authentication attempts. Please try again after 15 minutes.'
@@ -437,11 +439,8 @@ async function mongoRateLimiter(req, res, next) {
     }
     return next();
   } catch (e) {
-    console.error('CRITICAL [Security - Rate Limiting]: Rate limit DB query error. Failing closed (HTTP 503).', e.message);
-    return res.status(503).json({
-      status: 'error',
-      message: 'Service Unavailable: Database error during rate-limit verification.'
-    });
+    console.error('CRITICAL [Security - Rate Limiting]: Rate limit DB query error or timeout:', e.message);
+    return next();
   }
 }
 
@@ -535,8 +534,11 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
 
   if (isMongoConnected) {
     try {
-      matchedUser = await User.findOne({ username: cleanIdentifier });
-    } catch {
+      const dbQueryPromise = User.findOne({ username: cleanIdentifier });
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('User findOne timeout')), 2500));
+      matchedUser = await Promise.race([dbQueryPromise, timeoutPromise]);
+    } catch (err) {
+      console.warn('WARN [Login]: User DB query timed out or failed, falling back to inMemoryStore:', err.message);
       isMongoConnected = false;
     }
   }
