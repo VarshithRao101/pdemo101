@@ -958,7 +958,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   <label style={styles.inputLabel}>Login ID / Username</label>
                   <input
                     type="text"
-                    placeholder="e.g. admin2_eragattur1"
+                    placeholder="e.g. admin2_erragattugutta_c1"
                     value={accountUsername}
                     onChange={(e) => setAccountUsername(e.target.value)}
                     style={styles.formInput}

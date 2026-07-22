@@ -640,6 +640,20 @@ app.get('/api/authenticator/pins', authenticateToken, requireRole('authenticator
   });
 });
 
+// Sync Journal Audit Log API
+app.get('/api/authenticator/sync-journal', authenticateToken, async (req, res) => {
+  let logs = [];
+  if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
+    try {
+      logs = await SyncJournal.find().sort({ timestamp: -1 }).limit(50);
+    } catch (e) {}
+  }
+  if (!logs || logs.length === 0) {
+    logs = inMemoryStore.journal;
+  }
+  res.json({ status: 'success', logs });
+});
+
 // --- AUTHENTICATION & REFRESH TOKEN ROUTES ---
 app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   const { identifier, password } = req.body;
@@ -1224,7 +1238,13 @@ app.post('/api/accountant/attendance', authenticateToken, (req, res) => res.json
 
 // --- HEALTH CHECK ROUTE ---
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'online', mongoConnected: isMongoConnected, timestamp: new Date() });
+  const isReady = Boolean(mongoose.connection && mongoose.connection.readyState === 1);
+  res.json({
+    status: 'online',
+    mongoConnected: isReady || isMongoConnected,
+    readyState: mongoose.connection ? mongoose.connection.readyState : 0,
+    timestamp: new Date()
+  });
 });
 
 // Fallback for unhandled routes

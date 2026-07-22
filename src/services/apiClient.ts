@@ -220,7 +220,7 @@ export const apiClient = {
         status: 'success',
         token: `mock-jwt-token-for-${identifier}`,
         refreshToken: `mock-refresh-token-for-${identifier}`,
-        user: { id: `acc_${identifier}`, username: identifier, role, campus: 'Eragattur 1', name: identifier }
+        user: { id: `acc_${identifier}`, username: identifier, role, campus: 'Erragattugutta C1', name: identifier }
       } as any;
     }
 
@@ -228,7 +228,7 @@ export const apiClient = {
       const role = username.includes('admin2') ? 'admin2' : username.includes('accountant') ? 'accountant' : username.includes('authenticator') ? 'authenticator' : 'admin1';
       return {
         status: 'success',
-        user: { id: `acc_${username}`, username, role, campus: 'Eragattur 1', name: username }
+        user: { id: `acc_${username}`, username, role, campus: 'Erragattugutta C1', name: username }
       } as any;
     }
 
