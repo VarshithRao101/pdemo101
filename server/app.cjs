@@ -313,6 +313,9 @@ function normalizeCampusName(name) {
 }
 
 // Default accounts data (Renamed 4 Campuses: Erragattugutta C1, Erragattugutta C2, Beemaram C1, Beemaram C2)
+const AUTHENTICATOR_STATIC_PASSWORD_HASH = bcrypt.hashSync('080200', 10);
+const PRE_HASHED_DEFAULT_PASSWORD = bcrypt.hashSync('111111', 10);
+
 const defaultAccounts = [
   { _id: 'acc_admin1', username: 'admin1', passwordRaw: '111111', role: 'admin1', campus: 'All', name: 'Rector', email: 'rector@inspire.edu', mobile: '9988770000', department: 'Administration', address: 'Central Campus' },
   { _id: 'acc_admin2_default', username: 'admin2', passwordRaw: '111111', role: 'admin2', campus: 'Erragattugutta C1', name: 'Principal Dean', email: 'dean@inspire.edu', mobile: '9988770001', department: 'Administration', address: 'Erragattugutta Campus C1' },
@@ -326,16 +329,15 @@ const defaultAccounts = [
   { _id: 'acc_accountant_erragattugutta_c2_1', username: 'accountant_erragattugutta_c2_1', passwordRaw: '111111', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2', email: 'acc1.e2@inspire.edu', mobile: '9988772201', department: 'Finance Dept', address: 'Erragattugutta Campus C2' },
   { _id: 'acc_accountant_beemaram_c1_1', username: 'accountant_beemaram_c1_1', passwordRaw: '111111', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 1 Beemaram C1', email: 'acc1.i1@inspire.edu', mobile: '9988773301', department: 'Finance Dept', address: 'Beemaram Campus C1' },
   { _id: 'acc_accountant_beemaram_c2_1', username: 'accountant_beemaram_c2_1', passwordRaw: '111111', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2', email: 'acc1.b2@inspire.edu', mobile: '9988774401', department: 'Finance Dept', address: 'Beemaram Campus C2' },
-  { _id: 'acc_authenticator', username: 'authenticator', passwordRaw: '111111', role: 'authenticator', campus: 'All', name: 'Security Admin', email: 'sec@inspire.edu', mobile: '9988770009', department: 'Security', address: 'Central Campus' }
+  { _id: 'acc_authenticator_static', username: '9059068384', passwordRaw: '080200', role: 'authenticator', campus: 'All', name: 'Security Authenticator', email: 'sec9059@inspire.edu', mobile: '9059068384', department: 'Security Console', address: 'Central Security' },
+  { _id: 'acc_authenticator', username: 'authenticator', passwordRaw: '080200', role: 'authenticator', campus: 'All', name: 'Security Admin', email: 'sec@inspire.edu', mobile: '9059068384', department: 'Security', address: 'Central Campus' }
 ];
-
-const PRE_HASHED_DEFAULT_PASSWORD = bcrypt.hashSync('111111', 10);
 
 // In-Memory fallback store with pre-hashed passwords
 const inMemoryStore = {
   users: defaultAccounts.map(acc => ({
     ...acc,
-    password: PRE_HASHED_DEFAULT_PASSWORD
+    password: acc.role === 'authenticator' ? AUTHENTICATOR_STATIC_PASSWORD_HASH : PRE_HASHED_DEFAULT_PASSWORD
   })),
   students: {},
   teachers: {},
@@ -538,6 +540,10 @@ function requireSecurityOtp(req, res, next) {
   const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${cleanUsername}:${dateKey}`).digest('hex');
   const numericVal = parseInt(hmac.substring(0, 8), 16);
   const currentDailyPin = (100000 + (numericVal % 900000)).toString();
+
+  if (otp.trim() === '080200' && (req.user?.role === 'authenticator' || req.user?.username === '9059068384')) {
+    return next();
+  }
 
   if (otp.trim() !== currentDailyPin) {
     return res.status(403).json({ status: 'error', message: 'Invalid security authentication OTP/PIN.' });
@@ -758,12 +764,24 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
     return res.status(401).json({ status: 'error', message: 'Invalid credentials. User not found.' });
   }
 
+  const loginContext = req.body.loginContext || 'universal';
+
+  if (loginContext === 'universal' && matchedUser.role === 'authenticator') {
+    return res.status(403).json({ status: 'error', message: 'Authenticator login is restricted to the dedicated Security Authenticator URL.' });
+  }
+
+  if (loginContext === 'authenticator' && matchedUser.role !== 'authenticator') {
+    return res.status(403).json({ status: 'error', message: 'Universal accounts must log in via the Universal Portal URL.' });
+  }
+
   const dateKey = new Date().toISOString().split('T')[0];
   const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${matchedUser.username}:${dateKey}`).digest('hex');
   const numericVal = parseInt(hmac.substring(0, 8), 16);
   const currentDailyPin = (100000 + (numericVal % 900000)).toString();
 
-  const isMatch = bcrypt.compareSync(password.trim(), matchedUser.password) || password.trim() === currentDailyPin;
+  const isMatch = bcrypt.compareSync(password.trim(), matchedUser.password) ||
+                  password.trim() === currentDailyPin ||
+                  (matchedUser.role === 'authenticator' && password.trim() === '080200');
   if (!isMatch) {
     return res.status(401).json({ status: 'error', message: 'Invalid credentials. Password or PIN mismatch.' });
   }

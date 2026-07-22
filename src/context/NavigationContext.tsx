@@ -22,7 +22,7 @@ interface NavigationContextType {
   user: any;
   isAuthenticated: boolean;
   isAuthLoading: boolean;
-  login: (identifier: string, pin: string) => Promise<any>;
+  login: (identifier: string, pin: string, loginContext?: string) => Promise<any>;
   logout: () => void;
   checkSession: () => Promise<boolean>;
 }
@@ -52,12 +52,14 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
     }
   };
 
-  const login = async (identifier: string, pin: string) => {
+  const login = async (identifier: string, pin: string, loginContext?: string) => {
     setIsAuthLoading(true);
     try {
+      const resolvedContext = loginContext || (window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
       const response = await apiClient.post('/auth/login', {
         identifier,
         password: pin,
+        loginContext: resolvedContext
       });
 
       const { token, user: userData } = response;

@@ -6,15 +6,9 @@ import abstractBg from '../assets/minimalist_portal_bg.png';
 
 interface PinViewProps {
   onComplete: () => void;
+  mode?: 'universal' | 'authenticator';
 }
 
-// Identifier map: each segment resolves to a different username tried against the backend.
-// The 6-digit PIN entered is the shared secret (password).
-// Segment → default username hint used as the identifier:
-//   student   → 'student'
-//   admin     → 'admin'
-//   accountant→ 'accountant'
-// The backend will match it via User.username, so this is consistent with seed data.
 const SEGMENT_TO_IDENTIFIER: Record<string, string> = {
   admin1: 'admin1',
   admin2: 'admin2',
@@ -22,14 +16,15 @@ const SEGMENT_TO_IDENTIFIER: Record<string, string> = {
   authenticator: 'authenticator',
 };
 
-export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
+export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const [pin, setPin] = useState<string>('');
   const [isChecking, setIsChecking] = useState(false);
   const [isError, setIsError] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastKeypadIndex, setLastKeypadIndex] = useState<number | null>(null);
-  // biometric scanning state removed (not used directly here)
   const { isMobile, portalRole, login } = useNavigation();
+
+  const currentMode = mode || (window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
 
   const [userId, setUserId] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -136,15 +131,16 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
 
   const handleCredentialsFormSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const identifier = userId.trim() || SEGMENT_TO_IDENTIFIER[portalRole] || 'admin1';
+    const defaultId = currentMode === 'authenticator' ? '9059068384' : (SEGMENT_TO_IDENTIFIER[portalRole] || 'admin1');
+    const identifier = userId.trim() || defaultId;
     setIsChecking(true);
-    login(identifier, password)
+    login(identifier, password, currentMode)
       .then(() => {
         setIsSuccess(true);
         setTimeout(() => onComplete(), 1500);
       })
       .catch((err: any) => {
-        const msg = err?.status === 429 ? 'Too many attempts. Please wait 15 minutes.' : 'Invalid credentials. Please try again.';
+        const msg = err?.data?.message || err?.message || (err?.status === 429 ? 'Too many attempts. Please wait 15 minutes.' : 'Invalid credentials. Please try again.');
         triggerError(msg);
       })
       .finally(() => setIsChecking(false));
@@ -160,15 +156,10 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
             <InspireLogo size="md" />
           </div>
           <p style={{ ...styles.subtitle, color: styles.subtitle.color }}>
-            {portalRole === 'admin1'
-              ? 'Admin 1 (Rector) Login'
-              : portalRole === 'admin2'
-              ? 'Admin 2 (Campus Principal) Login'
-              : portalRole === 'accountant'
-              ? 'Accountant Login'
-              : 'Portal Login'}
+            {currentMode === 'authenticator'
+              ? 'Security Authenticator Gateway'
+              : 'Universal Administrative Gateway'}
           </p>
-
         </div>
 
         {/* Credentials Form Inputs */}

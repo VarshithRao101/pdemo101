@@ -2,13 +2,36 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavigationProvider, useNavigation } from './context/NavigationContext';
 import { ResponsiveLayout } from './components/layout/ResponsiveLayout';
 import { PinView } from './views/PinView';
+import { PortfolioView } from './views/PortfolioView';
 import { AdminDashboardView } from './views/AdminPortalViews';
 import { AccountantDashboardView } from './views/AccountantPortalViews';
 import { AuthenticatorDashboardView } from './views/AuthenticatorPortalViews';
 
 const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
   const { portalRole, checkSession, logout, isAuthenticated, setPortalRole } = useNavigation();
-  const [flowStage, setFlowStage] = useState<'pin' | 'authenticated'>('pin');
+  const [flowStage, setFlowStage] = useState<'portfolio' | 'pin' | 'authenticated'>('portfolio');
+  const [currentHash, setCurrentHash] = useState<string>(window.location.hash);
+
+  // Listen for hash changes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      setCurrentHash(hash);
+      if (!isAuthenticated) {
+        if (hash.includes('authenticator') || hash.includes('portal') || hash.includes('login')) {
+          setFlowStage('pin');
+        } else {
+          setFlowStage('portfolio');
+        }
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    // Initial evaluation
+    handleHashChange();
+
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [isAuthenticated]);
 
   // Sync forcedRole to NavigationContext
   useEffect(() => {
@@ -16,10 +39,10 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       setPortalRole(forcedRole);
     }
   }, [forcedRole, setPortalRole]);
+
   const sessionChecked = useRef(false);
 
-  // On mount: attempt session recovery during the splash window.
-  // If a valid JWT exists, skip PinView entirely and go straight to 'authenticated'.
+  // Session check on mount
   useEffect(() => {
     if (sessionChecked.current) return;
     sessionChecked.current = true;
@@ -28,24 +51,30 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       if (isValid) {
         setFlowStage('authenticated');
       }
-      // If not valid, SplashView will complete its animation and call onComplete -> 'pin'
     });
   }, [checkSession]);
 
-  // Wire global logout so other components (e.g. ProfileView) can call window.logoutUser()
+  // Wire global logout
   useEffect(() => {
     (window as any).logoutUser = () => {
       logout();
+      window.location.hash = '#/portfolio';
+      setFlowStage('portfolio');
     };
     return () => {
       delete (window as any).logoutUser;
     };
   }, [logout]);
 
-  // Clean transition to PIN screen on logout
+  // Clean transition on logout
   useEffect(() => {
     if (!isAuthenticated && flowStage === 'authenticated') {
-      setFlowStage('pin');
+      const hash = window.location.hash;
+      if (hash.includes('authenticator') || hash.includes('portal') || hash.includes('login')) {
+        setFlowStage('pin');
+      } else {
+        setFlowStage('portfolio');
+      }
     }
   }, [isAuthenticated, flowStage]);
 
@@ -79,16 +108,20 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
     return null;
   };
 
-
-  if (flowStage === 'pin') {
-    return <PinView onComplete={() => setFlowStage('authenticated')} />;
+  if (flowStage === 'authenticated') {
+    return (
+      <ResponsiveLayout>
+        {renderActiveView()}
+      </ResponsiveLayout>
+    );
   }
 
-  return (
-    <ResponsiveLayout>
-      {renderActiveView()}
-    </ResponsiveLayout>
-  );
+  if (flowStage === 'pin') {
+    const isAuthMode = currentHash.includes('authenticator');
+    return <PinView mode={isAuthMode ? 'authenticator' : 'universal'} onComplete={() => setFlowStage('authenticated')} />;
+  }
+
+  return <PortfolioView />;
 };
 
 interface AppProps {
