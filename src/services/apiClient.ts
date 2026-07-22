@@ -212,7 +212,7 @@ export const apiClient = {
   async fallbackRequest<T = any>(cleanPath: string, options: RequestInit = {}): Promise<T> {
     const method = options.method?.toUpperCase() || 'GET';
     const token = sessionStorage.getItem('auth_token') || '';
-    const username = (token.split('-for-')[1] || 'admin1').toLowerCase();
+    const username = (token.includes('-for-') ? (token.split('-for-')[1] || 'admin1') : 'admin1').toLowerCase();
 
     if (cleanPath === '/auth/login') {
       let bodyData: any = {};
