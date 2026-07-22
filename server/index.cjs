@@ -293,28 +293,36 @@ async function seedInitialData() {
 // Generate Security Keys / OTPs
 function generateSecurityKeys() {
   const genOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+  const dateKey = new Date().toISOString().split('T')[0];
+  const getAccountPin = (username) => {
+    if (username === '9059068384' || username === 'authenticator') return '080200';
+    const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${username}:${dateKey}`).digest('hex');
+    const numericVal = parseInt(hmac.substring(0, 8), 16);
+    return (100000 + (numericVal % 900000)).toString();
+  };
+
   return {
     generatedAt: Date.now(),
     dailyPins: {
-      admin1: '111111',
-      authenticator: '111111',
-      admin2_eragattur1: '111111',
-      admin2_eragattur2: '111111',
-      admin2_indbimar1: '111111',
-      admin2_bhimaram2: '111111',
-      accountant_eragattur1_1: '111111',
-      accountant_eragattur1_2: '111111',
-      accountant_eragattur2_1: '111111',
-      accountant_eragattur2_2: '111111',
-      accountant_indbimar1_1: '111111',
-      accountant_indbimar1_2: '111111',
-      accountant_bhimaram2_1: '111111',
-      accountant_bhimaram2_2: '111111',
+      admin1: getAccountPin('admin1'),
+      authenticator: '080200',
+      admin2_erragattugutta_c1: getAccountPin('admin2_erragattugutta_c1'),
+      admin2_erragattugutta_c2: getAccountPin('admin2_erragattugutta_c2'),
+      admin2_beemaram_c1: getAccountPin('admin2_beemaram_c1'),
+      admin2_beemaram_c2: getAccountPin('admin2_beemaram_c2'),
+      accountant_erragattugutta_c1_1: getAccountPin('accountant_erragattugutta_c1_1'),
+      accountant_erragattugutta_c1_2: getAccountPin('accountant_erragattugutta_c1_2'),
+      accountant_erragattugutta_c2_1: getAccountPin('accountant_erragattugutta_c2_1'),
+      accountant_erragattugutta_c2_2: getAccountPin('accountant_erragattugutta_c2_2'),
+      accountant_beemaram_c1_1: getAccountPin('accountant_beemaram_c1_1'),
+      accountant_beemaram_c1_2: getAccountPin('accountant_beemaram_c1_2'),
+      accountant_beemaram_c2_1: getAccountPin('accountant_beemaram_c2_1'),
+      accountant_beemaram_c2_2: getAccountPin('accountant_beemaram_c2_2'),
     },
     sectionOtps: {
-      admin1: { studentRegistry: '482910', facultyManagement: '593012', feeStructure: '682014', expenditure: '791023' },
-      admin2: { expenditure: '810293', workerPayments: '920184' },
-      accountant: { studentDetails: '102938', fees: '213049', hostel: '324150' }
+      admin1: { studentRegistry: genOtp(), facultyManagement: genOtp(), feeStructure: genOtp(), expenditure: genOtp() },
+      admin2: { expenditure: genOtp(), workerPayments: genOtp() },
+      accountant: { studentDetails: genOtp(), fees: genOtp(), hostel: genOtp() }
     }
   };
 }

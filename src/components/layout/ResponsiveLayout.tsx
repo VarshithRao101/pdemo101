@@ -503,6 +503,14 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
     </>
   ));
 
+  if (portalRole === 'authenticator') {
+    return (
+      <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: 'var(--bg-primary)' }}>
+        {children}
+      </div>
+    );
+  }
+
   if (isMobile) {
     return (
       <div style={styles.mobileWrapper}>
