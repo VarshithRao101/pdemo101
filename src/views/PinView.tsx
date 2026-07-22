@@ -9,13 +9,6 @@ interface PinViewProps {
   mode?: 'universal' | 'authenticator';
 }
 
-const SEGMENT_TO_IDENTIFIER: Record<string, string> = {
-  admin1: 'admin1',
-  admin2: 'admin2',
-  accountant: 'accountant',
-  authenticator: 'authenticator',
-};
-
 export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const [pin, setPin] = useState<string>('');
   const [isChecking, setIsChecking] = useState(false);
@@ -71,8 +64,12 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     }
 
     let identifier = userId.trim();
-    if (!identifier) {
-      identifier = currentMode === 'authenticator' ? '9059068384' : (SEGMENT_TO_IDENTIFIER[portalRole] || 'admin1');
+    if (currentMode === 'authenticator') {
+      identifier = '9059068384';
+    } else if (!identifier) {
+      triggerError('Please enter your User ID first');
+      setStep('credentials');
+      return;
     }
 
     setIsChecking(true);
@@ -130,12 +127,22 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     
     // If password is not entered, switch to 6-digit PIN keypad entry
     if (!password.trim()) {
+      if (currentMode === 'universal' && !userId.trim()) {
+        triggerError('Please enter your User ID first');
+        return;
+      }
       setStep('pin');
       return;
     }
 
-    const defaultId = currentMode === 'authenticator' ? '9059068384' : (SEGMENT_TO_IDENTIFIER[portalRole] || 'admin1');
-    const identifier = userId.trim() || defaultId;
+    let identifier = userId.trim();
+    if (currentMode === 'authenticator') {
+      identifier = '9059068384';
+    } else if (!identifier) {
+      triggerError('Please enter your User ID first');
+      return;
+    }
+
     setIsChecking(true);
     login(identifier, password, currentMode)
       .then(() => {
