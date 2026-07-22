@@ -128,7 +128,7 @@ export const PortfolioView: React.FC = () => {
               <a href="#gateway" style={{ backgroundColor: '#F68627', color: '#fff', padding: '12px 28px', borderRadius: '8px', fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(246,134,39,0.4)' }}>
                 Apply for Admission
               </a>
-              <a href="#/portal" style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', padding: '12px 24px', borderRadius: '8px', fontWeight: 700, textDecoration: 'none' }}>
+              <a href="#/v1-portal-gate-x89f2a7b" style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)', padding: '12px 24px', borderRadius: '8px', fontWeight: 700, textDecoration: 'none' }}>
                 Access Administrative Portal
               </a>
             </div>
