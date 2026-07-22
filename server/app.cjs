@@ -32,7 +32,7 @@ async function connectToDatabase() {
     return mongoose.connection;
   }
 
-  if (!MONGODB_URI) {
+  if (!MONGODB_URI || typeof MONGODB_URI !== 'string' || !MONGODB_URI.startsWith('mongodb')) {
     isMongoConnected = false;
     return null;
   }
@@ -40,18 +40,30 @@ async function connectToDatabase() {
   if (!cachedConnPromise) {
     const opts = {
       dbName: process.env.MONGODB_DB_NAME || 'jc_erp_prod',
-      serverSelectionTimeoutMS: 1500
+      serverSelectionTimeoutMS: 2000
     };
-    cachedConnPromise = mongoose.connect(MONGODB_URI, opts).then(m => m.connection);
+    cachedConnPromise = mongoose.connect(MONGODB_URI, opts)
+      .then(m => m.connection)
+      .catch(err => {
+        console.error('CRITICAL [Database Offline]: MongoDB connection error:', err.message);
+        cachedConnPromise = null;
+        global.mongooseConnPromise = null;
+        isMongoConnected = false;
+        return null;
+      });
     global.mongooseConnPromise = cachedConnPromise;
   }
 
   try {
-    await cachedConnPromise;
-    isMongoConnected = true;
-    await seedInitialData();
+    const conn = await cachedConnPromise;
+    if (conn && conn.readyState === 1) {
+      isMongoConnected = true;
+      await seedInitialData();
+    } else {
+      isMongoConnected = false;
+    }
   } catch (err) {
-    console.error('CRITICAL [Database Offline]: MongoDB connection failed. Operating in FAIL-CLOSED mode:', err.message);
+    console.error('CRITICAL [Database Offline]: Operating in FAIL-CLOSED mode:', err.message);
     cachedConnPromise = null;
     global.mongooseConnPromise = null;
     isMongoConnected = false;
