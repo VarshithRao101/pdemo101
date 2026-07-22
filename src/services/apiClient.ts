@@ -3,6 +3,9 @@
 // Manages real JWT auth tokens, refreshToken auto-renewal, headers, rate limit handling, and campus isolation errors.
 
 export const getApiBaseUrl = (): string => {
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return '/api';
+  }
   if (import.meta.env && import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
