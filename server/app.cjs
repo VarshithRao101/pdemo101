@@ -570,7 +570,9 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   if (isMongoConnected) {
     try {
-      await RefreshTokenModel.create({ tokenHash, userId: payload.id, expiresAt: refreshExpiresAt });
+      const createPromise = RefreshTokenModel.create({ tokenHash, userId: payload.id, expiresAt: refreshExpiresAt });
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('RefreshToken DB create timeout')), 2500));
+      await Promise.race([createPromise, timeoutPromise]);
     } catch { /* ignore */ }
   }
   inMemoryStore.refreshTokens.add(tokenHash);
