@@ -45,7 +45,7 @@ async function connectToDatabase() {
   if (!cachedConnPromise || (mongoose.connection && mongoose.connection.readyState === 0)) {
     const opts = {
       dbName: process.env.MONGODB_DB_NAME || 'jc_erp_prod',
-      serverSelectionTimeoutMS: 1200,
+      serverSelectionTimeoutMS: 3500,
       bufferCommands: false
     };
     cachedConnPromise = mongoose.connect(MONGODB_URI, opts)
@@ -61,11 +61,11 @@ async function connectToDatabase() {
   }
 
   try {
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 1200));
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 4000));
     const conn = await Promise.race([cachedConnPromise, timeout]);
     if (conn && conn.readyState === 1) {
       isMongoConnected = true;
-      seedInitialData().catch(e => console.warn('WARN [Seeder]: Background seed error:', e.message));
+      await seedInitialData().catch(e => console.warn('WARN [Seeder]: Background seed error:', e.message));
     } else {
       isMongoConnected = false;
       cachedConnPromise = null;
@@ -572,8 +572,13 @@ app.post('/api/authenticator/credentials', authenticateToken, requireRole('authe
     address: `${normalizedCampus} Campus`
   };
 
+  try { await connectToDatabase(); } catch (e) {}
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
-    try { await User.create(newUser); } catch (e) {}
+    try {
+      await User.findOneAndUpdate({ _id: userId }, newUser, { upsert: true, new: true });
+    } catch (e) {
+      console.warn('WARN [Credentials API]: Mongo user insert warning:', e.message);
+    }
   }
 
   const existingIdx = inMemoryStore.users.findIndex(u => u.username === newUser.username);
@@ -591,32 +596,42 @@ app.put('/api/authenticator/credentials/:id', authenticateToken, requireRole('au
   const { id } = req.params;
   const { username, password, role, campus, name } = req.body;
 
-  let targetUser = inMemoryStore.users.find(u => u._id === id || u.username === id);
+  try { await connectToDatabase(); } catch (e) {}
+
+  let targetUser = null;
+  if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
+    try {
+      targetUser = await User.findOne({ $or: [{ _id: id }, { username: id.replace(/^acc_/, '') }] });
+    } catch (e) {}
+  }
+  if (!targetUser) {
+    targetUser = inMemoryStore.users.find(u => u._id === id || u.username === id || u.username === id.replace(/^acc_/, ''));
+  }
+
   if (!targetUser) {
     return res.status(404).json({ status: 'error', message: 'Account not found.' });
   }
 
-  if (username) targetUser.username = username.trim().toLowerCase();
-  if (role) targetUser.role = role;
-  if (campus) targetUser.campus = normalizeCampusName(campus);
-  if (name) targetUser.name = name;
+  const updatedFields = {};
+  if (username) updatedFields.username = username.trim().toLowerCase();
+  if (role) updatedFields.role = role;
+  if (campus) updatedFields.campus = normalizeCampusName(campus);
+  if (name) updatedFields.name = name;
   if (password && password.trim()) {
-    targetUser.password = bcrypt.hashSync(password.trim(), 10);
+    updatedFields.password = bcrypt.hashSync(password.trim(), 10);
   }
+
+  Object.assign(targetUser, updatedFields);
 
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
-      await User.findByIdAndUpdate(targetUser._id, {
-        username: targetUser.username,
-        role: targetUser.role,
-        campus: targetUser.campus,
-        name: targetUser.name,
-        password: targetUser.password
-      }, { upsert: true });
-    } catch (e) {}
+      await User.findByIdAndUpdate(targetUser._id, { $set: updatedFields }, { upsert: true });
+    } catch (e) {
+      console.warn('WARN [Credentials API]: Mongo user update warning:', e.message);
+    }
   }
 
-  await logSyncJournal('EDIT_CREDENTIALS', targetUser.campus, 'success', `Updated credentials for account ${targetUser.username} (${targetUser.role})`);
+  await logSyncJournal('EDIT_CREDENTIALS', targetUser.campus || 'All', 'success', `Updated credentials for account ${targetUser.username} (${targetUser.role || 'user'})`);
   res.json({ status: 'success', message: 'Credentials updated successfully.', user: { id: targetUser._id, username: targetUser.username, role: targetUser.role, campus: targetUser.campus } });
 });
 
