@@ -105,9 +105,15 @@ function parseCookies(req) {
   return list;
 }
 
-// Connect Mongo on every serverless invocation
+// Connect Mongo on every serverless invocation with 1.5s max wait timeout
 app.use(async (req, res, next) => {
-  await connectToDatabase();
+  if (mongoose.connection && mongoose.connection.readyState === 1) {
+    isMongoConnected = true;
+    return next();
+  }
+  const dbPromise = connectToDatabase();
+  const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 1500));
+  await Promise.race([dbPromise, timeoutPromise]);
   next();
 });
 

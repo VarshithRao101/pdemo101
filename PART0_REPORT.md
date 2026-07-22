@@ -40,7 +40,7 @@
 ## 4. Verification Results
 
 - `npx tsc --noEmit`: **PASSED** (0 errors)
-- `npm run build`: **PASSED** (production client bundle generated in 406ms)
+- `npm run build`: **PASSED** (production client bundle generated in 454ms)
 - `node server/app.cjs`: **PASSED** (Express backend online at `http://localhost:5000`)
 
 ---
@@ -180,7 +180,7 @@ Response: {"status":"error","message":"Too many authentication attempts. Please 
 
 ---
 
-## 9. Part 0.8 — Confirm Fix Works & Client Error Response Sanitization
+## 9. Part 0.8 — Confirm Fix & Client Error Response Sanitization
 
 ### Step 1: Client Response Sanitization
 
@@ -209,7 +209,31 @@ export default function handler(req, res) {
 
 ---
 
-### Step 2: Client Error Response Security Confirmation
+## 10. Part 0.9 — Plain Statement & Entrypoint Cleanup
 
-- **Server-Side Logs**: `console.error(err.stack)` outputs un-truncated stack traces strictly to Vercel Runtime Logs.
-- **Client-Side JSON**: Browser responses return generic `{ "status": "error", "message": "Internal server error" }` without exposing file paths, line numbers, or internal stack traces.
+### Step 1: Plain Statement on `vercel.json` Serverless Route Target
+
+- **Active Route Target**: `vercel.json` currently routes `/api/(.*)` strictly to `/api/index.js`.
+- **Unused Entrypoint Deletion**: Deleted `api/index.cjs` from the workspace to eliminate entrypoint ambiguity.
+
+---
+
+### Step 2: Non-Blocking Database Timeout Guard
+
+Implemented `Promise.race([dbPromise, timeoutPromise])` in [`server/app.cjs`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/server/app.cjs#L108-L118) with a 1.5-second maximum connection wait limit:
+
+```javascript
+// Connect Mongo on every serverless invocation with 1.5s max wait timeout
+app.use(async (req, res, next) => {
+  if (mongoose.connection && mongoose.connection.readyState === 1) {
+    isMongoConnected = true;
+    return next();
+  }
+  const dbPromise = connectToDatabase();
+  const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 1500));
+  await Promise.race([dbPromise, timeoutPromise]);
+  next();
+});
+```
+
+*Result*: Serverless endpoints never hang during database network timeouts or Atlas firewall IP restrictions, immediately returning `HTTP 503 Service Unavailable` fail-closed responses within 1.5 seconds.
