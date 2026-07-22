@@ -71,18 +71,14 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     }
 
     let identifier = userId.trim();
-    const defaultUser = SEGMENT_TO_IDENTIFIER[portalRole] || 'admin1';
-    
-    // Smart Fallback: if username is empty, doesn't match default role user (case-insensitive),
-    // and doesn't match standard prefixes (ADM/STU/FAC), force default portal role user.
-    if (!identifier || (identifier.toLowerCase() !== defaultUser.toLowerCase() && !identifier.toUpperCase().startsWith('ADM') && !identifier.toUpperCase().startsWith('STU') && !identifier.toUpperCase().startsWith('FAC'))) {
-      identifier = defaultUser;
+    if (!identifier) {
+      identifier = currentMode === 'authenticator' ? '9059068384' : (SEGMENT_TO_IDENTIFIER[portalRole] || 'admin1');
     }
 
     setIsChecking(true);
 
     try {
-      await login(identifier, pin);
+      await login(identifier, pin, currentMode);
       // On success: trigger custom success animation
       setIsSuccess(true);
       setTimeout(() => {
@@ -90,9 +86,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       }, 1500);
     } catch (err: any) {
       const msg =
-        err?.status === 429
+        err?.data?.message || err?.message || (err?.status === 429
           ? 'Too many attempts. Please wait 15 minutes.'
-          : 'Incorrect PIN. Please try again.';
+          : 'Incorrect PIN. Please try again.');
       triggerError(msg);
     } finally {
       setIsChecking(false);
@@ -131,6 +127,13 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
   const handleCredentialsFormSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    
+    // If password is not entered, switch to 6-digit PIN keypad entry
+    if (!password.trim()) {
+      setStep('pin');
+      return;
+    }
+
     const defaultId = currentMode === 'authenticator' ? '9059068384' : (SEGMENT_TO_IDENTIFIER[portalRole] || 'admin1');
     const identifier = userId.trim() || defaultId;
     setIsChecking(true);

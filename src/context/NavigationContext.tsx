@@ -110,6 +110,27 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       const response = await apiClient.get('/auth/me');
       const { user: userData } = response;
       
+      const isAuthUrl = window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator');
+
+      // Reject cross-url restored sessions
+      if (isAuthUrl && userData.role !== 'authenticator') {
+        console.warn('Clearing saved non-authenticator session on Authenticator URL');
+        sessionStorage.removeItem('auth_token');
+        disconnectSocket();
+        setIsAuthenticated(false);
+        setUser(null);
+        return false;
+      }
+
+      if (!isAuthUrl && userData.role === 'authenticator') {
+        console.warn('Clearing saved authenticator session on Universal URL');
+        sessionStorage.removeItem('auth_token');
+        disconnectSocket();
+        setIsAuthenticated(false);
+        setUser(null);
+        return false;
+      }
+
       setUser(userData);
       setIsAuthenticated(true);
       connectSocket(token);
