@@ -143,6 +143,7 @@ export const apiClient = {
 
     if (activeSecurityKey) {
       headers['x-security-key'] = activeSecurityKey;
+      headers['x-security-otp'] = activeSecurityKey;
     }
 
     try {
