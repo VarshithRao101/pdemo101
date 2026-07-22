@@ -41,7 +41,7 @@ async function connectToDatabase() {
     return null;
   }
 
-  if (!cachedConnPromise) {
+  if (!cachedConnPromise || (mongoose.connection && mongoose.connection.readyState === 0)) {
     const opts = {
       dbName: process.env.MONGODB_DB_NAME || 'jc_erp_prod',
       serverSelectionTimeoutMS: 2000,
@@ -60,13 +60,15 @@ async function connectToDatabase() {
   }
 
   try {
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 2000));
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 1500));
     const conn = await Promise.race([cachedConnPromise, timeout]);
     if (conn && conn.readyState === 1) {
       isMongoConnected = true;
       await seedInitialData();
     } else {
       isMongoConnected = false;
+      cachedConnPromise = null;
+      global.mongooseConnPromise = null;
     }
   } catch (err) {
     console.error('CRITICAL [Database Offline]: Operating in FAIL-CLOSED mode:', err.message);
