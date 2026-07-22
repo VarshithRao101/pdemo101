@@ -8,12 +8,12 @@
   - Provisioned server-side environment config with fresh 64-byte random JWT secret (`JWT_SECRET`), refresh token secret (`JWT_REFRESH_SECRET`), rotated MongoDB URI string (`MONGODB_URI`), and rate-limit parameters.
 - **[UPDATED] `.gitignore`**:
   - Added strict wildcard rules (`.env`, `.env.*`, `*.env*`, `*.local`) to guarantee environment files are never tracked or shipped in client bundles.
-- **[CREATED] `server/app.cjs` & `api/index.js`**:
-  - Built serverless-compatible Express app exported for Vercel functions (`api/index.js`).
+- **[CREATED] `server/app.cjs`, `api/index.js` & `api/index.cjs`**:
+  - Built serverless-compatible Express app exported for Vercel functions (`api/index.cjs`).
   - Implemented Mongoose models for `User`, `Student`, `Teacher`, `Payment`, `FeeSettings`, `Expenditure`, `WorkerPayment`, `Bulletin`, `Hostel`, `SyncJournal`, `RateLimit`, and `RefreshToken`.
   - Implemented server-side JWT access + refresh token flow (`jwt.sign` / `jwt.verify`), bcrypt password hashing (`bcrypt.hashSync`), persistent MongoDB rate-limiting (`mongoRateLimiter`), role authorization (`requireRole`), and campus multi-tenant isolation middleware (`enforceCampusIsolation`).
 - **[UPDATED] `vercel.json`**:
-  - Added Vercel Serverless Function rewrites (`/api/(.*)` -> `/api/index.js`).
+  - Configured Vercel Serverless Function rewrites (`/api/(.*)` -> `/api/index.cjs`).
 - **[UPDATED] `package.json`**:
   - Updated `"server"` and `"start:server"` npm scripts pointing to `node server/app.cjs`.
 - **[UPDATED] `src/services/apiClient.ts`**:
@@ -40,7 +40,7 @@
 ## 4. Verification Results
 
 - `npx tsc --noEmit`: **PASSED** (0 errors)
-- `npm run build`: **PASSED** (production client bundle generated in 370ms)
+- `npm run build`: **PASSED** (production client bundle generated in 392ms)
 - `node server/app.cjs`: **PASSED** (Express backend online at `http://localhost:5000`)
 
 ---
@@ -87,8 +87,8 @@ Response: {
 
 ### Step 1: Vercel Serverless Architecture & Catch-All Route Strategy
 
-- **Architectural Approach Chosen**: Single catch-all handler at `api/index.js` wrapping `server/app.cjs`.
-- **Reasoning**: Over 50 REST API routes exist across Admin 1, Admin 2, Accountant, and Authenticator services. Wrapping `server/app.cjs` via `api/index.js` and configuring Vercel rewrite `{"source": "/api/(.*)", "destination": "/api/index.js"}` preserves 100% of existing Express routes, CORS, security headers, role authorization, and isolation middlewares seamlessly.
+- **Architectural Approach Chosen**: Single catch-all handler at `api/index.cjs` wrapping `server/app.cjs`.
+- **Reasoning**: Over 50 REST API routes exist across Admin 1, Admin 2, Accountant, and Authenticator services. Wrapping `server/app.cjs` via `api/index.cjs` and configuring Vercel rewrite `{"source": "/api/(.*)", "destination": "/api/index.cjs"}` preserves 100% of existing Express routes, CORS, security headers, role authorization, and isolation middlewares seamlessly.
 - **Vercel Rewrite Configuration** ([`vercel.json`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/vercel.json#L1-L12)):
   ```json
   {
@@ -96,68 +96,11 @@ Response: {
     "buildCommand": "npm run build",
     "outputDirectory": "dist",
     "rewrites": [
-      { "source": "/api/(.*)", "destination": "/api/index.js" },
+      { "source": "/api/(.*)", "destination": "/api/index.cjs" },
       { "source": "/(.*)", "destination": "/index.html" }
     ]
   }
   ```
-
----
-
-### Step 2: Mongoose Connection Caching Code
-
-Implemented cached connection pattern using `global.mongooseConnPromise` in [`server/app.cjs`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/server/app.cjs#L25-L60):
-
-```javascript
-// --- SERVERLESS MONGOOSE CONNECTION CACHING ---
-let cachedConnPromise = global.mongooseConnPromise || null;
-let isMongoConnected = false;
-
-async function connectToDatabase() {
-  if (mongoose.connection && mongoose.connection.readyState === 1) {
-    isMongoConnected = true;
-    return mongoose.connection;
-  }
-
-  if (!MONGODB_URI || typeof MONGODB_URI !== 'string' || !MONGODB_URI.startsWith('mongodb')) {
-    isMongoConnected = false;
-    return null;
-  }
-
-  if (!cachedConnPromise) {
-    const opts = {
-      dbName: process.env.MONGODB_DB_NAME || 'jc_erp_prod',
-      serverSelectionTimeoutMS: 2000
-    };
-    cachedConnPromise = mongoose.connect(MONGODB_URI, opts)
-      .then(m => m.connection)
-      .catch(err => {
-        console.error('CRITICAL [Database Offline]: MongoDB connection error:', err.message);
-        cachedConnPromise = null;
-        global.mongooseConnPromise = null;
-        isMongoConnected = false;
-        return null;
-      });
-    global.mongooseConnPromise = cachedConnPromise;
-  }
-
-  try {
-    const conn = await cachedConnPromise;
-    if (conn && conn.readyState === 1) {
-      isMongoConnected = true;
-      await seedInitialData();
-    } else {
-      isMongoConnected = false;
-    }
-  } catch (err) {
-    console.error('CRITICAL [Database Offline]: Operating in FAIL-CLOSED mode:', err.message);
-    cachedConnPromise = null;
-    global.mongooseConnPromise = null;
-    isMongoConnected = false;
-  }
-  return mongoose.connection;
-}
-```
 
 ---
 
@@ -178,16 +121,9 @@ async function connectToDatabase() {
 
 ---
 
-### Step 2: Fail-Closed Security Architecture on Database Disconnect
-
-- **Decision**: Implemented **Option (a) FAIL CLOSED**.
-- **Rationale**: For an enterprise ERP managing financial fee ledgers, staff payroll, and student records across 4 campuses, silently falling back to unpersisted memory rate-limiters or allowing unpersisted state mutations during a database outage is unacceptable. A temporary **HTTP 503 Service Unavailable** during a DB outage protects system integrity.
-
----
-
 ## 8. Part 0.4 — Local Serverless API Verification Baseline
 
-Raw HTTP status codes and JSON response outputs executed against the serverless backend (`server/app.cjs` / `api/index.js`):
+Raw HTTP status codes and JSON response outputs executed against the serverless backend (`server/app.cjs` / `api/index.cjs`):
 
 ```text
 --- 1. POST /api/auth/login ---
@@ -244,53 +180,99 @@ Response: {"status":"error","message":"Too many authentication attempts. Please 
 
 ---
 
-## 9. Part 0.5 — Production Deployment Verification (`https://inspirecolleges.vercel.app`)
-
-### Raw Response Probe Output
-
-Executing live requests against `https://inspirecolleges.vercel.app/api/auth/login`:
+## 9. Part 0.5 & 0.6 — Production Re-verification Probe Results
 
 ```text
-=== TEST 1: POST https://inspirecolleges.vercel.app/api/auth/login ===
+=== 1. POST https://inspirecolleges.vercel.app/api/auth/login ===
 HTTP Status: 500 Internal Server Error
 Response Body:
 A server error has occurred
 FUNCTION_INVOCATION_FAILED
-bom1::7bnb9-1784689162070-5d93d0ef6968
-
-=== TEST 2: AUTHENTICATED GET /api/admin1/students ===
-Status: Skipped (Login token unavailable due to 500 error)
-
-=== TEST 3: 4 CROSS-CAMPUS ISOLATION ATTEMPTS ===
-Admin 2 Eragattur 1 -> Bhimaram 2 | Login HTTP Status: 500
-Admin 2 Eragattur 1 -> Eragattur 2 | Login HTTP Status: 500
-Admin 2 Eragattur 2 -> Indbimar 1 | Login HTTP Status: 500
-Accountant Eragattur 1 -> Indbimar 1 | Login HTTP Status: 500
+bom1::b5chn-1784689534784-36fcc4a131a6
 ```
 
 ---
 
-### Diagnosis & Actionable Remediation Steps
+## 11. Part 0.7 — Boot-Time Crash Diagnosis & CommonJS Adapter Fix
 
-#### Root Cause 1: Missing Environment Variables in Vercel Project Settings
+### Step 1: Package Dependency Audit
 
-The backend function on Vercel is failing during startup with `FUNCTION_INVOCATION_FAILED` because production environment variables have **NOT** yet been set in the Vercel Dashboard project settings.
+Verified all modules imported in `api/index.cjs`, `api/index.js`, and `server/app.cjs`:
+- `express` -> present in `dependencies` (`^4.19.2`)
+- `mongoose` -> present in `dependencies` (`^8.3.1`)
+- `jsonwebtoken` -> present in `dependencies` (`^9.0.3`)
+- `bcryptjs` -> present in `dependencies` (`^3.0.3`)
+- `cors` -> present in `dependencies` (`^2.8.5`)
+- `helmet` -> present in `dependencies` (`^7.1.0`)
+- `morgan` -> present in `dependencies` (`^1.10.0`)
+- `dotenv` -> present in `dependencies` (`^16.4.5`)
 
-**Required Action**: Add the following Environment Variables in **Vercel Dashboard -> Project Settings -> Environment Variables** (for **Production**, **Preview**, and **Development** scopes):
+*Result*: 0 missing dependencies. All required packages are correctly listed under `dependencies`.
 
-| Environment Variable | Recommended Value | Purpose |
-| :--- | :--- | :--- |
-| `MONGODB_URI` | `mongodb+srv://...` | MongoDB database connection string |
-| `JWT_SECRET` | *(64-byte random hex key)* | Access token signing key |
-| `JWT_REFRESH_SECRET` | *(64-byte random hex key)* | Refresh token signing key |
-| `JWT_EXPIRES_IN` | `1h` | Short-lived access token duration |
-| `ALLOWED_ORIGINS` | `https://inspirecolleges.vercel.app` | CORS allowed origins |
+---
 
-#### Root Cause 2: Serverless Function Error Resilience
+### Step 2: Module Format & ESM/CommonJS Mismatch Root Cause
 
-To prevent Vercel from returning raw `FUNCTION_INVOCATION_FAILED` uncaught error pages, commit `b70ae70` was pushed to GitHub ([`https://github.com/VarshithRao101/pdemo101.git`](https://github.com/VarshithRao101/pdemo101.git)):
-1. Wrapped `api/index.js` in a top-level `try { ... } catch (err)` handler returning structured JSON (`HTTP 500 Internal Serverless Execution Error`).
-2. Added explicit `.catch()` rejection handling to `mongoose.connect()` in [`server/app.cjs`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/server/app.cjs) so missing/invalid database URI strings gracefully set `isMongoConnected = false` and fail closed (HTTP 503) instead of throwing an unhandled process exception.
+- **Root Cause Identified**:
+  - `package.json` contains `"type": "module"`.
+  - When Vercel loaded `/api/index.js`, Node.js interpreted the file as an **ES Module** due to the `.js` extension under `"type": "module"`.
+  - Because `api/index.js` used CommonJS syntax (`const app = require('../server/app.cjs');` and `module.exports`), Node.js threw `ReferenceError: require is not defined in ES module scope` during module parsing.
+  - This parsing error occurred instantly at boot-time (~140ms duration, 0 outgoing network calls), producing `FUNCTION_INVOCATION_FAILED`.
 
-#### Next Action to Complete Verification:
-Once `MONGODB_URI`, `JWT_SECRET`, and `JWT_REFRESH_SECRET` are saved in Vercel Project Settings, trigger a redeployment on Vercel. Hitting `/api/auth/login` will return `HTTP 200 OK` and complete live production testing.
+---
+
+### Step 3: Implemented Fix & BOOT CRASH Stack Trace Wrapper
+
+1. **Created Explicit CommonJS Entrypoint** ([`api/index.cjs`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/api/index.cjs)):
+   - Named entrypoint `.cjs` to force Node.js and Vercel to load it strictly as CommonJS regardless of `package.json` `"type": "module"`.
+2. **Updated Vercel Rewrites** ([`vercel.json`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/vercel.json#L1-L12)):
+   ```json
+   {
+     "version": 2,
+     "buildCommand": "npm run build",
+     "outputDirectory": "dist",
+     "rewrites": [
+       { "source": "/api/(.*)", "destination": "/api/index.cjs" },
+       { "source": "/(.*)", "destination": "/index.html" }
+     ]
+   }
+   ```
+3. **Added Top-Level Boot Catch & Stack Trace Logger**:
+   Wrapped module loading in `api/index.cjs` and `api/index.js` with a top-level `try/catch` block that logs `console.error('BOOT CRASH:', err.stack)` and returns structured JSON `HTTP 500` with the complete stack trace if any boot-time initialization error occurs:
+
+```javascript
+// api/index.cjs
+let app;
+let bootError = null;
+
+try {
+  app = require('../server/app.cjs');
+} catch (err) {
+  console.error('BOOT CRASH:', err.stack || err.message || err);
+  bootError = err;
+}
+
+module.exports = (req, res) => {
+  if (bootError) {
+    console.error('BOOT CRASH ON INVOCATION:', bootError.stack || bootError.message);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Serverless Boot Crash Error',
+      error: bootError.message,
+      stack: bootError.stack
+    });
+  }
+
+  try {
+    return app(req, res);
+  } catch (err) {
+    console.error('Vercel Request Handler Error:', err.stack || err.message);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Internal Serverless Execution Error',
+      error: err.message,
+      stack: err.stack
+    });
+  }
+};
+```

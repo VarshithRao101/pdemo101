@@ -1,5 +1,5 @@
-// api/index.js
-// Vercel Serverless Function entrypoint wrapping Express app
+// api/index.cjs
+// Vercel Serverless Function Entrypoint (CommonJS) wrapping Express app
 let app;
 let bootError = null;
 
