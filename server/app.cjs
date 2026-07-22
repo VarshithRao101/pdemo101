@@ -64,7 +64,7 @@ async function connectToDatabase() {
     const conn = await Promise.race([cachedConnPromise, timeout]);
     if (conn && conn.readyState === 1) {
       isMongoConnected = true;
-      await seedInitialData();
+      seedInitialData().catch(e => console.warn('WARN [Seeder]: Background seed error:', e.message));
     } else {
       isMongoConnected = false;
       cachedConnPromise = null;
@@ -335,29 +335,30 @@ const inMemoryStore = {
 };
 
 // --- DATABASE SEEDER ---
+let isSeeded = false;
+
 async function seedInitialData() {
-  if (isMongoConnected) {
+  if (isMongoConnected && !isSeeded) {
     try {
       const userCount = await User.countDocuments();
       if (userCount === 0) {
-        for (const acc of defaultAccounts) {
-          const hashedPassword = bcrypt.hashSync(acc.passwordRaw, 10);
-          await User.create({
-            _id: acc._id,
-            username: acc.username,
-            password: hashedPassword,
-            role: acc.role,
-            campus: acc.campus,
-            name: acc.name,
-            email: acc.email,
-            mobile: acc.mobile,
-            department: acc.department,
-            address: acc.address
-          });
-        }
+        const docsToInsert = inMemoryStore.users.map(u => ({
+          _id: u._id,
+          username: u.username,
+          password: u.password,
+          role: u.role,
+          campus: u.campus,
+          name: u.name,
+          email: u.email,
+          mobile: u.mobile,
+          department: u.department,
+          address: u.address
+        }));
+        await User.insertMany(docsToInsert, { ordered: false });
       }
-    } catch {
-      isMongoConnected = false;
+      isSeeded = true;
+    } catch (e) {
+      console.warn('WARN [Seeder]: Initial seeding skipped or partial:', e.message);
     }
   }
 }
