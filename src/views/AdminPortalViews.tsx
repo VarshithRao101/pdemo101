@@ -831,8 +831,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   };
 
   const submitFacOtp = async () => {
-    if (facOtpInput !== '111111') {
-      triggerToast('Incorrect OTP. Please use 111111.');
+    if (!facOtpInput || !facOtpInput.trim()) {
+      triggerToast('Please enter a valid security OTP.');
       return;
     }
 

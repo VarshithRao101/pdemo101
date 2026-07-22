@@ -1177,7 +1177,7 @@ export const AccountantDashboardView: React.FC = () => {
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button
                     onClick={() => {
-                      if (stuOtpInput === '111111' || stuOtpInput === '222222') {
+                      if (stuOtpInput && stuOtpInput.trim()) {
                         handleStudentSave(editStudent, stuOtpInput);
                       } else {
                         triggerToast('Invalid security authentication key.');
@@ -1470,7 +1470,7 @@ export const AccountantDashboardView: React.FC = () => {
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button
                     onClick={() => {
-                      if (payOtpInput === '111111' || payOtpInput === '222222') {
+                      if (payOtpInput && payOtpInput.trim()) {
                         handleFeePayment(pendingPayType, payOtpInput);
                       } else {
                         triggerToast('Invalid security authentication key.');
