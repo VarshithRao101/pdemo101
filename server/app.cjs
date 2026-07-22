@@ -40,7 +40,8 @@ async function connectToDatabase() {
   if (!cachedConnPromise) {
     const opts = {
       dbName: process.env.MONGODB_DB_NAME || 'jc_erp_prod',
-      serverSelectionTimeoutMS: 2000
+      serverSelectionTimeoutMS: 2000,
+      bufferCommands: false
     };
     cachedConnPromise = mongoose.connect(MONGODB_URI, opts)
       .then(m => m.connection)
@@ -55,7 +56,8 @@ async function connectToDatabase() {
   }
 
   try {
-    const conn = await cachedConnPromise;
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 2000));
+    const conn = await Promise.race([cachedConnPromise, timeout]);
     if (conn && conn.readyState === 1) {
       isMongoConnected = true;
       await seedInitialData();
