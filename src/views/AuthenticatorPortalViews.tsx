@@ -417,7 +417,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
             <div>
               <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 2: Admin 2 (Principal Deans) – 4 Campuses</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                {['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'].map(campusName => {
+                {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(campusName => {
                   const suffix = campusName.toLowerCase().replace(/\s+/g, '');
                   const username = `admin2_${suffix}`;
                   const dailyPin = keysData.dailyPins?.[username];
@@ -445,7 +445,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
             <div>
               <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 3: Accountant Portals – 8 Accounts</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                {['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'].map(campusName => {
+                {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(campusName => {
                   const suffix = campusName.toLowerCase().replace(/\s+/g, '');
                   
                   return [1, 2].map(num => {
@@ -591,7 +591,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-                {['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'].map(campus => {
+                {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(campus => {
                   const acc = accounts.find(a => a.role === 'admin2' && a.campus === campus);
                   return (
                     <GlassCard
@@ -684,7 +684,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-                {['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'].map(campus => {
+                {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(campus => {
                   const campusAccs = accounts.filter(a => a.role === 'accountant' && a.campus === campus);
                   
                   return [0, 1].map(index => {

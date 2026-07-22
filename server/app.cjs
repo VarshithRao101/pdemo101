@@ -301,20 +301,31 @@ const SyncJournal = mongoose.models.SyncJournal || mongoose.model('SyncJournal',
 const RateLimitModel = mongoose.models.RateLimit || mongoose.model('RateLimit', rateLimitSchema);
 const RefreshTokenModel = mongoose.models.RefreshToken || mongoose.model('RefreshToken', refreshTokenSchema);
 
-// Default accounts data
+// Campus Normalization Helper
+function normalizeCampusName(name) {
+  if (!name) return 'Erragattugutta C1';
+  const s = name.toString().trim();
+  if (/eragattur\s*1|erragattugutta\s*c?1/i.test(s)) return 'Erragattugutta C1';
+  if (/eragattur\s*2|erragattugutta\s*c?2/i.test(s)) return 'Erragattugutta C2';
+  if (/indbimar\s*1|beemaram\s*c?1/i.test(s)) return 'Beemaram C1';
+  if (/bhimaram\s*2|beemaram\s*c?2/i.test(s)) return 'Beemaram C2';
+  return s;
+}
+
+// Default accounts data (Renamed 4 Campuses: Erragattugutta C1, Erragattugutta C2, Beemaram C1, Beemaram C2)
 const defaultAccounts = [
   { _id: 'acc_admin1', username: 'admin1', passwordRaw: '111111', role: 'admin1', campus: 'All', name: 'Rector', email: 'rector@inspire.edu', mobile: '9988770000', department: 'Administration', address: 'Central Campus' },
-  { _id: 'acc_admin2_default', username: 'admin2', passwordRaw: '111111', role: 'admin2', campus: 'Eragattur 1', name: 'Principal Dean', email: 'dean@inspire.edu', mobile: '9988770001', department: 'Administration', address: 'Eragattur Campus 1' },
-  { _id: 'acc_admin2_eragattur1', username: 'admin2_eragattur1', passwordRaw: '111111', role: 'admin2', campus: 'Eragattur 1', name: 'Dean Eragattur 1', email: 'dean.e1@inspire.edu', mobile: '9988770011', department: 'Administration', address: 'Eragattur Campus 1' },
-  { _id: 'acc_admin2_eragattur2', username: 'admin2_eragattur2', passwordRaw: '111111', role: 'admin2', campus: 'Eragattur 2', name: 'Dean Eragattur 2', email: 'dean.e2@inspire.edu', mobile: '9988770022', department: 'Administration', address: 'Eragattur Campus 2' },
-  { _id: 'acc_admin2_indbimar1', username: 'admin2_indbimar1', passwordRaw: '111111', role: 'admin2', campus: 'Indbimar 1', name: 'Dean Indbimar 1', email: 'dean.i1@inspire.edu', mobile: '9988770033', department: 'Administration', address: 'Indbimar Campus 1' },
-  { _id: 'acc_admin2_bhimaram2', username: 'admin2_bhimaram2', passwordRaw: '111111', role: 'admin2', campus: 'Bhimaram 2', name: 'Dean Bhimaram 2', email: 'dean.b2@inspire.edu', mobile: '9988770044', department: 'Administration', address: 'Bhimaram Campus 2' },
-  { _id: 'acc_accountant_default', username: 'accountant', passwordRaw: '111111', role: 'accountant', campus: 'Eragattur 1', name: 'Accountant', email: 'accountant@inspire.edu', mobile: '9988771100', department: 'Finance Dept', address: 'Eragattur Campus 1' },
-  { _id: 'acc_accountant_eragattur1_1', username: 'accountant_eragattur1_1', passwordRaw: '111111', role: 'accountant', campus: 'Eragattur 1', name: 'Acc 1 Eragattur 1', email: 'acc1.e1@inspire.edu', mobile: '9988771101', department: 'Finance Dept', address: 'Eragattur Campus 1' },
-  { _id: 'acc_accountant_eragattur1_2', username: 'accountant_eragattur1_2', passwordRaw: '111111', role: 'accountant', campus: 'Eragattur 1', name: 'Acc 2 Eragattur 1', email: 'acc2.e1@inspire.edu', mobile: '9988771102', department: 'Finance Dept', address: 'Eragattur Campus 1' },
-  { _id: 'acc_accountant_eragattur2_1', username: 'accountant_eragattur2_1', passwordRaw: '111111', role: 'accountant', campus: 'Eragattur 2', name: 'Acc 1 Eragattur 2', email: 'acc1.e2@inspire.edu', mobile: '9988772201', department: 'Finance Dept', address: 'Eragattur Campus 2' },
-  { _id: 'acc_accountant_indbimar1_1', username: 'accountant_indbimar1_1', passwordRaw: '111111', role: 'accountant', campus: 'Indbimar 1', name: 'Acc 1 Indbimar 1', email: 'acc1.i1@inspire.edu', mobile: '9988773301', department: 'Finance Dept', address: 'Indbimar Campus 1' },
-  { _id: 'acc_accountant_bhimaram2_1', username: 'accountant_bhimaram2_1', passwordRaw: '111111', role: 'accountant', campus: 'Bhimaram 2', name: 'Acc 1 Bhimaram 2', email: 'acc1.b2@inspire.edu', mobile: '9988774401', department: 'Finance Dept', address: 'Bhimaram Campus 2' },
+  { _id: 'acc_admin2_default', username: 'admin2', passwordRaw: '111111', role: 'admin2', campus: 'Erragattugutta C1', name: 'Principal Dean', email: 'dean@inspire.edu', mobile: '9988770001', department: 'Administration', address: 'Erragattugutta Campus C1' },
+  { _id: 'acc_admin2_erragattugutta_c1', username: 'admin2_erragattugutta_c1', passwordRaw: '111111', role: 'admin2', campus: 'Erragattugutta C1', name: 'Dean Erragattugutta C1', email: 'dean.e1@inspire.edu', mobile: '9988770011', department: 'Administration', address: 'Erragattugutta Campus C1' },
+  { _id: 'acc_admin2_erragattugutta_c2', username: 'admin2_erragattugutta_c2', passwordRaw: '111111', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2', email: 'dean.e2@inspire.edu', mobile: '9988770022', department: 'Administration', address: 'Erragattugutta Campus C2' },
+  { _id: 'acc_admin2_beemaram_c1', username: 'admin2_beemaram_c1', passwordRaw: '111111', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1', email: 'dean.i1@inspire.edu', mobile: '9988770033', department: 'Administration', address: 'Beemaram Campus C1' },
+  { _id: 'acc_admin2_beemaram_c2', username: 'admin2_beemaram_c2', passwordRaw: '111111', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2', email: 'dean.b2@inspire.edu', mobile: '9988770044', department: 'Administration', address: 'Beemaram Campus C2' },
+  { _id: 'acc_accountant_default', username: 'accountant', passwordRaw: '111111', role: 'accountant', campus: 'Erragattugutta C1', name: 'Accountant', email: 'accountant@inspire.edu', mobile: '9988771100', department: 'Finance Dept', address: 'Erragattugutta Campus C1' },
+  { _id: 'acc_accountant_erragattugutta_c1_1', username: 'accountant_erragattugutta_c1_1', passwordRaw: '111111', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1', email: 'acc1.e1@inspire.edu', mobile: '9988771101', department: 'Finance Dept', address: 'Erragattugutta Campus C1' },
+  { _id: 'acc_accountant_erragattugutta_c1_2', username: 'accountant_erragattugutta_c1_2', passwordRaw: '111111', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1', email: 'acc2.e1@inspire.edu', mobile: '9988771102', department: 'Finance Dept', address: 'Erragattugutta Campus C1' },
+  { _id: 'acc_accountant_erragattugutta_c2_1', username: 'accountant_erragattugutta_c2_1', passwordRaw: '111111', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2', email: 'acc1.e2@inspire.edu', mobile: '9988772201', department: 'Finance Dept', address: 'Erragattugutta Campus C2' },
+  { _id: 'acc_accountant_beemaram_c1_1', username: 'accountant_beemaram_c1_1', passwordRaw: '111111', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 1 Beemaram C1', email: 'acc1.i1@inspire.edu', mobile: '9988773301', department: 'Finance Dept', address: 'Beemaram Campus C1' },
+  { _id: 'acc_accountant_beemaram_c2_1', username: 'accountant_beemaram_c2_1', passwordRaw: '111111', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2', email: 'acc1.b2@inspire.edu', mobile: '9988774401', department: 'Finance Dept', address: 'Beemaram Campus C2' },
   { _id: 'acc_authenticator', username: 'authenticator', passwordRaw: '111111', role: 'authenticator', campus: 'All', name: 'Security Admin', email: 'sec@inspire.edu', mobile: '9988770009', department: 'Security', address: 'Central Campus' }
 ];
 
@@ -489,7 +500,8 @@ function enforceCampusIsolation(req, res, next) {
     return next();
   }
 
-  const targetBranch = req.query.branch || req.body.branch || userCampus;
+  const rawBranch = req.query.branch || req.body.branch || userCampus;
+  const targetBranch = normalizeCampusName(rawBranch);
   if (targetBranch && targetBranch.toLowerCase() !== userCampus.toLowerCase()) {
     return res.status(403).json({
       status: 'error',
@@ -524,6 +536,110 @@ async function logSyncJournal(action, branch, status, errorDetails = '') {
   if (inMemoryStore.journal.length > 100) inMemoryStore.journal.pop();
 }
 
+// --- AUTHENTICATOR CREDENTIALS MANAGEMENT & PIN ROTATION ---
+app.get('/api/authenticator/credentials', authenticateToken, requireRole('authenticator'), async (req, res) => {
+  let usersList = [];
+  if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
+    try {
+      usersList = await User.find({}, { password: 0 });
+    } catch (e) {}
+  }
+  if (!usersList || usersList.length === 0) {
+    usersList = inMemoryStore.users.map(({ password, ...u }) => u);
+  }
+  res.json({ status: 'success', users: usersList });
+});
+
+app.post('/api/authenticator/credentials', authenticateToken, requireRole('authenticator'), async (req, res) => {
+  const { username, password, role, campus, name, email, mobile } = req.body;
+  if (!username || !password || !role || !campus) {
+    return res.status(400).json({ status: 'error', message: 'Username, password, role, and campus are required.' });
+  }
+
+  const normalizedCampus = normalizeCampusName(campus);
+  const hashedPassword = bcrypt.hashSync(password.trim(), 10);
+  const userId = `acc_${username.trim().toLowerCase()}`;
+  const newUser = {
+    _id: userId,
+    username: username.trim().toLowerCase(),
+    password: hashedPassword,
+    role,
+    campus: normalizedCampus,
+    name: name || username,
+    email: email || `${username}@inspire.edu`,
+    mobile: mobile || '9988770000',
+    department: role === 'accountant' ? 'Finance Dept' : 'Administration',
+    address: `${normalizedCampus} Campus`
+  };
+
+  if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
+    try { await User.create(newUser); } catch (e) {}
+  }
+
+  const existingIdx = inMemoryStore.users.findIndex(u => u.username === newUser.username);
+  if (existingIdx >= 0) {
+    inMemoryStore.users[existingIdx] = newUser;
+  } else {
+    inMemoryStore.users.push(newUser);
+  }
+
+  await logSyncJournal('CREATE_ACCOUNT', normalizedCampus, 'success', `Created account ${newUser.username} (${role}) for campus ${normalizedCampus}`);
+  res.json({ status: 'success', message: 'Account created successfully.', user: { id: newUser._id, username: newUser.username, role: newUser.role, campus: newUser.campus } });
+});
+
+app.put('/api/authenticator/credentials/:id', authenticateToken, requireRole('authenticator'), async (req, res) => {
+  const { id } = req.params;
+  const { username, password, role, campus, name } = req.body;
+
+  let targetUser = inMemoryStore.users.find(u => u._id === id || u.username === id);
+  if (!targetUser) {
+    return res.status(404).json({ status: 'error', message: 'Account not found.' });
+  }
+
+  if (username) targetUser.username = username.trim().toLowerCase();
+  if (role) targetUser.role = role;
+  if (campus) targetUser.campus = normalizeCampusName(campus);
+  if (name) targetUser.name = name;
+  if (password && password.trim()) {
+    targetUser.password = bcrypt.hashSync(password.trim(), 10);
+  }
+
+  if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
+    try {
+      await User.findByIdAndUpdate(targetUser._id, {
+        username: targetUser.username,
+        role: targetUser.role,
+        campus: targetUser.campus,
+        name: targetUser.name,
+        password: targetUser.password
+      }, { upsert: true });
+    } catch (e) {}
+  }
+
+  await logSyncJournal('EDIT_CREDENTIALS', targetUser.campus, 'success', `Updated credentials for account ${targetUser.username} (${targetUser.role})`);
+  res.json({ status: 'success', message: 'Credentials updated successfully.', user: { id: targetUser._id, username: targetUser.username, role: targetUser.role, campus: targetUser.campus } });
+});
+
+// Daily Cryptographic PIN Rotation Dashboard API
+app.get('/api/authenticator/pins', authenticateToken, requireRole('authenticator'), (req, res) => {
+  const dateKey = new Date().toISOString().split('T')[0]; // Rotates daily at midnight UTC
+  const pinMap = {};
+
+  inMemoryStore.users.forEach(u => {
+    const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${u.username}:${dateKey}`).digest('hex');
+    const numericVal = parseInt(hmac.substring(0, 8), 16);
+    const pin = (100000 + (numericVal % 900000)).toString();
+    pinMap[u.username] = pin;
+  });
+
+  res.json({
+    status: 'success',
+    rotationSchedule: 'Daily at 00:00 UTC (Midnight)',
+    currentDate: dateKey,
+    dailyPins: pinMap
+  });
+});
+
 // --- AUTHENTICATION & REFRESH TOKEN ROUTES ---
 app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   const { identifier, password } = req.body;
@@ -531,7 +647,20 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
     return res.status(400).json({ status: 'error', message: 'Identifier and password are required.' });
   }
 
-  const cleanIdentifier = identifier.trim().toLowerCase();
+  const usernameAliasMap = {
+    admin2_eragattur1: 'admin2_erragattugutta_c1',
+    admin2_eragattur2: 'admin2_erragattugutta_c2',
+    admin2_indbimar1: 'admin2_beemaram_c1',
+    admin2_bhimaram2: 'admin2_beemaram_c2',
+    accountant_eragattur1_1: 'accountant_erragattugutta_c1_1',
+    accountant_eragattur1_2: 'accountant_erragattugutta_c1_2',
+    accountant_eragattur2_1: 'accountant_erragattugutta_c2_1',
+    accountant_indbimar1_1: 'accountant_beemaram_c1_1',
+    accountant_bhimaram2_1: 'accountant_beemaram_c2_1'
+  };
+
+  const rawIdentifier = identifier.trim().toLowerCase();
+  const cleanIdentifier = usernameAliasMap[rawIdentifier] || rawIdentifier;
   let matchedUser = null;
 
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {

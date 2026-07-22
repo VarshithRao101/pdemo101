@@ -251,7 +251,7 @@ const escapeHtml = (value: string | number | null | undefined) =>
 
 export const AccountantDashboardView: React.FC = () => {
   const { user } = useNavigation();
-  const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Eragattur 1';
+  const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
 
   const [isLoading, setIsLoading] = useState(true);
   const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'attendance' | 'reports' | 'late_fees' | 'scholarships' | 'profile' | 'hostel'>('menu');

@@ -134,6 +134,27 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
 
   // PIN boxes are now rendered by the shared `PinEntry` component.
 
+  const handleCredentialsFormSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const identifier = userId.trim() || SEGMENT_TO_IDENTIFIER[portalRole] || 'admin1';
+    const pwd = password.trim();
+    if (pwd) {
+      setIsChecking(true);
+      login(identifier, pwd)
+        .then(() => {
+          setIsSuccess(true);
+          setTimeout(() => onComplete(), 1500);
+        })
+        .catch((err: any) => {
+          const msg = err?.status === 429 ? 'Too many attempts. Please wait 15 minutes.' : 'Invalid credentials. Please try again.';
+          triggerError(msg);
+        })
+        .finally(() => setIsChecking(false));
+    } else {
+      setStep('pin');
+    }
+  };
+
   // Shared credentials layout page
   const renderCredentialsContent = () => {
     return (
@@ -156,7 +177,10 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
         </div>
 
         {/* Credentials Form Inputs */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', margin: '24px 0', width: '100%', maxWidth: '340px', marginLeft: 'auto', marginRight: 'auto' }}>
+        <form
+          onSubmit={handleCredentialsFormSubmit}
+          style={{ display: 'flex', flexDirection: 'column', gap: '14px', margin: '24px 0', width: '100%', maxWidth: '340px', marginLeft: 'auto', marginRight: 'auto' }}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
             <label style={{ fontSize: '10.5px', color: 'var(--muted-gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>User ID / ID Card No</label>
             <input
@@ -164,6 +188,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
               placeholder="e.g. ADM24001"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCredentialsFormSubmit(); } }}
               style={{
                 width: '100%',
                 padding: '12px 14px',
@@ -187,7 +212,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && setStep('pin')}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCredentialsFormSubmit(); } }}
                 style={{
                   width: '100%',
                   padding: '12px 44px 12px 14px',
@@ -237,7 +262,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
           </div>
 
           <button
-            onClick={() => setStep('pin')}
+            type="submit"
             style={{
               width: '100%',
               padding: '14px',
@@ -258,10 +283,10 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete }) => {
             }}
             className="press-interactive"
           >
-            Continue to PIN
+            {password ? 'Sign In' : 'Continue to PIN'}
             <span style={{ fontSize: '11px', opacity: 0.75, fontWeight: 600 }}>↵ Enter</span>
           </button>
-        </div>
+        </form>
       </>
     );
   };

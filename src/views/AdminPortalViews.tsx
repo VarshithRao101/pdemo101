@@ -191,7 +191,7 @@ interface ExamItem {
 // ─── ADMIN DASHBOARD CONTROLLER ───
 export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3' }> = ({ role = 'admin1' }) => {
   const { user } = useNavigation();
-  const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Eragattur 1';
+  const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
 
   const [isLoading, setIsLoading] = useState(true);
   const [activePage, setActivePage] = useState<string>('menu');
@@ -254,7 +254,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     misc: 0,
     isLocked: false
   });
-  const [selectedFeeBranch, setSelectedFeeBranch] = useState<'Eragattur 1' | 'Eragattur 2' | 'Indbimar 1' | 'Bhimaram 2'>(loggedInCampus as any);
+  const [selectedFeeBranch, setSelectedFeeBranch] = useState<'Erragattugutta C1' | 'Erragattugutta C2' | 'Beemaram C1' | 'Beemaram C2'>(loggedInCampus as any);
   const [isEditingFees, setIsEditingFees] = useState(false);
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [otpInput, setOtpInput] = useState('');
@@ -301,7 +301,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   // --- ADMIN 2 FINANCE & Overheads States ---
   const [expenditures, setExpenditures] = useState<ExpenditureItem[]>([]);
-  const [selectedExpBranch, setSelectedExpBranch] = useState<'Eragattur 1' | 'Eragattur 2' | 'Indbimar 1' | 'Bhimaram 2'>(loggedInCampus as any);
+  const [selectedExpBranch, setSelectedExpBranch] = useState<'Erragattugutta C1' | 'Erragattugutta C2' | 'Beemaram C1' | 'Beemaram C2'>(loggedInCampus as any);
   const [newExpCat, setNewExpCat] = useState('Utilities');
   const [newExpAmt, setNewExpAmt] = useState('');
   const [newExpDesc, setNewExpDesc] = useState('');
@@ -1174,10 +1174,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       onChange={(e) => setEditStudent({ ...editStudent, branch: e.target.value })}
                       style={styles.selectInput}
                     >
-                      <option value="Eragattur 1">Eragattur Campus 1</option>
-                      <option value="Eragattur 2">Eragattur Campus 2</option>
-                      <option value="Indbimar 1">Indbimar Campus 1</option>
-                      <option value="Bhimaram 2">Bhimaram Campus 2</option>
+                      <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
+                      <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
+                      <option value="Beemaram C1">Beemaram Campus C1</option>
+                      <option value="Beemaram C2">Beemaram Campus C2</option>
                     </select>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
@@ -1240,10 +1240,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                     <label style={styles.formLabel}>Select Campus</label>
                     <select value={newStuBranch} onChange={(e) => setNewStuBranch(e.target.value)} style={styles.selectInput}>
-                      <option value="Eragattur 1">Eragattur Campus 1</option>
-                      <option value="Eragattur 2">Eragattur Campus 2</option>
-                      <option value="Indbimar 1">Indbimar Campus 1</option>
-                      <option value="Bhimaram 2">Bhimaram Campus 2</option>
+                      <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
+                      <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
+                      <option value="Beemaram C1">Beemaram Campus C1</option>
+                      <option value="Beemaram C2">Beemaram Campus C2</option>
                     </select>
                   </div>
                 </div>
@@ -1322,10 +1322,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   style={styles.selectInput}
                 >
                   <option value="All">All Campuses</option>
-                  <option value="Eragattur 1">Eragattur Campus 1</option>
-                  <option value="Eragattur 2">Eragattur Campus 2</option>
-                  <option value="Indbimar 1">Indbimar Campus 1</option>
-                  <option value="Bhimaram 2">Bhimaram Campus 2</option>
+                  <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
+                  <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
+                  <option value="Beemaram C1">Beemaram Campus C1</option>
+                  <option value="Beemaram C2">Beemaram Campus C2</option>
                 </select>
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -1411,10 +1411,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                         onChange={(e) => setEditTeacher({ ...editTeacher, branch: e.target.value })}
                         style={styles.selectInput}
                       >
-                        <option value="Eragattur 1">Eragattur Campus 1</option>
-                        <option value="Eragattur 2">Eragattur Campus 2</option>
-                        <option value="Indbimar 1">Indbimar Campus 1</option>
-                        <option value="Bhimaram 2">Bhimaram Campus 2</option>
+                        <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
+                        <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
+                        <option value="Beemaram C1">Beemaram Campus C1</option>
+                        <option value="Beemaram C2">Beemaram Campus C2</option>
                       </select>
                     </div>
 
@@ -1503,10 +1503,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                         onChange={(e) => setNewFacBranch(e.target.value)}
                         style={styles.selectInput}
                       >
-                        <option value="Eragattur 1">Eragattur Campus 1</option>
-                        <option value="Eragattur 2">Eragattur Campus 2</option>
-                        <option value="Indbimar 1">Indbimar Campus 1</option>
-                        <option value="Bhimaram 2">Bhimaram Campus 2</option>
+                        <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
+                        <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
+                        <option value="Beemaram C1">Beemaram Campus C1</option>
+                        <option value="Beemaram C2">Beemaram Campus C2</option>
                       </select>
                     </div>
 
@@ -2178,7 +2178,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         <main style={styles.content}>
           {role === 'admin1' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', zIndex: 1 }}>
-              {['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'].map(b => {
+              {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(b => {
                 const isActive = selectedFeeBranch === b;
                 return (
                   <div
@@ -2954,7 +2954,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           {/* Admin 1 Branch Overview Cards */}
           {role === 'admin1' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px', zIndex: 1 }}>
-              {['Eragattur 1', 'Eragattur 2', 'Indbimar 1', 'Bhimaram 2'].map(b => {
+              {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(b => {
                 const total = getBranchTotal(b);
                 const isActive = selectedExpBranch === b;
                 return (
