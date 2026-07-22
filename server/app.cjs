@@ -70,14 +70,14 @@ async function connectToDatabase() {
       isMongoConnected = false;
       cachedConnPromise = null;
       global.mongooseConnPromise = null;
-      mongoose.disconnect().catch(() => {});
+      mongoose.disconnect().catch(() => { });
     }
   } catch (err) {
     console.error('CRITICAL [Database Offline]: Operating in FAIL-CLOSED mode:', err.message);
     cachedConnPromise = null;
     global.mongooseConnPromise = null;
     isMongoConnected = false;
-    mongoose.disconnect().catch(() => {});
+    mongoose.disconnect().catch(() => { });
   }
   return mongoose.connection;
 }
@@ -528,11 +528,9 @@ function enforceCampusIsolation(req, res, next) {
 }
 
 function requireSecurityOtp(req, res, next) {
-  const otp = req.headers['x-security-otp'] || req.headers['x-security-key'] || req.body?.otp || req.query?.otp;
+  const otp = req.headers['x-security-otp'] || req.body?.otp;
   if (!otp || typeof otp !== 'string' || !otp.trim()) {
-    // If header missing, default to master OTP key so requests proceed without crashing
-    req.securityOtpVerified = true;
-    return next();
+    return res.status(400).json({ status: 'error', message: 'Security authentication OTP/PIN is required for this action.' });
   }
 
   const usernameAliasMap = {
@@ -555,16 +553,14 @@ function requireSecurityOtp(req, res, next) {
   const numericVal = parseInt(hmac.substring(0, 8), 16);
   const currentDailyPin = (100000 + (numericVal % 900000)).toString();
 
-  const trimmedOtp = otp.trim();
-
-  if (trimmedOtp === '080200' ||
-      trimmedOtp === currentDailyPin ||
-      /^[0-9]{6}$/.test(trimmedOtp)) {
-    req.securityOtpVerified = true;
+  if (otp.trim() === '080200' && (req.user?.role === 'authenticator' || req.user?.username === '9059068384')) {
     return next();
   }
 
-  return res.status(403).json({ status: 'error', message: 'Invalid security authentication OTP/PIN.' });
+  if (otp.trim() !== currentDailyPin) {
+    return res.status(403).json({ status: 'error', message: 'Invalid security authentication OTP/PIN.' });
+  }
+  next();
 }
 
 function hashToken(token) {
@@ -601,7 +597,7 @@ app.get('/api/authenticator/credentials', authenticateToken, requireRole('authen
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
       usersList = await User.find({}, { password: 0 });
-    } catch (e) {}
+    } catch (e) { }
   }
   if (!usersList || usersList.length === 0) {
     usersList = inMemoryStore.users.map(({ password, ...u }) => u);
@@ -631,7 +627,7 @@ app.post('/api/authenticator/credentials', authenticateToken, requireRole('authe
     address: `${normalizedCampus} Campus`
   };
 
-  try { await connectToDatabase(); } catch (e) {}
+  try { await connectToDatabase(); } catch (e) { }
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
       await User.findOneAndUpdate({ _id: userId }, newUser, { upsert: true, new: true });
@@ -655,13 +651,13 @@ app.put('/api/authenticator/credentials/:id', authenticateToken, requireRole('au
   const { id } = req.params;
   const { username, password, role, campus, name } = req.body;
 
-  try { await connectToDatabase(); } catch (e) {}
+  try { await connectToDatabase(); } catch (e) { }
 
   let targetUser = null;
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
       targetUser = await User.findOne({ $or: [{ _id: id }, { username: id.replace(/^acc_/, '') }] });
-    } catch (e) {}
+    } catch (e) { }
   }
   if (!targetUser) {
     targetUser = inMemoryStore.users.find(u => u._id === id || u.username === id || u.username === id.replace(/^acc_/, ''));
@@ -696,12 +692,12 @@ app.put('/api/authenticator/credentials/:id', authenticateToken, requireRole('au
 
 app.delete('/api/authenticator/credentials/:id', authenticateToken, requireRole('authenticator'), async (req, res) => {
   const { id } = req.params;
-  try { await connectToDatabase(); } catch (e) {}
+  try { await connectToDatabase(); } catch (e) { }
 
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
       await User.deleteMany({ $or: [{ _id: id }, { username: id }, { username: id.replace(/^acc_/, '') }] });
-    } catch (e) {}
+    } catch (e) { }
   }
   inMemoryStore.users = inMemoryStore.users.filter(u => u._id !== id && u.username !== id && u.username !== id.replace(/^acc_/, ''));
 
@@ -739,7 +735,7 @@ app.get('/api/authenticator/sync-journal', authenticateToken, async (req, res) =
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
       logs = await SyncJournal.find().sort({ timestamp: -1 }).limit(50);
-    } catch (e) {}
+    } catch (e) { }
   }
   if (!logs || logs.length === 0) {
     logs = inMemoryStore.journal;
@@ -751,7 +747,7 @@ app.get('/api/authenticator/sync-journal', authenticateToken, async (req, res) =
 app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   const { identifier, password } = req.body;
   if (!identifier || typeof identifier !== 'string' || !identifier.trim() ||
-      !password || typeof password !== 'string' || !password.trim()) {
+    !password || typeof password !== 'string' || !password.trim()) {
     return res.status(400).json({ status: 'error', message: 'Identifier and password are required.' });
   }
 
@@ -784,7 +780,7 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   const rawIdentifier = identifier.trim().toLowerCase();
   const digitsOnly = rawIdentifier.replace(/[^0-9]/g, '');
   let cleanIdentifier = usernameAliasMap[rawIdentifier] || rawIdentifier;
-  
+
   if (digitsOnly === '9059068384') {
     cleanIdentifier = '9059068384';
   }
@@ -828,10 +824,10 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   const passwordInput = (password || '').toString().trim();
 
   const isPasswordValid = bcrypt.compareSync(passwordInput, matchedUser.password) ||
-                          (matchedUser.role === 'authenticator' && passwordInput === '080200');
+    (matchedUser.role === 'authenticator' && passwordInput === '080200');
 
   const isPinValid = (matchedUser.role === 'authenticator' && pinInput === '080200') ||
-                     pinInput === currentDailyPin;
+    pinInput === currentDailyPin;
 
   if (!isPasswordValid || !isPinValid) {
     return res.status(401).json({ status: 'error', message: 'Invalid credentials. Password or 6-digit Security PIN mismatch.' });

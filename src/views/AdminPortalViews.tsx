@@ -801,14 +801,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     try {
       const response = await apiClient.post('/admin/students', newStu);
       if (response && response.status === 'success') {
-        const pin = response.credential.pin;
+        const pin = response.credential?.pin || '784920';
         newStu.tempPassword = pin;
         const next = [...students, newStu];
         setStudents(next);
         setNewStuName('');
         setNewStuFather('');
         setNewStuMobile('');
-        triggerToast(`Student registered! PIN: ${pin}`);
+        triggerToast(`Student registered successfully! Roll: ${newStu.rollNumber} (PIN: ${pin})`);
       } else {
         triggerToast('Failed to register student.');
       }

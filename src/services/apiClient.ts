@@ -25,7 +25,7 @@ export const getOrGenerateSecurityKeys = () => {
   const stored = localStorage.getItem('jc_security_keys');
   const now = Date.now();
   const rotationInterval = 12 * 60 * 60 * 1000;
-  
+
   if (stored) {
     try {
       const parsed = JSON.parse(stored);
@@ -36,7 +36,7 @@ export const getOrGenerateSecurityKeys = () => {
       // JSON parse error, regenerate
     }
   }
-  
+
   const genOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
   const generatePinForUser = (uname: string) => {
@@ -50,7 +50,7 @@ export const getOrGenerateSecurityKeys = () => {
     }
     return (100000 + (Math.abs(hash) % 900000)).toString();
   };
-  
+
   const keys = {
     generatedAt: now,
     dailyPins: {
@@ -87,7 +87,7 @@ export const getOrGenerateSecurityKeys = () => {
       }
     }
   };
-  
+
   localStorage.setItem('jc_security_keys', JSON.stringify(keys));
   return keys;
 };
@@ -156,9 +156,10 @@ export const apiClient = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const otpToUse = activeSecurityKey || '080200';
-    headers['x-security-key'] = otpToUse;
-    headers['x-security-otp'] = otpToUse;
+    if (activeSecurityKey) {
+      headers['x-security-key'] = activeSecurityKey;
+      headers['x-security-otp'] = activeSecurityKey;
+    }
 
     try {
       const response = await fetch(url, {
@@ -334,6 +335,15 @@ export const apiClient = {
 
     if (cleanPath.includes('/dashboard-summary')) {
       return { status: 'success', data: { collectionToday: 185000, pendingCount: 42, pendingAmount: 4850000, absentCount: 3 } } as any;
+    }
+
+    if (cleanPath.includes('/admin/students') && method === 'POST') {
+      const parsedBody = options.body ? JSON.parse(options.body as string) : {};
+      return {
+        status: 'success',
+        data: parsedBody,
+        credential: { pin: '784920', username: parsedBody.rollNumber || 'STU-NEW' }
+      } as any;
     }
 
     return { status: 'success', data: method === 'GET' ? [] : {} } as any;
