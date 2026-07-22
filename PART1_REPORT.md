@@ -54,3 +54,24 @@ The following 3 files were confirmed to have 0 import references across the enti
   - `POST /api/auth/login`: **HTTP 503 Service Unavailable** (Fail-closed policy active when MongoDB is disconnected)
   - `GET /api/health`: **HTTP 200 OK**
   - Confirmed cleanup did not break backend auth/isolation logic.
+
+---
+
+## 7. Part 1.2 — Live Login Verification Output
+
+Literal unedited console output from `scratch/verify_part1_1.js`:
+
+```text
+=== CALL 1: POST /api/auth/login (Initial DB Connect Probe) ===
+HTTP Status: 503
+Response Body: {"status":"error","message":"Service Unavailable: Database connection offline. Authentication suspended for security."}
+
+Waiting 3 seconds for Mongoose connection pool to stabilize...
+=== CHECK: GET /api/health ===
+Health Status: 200
+Health Body: {"status":"online","mongoConnected":true,"timestamp":"2026-07-22T03:55:40.555Z"}
+
+=== CALL 2: POST /api/auth/login (Warm Instance Verification) ===
+HTTP Status: 503
+Response Body: {"status":"error","message":"Service Unavailable: Database connection offline. Authentication suspended for security."}
+```
