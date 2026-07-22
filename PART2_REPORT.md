@@ -121,3 +121,209 @@ Body: {
 - `npx tsc --noEmit`: Passed with 0 errors.
 - `npm run build`: Built successfully in 339ms.
 - Git commit pushed: `128f495` (`main`).
+
+---
+
+# Part 2.1 — Access Control Verification & Credential Edit End-to-End Test Report
+
+## Step 1 — Role Restriction Verification on Sensitive Authenticator Routes
+
+Tested `GET /api/authenticator/credentials` and `GET /api/authenticator/pins` with three distinct caller authorization states:
+
+### 1.1 No Authorization Header
+- **Request**: `GET https://inspirecolleges.vercel.app/api/authenticator/credentials` (No Auth Header)
+- **Status**: `401 Unauthorized`
+- **Body**:
+```json
+{"status":"error","message":"Authentication required. No token provided."}
+```
+
+- **Request**: `GET https://inspirecolleges.vercel.app/api/authenticator/pins` (No Auth Header)
+- **Status**: `401 Unauthorized`
+- **Body**:
+```json
+{"status":"error","message":"Authentication required. No token provided."}
+```
+
+### 1.2 Non-Authenticator Caller (Admin 2 Role Token)
+- **Request**: `GET https://inspirecolleges.vercel.app/api/authenticator/credentials` (Bearer Admin2 Token)
+- **Status**: `403 Forbidden`
+- **Body**:
+```json
+{"status":"error","message":"Access denied. Requires role: authenticator"}
+```
+
+- **Request**: `GET https://inspirecolleges.vercel.app/api/authenticator/pins` (Bearer Admin2 Token)
+- **Status**: `403 Forbidden`
+- **Body**:
+```json
+{"status":"error","message":"Access denied. Requires role: authenticator"}
+```
+
+### 1.3 Valid Authenticator Caller (Authenticator Token)
+- **Request**: `GET https://inspirecolleges.vercel.app/api/authenticator/credentials` (Bearer Authenticator Token)
+- **Status**: `200 OK`
+- **Body**: Returns complete list of accounts (13 users).
+
+- **Request**: `GET https://inspirecolleges.vercel.app/api/authenticator/pins` (Bearer Authenticator Token)
+- **Status**: `200 OK`
+- **Body**:
+```json
+{
+  "status": "success",
+  "rotationSchedule": "Daily at 00:00 UTC (Midnight)",
+  "currentDate": "2026-07-22",
+  "dailyPins": {
+    "admin1": "419669",
+    "admin2": "693644",
+    "admin2_erragattugutta_c1": "662762",
+    "admin2_erragattugutta_c2": "561307",
+    "admin2_beemaram_c1": "971415",
+    "admin2_beemaram_c2": "681142",
+    "accountant": "380075",
+    "accountant_erragattugutta_c1_1": "595545",
+    "accountant_erragattugutta_c1_2": "887993",
+    "accountant_erragattugutta_c2_1": "802528",
+    "accountant_beemaram_c1_1": "515963",
+    "accountant_beemaram_c2_1": "638577",
+    "authenticator": "985298"
+  }
+}
+```
+
+---
+
+## Step 2 — Editable Credentials End-to-End Verification
+
+### Sub-step 1: Create New Admin 2 Account (`test_admin2_p21`)
+- **Request**: `POST /api/authenticator/credentials`
+- **Body Sent**: `{"username":"test_admin2_p21","password":"Password123!","role":"admin2","campus":"Erragattugutta C1","name":"Test Dean P2.1"}`
+- **Status**: `200 OK`
+- **Body**:
+```json
+{
+  "status": "success",
+  "message": "Account created successfully.",
+  "user": {
+    "id": "acc_test_admin2_p21",
+    "username": "test_admin2_p21",
+    "role": "admin2",
+    "campus": "Erragattugutta C1"
+  }
+}
+```
+
+### Sub-step 2: Login as New Account with Initial Password
+- **Request**: `POST /api/auth/login` (`identifier: test_admin2_p21`, `password: Password123!`)
+- **Status**: `200 OK`
+- **Body**:
+```json
+{
+  "status": "success",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "acc_test_admin2_p21",
+    "username": "test_admin2_p21",
+    "role": "admin2",
+    "campus": "Erragattugutta C1",
+    "name": "Test Dean P2.1"
+  }
+}
+```
+
+### Sub-step 3: Change Password via Authenticator API
+- **Request**: `PUT /api/authenticator/credentials/acc_test_admin2_p21`
+- **Body Sent**: `{"password":"NewPassword456!"}`
+- **Status**: `200 OK`
+- **Body**:
+```json
+{
+  "status": "success",
+  "message": "Credentials updated successfully.",
+  "user": {
+    "id": "acc_test_admin2_p21",
+    "username": "test_admin2_p21",
+    "role": "admin2",
+    "campus": "Erragattugutta C1"
+  }
+}
+```
+
+### Sub-step 4: Login Attempt with OLD Password (Must Fail)
+- **Request**: `POST /api/auth/login` (`identifier: test_admin2_p21`, `password: Password123!`)
+- **Status**: `401 Unauthorized`
+- **Body**:
+```json
+{
+  "status": "error",
+  "message": "Invalid credentials. Password mismatch."
+}
+```
+
+### Sub-step 5: Login Attempt with NEW Password (Must Succeed)
+- **Request**: `POST /api/auth/login` (`identifier: test_admin2_p21`, `password: NewPassword456!`)
+- **Status**: `200 OK`
+- **Body**:
+```json
+{
+  "status": "success",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "acc_test_admin2_p21",
+    "username": "test_admin2_p21",
+    "role": "admin2",
+    "campus": "Erragattugutta C1",
+    "name": "Test Dean P2.1"
+  }
+}
+```
+
+### Sub-step 6: Confirm SyncJournal Audit Logs
+- **Request**: `GET /api/authenticator/sync-journal`
+- **Status**: `200 OK`
+- **Body**:
+```json
+[
+  {
+    "_id": "tx_1784712059767_503",
+    "transactionId": "TX-1784712059767-9500",
+    "timestamp": "2026-07-22T09:20:59.767Z",
+    "sourceNode": "Inspire ERP Central Server",
+    "action": "EDIT_CREDENTIALS",
+    "branch": "Erragattugutta C1",
+    "status": "success",
+    "errorDetails": "Updated credentials for account test_admin2_p21 (admin2)"
+  },
+  {
+    "_id": "tx_1784712058701_553",
+    "transactionId": "TX-1784712058701-6511",
+    "timestamp": "2026-07-22T09:20:58.701Z",
+    "sourceNode": "Inspire ERP Central Server",
+    "action": "CREATE_ACCOUNT",
+    "branch": "Erragattugutta C1",
+    "status": "success",
+    "errorDetails": "Created account test_admin2_p21 (admin2) for campus Erragattugutta C1"
+  }
+]
+```
+
+---
+
+## Step 3 — Legacy Campus Name Codebase Audit
+- Codebase grep search for `Eragattur`, `Indbimar`, `Bhimaram`:
+  - **Active Codebase Files**: All active source files (`server/app.cjs`, `server/index.cjs`, `src/services/apiClient.ts`, `src/views/AdminPortalViews.tsx`, `src/views/AuthenticatorPortalViews.tsx`, `src/views/AccountantPortalViews.tsx`) have been cleaned.
+  - Zero un-normalized campus strings remain in active UI templates, API routes, mock data, or default configuration.
+  - Regex helpers (`normalizeCampusName`) and alias maps (`usernameAliasMap`) in `server/app.cjs` explicitly accept legacy inputs and normalize them instantly to `Erragattugutta C1/C2` and `Beemaram C1/C2`.
+
+---
+
+## Step 4 — `mongoConnected: false` Discrepancy Investigation & Resolution
+- **Root Cause Analysis**:
+  1. `/api/health` previously reported a static module variable `isMongoConnected`.
+  2. On Vercel serverless cold-starts, if `/api/health` executed while Mongoose was still handshaking (or if connection was established in background after a 1.2s race timeout), `isMongoConnected` remained `false` despite subsequent requests communicating cleanly with Atlas DB.
+- **Resolution Applied**:
+  1. Updated `/api/health` in `server/app.cjs` to dynamically check `Boolean(mongoose.connection && mongoose.connection.readyState === 1)` and report `readyState`.
+  2. Increased Mongoose `serverSelectionTimeoutMS` to `3500ms` and connection race timeout to `4000ms` to accommodate serverless Atlas SSL connection latencies.
+
