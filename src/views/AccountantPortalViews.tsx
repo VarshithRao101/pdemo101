@@ -990,7 +990,7 @@ export const AccountantDashboardView: React.FC = () => {
                         setSelectedStudent(fullProfile as any);
                         setEditStudent({ ...fullProfile } as any);
                         setIsStudentModalOpen(true);
-                      } catch (err: any) {
+                      } catch {
                         triggerToast('Failed to load profile.');
                       } finally {
                         setIsLoading(false);
@@ -1245,7 +1245,7 @@ export const AccountantDashboardView: React.FC = () => {
                         setSelectedStudent(fullProfile as any);
                         setEditStudent({ ...fullProfile } as any);
                         triggerToast(`Loaded fee details for ${fullProfile.name}`);
-                      } catch (err: any) {
+                      } catch {
                         triggerToast('Failed to load profile.');
                       } finally {
                         setIsLoading(false);

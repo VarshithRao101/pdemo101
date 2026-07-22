@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "node server/app.cjs",
+    "start:server": "node server/app.cjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
