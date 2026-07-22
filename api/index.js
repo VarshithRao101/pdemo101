@@ -1,35 +1,15 @@
 // api/index.js
-// Vercel Serverless Function entrypoint wrapping Express app
-let app;
-let bootError = null;
+// Vercel Serverless Function Handler (ESM) wrapping Express app
+import app from '../server/app.cjs';
 
-try {
-  app = require('../server/app.cjs');
-} catch (err) {
-  console.error('BOOT CRASH:', err.stack || err.message || err);
-  bootError = err;
-}
-
-module.exports = (req, res) => {
-  if (bootError) {
-    console.error('BOOT CRASH ON INVOCATION:', bootError.stack || bootError.message);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Serverless Boot Crash Error',
-      error: bootError.message,
-      stack: bootError.stack
-    });
-  }
-
+export default function handler(req, res) {
   try {
     return app(req, res);
   } catch (err) {
-    console.error('Vercel Request Handler Error:', err.stack || err.message);
+    console.error('Vercel Serverless Function Error:', err.stack || err.message || err);
     return res.status(500).json({
       status: 'error',
-      message: 'Internal Serverless Execution Error',
-      error: err.message,
-      stack: err.stack
+      message: 'Internal server error'
     });
   }
-};
+}

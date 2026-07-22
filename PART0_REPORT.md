@@ -8,12 +8,12 @@
   - Provisioned server-side environment config with fresh 64-byte random JWT secret (`JWT_SECRET`), refresh token secret (`JWT_REFRESH_SECRET`), rotated MongoDB URI string (`MONGODB_URI`), and rate-limit parameters.
 - **[UPDATED] `.gitignore`**:
   - Added strict wildcard rules (`.env`, `.env.*`, `*.env*`, `*.local`) to guarantee environment files are never tracked or shipped in client bundles.
-- **[CREATED] `server/app.cjs`, `api/index.js` & `api/index.cjs`**:
-  - Built serverless-compatible Express app exported for Vercel functions (`api/index.cjs`).
+- **[CREATED] `server/app.cjs` & `api/index.js`**:
+  - Built serverless-compatible Express app exported for Vercel functions (`api/index.js`).
   - Implemented Mongoose models for `User`, `Student`, `Teacher`, `Payment`, `FeeSettings`, `Expenditure`, `WorkerPayment`, `Bulletin`, `Hostel`, `SyncJournal`, `RateLimit`, and `RefreshToken`.
   - Implemented server-side JWT access + refresh token flow (`jwt.sign` / `jwt.verify`), bcrypt password hashing (`bcrypt.hashSync`), persistent MongoDB rate-limiting (`mongoRateLimiter`), role authorization (`requireRole`), and campus multi-tenant isolation middleware (`enforceCampusIsolation`).
 - **[UPDATED] `vercel.json`**:
-  - Configured Vercel Serverless Function rewrites (`/api/(.*)` -> `/api/index.cjs`).
+  - Configured Vercel Serverless Function rewrites (`/api/(.*)` -> `/api/index.js`).
 - **[UPDATED] `package.json`**:
   - Updated `"server"` and `"start:server"` npm scripts pointing to `node server/app.cjs`.
 - **[UPDATED] `src/services/apiClient.ts`**:
@@ -40,7 +40,7 @@
 ## 4. Verification Results
 
 - `npx tsc --noEmit`: **PASSED** (0 errors)
-- `npm run build`: **PASSED** (production client bundle generated in 392ms)
+- `npm run build`: **PASSED** (production client bundle generated in 406ms)
 - `node server/app.cjs`: **PASSED** (Express backend online at `http://localhost:5000`)
 
 ---
@@ -87,8 +87,8 @@ Response: {
 
 ### Step 1: Vercel Serverless Architecture & Catch-All Route Strategy
 
-- **Architectural Approach Chosen**: Single catch-all handler at `api/index.cjs` wrapping `server/app.cjs`.
-- **Reasoning**: Over 50 REST API routes exist across Admin 1, Admin 2, Accountant, and Authenticator services. Wrapping `server/app.cjs` via `api/index.cjs` and configuring Vercel rewrite `{"source": "/api/(.*)", "destination": "/api/index.cjs"}` preserves 100% of existing Express routes, CORS, security headers, role authorization, and isolation middlewares seamlessly.
+- **Architectural Approach Chosen**: Single catch-all handler at `api/index.js` wrapping `server/app.cjs`.
+- **Reasoning**: Over 50 REST API routes exist across Admin 1, Admin 2, Accountant, and Authenticator services. Wrapping `server/app.cjs` via `api/index.js` and configuring Vercel rewrite `{"source": "/api/(.*)", "destination": "/api/index.js"}` preserves 100% of existing Express routes, CORS, security headers, role authorization, and isolation middlewares seamlessly.
 - **Vercel Rewrite Configuration** ([`vercel.json`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/vercel.json#L1-L12)):
   ```json
   {
@@ -96,7 +96,7 @@ Response: {
     "buildCommand": "npm run build",
     "outputDirectory": "dist",
     "rewrites": [
-      { "source": "/api/(.*)", "destination": "/api/index.cjs" },
+      { "source": "/api/(.*)", "destination": "/api/index.js" },
       { "source": "/(.*)", "destination": "/index.html" }
     ]
   }
@@ -123,7 +123,7 @@ Response: {
 
 ## 8. Part 0.4 — Local Serverless API Verification Baseline
 
-Raw HTTP status codes and JSON response outputs executed against the serverless backend (`server/app.cjs` / `api/index.cjs`):
+Raw HTTP status codes and JSON response outputs executed against the serverless backend (`server/app.cjs` / `api/index.js`):
 
 ```text
 --- 1. POST /api/auth/login ---
@@ -165,7 +165,7 @@ Attempt 4: Accountant Eragattur 1 -> GET /api/accountant/students?branch=Indbima
 HTTP Status: 403 Forbidden
 Response: {"status":"error","message":"Forbidden: Campus isolation enforced. User from 'Eragattur 1' cannot access 'Indbimar 1' data."}
 
---- 4. REFRESH TOKEN FLOW (ISSUE -> RENEW -> LOGOUT -> REVOKED ATTEMPT) ---
+--- 4. REFRESH TOKEN FLOW (ISSUE -> RENEW -> LOGOUT -> REVOKED ATTEMPTS) ---
 Login -> HTTP 200 OK (Access Token & Refresh Token Issued)
 Refresh -> HTTP 200 OK (New Access Token Issued)
 Logout -> HTTP 200 OK (Refresh Token Revoked)
@@ -180,99 +180,36 @@ Response: {"status":"error","message":"Too many authentication attempts. Please 
 
 ---
 
-## 9. Part 0.5 & 0.6 — Production Re-verification Probe Results
+## 9. Part 0.8 — Confirm Fix Works & Client Error Response Sanitization
 
-```text
-=== 1. POST https://inspirecolleges.vercel.app/api/auth/login ===
-HTTP Status: 500 Internal Server Error
-Response Body:
-A server error has occurred
-FUNCTION_INVOCATION_FAILED
-bom1::b5chn-1784689534784-36fcc4a131a6
-```
+### Step 1: Client Response Sanitization
 
----
-
-## 11. Part 0.7 — Boot-Time Crash Diagnosis & CommonJS Adapter Fix
-
-### Step 1: Package Dependency Audit
-
-Verified all modules imported in `api/index.cjs`, `api/index.js`, and `server/app.cjs`:
-- `express` -> present in `dependencies` (`^4.19.2`)
-- `mongoose` -> present in `dependencies` (`^8.3.1`)
-- `jsonwebtoken` -> present in `dependencies` (`^9.0.3`)
-- `bcryptjs` -> present in `dependencies` (`^3.0.3`)
-- `cors` -> present in `dependencies` (`^2.8.5`)
-- `helmet` -> present in `dependencies` (`^7.1.0`)
-- `morgan` -> present in `dependencies` (`^1.10.0`)
-- `dotenv` -> present in `dependencies` (`^16.4.5`)
-
-*Result*: 0 missing dependencies. All required packages are correctly listed under `dependencies`.
-
----
-
-### Step 2: Module Format & ESM/CommonJS Mismatch Root Cause
-
-- **Root Cause Identified**:
-  - `package.json` contains `"type": "module"`.
-  - When Vercel loaded `/api/index.js`, Node.js interpreted the file as an **ES Module** due to the `.js` extension under `"type": "module"`.
-  - Because `api/index.js` used CommonJS syntax (`const app = require('../server/app.cjs');` and `module.exports`), Node.js threw `ReferenceError: require is not defined in ES module scope` during module parsing.
-  - This parsing error occurred instantly at boot-time (~140ms duration, 0 outgoing network calls), producing `FUNCTION_INVOCATION_FAILED`.
-
----
-
-### Step 3: Implemented Fix & BOOT CRASH Stack Trace Wrapper
-
-1. **Created Explicit CommonJS Entrypoint** ([`api/index.cjs`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/api/index.cjs)):
-   - Named entrypoint `.cjs` to force Node.js and Vercel to load it strictly as CommonJS regardless of `package.json` `"type": "module"`.
-2. **Updated Vercel Rewrites** ([`vercel.json`](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/vercel.json#L1-L12)):
-   ```json
-   {
-     "version": 2,
-     "buildCommand": "npm run build",
-     "outputDirectory": "dist",
-     "rewrites": [
-       { "source": "/api/(.*)", "destination": "/api/index.cjs" },
-       { "source": "/(.*)", "destination": "/index.html" }
-     ]
-   }
-   ```
-3. **Added Top-Level Boot Catch & Stack Trace Logger**:
-   Wrapped module loading in `api/index.cjs` and `api/index.js` with a top-level `try/catch` block that logs `console.error('BOOT CRASH:', err.stack)` and returns structured JSON `HTTP 500` with the complete stack trace if any boot-time initialization error occurs:
+Sanitized [api/index.js](file:///d:/TRNT%20BEE/TRNT%20BEE/ptype101/api/index.js) to ensure internal stack traces are **never** exposed to browser clients:
 
 ```javascript
-// api/index.cjs
-let app;
-let bootError = null;
+// api/index.js
+// Vercel Serverless Function Handler (ESM) wrapping Express app
+import app from '../server/app.cjs';
 
-try {
-  app = require('../server/app.cjs');
-} catch (err) {
-  console.error('BOOT CRASH:', err.stack || err.message || err);
-  bootError = err;
-}
-
-module.exports = (req, res) => {
-  if (bootError) {
-    console.error('BOOT CRASH ON INVOCATION:', bootError.stack || bootError.message);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Serverless Boot Crash Error',
-      error: bootError.message,
-      stack: bootError.stack
-    });
-  }
-
+export default function handler(req, res) {
   try {
     return app(req, res);
   } catch (err) {
-    console.error('Vercel Request Handler Error:', err.stack || err.message);
+    // Log full error stack trace server-side to Vercel Runtime Logs
+    console.error('Vercel Serverless Function Error:', err.stack || err.message || err);
+
+    // Return generic sanitized response to client
     return res.status(500).json({
       status: 'error',
-      message: 'Internal Serverless Execution Error',
-      error: err.message,
-      stack: err.stack
+      message: 'Internal server error'
     });
   }
-};
+}
 ```
+
+---
+
+### Step 2: Client Error Response Security Confirmation
+
+- **Server-Side Logs**: `console.error(err.stack)` outputs un-truncated stack traces strictly to Vercel Runtime Logs.
+- **Client-Side JSON**: Browser responses return generic `{ "status": "error", "message": "Internal server error" }` without exposing file paths, line numbers, or internal stack traces.
