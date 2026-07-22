@@ -61,7 +61,7 @@ async function connectToDatabase() {
   }
 
   try {
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 1500));
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 1200));
     const conn = await Promise.race([cachedConnPromise, timeout]);
     if (conn && conn.readyState === 1) {
       isMongoConnected = true;
@@ -70,12 +70,14 @@ async function connectToDatabase() {
       isMongoConnected = false;
       cachedConnPromise = null;
       global.mongooseConnPromise = null;
+      mongoose.disconnect().catch(() => {});
     }
   } catch (err) {
     console.error('CRITICAL [Database Offline]: Operating in FAIL-CLOSED mode:', err.message);
     cachedConnPromise = null;
     global.mongooseConnPromise = null;
     isMongoConnected = false;
+    mongoose.disconnect().catch(() => {});
   }
   return mongoose.connection;
 }
