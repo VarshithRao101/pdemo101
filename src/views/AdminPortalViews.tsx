@@ -352,7 +352,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
 
   // ── Admin2 Fetch Helpers ──
-  const fetchFeeSettings = async (branch?: string) => {
+  const fetchFeeSettings = async (branch?: string, forceRefresh = false) => {
+    if (isEditingFees && !forceRefresh) return;
     try {
       const targetBranch = branch || selectedFeeBranch;
       const data = await admin2Service.getFeeSettings(targetBranch);
@@ -1048,7 +1049,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     }
     try {
       setGlobalSecurityKey(otpToUse.trim());
-      const saved = await admin2Service.updateFeeSettings({ ...feeRates, isLocked: true, branch: selectedFeeBranch });
+      const payload = {
+        tuition: Number(feeRates.tuition) || 0,
+        hostel: Number(feeRates.hostel) || 0,
+        transport: Number(feeRates.transport) || 0,
+        misc: Number(feeRates.misc) || 0,
+        isLocked: true,
+        branch: selectedFeeBranch
+      };
+      const saved = await admin2Service.updateFeeSettings(payload);
       setFeeRates(saved);
       setIsEditingFees(false);
       setIsAcadFeeOtpOpen(false);
@@ -2285,7 +2294,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 return (
                   <div
                     key={b}
-                    onClick={() => { setSelectedFeeBranch(b as any); fetchFeeSettings(b); }}
+                    onClick={() => { setSelectedFeeBranch(b as any); setIsEditingFees(false); fetchFeeSettings(b, true); }}
                     style={{
                       padding: '10px 4px',
                       borderRadius: '10px',
@@ -2330,7 +2339,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                         min="0"
                         disabled={locked}
                         value={fee.value}
-                        onChange={(e) => fee.setter(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          fee.setter(val === '' ? '' as any : (parseFloat(val) || 0));
+                        }}
                         style={{ ...styles.textInputBox, width: '100%', paddingLeft: '24px', textAlign: 'right', fontWeight: 800, fontSize: '14px', opacity: locked ? 0.65 : 1, borderColor: locked ? 'rgba(0,0,0,0.1)' : 'rgba(212,175,55,0.4)' }}
                       />
                     </div>
