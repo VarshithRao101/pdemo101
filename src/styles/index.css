@@ -12,14 +12,9 @@
 }
 
 html, body {
-  background-color: #070B19 !important;
-  background-image: linear-gradient(rgba(248, 250, 252, 0.8), rgba(255, 255, 255, 0.88)), url('../assets/minimalist_portal_bg.png') !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  background-attachment: fixed !important;
-  color: var(--dark-charcoal);
-  font-family: var(--font-family);
+  background-color: #F8FAFC !important;
+  color: #0F172A;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   min-height: 100vh;
   width: 100%;
   overflow-x: hidden;
@@ -29,6 +24,15 @@ html, body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body.neo-2d, html.neo-2d {
+  background-color: #070B19 !important;
+  background-image: linear-gradient(rgba(248, 250, 252, 0.8), rgba(255, 255, 255, 0.88)), url('../assets/minimalist_portal_bg.png') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
 }
 
 body.dark-theme, .dark-theme body, html.dark-theme, .dark-theme {
