@@ -914,12 +914,13 @@ export const AccountantDashboardView: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <div style={{ width: 140, height: 20, borderRadius: 4 }} className="shimmer-item" />
-        </div>
-        <div style={styles.content}>
-          <div style={{ height: 180, borderRadius: '24px' }} className="shimmer-item" />
+      <div style={{ ...styles.container, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: '#F8FAFC' }} className="anim-fade-in">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', zIndex: 10 }}>
+          <div style={{ width: '52px', height: '52px', border: '4px solid rgba(212,175,55,0.2)', borderTopColor: 'var(--royal-gold)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            Synchronizing Campus Data...
+          </div>
+          <span style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>Secure Live Connection Verified</span>
         </div>
       </div>
     );
@@ -927,8 +928,15 @@ export const AccountantDashboardView: React.FC = () => {
 
   if (activeSubPage === 'student_search') {
     const filteredSearchList = students.filter(s => {
-      const q = searchAdmNo.toLowerCase();
-      return !q || s.name.toLowerCase().includes(q) || s.admissionNumber.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q);
+      const q = searchAdmNo.toLowerCase().trim();
+      if (!q) return true;
+      return (s.name || '').toLowerCase().includes(q) ||
+             (s.admissionNumber || '').toLowerCase().includes(q) ||
+             (s.studentId || '').toLowerCase().includes(q) ||
+             (s.rollNumber || '').toLowerCase().includes(q) ||
+             (s.registrationNumber || '').toLowerCase().includes(q) ||
+             (s.mobile || '').includes(q) ||
+             (s.parentMobile || '').includes(q);
     });
 
     return (
@@ -1219,8 +1227,15 @@ export const AccountantDashboardView: React.FC = () => {
   // ─── SUBPAGE 2: FEE COLLECTION DESK (Sub-page) ───
   if (activeSubPage === 'fee_collection') {
     const filteredCollectList = students.filter(s => {
-      const q = feeCollectAdm.toLowerCase();
-      return !q || s.name.toLowerCase().includes(q) || s.admissionNumber.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q);
+      const q = feeCollectAdm.toLowerCase().trim();
+      if (!q) return true;
+      return (s.name || '').toLowerCase().includes(q) ||
+             (s.admissionNumber || '').toLowerCase().includes(q) ||
+             (s.studentId || '').toLowerCase().includes(q) ||
+             (s.rollNumber || '').toLowerCase().includes(q) ||
+             (s.registrationNumber || '').toLowerCase().includes(q) ||
+             (s.mobile || '').includes(q) ||
+             (s.parentMobile || '').includes(q);
     });
 
     return (
