@@ -332,7 +332,19 @@ export const apiClient = {
     }
 
     if (cleanPath.includes('/fee-settings')) {
-      return { status: 'success', data: { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000, isLocked: true } } as any;
+      const allFeeSettings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
+      if (method === 'PATCH') {
+        const parsedBody = options.body ? JSON.parse(options.body as string) : {};
+        const branch = parsedBody.branch || 'Erragattugutta C1';
+        allFeeSettings[branch] = { ...allFeeSettings[branch], ...parsedBody };
+        localStorage.setItem('jc_fee_settings', JSON.stringify(allFeeSettings));
+        return { status: 'success', data: allFeeSettings[branch] } as any;
+      } else {
+        const urlParams = new URLSearchParams(cleanPath.split('?')[1] || '');
+        const branch = urlParams.get('branch') || 'Erragattugutta C1';
+        const feeData = allFeeSettings[branch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000, isLocked: true };
+        return { status: 'success', data: feeData } as any;
+      }
     }
 
     if (cleanPath.includes('/dashboard-summary')) {
@@ -342,18 +354,54 @@ export const apiClient = {
     if (cleanPath.includes('/admin/students') && method === 'POST') {
       const parsedBody = options.body ? JSON.parse(options.body as string) : {};
       const admNo = (parsedBody.admissionNumber || parsedBody.studentId || `2400${Math.floor(100 + Math.random() * 900)}`).toString().trim();
+      const branch = parsedBody.branch || 'Erragattugutta C1';
+
+      const allFeeSettings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
+      const campusFee = allFeeSettings[branch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
+
+      const tuitionFee = Number(parsedBody.tuitionFee !== undefined ? parsedBody.tuitionFee : campusFee.tuition);
+      const miscellaneousFee = Number(parsedBody.miscellaneousFee !== undefined ? parsedBody.miscellaneousFee : campusFee.misc);
+      const hostelFee = Number(parsedBody.hostelFee !== undefined ? parsedBody.hostelFee : (parsedBody.hostelStatus === 'Hostelite' ? campusFee.hostel : 0));
+      const transportFee = Number(parsedBody.transportFee !== undefined ? parsedBody.transportFee : (parsedBody.transportStatus === 'College Transport' ? campusFee.transport : 0));
+
+      const totalFee = tuitionFee + hostelFee + transportFee + miscellaneousFee;
+
       const newStu = {
         ...parsedBody,
         _id: parsedBody._id || `stu_${Date.now()}`,
         admissionNumber: admNo,
         studentId: admNo,
         rollNumber: admNo,
-        registrationNumber: admNo
+        registrationNumber: admNo,
+        branch,
+        tuitionFee,
+        hostelFee,
+        transportFee,
+        miscellaneousFee,
+        remainingBalance: totalFee,
+        isCustomFee: false
       };
       return {
         status: 'success',
         data: newStu,
         credential: { pin: '784920', username: admNo }
+      } as any;
+    }
+
+    if (cleanPath.includes('/fee-override') && method === 'PATCH') {
+      const parsedBody = options.body ? JSON.parse(options.body as string) : {};
+      return { status: 'success', data: { ...parsedBody, isCustomFee: true } } as any;
+    }
+
+    if (cleanPath.includes('/fee-breakdown')) {
+      return {
+        status: 'success',
+        data: {
+          baseFee: 125000, tuitionFee: 120000, hostelFee: 0, transportFee: 0, miscFee: 5000,
+          previousPending: 0, scholarshipCategory: 'None', scholarshipPct: 0, scholarshipDeduction: 0,
+          individualOverrideDeduction: 0, tuitionWaiver: 0, hostelWaiver: 0, transportWaiver: 0, miscWaiver: 0,
+          totalPaid: 0, remainingBalance: 125000
+        }
       } as any;
     }
 

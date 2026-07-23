@@ -782,8 +782,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     const newAdm = newStuAdmissionNumber.trim() || `ADM2400${students.length + 1}`;
     
     // Get campus-specific baseline fee settings
-    const allSettings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
-    const campusFee = allSettings[newStuBranch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
+    let campusFee = { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
+    try {
+      const fetchedFee = await admin2Service.getFeeSettings(newStuBranch);
+      if (fetchedFee && fetchedFee.tuition) {
+        campusFee = fetchedFee;
+      }
+    } catch (_e) {
+      const allSettings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
+      if (allSettings[newStuBranch]) campusFee = allSettings[newStuBranch];
+    }
 
     const resolvedTuition = campusFee.tuition;
     const resolvedMisc = campusFee.misc;
@@ -1037,6 +1045,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       setFeeRates(saved);
       setIsEditingFees(false);
       triggerToast(`Academic baseline fees for ${selectedFeeBranch} finalized and locked.`);
+      fetchStudents();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save fee settings.');
     }

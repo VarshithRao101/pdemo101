@@ -178,6 +178,7 @@ const studentSchema = new mongoose.Schema({
   hostelWaiver: { type: Number, default: 0 },
   transportWaiver: { type: Number, default: 0 },
   miscWaiver: { type: Number, default: 0 },
+  isCustomFee: { type: Boolean, default: false },
   marks: [{ subject: String, midterm: Number, final: Number }]
 }, { timestamps: true });
 
@@ -346,7 +347,12 @@ const inMemoryStore = {
   students: {},
   teachers: {},
   payments: {},
-  feeSettings: {},
+  feeSettings: {
+    'Erragattugutta C1': { branch: 'Erragattugutta C1', tuition: 120000, hostel: 85000, transport: 15000, misc: 5000, isLocked: true },
+    'Erragattugutta C2': { branch: 'Erragattugutta C2', tuition: 120000, hostel: 85000, transport: 15000, misc: 5000, isLocked: true },
+    'Beemaram C1': { branch: 'Beemaram C1', tuition: 110000, hostel: 80000, transport: 15000, misc: 5000, isLocked: true },
+    'Beemaram C2': { branch: 'Beemaram C2', tuition: 110000, hostel: 80000, transport: 15000, misc: 5000, isLocked: true }
+  },
   expenditures: {},
   workerPayments: {},
   bulletins: {},
@@ -1052,6 +1058,34 @@ app.get('/api/admin1/students', authenticateToken, enforceCampusIsolation, async
 app.post(['/api/admin1/students', '/api/admin/students'], authenticateToken, enforceCampusIsolation, async (req, res) => {
   const branch = normalizeCampusName(req.body.branch || req.targetCampus);
   const admNo = (req.body.admissionNumber || req.body.studentId || `2400${Math.floor(100 + Math.random() * 900)}`).toString().trim();
+
+  // Resolve campus-specific baseline fee settings
+  let campusFeeSettings = inMemoryStore.feeSettings[branch];
+  if (!campusFeeSettings && isMongoConnected) {
+    try { campusFeeSettings = await FeeSettings.findOne({ branch }); } catch { /* fallback */ }
+  }
+  if (!campusFeeSettings) {
+    campusFeeSettings = { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
+  }
+
+  const tuitionFee = Number(req.body.tuitionFee !== undefined ? req.body.tuitionFee : campusFeeSettings.tuition);
+  const miscellaneousFee = Number(req.body.miscellaneousFee !== undefined ? req.body.miscellaneousFee : campusFeeSettings.misc);
+  const hostelFee = Number(req.body.hostelFee !== undefined ? req.body.hostelFee : (req.body.hostelStatus === 'Hostelite' ? campusFeeSettings.hostel : 0));
+  const transportFee = Number(req.body.transportFee !== undefined ? req.body.transportFee : (req.body.transportStatus === 'College Transport' ? campusFeeSettings.transport : 0));
+  
+  const previousPending = Number(req.body.previousPending || 0);
+  const totalPaid = Number(req.body.totalPaid || 0);
+  const tuitionWaiver = Number(req.body.tuitionWaiver || 0);
+  const hostelWaiver = Number(req.body.hostelWaiver || 0);
+  const transportWaiver = Number(req.body.transportWaiver || 0);
+  const miscWaiver = Number(req.body.miscWaiver || 0);
+
+  const totalWaivers = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
+  const isCustomFee = Boolean(req.body.isCustomFee || totalWaivers > 0 || (req.body.tuitionFee && req.body.tuitionFee !== campusFeeSettings.tuition));
+
+  const totalFee = tuitionFee + hostelFee + transportFee + miscellaneousFee + previousPending;
+  const remainingBalance = Math.max(0, totalFee - totalWaivers - totalPaid);
+
   const newStu = {
     ...req.body,
     _id: req.body._id || `stu_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
@@ -1059,7 +1093,19 @@ app.post(['/api/admin1/students', '/api/admin/students'], authenticateToken, enf
     studentId: admNo,
     rollNumber: admNo,
     registrationNumber: admNo,
-    branch
+    branch,
+    tuitionFee,
+    hostelFee,
+    transportFee,
+    miscellaneousFee,
+    previousPending,
+    totalPaid,
+    remainingBalance,
+    tuitionWaiver,
+    hostelWaiver,
+    transportWaiver,
+    miscWaiver,
+    isCustomFee
   };
   if (isMongoConnected) {
     try { await Student.create(newStu); } catch { /* fallback */ }
@@ -1075,7 +1121,7 @@ app.post(['/api/admin1/students', '/api/admin/students'], authenticateToken, enf
     }
   });
 
-  await logSyncJournal('POST /api/admin1/students', branch, 'success', '', req.user);
+  await logSyncJournal('POST /api/admin1/students', branch, 'success', `Registered student ${admNo} with campus fee structure for ${branch}`, req.user);
   return res.json({ status: 'success', data: newStu, credential: { pin: '784920', username: admNo } });
 });
 
@@ -1177,14 +1223,114 @@ app.get('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation, a
 });
 
 app.patch('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
-  const branch = req.targetCampus;
+  const branch = normalizeCampusName(req.body.branch || req.targetCampus);
   const updated = { ...req.body, branch };
   if (isMongoConnected) {
     try { await FeeSettings.findOneAndUpdate({ branch }, updated, { upsert: true }); } catch { /* fallback */ }
   }
   inMemoryStore.feeSettings[branch] = updated;
-  await logSyncJournal('PATCH /api/admin2/fee-settings', branch, 'success', '', req.user);
+
+  // Propagate updated fee structure to all registered students in this campus UNLESS custom fee edit or waiver was applied
+  let studentsInBranch = [];
+  if (isMongoConnected) {
+    try { studentsInBranch = await Student.find({ branch }); } catch { /* fallback */ }
+  }
+  if (!studentsInBranch || studentsInBranch.length === 0) {
+    studentsInBranch = inMemoryStore.students[branch] || [];
+  }
+
+  for (const stu of studentsInBranch) {
+    const totalWaivers = (stu.tuitionWaiver || 0) + (stu.hostelWaiver || 0) + (stu.transportWaiver || 0) + (stu.miscWaiver || 0);
+    const hasCustomFee = Boolean(stu.isCustomFee) || totalWaivers > 0;
+
+    // UNLESS student fee was manually edited / fee waiver applied, update student fee to match new campus fee structure
+    if (!hasCustomFee) {
+      const tuitionFee = Number(updated.tuition !== undefined ? updated.tuition : (stu.tuitionFee || 120000));
+      const miscellaneousFee = Number(updated.misc !== undefined ? updated.misc : (stu.miscellaneousFee || 5000));
+      const hostelFee = stu.hostelStatus === 'Hostelite' ? Number(updated.hostel !== undefined ? updated.hostel : (stu.hostelFee || 85000)) : 0;
+      const transportFee = stu.transportStatus === 'College Transport' ? Number(updated.transport !== undefined ? updated.transport : (stu.transportFee || 15000)) : 0;
+      
+      const previousPending = Number(stu.previousPending || 0);
+      const totalPaid = Number(stu.totalPaid || 0);
+      const totalFee = tuitionFee + hostelFee + transportFee + miscellaneousFee + previousPending;
+      const remainingBalance = Math.max(0, totalFee - totalPaid);
+
+      const stuUpdate = {
+        tuitionFee,
+        miscellaneousFee,
+        hostelFee,
+        transportFee,
+        remainingBalance
+      };
+
+      if (isMongoConnected) {
+        try { await Student.findByIdAndUpdate(stu._id, stuUpdate); } catch { /* fallback */ }
+      }
+
+      // Update in-memory store across all branches for this student
+      Object.keys(inMemoryStore.students).forEach(bKey => {
+        const memIdx = inMemoryStore.students[bKey].findIndex(s => s._id === stu._id || s.studentId === stu.studentId);
+        if (memIdx !== -1) {
+          inMemoryStore.students[bKey][memIdx] = { ...inMemoryStore.students[bKey][memIdx], ...stuUpdate };
+        }
+      });
+    }
+  }
+
+  await logSyncJournal('PATCH /api/admin2/fee-settings', branch, 'success', `Updated fee structure for ${branch} and propagated to non-customized student profiles.`, req.user);
   return res.json({ status: 'success', data: updated });
+});
+
+// Student Individual Fee Override & Waiver Endpoint
+app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+  const { studentId } = req.params;
+  const branch = req.targetCampus;
+  const { tuitionWaiver, hostelWaiver, transportWaiver, miscWaiver } = req.body;
+
+  let targetStudent = null;
+  if (isMongoConnected) {
+    try { targetStudent = await Student.findOne({ $or: [{ _id: studentId }, { studentId }, { admissionNumber: studentId }] }); } catch { /* fallback */ }
+  }
+  if (!targetStudent) {
+    const list = Object.values(inMemoryStore.students).flat();
+    targetStudent = list.find(s => s._id === studentId || s.studentId === studentId || s.admissionNumber === studentId);
+  }
+
+  if (!targetStudent) {
+    return res.status(404).json({ status: 'error', message: 'Student record not found.' });
+  }
+
+  const tWaiver = Number(tuitionWaiver !== undefined ? tuitionWaiver : (targetStudent.tuitionWaiver || 0));
+  const hWaiver = Number(hostelWaiver !== undefined ? hostelWaiver : (targetStudent.hostelWaiver || 0));
+  const trWaiver = Number(transportWaiver !== undefined ? transportWaiver : (targetStudent.transportWaiver || 0));
+  const mWaiver = Number(miscWaiver !== undefined ? miscWaiver : (targetStudent.miscWaiver || 0));
+  const totalWaivers = tWaiver + hWaiver + trWaiver + mWaiver;
+
+  const totalFee = (targetStudent.tuitionFee || 0) + (targetStudent.hostelFee || 0) + (targetStudent.transportFee || 0) + (targetStudent.miscellaneousFee || 0) + (targetStudent.previousPending || 0);
+  const remainingBalance = Math.max(0, totalFee - totalWaivers - (targetStudent.totalPaid || 0));
+
+  const overrideUpdate = {
+    tuitionWaiver: tWaiver,
+    hostelWaiver: hWaiver,
+    transportWaiver: trWaiver,
+    miscWaiver: mWaiver,
+    remainingBalance,
+    isCustomFee: true // Mark as custom fee so global campus fee updates will leave this student unchanged
+  };
+
+  if (isMongoConnected) {
+    try { await Student.findByIdAndUpdate(targetStudent._id, overrideUpdate); } catch { /* fallback */ }
+  }
+
+  Object.keys(inMemoryStore.students).forEach(bKey => {
+    const memIdx = inMemoryStore.students[bKey].findIndex(s => s._id === targetStudent._id || s.studentId === targetStudent.studentId);
+    if (memIdx !== -1) {
+      inMemoryStore.students[bKey][memIdx] = { ...inMemoryStore.students[bKey][memIdx], ...overrideUpdate };
+    }
+  });
+
+  await logSyncJournal(`PATCH /api/admin2/students/${studentId}/fee-override`, branch, 'success', `Custom fee waiver applied for ${targetStudent.name}`, req.user);
+  return res.json({ status: 'success', data: { ...(targetStudent.toObject ? targetStudent.toObject() : targetStudent), ...overrideUpdate } });
 });
 
 app.get(['/api/admin2/expenditure', '/api/admin2/expenditures'], authenticateToken, enforceCampusIsolation, async (req, res) => {
@@ -1280,14 +1426,57 @@ app.get(['/api/accountant/scholarships', '/api/admin2/scholarships'], authentica
   return res.json({ status: 'success', data: { scholarshipRules: 'Merit: 50% waiver, Sports: 30% waiver' } });
 });
 
-app.get('/api/admin2/students/:id/fee-breakdown', authenticateToken, (req, res) => {
+app.get('/api/admin2/students/:id/fee-breakdown', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  let targetStudent = null;
+  if (isMongoConnected) {
+    try { targetStudent = await Student.findOne({ $or: [{ _id: id }, { studentId: id }, { admissionNumber: id }] }); } catch { /* fallback */ }
+  }
+  if (!targetStudent) {
+    const list = Object.values(inMemoryStore.students).flat();
+    targetStudent = list.find(s => s._id === id || s.studentId === id || s.admissionNumber === id);
+  }
+
+  if (!targetStudent) {
+    return res.status(404).json({ status: 'error', message: 'Student fee breakdown record not found.' });
+  }
+
+  const tuitionFee = targetStudent.tuitionFee || 120000;
+  const hostelFee = targetStudent.hostelFee || 0;
+  const transportFee = targetStudent.transportFee || 0;
+  const miscFee = targetStudent.miscellaneousFee || 5000;
+  const previousPending = targetStudent.previousPending || 0;
+  const baseFee = tuitionFee + hostelFee + transportFee + miscFee + previousPending;
+
+  const tuitionWaiver = targetStudent.tuitionWaiver || 0;
+  const hostelWaiver = targetStudent.hostelWaiver || 0;
+  const transportWaiver = targetStudent.transportWaiver || 0;
+  const miscWaiver = targetStudent.miscWaiver || 0;
+  const individualOverrideDeduction = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
+
+  const totalPaid = targetStudent.totalPaid || 0;
+  const remainingBalance = Math.max(0, baseFee - individualOverrideDeduction - totalPaid);
+
   return res.json({
     status: 'success',
     data: {
-      baseFee: 120000, tuitionFee: 120000, hostelFee: 0, transportFee: 0, miscFee: 5000,
-      previousPending: 0, scholarshipCategory: 'None', scholarshipPct: 0, scholarshipDeduction: 0,
-      individualOverrideDeduction: 0, tuitionWaiver: 0, hostelWaiver: 0, transportWaiver: 0, miscWaiver: 0,
-      totalPaid: 0, remainingBalance: 125000
+      baseFee,
+      tuitionFee,
+      hostelFee,
+      transportFee,
+      miscFee,
+      previousPending,
+      scholarshipCategory: individualOverrideDeduction > 0 ? 'Individual Fee Waiver' : 'None',
+      scholarshipPct: 0,
+      scholarshipDeduction: 0,
+      individualOverrideDeduction,
+      tuitionWaiver,
+      hostelWaiver,
+      transportWaiver,
+      miscWaiver,
+      totalPaid,
+      remainingBalance,
+      isCustomFee: Boolean(targetStudent.isCustomFee)
     }
   });
 });
