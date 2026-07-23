@@ -1297,8 +1297,6 @@ app.post('/api/admin1/teachers', authenticateToken, enforceCampusIsolation, asyn
   await logSyncJournal('POST /api/admin1/teachers', branch, 'success', `Created faculty ${newTeacher.name} for ${branch}`, req.user);
   return res.json({ status: 'success', data: newTeacher });
 });
-  return res.json({ status: 'success', data: newTeacher });
-});
 
 app.get('/api/admin1/sections', authenticateToken, enforceCampusIsolation, async (req, res) => {
   const branch = req.targetCampus;
