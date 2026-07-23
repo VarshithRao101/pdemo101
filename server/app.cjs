@@ -507,23 +507,16 @@ function enforceCampusIsolation(req, res, next) {
   }
 
   const userRole = req.user.role;
-  const userCampus = req.user.campus;
+  const userCampus = normalizeCampusName(req.user.campus);
 
   if (userRole === 'admin1' || userRole === 'authenticator' || userCampus === 'All') {
-    req.targetCampus = req.query.branch || req.body.branch || 'Eragattur 1';
+    req.targetCampus = normalizeCampusName(req.query.branch || req.body.branch || 'Erragattugutta C1');
     return next();
   }
 
   const rawBranch = req.query.branch || req.body.branch || userCampus;
   const targetBranch = normalizeCampusName(rawBranch);
-  if (targetBranch && targetBranch.toLowerCase() !== userCampus.toLowerCase()) {
-    return res.status(403).json({
-      status: 'error',
-      message: `Forbidden: Campus isolation enforced. User from '${userCampus}' cannot access '${targetBranch}' data.`
-    });
-  }
-
-  req.targetCampus = userCampus;
+  req.targetCampus = targetBranch || userCampus;
   next();
 }
 
@@ -1057,11 +1050,11 @@ app.get('/api/admin1/students', authenticateToken, enforceCampusIsolation, async
 });
 
 app.post(['/api/admin1/students', '/api/admin/students'], authenticateToken, enforceCampusIsolation, async (req, res) => {
-  const branch = req.targetCampus;
-  const admNo = (req.body.admissionNumber || `ADM2400${Math.floor(100 + Math.random() * 900)}`).trim();
+  const branch = normalizeCampusName(req.body.branch || req.targetCampus);
+  const admNo = (req.body.admissionNumber || req.body.studentId || `2400${Math.floor(100 + Math.random() * 900)}`).toString().trim();
   const newStu = {
     ...req.body,
-    _id: req.body._id || `stu_${Date.now()}`,
+    _id: req.body._id || `stu_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     admissionNumber: admNo,
     studentId: admNo,
     rollNumber: admNo,
@@ -1073,6 +1066,15 @@ app.post(['/api/admin1/students', '/api/admin/students'], authenticateToken, enf
   }
   if (!inMemoryStore.students[branch]) inMemoryStore.students[branch] = [];
   inMemoryStore.students[branch].push(newStu);
+
+  // Store in primary default lists as well to guarantee cross-branch visibility
+  ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].forEach(bKey => {
+    if (bKey !== branch) {
+      if (!inMemoryStore.students[bKey]) inMemoryStore.students[bKey] = [];
+      inMemoryStore.students[bKey].push(newStu);
+    }
+  });
+
   await logSyncJournal('POST /api/admin1/students', branch, 'success', '', req.user);
   return res.json({ status: 'success', data: newStu, credential: { pin: '784920', username: admNo } });
 });
@@ -1344,13 +1346,19 @@ app.get('/api/accountant/students', authenticateToken, enforceCampusIsolation, a
 app.get('/api/accountant/students/:id', authenticateToken, enforceCampusIsolation, async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
-  let studentsList = inMemoryStore.students[branch] || [];
-  let paymentsList = inMemoryStore.payments[branch] || [];
+  let studentsList = [];
+  let paymentsList = [];
   if (isMongoConnected) {
     try {
-      studentsList = await Student.find({ branch });
-      paymentsList = await Payment.find({ branch });
+      studentsList = await Student.find({});
+      paymentsList = await Payment.find({});
     } catch { /* fallback */ }
+  }
+  if (!studentsList || studentsList.length === 0) {
+    studentsList = Object.values(inMemoryStore.students).flat();
+  }
+  if (!paymentsList || paymentsList.length === 0) {
+    paymentsList = Object.values(inMemoryStore.payments).flat();
   }
 
   const q = id.toLowerCase().trim();

@@ -341,10 +341,55 @@ export const apiClient = {
 
     if (cleanPath.includes('/admin/students') && method === 'POST') {
       const parsedBody = options.body ? JSON.parse(options.body as string) : {};
+      const admNo = (parsedBody.admissionNumber || parsedBody.studentId || `2400${Math.floor(100 + Math.random() * 900)}`).toString().trim();
+      const newStu = {
+        ...parsedBody,
+        _id: parsedBody._id || `stu_${Date.now()}`,
+        admissionNumber: admNo,
+        studentId: admNo,
+        rollNumber: admNo,
+        registrationNumber: admNo
+      };
       return {
         status: 'success',
-        data: parsedBody,
-        credential: { pin: '784920', username: parsedBody.rollNumber || 'STU-NEW' }
+        data: newStu,
+        credential: { pin: '784920', username: admNo }
+      } as any;
+    }
+
+    if (cleanPath.includes('/students/') && method === 'GET') {
+      const parts = cleanPath.split('/students/');
+      const targetId = parts[1] ? parts[1].toLowerCase().trim() : '';
+      return {
+        status: 'success',
+        data: {
+          _id: `stu_${targetId}`,
+          admissionNumber: targetId.toUpperCase(),
+          studentId: targetId.toUpperCase(),
+          rollNumber: targetId.toUpperCase(),
+          registrationNumber: targetId.toUpperCase(),
+          name: `Student (${targetId.toUpperCase()})`,
+          fatherName: 'Mr. Student Father',
+          motherName: 'Mrs. Student Mother',
+          mobile: '9876543210',
+          parentMobile: '9876543210',
+          email: `${targetId}@inspire.edu`,
+          address: 'Campus Hostel',
+          residentialAddress: 'Day Scholar',
+          hostelStatus: 'Day Scholar',
+          transportStatus: 'Self Transport',
+          course: 'MPC',
+          section: 'Section A',
+          branch: 'Erragattugutta C1',
+          tuitionFee: 120000,
+          hostelFee: 0,
+          transportFee: 0,
+          miscellaneousFee: 5000,
+          previousPending: 0,
+          totalPaid: 0,
+          remainingBalance: 125000,
+          receipts: []
+        }
       } as any;
     }
 
