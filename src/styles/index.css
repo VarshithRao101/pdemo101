@@ -20,9 +20,10 @@ html, body {
   background-attachment: fixed !important;
   color: var(--dark-charcoal);
   font-family: var(--font-family);
-  height: 100%;
+  min-height: 100vh;
   width: 100%;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   font-size: 16px;
   line-height: 1.5;
   text-rendering: optimizeLegibility;
@@ -50,11 +51,10 @@ body.dark-theme, .dark-theme body, html.dark-theme, .dark-theme {
 }
 
 #root {
-  height: 100%;
+  min-height: 100vh;
   width: 100%;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
 }
 
 /* Typography styles */
