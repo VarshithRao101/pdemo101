@@ -1039,12 +1039,20 @@ app.post('/api/authenticator/backup', authenticateToken, (req, res) => {
 // --- ADMIN 1 ROUTES ---
 app.get('/api/admin1/students', authenticateToken, enforceCampusIsolation, async (req, res) => {
   const branch = req.targetCampus;
-  const search = (req.query.search || '').toLowerCase();
+  const search = (req.query.search || '').toLowerCase().trim();
   let list = inMemoryStore.students[branch] || [];
   if (isMongoConnected) {
     try { list = await Student.find({ branch }); } catch { /* fallback */ }
   }
-  const filtered = list.filter(s => s.name.toLowerCase().includes(search) || s.admissionNumber.toLowerCase().includes(search));
+  const filtered = list.filter(s => {
+    if (!search) return true;
+    return (s.name || '').toLowerCase().includes(search) ||
+           (s.admissionNumber || '').toLowerCase().includes(search) ||
+           (s.studentId || '').toLowerCase().includes(search) ||
+           (s.rollNumber || '').toLowerCase().includes(search) ||
+           (s.registrationNumber || '').toLowerCase().includes(search) ||
+           (s.mobile || '').includes(search);
+  });
   return res.json({ status: 'success', data: filtered });
 });
 
@@ -1306,7 +1314,7 @@ app.get('/api/accountant/dashboard-summary', authenticateToken, enforceCampusIso
 
 app.get('/api/accountant/students', authenticateToken, enforceCampusIsolation, async (req, res) => {
   const branch = req.targetCampus;
-  const search = (req.query.search || '').toLowerCase();
+  const search = (req.query.search || '').toLowerCase().trim();
   let studentsList = inMemoryStore.students[branch] || [];
   let paymentsList = inMemoryStore.payments[branch] || [];
   if (isMongoConnected) {
@@ -1316,12 +1324,50 @@ app.get('/api/accountant/students', authenticateToken, enforceCampusIsolation, a
     } catch { /* fallback */ }
   }
 
-  const filtered = studentsList.filter(s => s.name.toLowerCase().includes(search) || s.admissionNumber.toLowerCase().includes(search) || s.studentId.toLowerCase().includes(search));
+  const filtered = studentsList.filter(s => {
+    if (!search) return true;
+    return (s.name || '').toLowerCase().includes(search) ||
+           (s.admissionNumber || '').toLowerCase().includes(search) ||
+           (s.studentId || '').toLowerCase().includes(search) ||
+           (s.rollNumber || '').toLowerCase().includes(search) ||
+           (s.registrationNumber || '').toLowerCase().includes(search) ||
+           (s.mobile || '').includes(search);
+  });
   const populated = filtered.map(student => {
     const studentReceipts = paymentsList.filter(p => p.studentId === student.studentId || p.student === student._id);
     return { ...student.toObject ? student.toObject() : student, receipts: studentReceipts };
   });
 
+  return res.json({ status: 'success', data: populated });
+});
+
+app.get('/api/accountant/students/:id', authenticateToken, enforceCampusIsolation, async (req, res) => {
+  const { id } = req.params;
+  const branch = req.targetCampus;
+  let studentsList = inMemoryStore.students[branch] || [];
+  let paymentsList = inMemoryStore.payments[branch] || [];
+  if (isMongoConnected) {
+    try {
+      studentsList = await Student.find({ branch });
+      paymentsList = await Payment.find({ branch });
+    } catch { /* fallback */ }
+  }
+
+  const q = id.toLowerCase().trim();
+  const student = studentsList.find(s => 
+    (s._id && s._id.toLowerCase() === q) ||
+    (s.studentId && s.studentId.toLowerCase() === q) ||
+    (s.admissionNumber && s.admissionNumber.toLowerCase() === q) ||
+    (s.rollNumber && s.rollNumber.toLowerCase() === q) ||
+    (s.registrationNumber && s.registrationNumber.toLowerCase() === q)
+  );
+
+  if (!student) {
+    return res.status(404).json({ status: 'error', message: 'Student record not found.' });
+  }
+
+  const studentReceipts = paymentsList.filter(p => p.studentId === student.studentId || p.student === student._id);
+  const populated = { ...student.toObject ? student.toObject() : student, receipts: studentReceipts };
   return res.json({ status: 'success', data: populated });
 });
 

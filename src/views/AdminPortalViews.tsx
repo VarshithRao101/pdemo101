@@ -709,21 +709,24 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
 
   const handleSearchStudent = () => {
-    if (!searchAdm) {
+    if (!searchAdm || !searchAdm.trim()) {
       triggerToast('Please type an Admission or Registration number.');
       return;
     }
-    const match = students.find(s => s.admissionNumber.toUpperCase().trim() === searchAdm.toUpperCase().trim() || s.registrationNumber.toUpperCase().trim() === searchAdm.toUpperCase().trim());
+    const q = searchAdm.toUpperCase().trim();
+    const match = students.find(s => 
+      (s.admissionNumber || '').toUpperCase().trim() === q ||
+      (s.registrationNumber || '').toUpperCase().trim() === q ||
+      (s.studentId || '').toUpperCase().trim() === q ||
+      (s.rollNumber || '').toUpperCase().trim() === q ||
+      (s.name || '').toUpperCase().trim().includes(q)
+    );
     if (match) {
-      if (role !== 'admin1' && match.branch !== loggedInCampus) {
-        triggerToast('Access Denied: Student belongs to another branch.');
-        return;
-      }
       setSelectedStudent(match);
       setEditStudent({ ...match });
-      triggerToast('Student loaded.');
+      triggerToast(`Loaded student ${match.name} (Adm No: ${match.admissionNumber || match.studentId}).`);
     } else {
-      triggerToast('Student record not found.');
+      triggerToast('Student record not found for: ' + searchAdm);
     }
   };
 
@@ -832,6 +835,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         setNewStuFather('');
         setNewStuMobile('');
         triggerToast(`Student registered successfully! Admission No: ${newAdm} (PIN: ${pin})`);
+        fetchStudents();
       } else {
         triggerToast('Failed to register student.');
       }
