@@ -413,3 +413,39 @@
   opacity: 0.85;
 }
 
+/* ─── LIVE TICKER KEYFRAMES ─── */
+@keyframes ticker {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.anim-ticker {
+  display: inline-block;
+  white-space: nowrap;
+  animation: ticker 28s linear infinite;
+}
+
+.anim-ticker:hover {
+  animation-play-state: paused;
+}
+
+/* ─── GRADIENT TEXT SHIMMER ─── */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.text-gradient-animated {
+  background: linear-gradient(135deg, #00C2FF 0%, #087FBC 40%, #F68627 80%, #FF8A00 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 5s ease infinite;
+}
+
+
