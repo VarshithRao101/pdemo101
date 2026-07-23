@@ -434,7 +434,7 @@ export const AccountantDashboardView: React.FC = () => {
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
-  }, [attendanceDate]);
+  }, [attendanceDate, refreshWithPulse]);
 
   // On subpage navigation load page specific data
   useEffect(() => {
@@ -448,14 +448,14 @@ export const AccountantDashboardView: React.FC = () => {
     } else if (activeSubPage === 'late_fees' || activeSubPage === 'scholarships' || activeSubPage === 'profile') {
       fetchSettings();
     }
-  }, [activeSubPage]);
+  }, [activeSubPage, fetchHostelData, attendanceDate]);
 
   // Refetch attendance when date changes
   useEffect(() => {
     if (activeSubPage === 'attendance') {
       fetchAttendanceRoster(attendanceDate);
     }
-  }, [attendanceDate]);
+  }, [attendanceDate, activeSubPage]);
 
   // Sync allocateRoom selection when block changes
   useEffect(() => {
@@ -488,6 +488,7 @@ export const AccountantDashboardView: React.FC = () => {
     setIsLoading(true);
     try {
       const res = await accountantService.updateStudentBio(updated._id, {
+        admissionNumber: updated.admissionNumber,
         name: updated.name,
         fatherName: updated.fatherName,
         motherName: updated.motherName,
@@ -1026,14 +1027,25 @@ export const AccountantDashboardView: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={styles.formLabel}>Student Name</label>
-                    <input
-                      type="text"
-                      value={editStudent.name}
-                      onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })}
-                      style={styles.textInputBox}
-                    />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Admission Number</label>
+                      <input
+                        type="text"
+                        value={editStudent.admissionNumber}
+                        onChange={(e) => setEditStudent({ ...editStudent, admissionNumber: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Student Name</label>
+                      <input
+                        type="text"
+                        value={editStudent.name}
+                        onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px' }}>

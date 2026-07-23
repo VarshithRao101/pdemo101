@@ -585,7 +585,7 @@ async function logSyncJournal(action, branch, status, errorDetails = '', reqUser
   };
 
   if (isMongoConnected) {
-    try { await SyncJournal.create(newLog); } catch (e) { /* ignore */ }
+    try { await SyncJournal.create(newLog); } catch (_e) { /* ignore */ }
   }
   inMemoryStore.journal.unshift(newLog);
   if (inMemoryStore.journal.length > 100) inMemoryStore.journal.pop();
@@ -597,10 +597,10 @@ app.get('/api/authenticator/credentials', authenticateToken, requireRole('authen
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
       usersList = await User.find({}, { password: 0 });
-    } catch (e) { }
+    } catch (_e) { }
   }
   if (!usersList || usersList.length === 0) {
-    usersList = inMemoryStore.users.map(({ password, ...u }) => u);
+    usersList = inMemoryStore.users.map(({ password: _, ...u }) => u);
   }
   res.json({ status: 'success', users: usersList });
 });
@@ -627,7 +627,7 @@ app.post('/api/authenticator/credentials', authenticateToken, requireRole('authe
     address: `${normalizedCampus} Campus`
   };
 
-  try { await connectToDatabase(); } catch (e) { }
+  try { await connectToDatabase(); } catch (_e) { }
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
       await User.findOneAndUpdate({ _id: userId }, newUser, { upsert: true, new: true });
@@ -651,13 +651,13 @@ app.put('/api/authenticator/credentials/:id', authenticateToken, requireRole('au
   const { id } = req.params;
   const { username, password, role, campus, name } = req.body;
 
-  try { await connectToDatabase(); } catch (e) { }
+  try { await connectToDatabase(); } catch (_e) { }
 
   let targetUser = null;
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
       targetUser = await User.findOne({ $or: [{ _id: id }, { username: id.replace(/^acc_/, '') }] });
-    } catch (e) { }
+    } catch (_e) { }
   }
   if (!targetUser) {
     targetUser = inMemoryStore.users.find(u => u._id === id || u.username === id || u.username === id.replace(/^acc_/, ''));
@@ -692,12 +692,12 @@ app.put('/api/authenticator/credentials/:id', authenticateToken, requireRole('au
 
 app.delete('/api/authenticator/credentials/:id', authenticateToken, requireRole('authenticator'), async (req, res) => {
   const { id } = req.params;
-  try { await connectToDatabase(); } catch (e) { }
+  try { await connectToDatabase(); } catch (_e) { }
 
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
       await User.deleteMany({ $or: [{ _id: id }, { username: id }, { username: id.replace(/^acc_/, '') }] });
-    } catch (e) { }
+    } catch (_e) { }
   }
   inMemoryStore.users = inMemoryStore.users.filter(u => u._id !== id && u.username !== id && u.username !== id.replace(/^acc_/, ''));
 
@@ -735,7 +735,7 @@ app.get('/api/authenticator/sync-journal', authenticateToken, async (req, res) =
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
       logs = await SyncJournal.find().sort({ timestamp: -1 }).limit(50);
-    } catch (e) { }
+    } catch (_e) { }
   }
   if (!logs || logs.length === 0) {
     logs = inMemoryStore.journal;
@@ -922,7 +922,7 @@ app.post('/api/auth/refresh', async (req, res) => {
       token: newAccessToken,
       user: payload
     });
-  } catch (err) {
+  } catch (_err) {
     return res.status(401).json({ status: 'error', message: 'Invalid or expired refresh token.' });
   }
 });
@@ -1039,11 +1039,14 @@ app.get('/api/admin1/students', authenticateToken, enforceCampusIsolation, async
 
 app.post(['/api/admin1/students', '/api/admin/students'], authenticateToken, enforceCampusIsolation, async (req, res) => {
   const branch = req.targetCampus;
+  const admNo = (req.body.admissionNumber || `ADM2400${Math.floor(100 + Math.random() * 900)}`).trim();
   const newStu = {
     ...req.body,
-    _id: `stu_${Date.now()}`,
-    studentId: req.body.studentId || `STU-${Math.floor(1000 + Math.random() * 9000)}`,
-    admissionNumber: req.body.admissionNumber || `242${Math.floor(1000 + Math.random() * 9000)}`,
+    _id: req.body._id || `stu_${Date.now()}`,
+    admissionNumber: admNo,
+    studentId: admNo,
+    rollNumber: admNo,
+    registrationNumber: admNo,
     branch
   };
   if (isMongoConnected) {
@@ -1052,7 +1055,7 @@ app.post(['/api/admin1/students', '/api/admin/students'], authenticateToken, enf
   if (!inMemoryStore.students[branch]) inMemoryStore.students[branch] = [];
   inMemoryStore.students[branch].push(newStu);
   await logSyncJournal('POST /api/admin1/students', branch, 'success', '', req.user);
-  return res.json({ status: 'success', data: newStu, credential: { pin: '111111', username: newStu.rollNumber } });
+  return res.json({ status: 'success', data: newStu, credential: { pin: '784920', username: admNo } });
 });
 
 app.patch('/api/admin1/students/:id', authenticateToken, enforceCampusIsolation, async (req, res) => {

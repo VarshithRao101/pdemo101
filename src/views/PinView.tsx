@@ -116,7 +116,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [step, pin, isChecking, isSuccess]);
+  }, [step, pin, isChecking, isSuccess, handleConfirm, handleDelete, handleKeyPress]);
 
   const handleResetPin = () => {
     setPin('');

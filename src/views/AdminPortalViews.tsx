@@ -211,10 +211,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   // Students Registry States
   const [newStuName, setNewStuName] = useState('');
+  const [newStuAdmissionNumber, setNewStuAdmissionNumber] = useState('');
   const [newStuCourse, setNewStuCourse] = useState('MPC');
   const [newStuBranch, setNewStuBranch] = useState(loggedInCampus);
   const [newStuFather, setNewStuFather] = useState('');
   const [newStuMobile, setNewStuMobile] = useState('');
+  const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
+  const [regStuOtpInput, setRegStuOtpInput] = useState('');
 
   // Faculty Management States
   const [searchFac, setSearchFac] = useState('');
@@ -650,7 +653,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
-  }, [activePage, role, timetableSection]);
+  }, [activePage, role, timetableSection, refreshCurrentPage]);
 
   // Sync state variables with database records
   useEffect(() => {
@@ -688,7 +691,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     } else if (activePage === 'enrollment_stats') {
       fetchStudentMarks();
     }
-  }, [activePage, timetableSection, attendanceDate]);
+  }, [activePage, timetableSection, attendanceDate, fetchFeeSettings]);
 
   const triggerToast = (msg: string) => {
     const isError = msg.toLowerCase().includes('rejected') || 
@@ -748,12 +751,32 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     setIsFacOtpModalOpen(true);
   };
 
+  const openStudentRegOtpModal = () => {
+    if (!newStuName || !newStuFather || !newStuMobile) {
+      triggerToast('Please complete all basic fields.');
+      return;
+    }
+    setRegStuOtpInput('');
+    setIsRegStuOtpModalOpen(true);
+  };
+
+  const submitStudentRegistrationWithOtp = async () => {
+    if (!regStuOtpInput || !regStuOtpInput.trim()) {
+      triggerToast('Please enter a valid 6-digit security key.');
+      return;
+    }
+    setGlobalSecurityKey(regStuOtpInput.trim());
+    await handleRegisterStudent();
+    setIsRegStuOtpModalOpen(false);
+    setRegStuOtpInput('');
+  };
+
   const handleRegisterStudent = async () => {
     if (!newStuName || !newStuFather || !newStuMobile) {
       triggerToast('Please complete all basic fields.');
       return;
     }
-    const newAdm = `ADM2400${students.length + 1}`;
+    const newAdm = newStuAdmissionNumber.trim() || `ADM2400${students.length + 1}`;
     
     // Get campus-specific baseline fee settings
     const allSettings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
@@ -767,12 +790,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     const resolvedPaid = 0;
     const remainingBalance = resolvedTuition + resolvedMisc;
 
-    const nextRollNum = `24${newStuCourse}A${100 + students.length + 1}`;
     const newStu: Student = {
       admissionNumber: newAdm,
-      studentId: `STU-10${10 + students.length}`,
+      studentId: newAdm,
       qrId: `QR-8${Math.floor(Math.random() * 9000 + 1000)}`,
-      registrationNumber: `REG20240${Math.floor(Math.random() * 900 + 100)}`,
+      registrationNumber: newAdm,
       name: newStuName,
       fatherName: newStuFather,
       motherName: 'Mrs. Devika Rao',
@@ -786,7 +808,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       course: newStuCourse,
       section: 'Section A',
       branch: newStuBranch,
-      rollNumber: nextRollNum,
+      rollNumber: newAdm,
       status: 'Active',
       documents: ['10th Marksheet.pdf', 'Aadhaar Card.pdf'],
       tuitionFee: resolvedTuition,
@@ -806,9 +828,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         const next = [...students, newStu];
         setStudents(next);
         setNewStuName('');
+        setNewStuAdmissionNumber('');
         setNewStuFather('');
         setNewStuMobile('');
-        triggerToast(`Student registered successfully! Roll: ${newStu.rollNumber} (PIN: ${pin})`);
+        triggerToast(`Student registered successfully! Admission No: ${newAdm} (PIN: ${pin})`);
       } else {
         triggerToast('Failed to register student.');
       }
@@ -1214,9 +1237,21 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
               <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Register New Admission Student</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Full Student Name</label>
-                  <input type="text" placeholder="e.g. Rahul Sharma" value={newStuName} onChange={(e) => setNewStuName(e.target.value)} style={styles.textInputBox} />
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                    <label style={styles.formLabel}>Admission Number</label>
+                    <input
+                      type="text"
+                      placeholder={`e.g. ADM2400${students.length + 1}`}
+                      value={newStuAdmissionNumber}
+                      onChange={(e) => setNewStuAdmissionNumber(e.target.value)}
+                      style={styles.textInputBox}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                    <label style={styles.formLabel}>Full Student Name</label>
+                    <input type="text" placeholder="e.g. Rahul Sharma" value={newStuName} onChange={(e) => setNewStuName(e.target.value)} style={styles.textInputBox} />
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
@@ -1248,7 +1283,40 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   </div>
                 </div>
                 {/* SUBMIT REGISTER DETAILS BUTTON */}
-                <button onClick={handleRegisterStudent} style={styles.saveSubmitBtn} className="press-interactive">Submit & Create Student Profile</button>
+                <button onClick={openStudentRegOtpModal} style={styles.saveSubmitBtn} className="press-interactive">Submit & Create Student Profile</button>
+              </div>
+            </div>
+          )}
+
+          {/* STUDENT REGISTRATION OTP MODAL */}
+          {isRegStuOtpModalOpen && (
+            <div style={styles.overlayOverlay}>
+              <div style={{ ...styles.overlaySheet, maxWidth: '440px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3 style={{ ...styles.modalTitle, color: 'var(--royal-gold)', margin: 0 }}>Security Authorization OTP</h3>
+                  <button onClick={() => setIsRegStuOtpModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>×</button>
+                </div>
+                <p style={{ fontSize: '12px', color: 'var(--muted-gray)', marginBottom: '14px', lineHeight: 1.4 }}>
+                  Enter your 6-digit Security Authorization Key / OTP to finalize student registration for <strong>{newStuName}</strong> (Adm No: {newStuAdmissionNumber || `ADM2400${students.length + 1}`}).
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
+                  <label style={styles.formLabel}>Enter 6-Digit Security Key (OTP)</label>
+                  <input
+                    type="text"
+                    placeholder="Enter OTP e.g. 080200 or Daily PIN"
+                    value={regStuOtpInput}
+                    onChange={(e) => setRegStuOtpInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && submitStudentRegistrationWithOtp()}
+                    style={{ ...styles.textInputBox, fontSize: '1.1rem', letterSpacing: '0.1em', fontFamily: 'monospace', borderColor: 'var(--royal-gold)' }}
+                    autoFocus
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => setIsRegStuOtpModalOpen(false)} style={{ ...styles.actionItemBtn, flex: 1 }} className="press-interactive">Cancel</button>
+                  <button onClick={submitStudentRegistrationWithOtp} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }} className="press-interactive">
+                    Confirm & Create Student
+                  </button>
+                </div>
               </div>
             </div>
           )}

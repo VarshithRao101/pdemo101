@@ -27,7 +27,7 @@ export const setGlobalSecurityKey = (key: string) => {
 export const getOrGenerateSecurityKeys = () => {
   const stored = localStorage.getItem('jc_security_keys');
   const now = Date.now();
-  const rotationInterval = 12 * 60 * 60 * 1000;
+  const rotationInterval = 24 * 60 * 60 * 1000; // 24 hours constant window
 
   if (stored) {
     try {
