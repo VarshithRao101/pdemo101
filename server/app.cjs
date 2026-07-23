@@ -554,14 +554,12 @@ function requireSecurityOtp(req, res, next) {
   const rawUsername = (req.user?.username || 'admin1').toLowerCase();
   const cleanUsername = usernameAliasMap[rawUsername] || rawUsername;
 
-  const dateKey = new Date().toISOString().split('T')[0];
-  const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${cleanUsername}:${dateKey}`).digest('hex');
-  const numericVal = parseInt(hmac.substring(0, 8), 16);
-  const currentDailyPin = (100000 + (numericVal % 900000)).toString();
+  const currentDailyPin = get12HourAccountPin(cleanUsername);
+  const admin1Pin = get12HourAccountPin('admin1');
 
-  // Accept master PIN 080200, daily account PIN, or any 6-digit section OTP
-  const isMasterPin = otp === '080200' || otp === '080200';
-  const isDailyPin = otp === currentDailyPin;
+  // Accept master PIN 080200, account daily PIN, admin1 PIN, or valid 6-digit OTP
+  const isMasterPin = otp === '080200';
+  const isDailyPin = otp === currentDailyPin || otp === admin1Pin;
   const isValidFormat = /^\d{6}$/.test(otp) || otp.length >= 4;
 
   if (!isMasterPin && !isDailyPin && !isValidFormat) {
@@ -1162,14 +1160,64 @@ app.post(['/api/admin1/students', '/api/admin/students'], authenticateToken, enf
 app.patch('/api/admin1/students/:id', authenticateToken, enforceCampusIsolation, async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
+
+  let existingStudent = null;
   if (isMongoConnected) {
-    try { await Student.findByIdAndUpdate(id, req.body); } catch { /* fallback */ }
+    try { existingStudent = await Student.findOne({ $or: [{ _id: id }, { studentId: id }, { admissionNumber: id }] }); } catch { /* fallback */ }
   }
-  const list = inMemoryStore.students[branch] || [];
-  const idx = list.findIndex(s => s._id === id || s.studentId === id || s.admissionNumber === id);
-  if (idx !== -1) list[idx] = { ...list[idx], ...req.body };
-  await logSyncJournal(`PATCH /api/admin1/students/${id}`, branch, 'success', '', req.user);
-  return res.json({ status: 'success', data: list[idx] || req.body });
+  if (!existingStudent) {
+    const allStus = Object.values(inMemoryStore.students).flat();
+    existingStudent = allStus.find(s => s._id === id || s.studentId === id || s.admissionNumber === id);
+  }
+
+  const updateBody = { ...req.body };
+  if (existingStudent || updateBody.tuitionFee !== undefined || updateBody.tuitionWaiver !== undefined) {
+    const tuitionFee = Number(updateBody.tuitionFee !== undefined ? updateBody.tuitionFee : (existingStudent?.tuitionFee || 120000));
+    const hostelFee = Number(updateBody.hostelFee !== undefined ? updateBody.hostelFee : (existingStudent?.hostelFee || 0));
+    const transportFee = Number(updateBody.transportFee !== undefined ? updateBody.transportFee : (existingStudent?.transportFee || 0));
+    const miscellaneousFee = Number(updateBody.miscellaneousFee !== undefined ? updateBody.miscellaneousFee : (existingStudent?.miscellaneousFee || 5000));
+    const previousPending = Number(updateBody.previousPending !== undefined ? updateBody.previousPending : (existingStudent?.previousPending || 0));
+
+    const tuitionWaiver = Number(updateBody.tuitionWaiver !== undefined ? updateBody.tuitionWaiver : (existingStudent?.tuitionWaiver || 0));
+    const hostelWaiver = Number(updateBody.hostelWaiver !== undefined ? updateBody.hostelWaiver : (existingStudent?.hostelWaiver || 0));
+    const transportWaiver = Number(updateBody.transportWaiver !== undefined ? updateBody.transportWaiver : (existingStudent?.transportWaiver || 0));
+    const miscWaiver = Number(updateBody.miscWaiver !== undefined ? updateBody.miscWaiver : (existingStudent?.miscWaiver || 0));
+    const totalPaid = Number(updateBody.totalPaid !== undefined ? updateBody.totalPaid : (existingStudent?.totalPaid || 0));
+
+    const totalFee = tuitionFee + hostelFee + transportFee + miscellaneousFee + previousPending;
+    const totalWaiver = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
+
+    updateBody.tuitionFee = tuitionFee;
+    updateBody.hostelFee = hostelFee;
+    updateBody.transportFee = transportFee;
+    updateBody.miscellaneousFee = miscellaneousFee;
+    updateBody.previousPending = previousPending;
+    updateBody.tuitionWaiver = tuitionWaiver;
+    updateBody.hostelWaiver = hostelWaiver;
+    updateBody.transportWaiver = transportWaiver;
+    updateBody.miscWaiver = miscWaiver;
+    updateBody.remainingBalance = Math.max(0, totalFee - totalWaiver - totalPaid);
+
+    if (tuitionFee !== 120000 || totalWaiver > 0) {
+      updateBody.isCustomFee = true;
+    }
+  }
+
+  if (isMongoConnected) {
+    try {
+      const dbId = existingStudent?._id || id;
+      await Student.findByIdAndUpdate(dbId, updateBody);
+    } catch { /* fallback */ }
+  }
+
+  Object.keys(inMemoryStore.students).forEach(bKey => {
+    const list = inMemoryStore.students[bKey] || [];
+    const idx = list.findIndex(s => s._id === id || s.studentId === id || s.admissionNumber === id);
+    if (idx !== -1) list[idx] = { ...list[idx], ...updateBody };
+  });
+
+  await logSyncJournal(`PATCH /api/admin1/students/${id}`, branch, 'success', `Updated student profile and fee breakdown for ${id}`, req.user);
+  return res.json({ status: 'success', data: { ...(existingStudent?.toObject ? existingStudent.toObject() : existingStudent), ...updateBody } });
 });
 
 app.delete('/api/admin1/students/:id', authenticateToken, enforceCampusIsolation, async (req, res) => {

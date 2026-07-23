@@ -1265,6 +1265,69 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     style={styles.textInputBox}
                   />
                 </div>
+
+                {/* FEE OVERRIDES & STRUCTURE EDITING FOR ADMIN 1 */}
+                <div style={{ borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '12px', marginTop: '6px' }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Fee Structure & Waiver Overrides
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Tuition Fee (₹)</label>
+                      <input
+                        type="number"
+                        value={editStudent.tuitionFee !== undefined ? editStudent.tuitionFee : 120000}
+                        onChange={(e) => setEditStudent({ ...editStudent, tuitionFee: parseFloat(e.target.value) || 0 })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Hostel Fee (₹)</label>
+                      <input
+                        type="number"
+                        value={editStudent.hostelFee !== undefined ? editStudent.hostelFee : 0}
+                        onChange={(e) => setEditStudent({ ...editStudent, hostelFee: parseFloat(e.target.value) || 0 })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Transport Fee (₹)</label>
+                      <input
+                        type="number"
+                        value={editStudent.transportFee !== undefined ? editStudent.transportFee : 0}
+                        onChange={(e) => setEditStudent({ ...editStudent, transportFee: parseFloat(e.target.value) || 0 })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Misc Fee (₹)</label>
+                      <input
+                        type="number"
+                        value={editStudent.miscellaneousFee !== undefined ? editStudent.miscellaneousFee : 5000}
+                        onChange={(e) => setEditStudent({ ...editStudent, miscellaneousFee: parseFloat(e.target.value) || 0 })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Tuition Waiver (₹)</label>
+                      <input
+                        type="number"
+                        value={editStudent.tuitionWaiver !== undefined ? editStudent.tuitionWaiver : 0}
+                        onChange={(e) => setEditStudent({ ...editStudent, tuitionWaiver: parseFloat(e.target.value) || 0 })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Previous Pending (₹)</label>
+                      <input
+                        type="number"
+                        value={editStudent.previousPending !== undefined ? editStudent.previousPending : 0}
+                        onChange={(e) => setEditStudent({ ...editStudent, previousPending: parseFloat(e.target.value) || 0 })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* SAVE AND SUBMIT PROFILE CHANGES */}
