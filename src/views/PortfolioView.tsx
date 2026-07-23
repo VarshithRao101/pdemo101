@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import collegeLogo from '../assets/college logo.png';
 
 interface ProgramCard {
@@ -20,13 +20,14 @@ interface ImageWidgetPlaceholder {
   caption: string;
   bgColor: string;
   accentColor: string;
-  svgIcon: string;
+  svgIcon: React.ReactNode;
 }
 
 export const PortfolioView: React.FC = () => {
-  // Mobile Menu & UI States
+  // Navigation & UI States
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'mpc' | 'bipc' | 'mec' | 'civils'>('all');
+  const [wordIndex, setWordIndex] = useState(0);
 
   // Form states (Enquiry)
   const [stuName, setStuName] = useState('');
@@ -42,6 +43,21 @@ export const PortfolioView: React.FC = () => {
   const collegeEmail = 'Inspirehnk@gmail.com';
   const instaUrl = 'https://www.instagram.com/inspire_junior_college';
 
+  // Dynamic Word Flipper for Hero Headline
+  const dynamicWords = [
+    'IIT-JEE Advanced Ranks',
+    'NEET-UG Medical Domination',
+    'CA Foundation & IPMAT',
+    'UPSC Civil Services Foundation'
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWordIndex((prev) => (prev + 1) % dynamicWords.length);
+    }, 3200);
+    return () => clearInterval(interval);
+  }, []);
+
   // Form submit handler
   const handleEnquirySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +66,7 @@ export const PortfolioView: React.FC = () => {
     setEnquirySuccess(true);
   };
 
-  // Image Placeholders for Hero Bottom Photo Cards
+  // Image Placeholders for Hero Bottom Photo Cards (Vector SVG icons, ZERO emojis)
   const photoPlaceholders: ImageWidgetPlaceholder[] = [
     {
       id: 'campus-life',
@@ -59,7 +75,13 @@ export const PortfolioView: React.FC = () => {
       caption: 'Spacious, vibrant academic atmosphere designed for focused learning and growth.',
       bgColor: '#F1F5F9',
       accentColor: '#0A2540',
-      svgIcon: '🏛️'
+      svgIcon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 21h18" />
+          <path d="M5 21V7l7-4 7 4v14" />
+          <path d="M9 10a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v11H9V10z" />
+        </svg>
+      )
     },
     {
       id: 'science-labs',
@@ -68,7 +90,13 @@ export const PortfolioView: React.FC = () => {
       caption: 'Fully equipped Botany, Zoology & Physics laboratories with digital 3D models.',
       bgColor: '#EFF6FF',
       accentColor: '#0284C7',
-      svgIcon: '🔬'
+      svgIcon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10 2v7.31L4.75 18.1A2 2 0 0 0 6.47 21h11.06a2 2 0 0 0 1.72-2.9L14 9.31V2" />
+          <line x1="85" y1="2" x2="15.5" y2="2" />
+          <line x1="9" y1="9" x2="15" y2="9" />
+        </svg>
+      )
     },
     {
       id: 'student-achievers',
@@ -77,7 +105,16 @@ export const PortfolioView: React.FC = () => {
       caption: 'Celebrating top selections in NEET-UG (AIR 1) and IIT-JEE Advanced (AIR 4).',
       bgColor: '#FEF3C7',
       accentColor: '#D97706',
-      svgIcon: '🏆'
+      svgIcon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+          <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+          <path d="M4 22h16" />
+          <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+          <path d="M18 2H6v7a6 6 0 0 0 12 0V2z" />
+        </svg>
+      )
     },
     {
       id: 'faculty-mentors',
@@ -86,7 +123,12 @@ export const PortfolioView: React.FC = () => {
       caption: 'Renowned educators explaining complex fundamentals with absolute clarity.',
       bgColor: '#ECFDF5',
       accentColor: '#059669',
-      svgIcon: '👨‍🏫'
+      svgIcon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+          <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
+        </svg>
+      )
     },
     {
       id: 'smart-classrooms',
@@ -95,7 +137,13 @@ export const PortfolioView: React.FC = () => {
       caption: 'Air-conditioned smart classrooms integrated with eTutor test analytics.',
       bgColor: '#F5F3FF',
       accentColor: '#7C3AED',
-      svgIcon: '💻'
+      svgIcon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+          <line x1="8" y1="21" x2="16" y2="21" />
+          <line x1="12" y1="17" x2="12" y2="21" />
+        </svg>
+      )
     },
     {
       id: 'library-study',
@@ -104,7 +152,12 @@ export const PortfolioView: React.FC = () => {
       caption: 'Comprehensive reference book banks and dedicated quiet study environment.',
       bgColor: '#FFF1F2',
       accentColor: '#E11D48',
-      svgIcon: '📚'
+      svgIcon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+      )
     }
   ];
 
@@ -177,25 +230,41 @@ export const PortfolioView: React.FC = () => {
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif", backgroundColor: '#FFFFFF', color: '#0F172A', minHeight: '100vh', overflowX: 'hidden' }}>
 
-      {/* ─── 1. TOP ANNOUNCEMENT TICKER ─── */}
-      <div style={{ backgroundColor: '#0A2540', color: '#FFFFFF', padding: '9px 16px', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', overflow: 'hidden' }}>
-            <span style={{ backgroundColor: '#D97706', color: '#FFF', padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+      {/* ─── 1. LIVE CONTINUOUS MOVING TEXT MARQUEE TICKER ─── */}
+      <div style={{ backgroundColor: '#0A2540', color: '#FFFFFF', padding: '10px 0', fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', borderBottom: '1px solid rgba(255,255,255,0.1)', position: 'relative', zIndex: 20 }}>
+        <div className="marquee-track">
+          <div style={{ display: 'flex', gap: '3rem', whiteSpace: 'nowrap', alignItems: 'center' }}>
+            <span style={{ backgroundColor: '#D97706', color: '#FFF', padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               ADMISSIONS OPEN 2026-27
             </span>
-            <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', color: '#E2E8F0', fontSize: '0.82rem' }}>
-              <span>Integrated IIT-JEE, NEET & CA Foundation Batches • Free Merit Scholarship Test Registration • Contact: {collegePhone}</span>
-            </div>
+            <span>Integrated IIT-JEE & NEET Coaching with CBSE / Board Syllabus</span>
+            <span style={{ color: '#38BDF8', fontWeight: 700 }}>•</span>
+            <span>Hanamkonda Hunter Road & Bheemaram Campuses</span>
+            <span style={{ color: '#38BDF8', fontWeight: 700 }}>•</span>
+            <span>100% Scholarship Entrance Test Registration Open</span>
+            <span style={{ color: '#38BDF8', fontWeight: 700 }}>•</span>
+            <span>Helpline: {collegePhone}</span>
+            <span style={{ color: '#38BDF8', fontWeight: 700 }}>•</span>
           </div>
-          <div style={{ display: 'none', alignItems: 'center', gap: '16px', flexShrink: 0 }} className="top-banner-right">
-            <span>📍 Hanamkonda & Bheemaram Campuses</span>
+
+          <div style={{ display: 'flex', gap: '3rem', whiteSpace: 'nowrap', alignItems: 'center' }}>
+            <span style={{ backgroundColor: '#D97706', color: '#FFF', padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              ADMISSIONS OPEN 2026-27
+            </span>
+            <span>Integrated IIT-JEE & NEET Coaching with CBSE / Board Syllabus</span>
+            <span style={{ color: '#38BDF8', fontWeight: 700 }}>•</span>
+            <span>Hanamkonda Hunter Road & Bheemaram Campuses</span>
+            <span style={{ color: '#38BDF8', fontWeight: 700 }}>•</span>
+            <span>100% Scholarship Entrance Test Registration Open</span>
+            <span style={{ color: '#38BDF8', fontWeight: 700 }}>•</span>
+            <span>Helpline: {collegePhone}</span>
+            <span style={{ color: '#38BDF8', fontWeight: 700 }}>•</span>
           </div>
         </div>
       </div>
 
       {/* ─── 2. MAIN NAVIGATION HEADER ─── */}
-      <header style={{ backgroundColor: '#FFFFFF', borderBottom: '1px solid #E2E8F0', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+      <header style={{ backgroundColor: 'rgba(255, 255, 255, 0.94)', backdropFilter: 'blur(16px)', borderBottom: '1px solid #E2E8F0', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0.9rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 
           {/* Logo Branding */}
@@ -216,8 +285,13 @@ export const PortfolioView: React.FC = () => {
             <a href="#programs" style={{ fontSize: '0.92rem', fontWeight: 600, color: '#334155', textDecoration: 'none', transition: 'color 0.2s' }}>Programs & Streams</a>
             <a href="#why-us" style={{ fontSize: '0.92rem', fontWeight: 600, color: '#334155', textDecoration: 'none', transition: 'color 0.2s' }}>Why Choose Us</a>
             <a href="#campuses" style={{ fontSize: '0.92rem', fontWeight: 600, color: '#334155', textDecoration: 'none', transition: 'color 0.2s' }}>Campus Locations</a>
-            <a href={instaUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.92rem', fontWeight: 700, color: '#E1306C', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span>📷 Instagram</span>
+            <a href={instaUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.92rem', fontWeight: 700, color: '#E1306C', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+              </svg>
+              <span>Instagram</span>
             </a>
             <a href="#enquiry" style={{ fontSize: '0.92rem', fontWeight: 600, color: '#334155', textDecoration: 'none', transition: 'color 0.2s' }}>Admissions</a>
           </nav>
@@ -285,7 +359,7 @@ export const PortfolioView: React.FC = () => {
             <a href="#programs" onClick={() => setMobileMenuOpen(false)} style={{ color: '#0F172A', textDecoration: 'none', fontWeight: 600, padding: '8px 0' }}>Academic Programs (MPC / BiPC / MEC / Civils)</a>
             <a href="#why-us" onClick={() => setMobileMenuOpen(false)} style={{ color: '#0F172A', textDecoration: 'none', fontWeight: 600, padding: '8px 0' }}>Why Choose Inspire</a>
             <a href="#campuses" onClick={() => setMobileMenuOpen(false)} style={{ color: '#0F172A', textDecoration: 'none', fontWeight: 600, padding: '8px 0' }}>Campus Locations (Hunter Road & Bheemaram)</a>
-            <a href={instaUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#E1306C', textDecoration: 'none', fontWeight: 700, padding: '8px 0' }}>📷 Official @inspire_junior_college Instagram</a>
+            <a href={instaUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#E1306C', textDecoration: 'none', fontWeight: 700, padding: '8px 0' }}>Official @inspire_junior_college Instagram</a>
             <a href="#enquiry" onClick={() => setMobileMenuOpen(false)} style={{ color: '#0F172A', textDecoration: 'none', fontWeight: 600, padding: '8px 0' }}>Admissions Enquiry 2026-27</a>
             <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '12px', display: 'flex', gap: '10px' }}>
               <a href="#/v1-portal-gate-x89f2a7b" style={{ backgroundColor: '#0A2540', color: '#FFF', padding: '10px 16px', borderRadius: '8px', fontWeight: 700, textDecoration: 'none', textAlign: 'center', width: '100%' }}>Staff & Admin Portal Login</a>
@@ -295,38 +369,69 @@ export const PortfolioView: React.FC = () => {
         )}
       </header>
 
-      {/* ─── 3. HERO SECTION (NARAYANA-STYLE LIGHT THEME) ─── */}
-      <section style={{ backgroundColor: '#F8FAFC', background: 'linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%)', padding: '4rem 1.5rem 5rem', borderBottom: '1px solid #E2E8F0' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+      {/* ─── 3. HERO SECTION WITH BACKGROUND VIDEO OVERLAY & 3D ELEMENTS ─── */}
+      <section style={{ position: 'relative', backgroundColor: '#0A2540', color: '#FFFFFF', minHeight: '640px', overflow: 'hidden', padding: '5rem 1.5rem 6rem', display: 'flex', alignItems: 'center' }}>
+        
+        {/* CINEMATIC HERO VIDEO BACKGROUND OVERLAY */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            opacity: 0.24,
+            filter: 'brightness(0.7) contrast(1.2)',
+            zIndex: 1,
+            pointerEvents: 'none'
+          }}
+        >
+          <source src="https://assets.mixkit.co/videos/preview/mixkit-university-students-working-in-a-chemistry-lab-41398-large.mp4" type="video/mp4" />
+        </video>
+
+        {/* Ambient 3D Glowing Orbs & Geometry Grid */}
+        <div style={{ position: 'absolute', top: '-10%', left: '10%', width: '450px', height: '450px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0, 194, 255, 0.25) 0%, rgba(10, 37, 64, 0) 70%)', filter: 'blur(80px)', zIndex: 2, pointerEvents: 'none' }} className="anim-float-3d" />
+        <div style={{ position: 'absolute', bottom: '-15%', right: '10%', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(217, 119, 6, 0.25) 0%, rgba(10, 37, 64, 0) 70%)', filter: 'blur(90px)', zIndex: 2, pointerEvents: 'none' }} />
+
+        <div style={{ maxWidth: '1280px', margin: '0 auto', width: '100%', position: 'relative', zIndex: 10 }}>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '48px', alignItems: 'center' }}>
             
-            {/* Left Column Text */}
+            {/* Left Column Content */}
             <div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(10, 37, 64, 0.08)', color: '#0A2540', border: '1px solid rgba(10, 37, 64, 0.15)', padding: '6px 14px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '20px' }}>
-                <span>🎓 PREMIER JUNIOR COLLEGE IN WARANGAL & HANAMKONDA</span>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', color: '#38BDF8', padding: '6px 14px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '20px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#34D399', display: 'inline-block' }} />
+                <span>PREMIER JUNIOR COLLEGE IN HANUMAKONDA</span>
               </div>
 
-              <h1 style={{ fontSize: 'clamp(2.4rem, 4.5vw, 3.6rem)', fontWeight: 850, color: '#0A2540', lineHeight: 1.15, letterSpacing: '-0.03em', marginBottom: '20px' }}>
-                Building Strong Foundations for <span style={{ color: '#D97706' }}>IIT-JEE & NEET Excellence</span>
+              <h1 style={{ fontSize: 'clamp(2.4rem, 4.5vw, 3.6rem)', fontWeight: 850, color: '#FFFFFF', lineHeight: 1.15, letterSpacing: '-0.03em', marginBottom: '20px' }}>
+                Building Strong Foundations for{' '}
+                <span className="text-gradient-animated" style={{ display: 'inline-block', minWidth: '280px' }}>
+                  {dynamicWords[wordIndex]}
+                </span>
               </h1>
 
-              <p style={{ fontSize: '1.1rem', color: '#475569', lineHeight: 1.65, maxWidth: '620px', marginBottom: '32px' }}>
-                Inspire Junior College combines rigorous Board syllabus coverage with application-based competitive exam coaching. Taught by experienced faculty with continuous exam-pattern testing.
+              <p style={{ fontSize: '1.1rem', color: '#CBD5E1', lineHeight: 1.65, maxWidth: '620px', marginBottom: '32px' }}>
+                Inspire Junior College integrates rigorous CBSE & State Board textbook coverage with application-based competitive exam coaching. Taught by experienced faculty with continuous exam-pattern testing.
               </p>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
                 <a
                   href="#enquiry"
                   style={{
-                    backgroundColor: '#0A2540',
+                    backgroundColor: '#D97706',
                     color: '#FFFFFF',
                     padding: '14px 32px',
                     borderRadius: '10px',
                     fontWeight: 800,
                     fontSize: '1rem',
                     textDecoration: 'none',
-                    boxShadow: '0 4px 14px rgba(10, 37, 64, 0.25)'
+                    boxShadow: '0 8px 24px rgba(217, 119, 6, 0.4)'
                   }}
                   className="press-interactive"
                 >
@@ -336,14 +441,15 @@ export const PortfolioView: React.FC = () => {
                 <a
                   href="#programs"
                   style={{
-                    backgroundColor: '#FFFFFF',
-                    color: '#0A2540',
-                    border: '1.5px solid #CBD5E1',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    color: '#FFFFFF',
+                    border: '1.5px solid rgba(255,255,255,0.25)',
                     padding: '14px 26px',
                     borderRadius: '10px',
                     fontWeight: 700,
                     fontSize: '0.95rem',
-                    textDecoration: 'none'
+                    textDecoration: 'none',
+                    backdropFilter: 'blur(10px)'
                   }}
                   className="press-interactive"
                 >
@@ -351,50 +457,68 @@ export const PortfolioView: React.FC = () => {
                 </a>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '4px' }}>
-                  <span style={{ fontSize: '1.2rem' }}>📞</span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                  </svg>
                   <div>
-                    <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Admissions Helpline</div>
-                    <a href={`tel:${collegePhone}`} style={{ fontSize: '0.95rem', color: '#0A2540', fontWeight: 800, textDecoration: 'none' }}>{collegePhone}</a>
+                    <div style={{ fontSize: '0.72rem', color: '#94A3B8', fontWeight: 700, textTransform: 'uppercase' }}>Admissions Helpline</div>
+                    <a href={`tel:${collegePhone}`} style={{ fontSize: '0.95rem', color: '#FFFFFF', fontWeight: 800, textDecoration: 'none' }}>{collegePhone}</a>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Right Column Elevated Card */}
-            <div>
-              <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '24px', padding: '2.2rem', boxShadow: '0 20px 40px -15px rgba(15, 23, 42, 0.08)' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
+            {/* Right Column 3D Elevated Card */}
+            <div className="card-3d-wrapper">
+              <div
+                style={{
+                  backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1.5px solid rgba(255,255,255,0.18)',
+                  borderRadius: '24px',
+                  padding: '2.4rem',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                }}
+                className="card-3d-tilt"
+              >
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px' }}>
                   Academic Guarantee
                 </div>
-                <h3 style={{ fontSize: '1.6rem', fontWeight: 850, color: '#0A2540', marginBottom: '12px' }}>
+                <h3 style={{ fontSize: '1.6rem', fontWeight: 850, color: '#FFFFFF', marginBottom: '12px' }}>
                   Integrated Board + Entrance Prep
                 </h3>
-                <p style={{ fontSize: '0.94rem', color: '#64748B', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+                <p style={{ fontSize: '0.94rem', color: '#94A3B8', lineHeight: 1.6, marginBottom: '1.5rem' }}>
                   Students master fundamental concepts for State & CBSE Board exams during morning hours, followed by daily JEE/NEET micro-assessments.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', backgroundColor: '#F8FAFC', padding: '12px 14px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                    <span style={{ color: '#059669', fontWeight: 900 }}>✓</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', backgroundColor: 'rgba(255,255,255,0.04)', padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
                     <div>
-                      <strong style={{ color: '#0F172A', fontSize: '0.9rem' }}>IIT-JEE & NEET Rank Specialization</strong>
-                      <div style={{ fontSize: '0.8rem', color: '#64748B' }}>Super-60 High-Scorer Wing at Bheemaram & Hunter Road</div>
+                      <strong style={{ color: '#FFFFFF', fontSize: '0.9rem' }}>IIT-JEE & NEET Rank Specialization</strong>
+                      <div style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Super-60 High-Scorer Wing at Bheemaram & Hunter Road</div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', backgroundColor: '#F8FAFC', padding: '12px 14px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                    <span style={{ color: '#059669', fontWeight: 900 }}>✓</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', backgroundColor: 'rgba(255,255,255,0.04)', padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
                     <div>
-                      <strong style={{ color: '#0F172A', fontSize: '0.9rem' }}>Periodic Simulated Testing</strong>
-                      <div style={{ fontSize: '0.8rem', color: '#64748B' }}>Weekly mock exams mirroring real test difficulty</div>
+                      <strong style={{ color: '#FFFFFF', fontSize: '0.9rem' }}>Periodic Simulated Testing</strong>
+                      <div style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Weekly mock exams mirroring real test difficulty</div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', backgroundColor: '#F8FAFC', padding: '12px 14px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                    <span style={{ color: '#059669', fontWeight: 900 }}>✓</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', backgroundColor: 'rgba(255,255,255,0.04)', padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
                     <div>
-                      <strong style={{ color: '#0F172A', fontSize: '0.9rem' }}>eTutor Digital Test Analytics App</strong>
-                      <div style={{ fontSize: '0.8rem', color: '#64748B' }}>Live performance tracking & parent notification engine</div>
+                      <strong style={{ color: '#FFFFFF', fontSize: '0.9rem' }}>eTutor Digital Test Analytics App</strong>
+                      <div style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Live performance tracking & parent notification engine</div>
                     </div>
                   </div>
                 </div>
@@ -404,12 +528,12 @@ export const PortfolioView: React.FC = () => {
           </div>
 
           {/* ─── HERO BOTTOM IMAGE WIDGET PLACEHOLDERS STRIP ─── */}
-          <div style={{ marginTop: '4rem', paddingTop: '3rem', borderTop: '1px solid #E2E8F0' }}>
+          <div style={{ marginTop: '4rem', paddingTop: '3rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#0A2540', letterSpacing: '0.14em' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#38BDF8', letterSpacing: '0.14em' }}>
                 Life at Inspire Junior College
               </span>
-              <h3 style={{ fontSize: '1.6rem', fontWeight: 850, color: '#0F172A', marginTop: '4px' }}>
+              <h3 style={{ fontSize: '1.6rem', fontWeight: 850, color: '#FFFFFF', marginTop: '4px' }}>
                 World-Class Campus Infrastructure & Learning Environment
               </h3>
             </div>
@@ -439,13 +563,14 @@ export const PortfolioView: React.FC = () => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       position: 'relative',
-                      borderBottom: '1px solid #E2E8F0'
+                      borderBottom: '1px solid #E2E8F0',
+                      color: photo.accentColor
                     }}
                   >
                     {/* Placeholder image tag slot - drop real photo URL in src */}
                     {/* <img src="/path/to/real-photo.jpg" alt={photo.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> */}
                     
-                    <div style={{ fontSize: '2.5rem', marginBottom: '6px' }}>{photo.svgIcon}</div>
+                    <div style={{ marginBottom: '8px' }}>{photo.svgIcon}</div>
                     <span style={{ backgroundColor: '#FFFFFF', color: photo.accentColor, border: '1px solid #E2E8F0', fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
                       {photo.category}
                     </span>
@@ -465,7 +590,7 @@ export const PortfolioView: React.FC = () => {
       </section>
 
       {/* ─── 4. STATS STRIP ─── */}
-      <section style={{ backgroundColor: '#0A2540', color: '#FFFFFF', padding: '3rem 1.5rem' }}>
+      <section style={{ backgroundColor: '#051329', color: '#FFFFFF', padding: '3rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '30px', textAlign: 'center' }}>
             
@@ -590,7 +715,10 @@ export const PortfolioView: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '1.5rem' }}>
                   {program.features.map((feat, i) => (
                     <div key={i} style={{ fontSize: '0.85rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ color: '#059669', fontWeight: 800 }}>✓</span> {feat}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span>{feat}</span>
                     </div>
                   ))}
                 </div>
@@ -641,8 +769,11 @@ export const PortfolioView: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '30px' }}>
             
             <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-              <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#EFF6FF', color: '#1D4ED8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', marginBottom: '1.25rem' }}>
-                📚
+              <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#EFF6FF', color: '#1D4ED8', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                </svg>
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0A2540', marginBottom: '8px' }}>Integrated Board + Entrance Prep</h3>
               <p style={{ fontSize: '0.92rem', color: '#64748B', lineHeight: 1.6 }}>
@@ -651,8 +782,11 @@ export const PortfolioView: React.FC = () => {
             </div>
 
             <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-              <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#ECFDF5', color: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', marginBottom: '1.25rem' }}>
-                👨‍🏫
+              <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#ECFDF5', color: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                  <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
+                </svg>
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0A2540', marginBottom: '8px' }}>Experienced IITian Faculty</h3>
               <p style={{ fontSize: '0.92rem', color: '#64748B', lineHeight: 1.6 }}>
@@ -661,8 +795,12 @@ export const PortfolioView: React.FC = () => {
             </div>
 
             <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-              <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#FEF3C7', color: '#B45309', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', marginBottom: '1.25rem' }}>
-                📊
+              <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#FEF3C7', color: '#B45309', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 850, color: '#0A2540', marginBottom: '8px' }}>Periodic Exam Simulations</h3>
               <p style={{ fontSize: '0.92rem', color: '#64748B', lineHeight: 1.6 }}>
@@ -671,8 +809,12 @@ export const PortfolioView: React.FC = () => {
             </div>
 
             <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-              <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#F5F3FF', color: '#6D28D9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', marginBottom: '1.25rem' }}>
-                🎯
+              <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#F5F3FF', color: '#6D28D9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 850, color: '#0A2540', marginBottom: '8px' }}>Personalized Student Care</h3>
               <p style={{ fontSize: '0.92rem', color: '#64748B', lineHeight: 1.6 }}>
@@ -702,7 +844,10 @@ export const PortfolioView: React.FC = () => {
 
             {enquirySuccess ? (
               <div style={{ backgroundColor: '#ECFDF5', border: '1px solid #10B981', color: '#065F46', padding: '24px', borderRadius: '16px', textAlign: 'center' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>✓</div>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 8px' }}>
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
                 <h4 style={{ fontWeight: 850, fontSize: '1.2rem', color: '#065F46', marginBottom: '6px' }}>Enquiry Successfully Registered!</h4>
                 <p style={{ fontSize: '0.88rem', color: '#047857', marginBottom: '12px' }}>
                   Your reference ID is <strong style={{ color: '#0A2540' }}>{enquiryRef}</strong>. Our counselor will contact you at {stuMobile} within 24 hours.
@@ -817,7 +962,9 @@ export const PortfolioView: React.FC = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', backgroundColor: '#F8FAFC', padding: '1.25rem', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
-                <div style={{ fontSize: '1.5rem', color: '#0A2540' }}>📞</div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A2540" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '2px' }}>
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
                 <div>
                   <div style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Direct Admissions Helpline</div>
                   <a href={`tel:${collegePhone}`} style={{ fontSize: '1.1rem', fontWeight: 850, color: '#0A2540', textDecoration: 'none' }}>{collegePhone}</a>
@@ -825,7 +972,10 @@ export const PortfolioView: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', backgroundColor: '#F8FAFC', padding: '1.25rem', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
-                <div style={{ fontSize: '1.5rem', color: '#0A2540' }}>✉️</div>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0A2540" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '2px' }}>
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
                 <div>
                   <div style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>Official Email Address</div>
                   <a href={`mailto:${collegeEmail}`} style={{ fontSize: '1.05rem', fontWeight: 850, color: '#0A2540', textDecoration: 'none' }}>{collegeEmail}</a>
@@ -853,7 +1003,7 @@ export const PortfolioView: React.FC = () => {
       </section>
 
       {/* ─── 8. FOOTER SECTION ─── */}
-      <footer style={{ backgroundColor: '#0A2540', color: '#F1F5F9', borderTop: '1px solid rgba(255,255,255,0.1)', padding: '5rem 1.5rem 3rem' }}>
+      <footer id="campuses" style={{ backgroundColor: '#0A2540', color: '#F1F5F9', borderTop: '1px solid rgba(255,255,255,0.1)', padding: '5rem 1.5rem 3rem' }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '3.5rem' }}>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '40px' }}>
@@ -878,11 +1028,11 @@ export const PortfolioView: React.FC = () => {
                 Campus Locations (4 Divisions)
               </h4>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.88rem', color: '#CBD5E1' }}>
-                <li>📍 <strong>Erragattugutta C1:</strong> MPC & BiPC Central Division</li>
-                <li>📍 <strong>Erragattugutta C2:</strong> BiPC Specialized Medical Wing</li>
-                <li>📍 <strong>Beemaram C1:</strong> Super-60 IIT-JEE Advanced Wing</li>
-                <li>📍 <strong>Beemaram C2:</strong> MEC Commerce & CA Academy</li>
-                <li>📍 <strong>Hanamkonda Central:</strong> Hunter Road Hub</li>
+                <li><strong>Erragattugutta C1:</strong> MPC & BiPC Central Division</li>
+                <li><strong>Erragattugutta C2:</strong> BiPC Specialized Medical Wing</li>
+                <li><strong>Beemaram C1:</strong> Super-60 IIT-JEE Advanced Wing</li>
+                <li><strong>Beemaram C2:</strong> MEC Commerce & CA Academy</li>
+                <li><strong>Hanamkonda Central:</strong> Hunter Road Hub</li>
               </ul>
             </div>
 
@@ -916,8 +1066,13 @@ export const PortfolioView: React.FC = () => {
                   </a>
                 </li>
                 <li>
-                  <a href={instaUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#E1306C', textDecoration: 'none', fontWeight: 700 }}>
-                    📷 Official @inspire_junior_college Instagram
+                  <a href={instaUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#E1306C', textDecoration: 'none', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                    </svg>
+                    <span>Official @inspire_junior_college</span>
                   </a>
                 </li>
               </ul>

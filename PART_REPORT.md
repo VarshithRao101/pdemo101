@@ -6,13 +6,17 @@
 Successfully redesigned the root domain portfolio (`inspirecolleges.vercel.app/` / `#`) to a premium light-theme, Narayana-style junior college marketing homepage for **Inspire Junior College, Hanamkonda & Bheemaram**.
 
 ### Design & Theme Specifications
-- **Theme**: Premium Light Theme with Deep Royal Navy (`#0A2540`) as the confident primary accent and Amber/Saffron (`#D97706`) as secondary highlight.
-- **Typography**: Clean, modern sans-serif (`Plus Jakarta Sans` / `Inter`) with strong visual hierarchy and high readability.
-- **Layout & Depth**: Subtle card borders (`#E2E8F0`), soft box shadows (`0 4px 20px rgba(0,0,0,0.04)`), generous whitespace, and responsive mobile-first grid structures.
+- **Theme**: Premium Light Theme with Deep Royal Navy (`#0A2540`) as the primary brand accent and Amber/Saffron (`#D97706`) as secondary highlight.
+- **Background Video**: Cinematic HTML5 video overlay in the hero section (`autoplay loop muted playsinline`) with dark backdrop blur and floating 3D particle lighting.
+- **Typography & Moving Text**:
+  - Animated word-flipper switching headline phrases (*"IIT-JEE Advanced Ranks"*, *"NEET-UG Medical Domination"*, *"CA Foundation & IPMAT"*, *"UPSC Civil Services Foundation"*).
+  - Continuous moving text marquee ticker across section breaks.
+- **3D Depth**: Interactive 3D card tilt effects (`card-3d-tilt` with `perspective: 1200px`), elevated glassmorphic cards, and float keyframe animations.
+- **Zero Emojis**: Removed ALL emoji characters across the entire site. Replaced with crisp vector SVG icons and clean CSS badges.
 
 ### Implemented Sections
 1. **Hero Section**:
-   - High-impact headline ("Building Strong Foundations for IIT-JEE & NEET Excellence") + original marketing copy.
+   - Dynamic headline + moving text phrases + background video overlay.
    - Primary CTA ("Apply for Admissions 2026") & Secondary CTA ("Explore Streams").
    - Admissions helpline contact snippet (`+91 97043 80320`).
    - Bottom Photo Cards Strip featuring **6 Image Widget Placeholders** (styled with neutral background gradients, category badge pills, caption overlays, SVG icons, and explicit `<img>` tag slots ready for photo drop-in).
@@ -21,7 +25,7 @@ Successfully redesigned the root domain portfolio (`inspirecolleges.vercel.app/`
 3. **Academic Programs & Streams Grid**:
    - Interactive stream filtering for **MPC (Engineering)**, **BiPC (Medical)**, **MEC (Commerce & CA)**, and **Civils Foundation Program**.
 4. **Why Us / Educational Approach Section**:
-   - 4 Feature Cards detailing Dual-Focus Curriculum, Experienced IITian/Doctor Faculty, Periodic Simulated Testing, and Personalized Student Care.
+   - 4 Feature Cards with SVG icons detailing Dual-Focus Curriculum, Experienced IITian/Doctor Faculty, Periodic Simulated Testing, and Personalized Student Care.
 5. **Admissions Enquiry Form**:
    - Functional light-theme form collecting Student Name, Mobile Number, Email, Program Stream, and Campus Preference with instant reference token generation (`INS-2026-XXXXXX`).
 6. **Footer**:
