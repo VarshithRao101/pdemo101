@@ -44,9 +44,9 @@ export const getOrGenerateSecurityKeys = () => {
 
   const generatePinForUser = (uname: string) => {
     if (uname === 'authenticator' || uname === '9059068384') return '080200';
-    const dateStr = new Date().toISOString().split('T')[0];
+    const window12h = Math.floor(Date.now() / (12 * 60 * 60 * 1000));
     let hash = 0;
-    const str = `${uname}:${dateStr}`;
+    const str = `${uname}:${window12h}`;
     for (let i = 0; i < str.length; i++) {
       hash = (hash << 5) - hash + str.charCodeAt(i);
       hash |= 0;
@@ -348,7 +348,9 @@ export const apiClient = {
     }
 
     if (cleanPath.includes('/dashboard-summary')) {
-      return { status: 'success', data: { collectionToday: 185000, pendingCount: 42, pendingAmount: 4850000, absentCount: 3 } } as any;
+      const storedPayments = JSON.parse(localStorage.getItem('jc_payments') || '[]');
+      const collectionToday = storedPayments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+      return { status: 'success', data: { collectionToday, pendingCount: 0, pendingAmount: 0, absentCount: 0 } } as any;
     }
 
     if (cleanPath.includes('/admin/students') && method === 'POST') {

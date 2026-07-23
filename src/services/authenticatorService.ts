@@ -87,8 +87,10 @@ export const authenticatorService = {
 
   // Get transaction sync log
   async getSyncJournal(): Promise<SyncJournalEntry[]> {
-    const res = await apiClient.get<{ status: string; data: SyncJournalEntry[] }>('/authenticator/sync-journal');
-    return res.data;
+    const res = await apiClient.get<any>('/authenticator/sync-journal');
+    if (Array.isArray(res.data)) return res.data;
+    if (Array.isArray(res.logs)) return res.logs;
+    return [];
   },
 
   // Trigger db reconciliation

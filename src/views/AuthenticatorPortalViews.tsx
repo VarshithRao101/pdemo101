@@ -677,7 +677,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           {acc ? (
                             <>
                               <div>ID: <strong>{acc.username}</strong></div>
-                              <div style={{ marginTop: '2px' }}>PIN: <strong style={{ color: 'var(--royal-gold)', fontSize: '11.5px', fontFamily: 'monospace' }}>{acc.password || '******'}</strong></div>
+                              <div style={{ marginTop: '2px' }}>Password: <strong style={{ color: 'var(--royal-gold)', fontSize: '11.5px', fontFamily: 'monospace' }}>{acc.password && !acc.password.startsWith('$2a$') ? acc.password : 'DeanPass#2026'}</strong></div>
                             </>
                           ) : (
                             <span>Click to provision credentials</span>
@@ -773,7 +773,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                             {acc ? (
                               <>
                                 <div>ID: <strong>{acc.username}</strong></div>
-                                <div style={{ marginTop: '2px' }}>PIN: <strong style={{ color: 'var(--royal-gold)', fontSize: '11.5px', fontFamily: 'monospace' }}>{acc.password || '******'}</strong></div>
+                                <div style={{ marginTop: '2px' }}>Password: <strong style={{ color: 'var(--royal-gold)', fontSize: '11.5px', fontFamily: 'monospace' }}>{acc.password && !acc.password.startsWith('$2a$') ? acc.password : 'AccPass#2026'}</strong></div>
                               </>
                             ) : (
                               <span>Click to provision credentials</span>

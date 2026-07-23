@@ -20,7 +20,9 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
     const handleHashChange = () => {
       const hash = window.location.hash;
       setCurrentHash(hash);
-      if (!isAuthenticated) {
+      if (isAuthenticated) {
+        setFlowStage('authenticated');
+      } else {
         if (hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l') || hash === UNIVERSAL_HASH || hash.includes('v1-portal-gate-x89f2a7b')) {
           setFlowStage('pin');
         } else {

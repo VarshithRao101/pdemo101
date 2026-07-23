@@ -64,6 +64,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       });
 
       const { token, user: userData } = response;
+      localStorage.setItem('auth_token', token);
       sessionStorage.setItem('auth_token', token);
       connectSocket(token);
       setUser(userData);
@@ -90,6 +91,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
   };
 
   const logout = () => {
+    localStorage.removeItem('auth_token');
     sessionStorage.removeItem('auth_token');
     disconnectSocket();
     setUser(null);
@@ -98,7 +100,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
   };
 
   const checkSession = async (): Promise<boolean> => {
-    const token = sessionStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
     if (!token) {
       setIsAuthLoading(false);
       setIsAuthenticated(false);
@@ -111,11 +113,13 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       const response = await apiClient.get('/auth/me');
       const { user: userData } = response;
       
-      const isAuthUrl = window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator');
+      const isExplicitAuthGate = window.location.hash.includes('sec-auth-sys-9i0j7k8l');
+      const isExplicitUniversalGate = window.location.hash.includes('v1-portal-gate-x89f2a7b');
 
-      // Reject cross-url restored sessions
-      if (isAuthUrl && userData.role !== 'authenticator') {
+      // Only reject if user explicitly clicked cross-portal login URL
+      if (isExplicitAuthGate && userData.role !== 'authenticator') {
         console.warn('Clearing saved non-authenticator session on Authenticator URL');
+        localStorage.removeItem('auth_token');
         sessionStorage.removeItem('auth_token');
         disconnectSocket();
         setIsAuthenticated(false);
@@ -123,8 +127,9 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
         return false;
       }
 
-      if (!isAuthUrl && userData.role === 'authenticator') {
+      if (isExplicitUniversalGate && userData.role === 'authenticator') {
         console.warn('Clearing saved authenticator session on Universal URL');
+        localStorage.removeItem('auth_token');
         sessionStorage.removeItem('auth_token');
         disconnectSocket();
         setIsAuthenticated(false);
@@ -149,6 +154,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       return true;
     } catch (error) {
       console.error('Session restore failed, clearing token:', error);
+      localStorage.removeItem('auth_token');
       sessionStorage.removeItem('auth_token');
       disconnectSocket();
       setIsAuthenticated(false);
@@ -158,6 +164,31 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       setIsAuthLoading(false);
     }
   };
+
+  // 2-Hour Inactivity Auto Logout
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let inactivityTimer: any = null;
+    const INACTIVITY_LIMIT = 2 * 60 * 60 * 1000; // 2 Hours
+
+    const resetInactivityTimer = () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        console.warn('User inactive for 2 hours. Automatically logging out.');
+        logout();
+        window.location.hash = '#/portfolio';
+      }, INACTIVITY_LIMIT);
+    };
+
+    const userEvents = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
+    userEvents.forEach(evt => window.addEventListener(evt, resetInactivityTimer));
+    resetInactivityTimer();
+
+    return () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      userEvents.forEach(evt => window.removeEventListener(evt, resetInactivityTimer));
+    };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const handlePopState = () => {

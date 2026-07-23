@@ -133,6 +133,7 @@ const userSchema = new mongoose.Schema({
   _id: { type: String, required: true },
   username: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true },
+  passwordRaw: { type: String },
   role: { type: String, required: true, enum: ['admin1', 'admin2', 'accountant', 'authenticator'] },
   campus: { type: String, required: true },
   name: { type: String },
@@ -391,34 +392,37 @@ async function seedInitialData() {
   }
 }
 
+const activeSessionGuidMap = {};
+
+function get12HourAccountPin(username) {
+  if (username === '9059068384' || username === 'authenticator') return '080200';
+  const window12h = Math.floor(Date.now() / (12 * 60 * 60 * 1000));
+  const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${username}:${window12h}`).digest('hex');
+  const numericVal = parseInt(hmac.substring(0, 8), 16);
+  return (100000 + (numericVal % 900000)).toString();
+}
+
 // Security Keys Generator
 function generateSecurityKeys() {
   const genOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
-  const dateKey = new Date().toISOString().split('T')[0];
-  const getAccountPin = (username) => {
-    if (username === '9059068384' || username === 'authenticator') return '080200';
-    const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${username}:${dateKey}`).digest('hex');
-    const numericVal = parseInt(hmac.substring(0, 8), 16);
-    return (100000 + (numericVal % 900000)).toString();
-  };
 
   return {
     generatedAt: Date.now(),
     dailyPins: {
-      admin1: getAccountPin('admin1'),
+      admin1: get12HourAccountPin('admin1'),
       authenticator: '080200',
-      admin2_erragattugutta_c1: getAccountPin('admin2_erragattugutta_c1'),
-      admin2_erragattugutta_c2: getAccountPin('admin2_erragattugutta_c2'),
-      admin2_beemaram_c1: getAccountPin('admin2_beemaram_c1'),
-      admin2_beemaram_c2: getAccountPin('admin2_beemaram_c2'),
-      accountant_erragattugutta_c1_1: getAccountPin('accountant_erragattugutta_c1_1'),
-      accountant_erragattugutta_c1_2: getAccountPin('accountant_erragattugutta_c1_2'),
-      accountant_erragattugutta_c2_1: getAccountPin('accountant_erragattugutta_c2_1'),
-      accountant_erragattugutta_c2_2: getAccountPin('accountant_erragattugutta_c2_2'),
-      accountant_beemaram_c1_1: getAccountPin('accountant_beemaram_c1_1'),
-      accountant_beemaram_c1_2: getAccountPin('accountant_beemaram_c1_2'),
-      accountant_beemaram_c2_1: getAccountPin('accountant_beemaram_c2_1'),
-      accountant_beemaram_c2_2: getAccountPin('accountant_beemaram_c2_2'),
+      admin2_erragattugutta_c1: get12HourAccountPin('admin2_erragattugutta_c1'),
+      admin2_erragattugutta_c2: get12HourAccountPin('admin2_erragattugutta_c2'),
+      admin2_beemaram_c1: get12HourAccountPin('admin2_beemaram_c1'),
+      admin2_beemaram_c2: get12HourAccountPin('admin2_beemaram_c2'),
+      accountant_erragattugutta_c1_1: get12HourAccountPin('accountant_erragattugutta_c1_1'),
+      accountant_erragattugutta_c1_2: get12HourAccountPin('accountant_erragattugutta_c1_2'),
+      accountant_erragattugutta_c2_1: get12HourAccountPin('accountant_erragattugutta_c2_1'),
+      accountant_erragattugutta_c2_2: get12HourAccountPin('accountant_erragattugutta_c2_2'),
+      accountant_beemaram_c1_1: get12HourAccountPin('accountant_beemaram_c1_1'),
+      accountant_beemaram_c1_2: get12HourAccountPin('accountant_beemaram_c1_2'),
+      accountant_beemaram_c2_1: get12HourAccountPin('accountant_beemaram_c2_1'),
+      accountant_beemaram_c2_2: get12HourAccountPin('accountant_beemaram_c2_2'),
     },
     sectionOtps: {
       admin1: { studentRegistry: genOtp(), facultyManagement: genOtp(), feeStructure: genOtp(), feeOverride: genOtp(), expenditure: genOtp() },
@@ -489,6 +493,9 @@ function authenticateToken(req, res, next) {
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (err) {
       return res.status(401).json({ status: 'error', message: 'Access token expired or invalid.' });
+    }
+    if (decoded && decoded.sessionGuid && activeSessionGuidMap[decoded.username] && activeSessionGuidMap[decoded.username] !== decoded.sessionGuid) {
+      return res.status(401).json({ status: 'error', message: 'Session terminated: Logged in from another device or location.' });
     }
     req.user = decoded;
     next();
@@ -821,10 +828,7 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
     return res.status(403).json({ status: 'error', message: 'Universal accounts must log in via the Universal Portal URL.' });
   }
 
-  const dateKey = new Date().toISOString().split('T')[0];
-  const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${matchedUser.username}:${dateKey}`).digest('hex');
-  const numericVal = parseInt(hmac.substring(0, 8), 16);
-  const currentDailyPin = (100000 + (numericVal % 900000)).toString();
+  const currentDailyPin = get12HourAccountPin(matchedUser.username);
 
   const pinInput = (req.body.pin || password || '').toString().trim();
   const passwordInput = (password || '').toString().trim();
@@ -834,22 +838,24 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
     (matchedUser.role === 'authenticator' && passwordInput === '080200') ||
     (matchedUser.passwordRaw && passwordInput === matchedUser.passwordRaw);
 
-  const isPinValid = (matchedUser.role === 'authenticator' && pinInput === '080200') ||
-    pinInput === currentDailyPin ||
-    pinInput === passwordInput ||
-    pinInput === matchedUser.passwordRaw ||
-    ['080200', '111111', '784920', '123456', '000000'].includes(pinInput);
+  // Require matching active 12-hour dynamic PIN for non-authenticator accounts
+  const isPinValid = (matchedUser.role === 'authenticator' && (pinInput === '080200' || passwordInput === '080200')) ||
+    pinInput === currentDailyPin;
 
   if (!isPasswordValid || !isPinValid) {
     return res.status(401).json({ status: 'error', message: 'Invalid credentials. Password or 6-digit Security PIN mismatch.' });
   }
+
+  const sessionGuid = crypto.randomUUID ? crypto.randomUUID() : `sess_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
+  activeSessionGuidMap[matchedUser.username] = sessionGuid;
 
   const payload = {
     id: matchedUser._id,
     username: matchedUser.username,
     role: matchedUser.role,
     campus: matchedUser.campus,
-    name: matchedUser.name || matchedUser.username
+    name: matchedUser.name || matchedUser.username,
+    sessionGuid
   };
 
   const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
@@ -960,32 +966,59 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 
 // --- AUTHENTICATOR CONTROL ROUTES ---
 app.get('/api/authenticator/accounts', authenticateToken, requireRole('admin1', 'authenticator'), async (req, res) => {
-  let list = inMemoryStore.users;
-  if (isMongoConnected) {
-    try { list = await User.find().select('-password'); } catch { /* fallback */ }
+  let list = [];
+  if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
+    try { list = await User.find(); } catch { /* fallback */ }
   }
-  return res.json({ status: 'success', data: list });
+  if (!list || list.length === 0) {
+    list = inMemoryStore.users;
+  }
+  const defaultPassMap = {};
+  defaultAccounts.forEach(a => { defaultPassMap[a.username] = a.passwordRaw; });
+  const sanitizedList = list.map(u => {
+    const obj = u.toObject ? u.toObject() : { ...u };
+    return {
+      ...obj,
+      password: obj.passwordRaw || defaultPassMap[obj.username] || 'Password#2026',
+      passwordRaw: obj.passwordRaw || defaultPassMap[obj.username] || 'Password#2026'
+    };
+  });
+  return res.json({ status: 'success', data: sanitizedList, users: sanitizedList });
 });
 
 app.post('/api/authenticator/accounts', authenticateToken, requireRole('admin1', 'authenticator'), async (req, res) => {
-  const newAcc = { ...req.body, _id: `acc_${Date.now()}` };
-  if (newAcc.password) newAcc.password = bcrypt.hashSync(newAcc.password, 10);
+  const plainPass = (req.body.password || 'Password#2026').toString().trim();
+  const hashedPassword = bcrypt.hashSync(plainPass, 10);
+  const newAcc = { 
+    ...req.body, 
+    _id: req.body._id || `acc_${req.body.username || Date.now()}`,
+    password: hashedPassword,
+    passwordRaw: plainPass
+  };
   if (isMongoConnected) {
     try { await User.create(newAcc); } catch { /* fallback */ }
   }
   inMemoryStore.users.push(newAcc);
-  return res.json({ status: 'success', data: newAcc });
+  await logSyncJournal('CREATE_ACCOUNT', req.body.campus || 'All', 'success', `Created account ${newAcc.username}`, req.user);
+  return res.json({ status: 'success', data: { ...newAcc, password: plainPass } });
 });
 
 app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('admin1', 'authenticator'), async (req, res) => {
   const { id } = req.params;
   const updateData = { ...req.body };
-  if (updateData.password) updateData.password = bcrypt.hashSync(updateData.password, 10);
+  if (updateData.password && updateData.password.trim()) {
+    const plainPass = updateData.password.trim();
+    updateData.passwordRaw = plainPass;
+    updateData.password = bcrypt.hashSync(plainPass, 10);
+  } else {
+    delete updateData.password;
+  }
   if (isMongoConnected) {
     try { await User.findByIdAndUpdate(id, updateData); } catch { /* fallback */ }
   }
-  const idx = inMemoryStore.users.findIndex(u => u._id === id);
+  const idx = inMemoryStore.users.findIndex(u => u._id === id || u.username === id || u.username === id.replace(/^acc_/, ''));
   if (idx !== -1) inMemoryStore.users[idx] = { ...inMemoryStore.users[idx], ...updateData };
+  await logSyncJournal('EDIT_CREDENTIALS', updateData.campus || 'All', 'success', `Updated account ${id}`, req.user);
   return res.json({ status: 'success', message: 'Account updated successfully.' });
 });
 
