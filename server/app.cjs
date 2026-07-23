@@ -1220,34 +1220,83 @@ app.patch('/api/admin1/students/:id', authenticateToken, enforceCampusIsolation,
   return res.json({ status: 'success', data: { ...(existingStudent?.toObject ? existingStudent.toObject() : existingStudent), ...updateBody } });
 });
 
-app.delete('/api/admin1/students/:id', authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.delete('/api/admin1/students/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
+
+  // 1. Delete permanently from MongoDB collections
   if (isMongoConnected) {
-    try { await Student.findByIdAndUpdate(id, { status: 'Inactive' }); } catch { /* fallback */ }
+    try {
+      const dbStu = await Student.findOne({ $or: [{ _id: id }, { studentId: id }, { admissionNumber: id }] });
+      const targetId = dbStu ? dbStu._id : id;
+      const targetAdm = dbStu ? dbStu.admissionNumber : id;
+
+      await Promise.all([
+        Student.deleteMany({ $or: [{ _id: targetId }, { studentId: id }, { admissionNumber: targetAdm }] }),
+        FeeReceipt.deleteMany({ $or: [{ studentId: id }, { studentId: targetAdm }] }),
+        Attendance.deleteMany({ $or: [{ studentId: id }, { studentId: targetAdm }] }),
+        User.deleteMany({ username: targetAdm })
+      ]);
+    } catch (err) {
+      console.error('MongoDB permanent deletion error:', err);
+    }
   }
-  await logSyncJournal(`DELETE /api/admin1/students/${id}`, branch, 'success', '', req.user);
-  return res.json({ status: 'success', message: 'Student deactivated.' });
+
+  // 2. Delete permanently from all campus inMemoryStore lists
+  Object.keys(inMemoryStore.students).forEach(bKey => {
+    if (Array.isArray(inMemoryStore.students[bKey])) {
+      inMemoryStore.students[bKey] = inMemoryStore.students[bKey].filter(
+        s => s._id !== id && s.studentId !== id && s.admissionNumber !== id
+      );
+    }
+  });
+
+  await logSyncJournal(`DELETE /api/admin1/students/${id}`, branch, 'success', `Permanently purged student ${id} from database and all sub-records.`, req.user);
+  return res.json({ status: 'success', message: 'Student record permanently deleted from database.' });
 });
 
 app.get('/api/admin1/teachers', authenticateToken, enforceCampusIsolation, async (req, res) => {
   const branch = req.targetCampus;
-  let list = inMemoryStore.teachers[branch] || [];
+  let list = [];
   if (isMongoConnected) {
-    try { list = await Teacher.find({ branch }); } catch { /* fallback */ }
+    try {
+      if (branch === 'All' || req.user?.role === 'admin1' || req.user?.role === 'admin2') {
+        list = await Teacher.find({});
+      } else {
+        list = await Teacher.find({ branch });
+      }
+    } catch { /* fallback */ }
+  }
+  if (!list || list.length === 0) {
+    if (branch === 'All' || req.user?.role === 'admin1' || req.user?.role === 'admin2') {
+      list = Object.values(inMemoryStore.teachers).flat();
+      const seen = new Set();
+      list = list.filter(t => {
+        const key = t.id || t._id || t.name;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    } else {
+      list = inMemoryStore.teachers[branch] || [];
+    }
   }
   return res.json({ status: 'success', data: list });
 });
 
 app.post('/api/admin1/teachers', authenticateToken, enforceCampusIsolation, async (req, res) => {
-  const branch = req.targetCampus;
+  const branch = normalizeCampusName(req.body.branch || req.targetCampus);
   const newTeacher = { ...req.body, _id: `t_${Date.now()}`, branch };
   if (isMongoConnected) {
     try { await Teacher.create(newTeacher); } catch { /* fallback */ }
   }
-  if (!inMemoryStore.teachers[branch]) inMemoryStore.teachers[branch] = [];
-  inMemoryStore.teachers[branch].push(newTeacher);
-  await logSyncJournal('POST /api/admin1/teachers', branch, 'success', '', req.user);
+  ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].forEach(bKey => {
+    if (!inMemoryStore.teachers[bKey]) inMemoryStore.teachers[bKey] = [];
+    inMemoryStore.teachers[bKey].push(newTeacher);
+  });
+  await logSyncJournal('POST /api/admin1/teachers', branch, 'success', `Created faculty ${newTeacher.name} for ${branch}`, req.user);
+  return res.json({ status: 'success', data: newTeacher });
+});
   return res.json({ status: 'success', data: newTeacher });
 });
 

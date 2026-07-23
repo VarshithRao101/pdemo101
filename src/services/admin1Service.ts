@@ -47,9 +47,15 @@ export const admin1Service = {
     return res.data;
   },
 
-  async deactivateStudent(id: string): Promise<{ status: string, message: string }> {
-    const res = await apiClient.request<{ status: string; message: string }>(`/admin1/students/${id}`, { method: 'DELETE' });
+  async deleteStudent(id: string, otpKey?: string): Promise<{ status: string, message: string }> {
+    const headers: Record<string, string> = {};
+    if (otpKey) headers['X-Security-OTP'] = otpKey;
+    const res = await apiClient.request<{ status: string; message: string }>(`/admin1/students/${id}`, { method: 'DELETE', headers });
     return res;
+  },
+
+  async deactivateStudent(id: string, otpKey?: string): Promise<{ status: string, message: string }> {
+    return this.deleteStudent(id, otpKey);
   },
 
   // Faculty Management

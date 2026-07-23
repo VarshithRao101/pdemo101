@@ -308,7 +308,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [newExpCat, setNewExpCat] = useState('Utilities');
   const [newExpAmt, setNewExpAmt] = useState('');
   const [newExpDesc, setNewExpDesc] = useState('');
+  const [newExpDate, setNewExpDate] = useState(new Date().toISOString().split('T')[0]);
 
+  const [editTuitionRate, setEditTuitionRate] = useState('120000');
+  const [editHostelRate, setEditHostelRate] = useState('85000');
+  const [editTransportRate, setEditTransportRate] = useState('15000');
+  const [editMiscRate, setEditMiscRate] = useState('5000');
+
+  const [isDeleteStuOtpOpen, setIsDeleteStuOtpOpen] = useState(false);
+  const [deleteStuOtpInput, setDeleteStuOtpInput] = useState('');
 
   const [workers, setWorkers] = useState<WorkerItem[]>([]);
 
@@ -358,6 +366,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       const targetBranch = branch || selectedFeeBranch;
       const data = await admin2Service.getFeeSettings(targetBranch);
       setFeeRates(data);
+      setEditTuitionRate(String(data.tuition !== undefined ? data.tuition : 120000));
+      setEditHostelRate(String(data.hostel !== undefined ? data.hostel : 85000));
+      setEditTransportRate(String(data.transport !== undefined ? data.transport : 15000));
+      setEditMiscRate(String(data.misc !== undefined ? data.misc : 5000));
     } catch (err: any) { triggerToast(err.message || 'Failed to load fee settings.'); }
   };
 
@@ -750,6 +762,24 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     }
   };
 
+  const handlePermanentDeleteStudent = async (keyToUse: string) => {
+    if (!selectedStudent || (!selectedStudent._id && !selectedStudent.studentId)) return;
+    const targetId = selectedStudent._id || selectedStudent.studentId;
+    try {
+      setGlobalSecurityKey(keyToUse);
+      await admin1Service.deleteStudent(targetId, keyToUse);
+      const next = students.filter(s => s._id !== targetId && s.studentId !== targetId && s.admissionNumber !== targetId);
+      setStudents(next);
+      setSelectedStudent(null);
+      setEditStudent(null);
+      setIsDeleteStuOtpOpen(false);
+      setDeleteStuOtpInput('');
+      triggerToast(`Student record for ${selectedStudent.name} permanently deleted from database.`);
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to delete student record.');
+    }
+  };
+
   const handleTeacherSave = async (updated: Teacher) => {
     setEditTeacher({ ...updated });
     setFacActionType('edit');
@@ -1050,10 +1080,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     try {
       setGlobalSecurityKey(otpToUse.trim());
       const payload = {
-        tuition: Number(feeRates.tuition) || 0,
-        hostel: Number(feeRates.hostel) || 0,
-        transport: Number(feeRates.transport) || 0,
-        misc: Number(feeRates.misc) || 0,
+        tuition: Number(editTuitionRate) || 0,
+        hostel: Number(editHostelRate) || 0,
+        transport: Number(editTransportRate) || 0,
+        misc: Number(editMiscRate) || 0,
         isLocked: true,
         branch: selectedFeeBranch
       };
@@ -1330,14 +1360,25 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 </div>
               </div>
 
-              {/* SAVE AND SUBMIT PROFILE CHANGES */}
-              <button 
-                onClick={() => { setOtpInput(''); setIsOtpModalOpen(true); }} 
-                style={styles.saveSubmitBtn} 
-                className="press-interactive"
-              >
-                Submit Student Profile Changes
-              </button>
+              {/* SAVE AND SUBMIT PROFILE CHANGES & DELETE OPTION FOR ADMIN 1 */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+                <button 
+                  onClick={() => { setOtpInput(''); setIsOtpModalOpen(true); }} 
+                  style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0 }} 
+                  className="press-interactive"
+                >
+                  Submit Profile Changes
+                </button>
+                {role === 'admin1' && (
+                  <button
+                    onClick={() => { setDeleteStuOtpInput(''); setIsDeleteStuOtpOpen(true); }}
+                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#DC2626', color: '#fff', border: 'none' }}
+                    className="press-interactive"
+                  >
+                    Delete Student (Permanent)
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
@@ -2978,8 +3019,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         await admin2Service.createExpenditure({
           category: newExpCat,
           amount: Number(newExpAmt),
-          description: newExpDesc
-        });
+          description: newExpDesc,
+          date: newExpDate || new Date().toISOString().split('T')[0]
+        } as any);
         setNewExpAmt(''); setNewExpDesc('');
         setIsExpOtpOpen(false); setExpOtpInput('');
         triggerToast('Expenditure logged successfully.');
@@ -3235,7 +3277,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <h4 style={styles.sectionSubtitle}>
               Log New Expenditure {role === 'admin1' ? `(For ${selectedExpBranch})` : `(Campus: ${loggedInCampus})`}
             </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={styles.formLabel}>Reporting Date</label>
+                <input type="date" value={newExpDate} onChange={(e) => setNewExpDate(e.target.value)} style={styles.textInputBox} />
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={styles.formLabel}>Category</label>
                 <select value={newExpCat} onChange={(e) => setNewExpCat(e.target.value)} style={styles.selectInput}>
@@ -3661,11 +3707,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     const getProfileData = () => {
       if (role === 'admin1') {
         return {
-          initials: 'RC',
-          name: 'Mr. Satish Varma (Rector)',
-          title: 'General Principal Superintendent Rector',
-          clearance: 'Level 1 Executive Clearance (All 4 Branches)',
-          registry: 'Global Institutional ERP Cockpit'
+          initials: 'SR',
+          name: 'Sriram Reddy',
+          title: 'Head & General Principal, Superintendent Rector',
+          clearance: 'Level 1 Clearance',
+          registry: 'Global Institution ERP'
         };
       } else if (role === 'admin2') {
         return {
@@ -3717,13 +3763,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  const totals = (attendanceSummary as any)?.totals || {
-    studentsPresent: 0,
-    studentsAbsent: 0,
-    facultyPresent: 0,
-    facultyAbsent: 0
-  };
-
   return (
     <div style={styles.container} className="anim-slide-up">
       {renderBackgroundDesign('gold')}
@@ -3771,47 +3810,41 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           {role === 'admin1' ? (
             <>
               <div style={styles.metricsGrid}>
-                <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring neo-2d-card hover-gold ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
-                  <span style={styles.metricLabel}>Total Students Present Today</span>
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
+                  <span style={styles.metricLabel}>Erragattugutta Campus C1</span>
                   <strong style={{ ...styles.metricValue, color: '#10B981' }}>
-                    {(totals.studentsPresent || 0).toLocaleString()}
+                    {students.filter(s => s.branch === 'Erragattugutta C1').length} Students
                   </strong>
-                  <span style={styles.metricSub}>
-                    {((totals.studentsPresent || 0) / Math.max((totals.studentsPresent || 0) + (totals.studentsAbsent || 0), 1) * 100).toFixed(1)}% Attendance Rate
-                  </span>
-                  <span className="glass-status-pill status-present">Live</span>
+                  <span style={styles.metricSub}>Live Campus Enrolled</span>
+                  <span className="glass-status-pill status-present">Active Node</span>
                 </GlassCard>
-                <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
-                  <span style={styles.metricLabel}>Total Students Absent Today</span>
-                  <strong style={{ ...styles.metricValue, color: '#EF4444' }}>
-                    {(totals.studentsAbsent || 0).toLocaleString()}
+
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
+                  <span style={styles.metricLabel}>Erragattugutta Campus C2</span>
+                  <strong style={{ ...styles.metricValue, color: '#3B82F6' }}>
+                    {students.filter(s => s.branch === 'Erragattugutta C2').length} Students
                   </strong>
-                  <span style={styles.metricSub}>
-                    {((totals.studentsAbsent || 0) / Math.max((totals.studentsPresent || 0) + (totals.studentsAbsent || 0), 1) * 100).toFixed(1)}% Absent
-                  </span>
-                  <span className="glass-status-pill status-absent">Watch</span>
+                  <span style={styles.metricSub}>Live Campus Enrolled</span>
+                  <span className="glass-status-pill status-active">Active Node</span>
                 </GlassCard>
               </div>
               <div style={styles.metricsGrid}>
-                <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring neo-2d-card hover-gold ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
-                  <span style={styles.metricLabel}>Total Faculty Present Today</span>
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
+                  <span style={styles.metricLabel}>Beemaram Campus C1</span>
                   <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>
-                    {(totals.facultyPresent || 0).toLocaleString()}
+                    {students.filter(s => s.branch === 'Beemaram C1').length} Students
                   </strong>
-                  <span style={styles.metricSub}>
-                    {((totals.facultyPresent || 0) / Math.max((totals.facultyPresent || 0) + (totals.facultyAbsent || 0), 1) * 100).toFixed(1)}% Present
-                  </span>
-                  <span className="glass-status-pill status-active">Stable</span>
+                  <span style={styles.metricSub}>Live Campus Enrolled</span>
+                  <span className="glass-status-pill status-paid">Active Node</span>
                 </GlassCard>
-                <GlassCard hoverable={false} style={styles.metricCard} className={`glass-gold-ring ${livePulseKey ? 'anim-pulse-gold' : ''}`}>
-                  <span style={styles.metricLabel}>Faculty on Leave Today</span>
-                  <strong style={styles.metricValue}>
-                    {(totals.facultyAbsent || 0).toLocaleString()}
+
+                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
+                  <span style={styles.metricLabel}>Beemaram Campus C2</span>
+                  <strong style={{ ...styles.metricValue, color: '#8B5CF6' }}>
+                    {students.filter(s => s.branch === 'Beemaram C2').length} Students
                   </strong>
-                  <span style={styles.metricSub}>
-                    {((totals.facultyAbsent || 0) / Math.max((totals.facultyPresent || 0) + (totals.facultyAbsent || 0), 1) * 100).toFixed(1)}% Leave Rate
-                  </span>
-                  <span className="glass-status-pill status-warning">Alert</span>
+                  <span style={styles.metricSub}>Live Campus Enrolled</span>
+                  <span className="glass-status-pill status-info">Active Node</span>
                 </GlassCard>
               </div>
             </>
@@ -4062,6 +4095,29 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               <input type="text" autoFocus placeholder="Enter OTP..." value={otpInput} onChange={(e) => setOtpInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter' && otpInput.trim()) handleStudentSave(editStudent, otpInput.trim()); }} style={{ padding: '12px 16px', border: '1px solid var(--card-border)', borderRadius: '10px', fontSize: '14px', fontWeight: 700, letterSpacing: '0.12em', textAlign: 'center', backgroundColor: '#fff', outline: 'none', fontFamily: 'monospace', color: 'var(--dark-charcoal)' }} />
               <button onClick={() => handleStudentSave(editStudent, otpInput.trim())} disabled={!otpInput.trim()} style={{ ...styles.saveSubmitBtn, marginTop: 0, opacity: otpInput.trim() ? 1 : 0.4 }} className="press-interactive">Confirm & Save Changes</button>
               <button onClick={() => { setIsOtpModalOpen(false); setOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permanent Student Delete Confirmation OTP Modal */}
+      {isDeleteStuOtpOpen && selectedStudent && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.65)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' }}>
+          <div style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '20px', margin: '0 16px', backgroundColor: 'rgba(255,255,255,0.98)', border: '2px solid #EF4444', boxShadow: '0 25px 60px rgba(239,68,68,0.25)' }} className="anim-slide-up">
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', fontSize: '24px', fontWeight: 900 }}>⚠️</div>
+              <h3 style={{ margin: '0 0 6px', fontWeight: 900, fontSize: '16px', color: '#DC2626' }}>Permanent Database Purge</h3>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--dark-charcoal)', lineHeight: 1.5, fontWeight: 600 }}>
+                This action will <strong>PERMANENTLY DELETE</strong> student record for <strong style={{ color: '#DC2626' }}>{selectedStudent.name}</strong> ({selectedStudent.admissionNumber}) from MongoDB, fees, accountants, attendance, and all databases.
+              </p>
+              <div style={{ marginTop: '8px', padding: '6px 10px', backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: '8px', fontSize: '10.5px', color: '#B91C1C', fontWeight: 700 }}>
+                🚫 THIS ACTION CANNOT BE RECOVERED.
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <input type="text" autoFocus placeholder="Enter Security OTP..." value={deleteStuOtpInput} onChange={(e) => setDeleteStuOtpInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter' && deleteStuOtpInput.trim()) handlePermanentDeleteStudent(deleteStuOtpInput.trim()); }} style={{ padding: '12px 16px', border: '2px solid #EF4444', borderRadius: '12px', fontSize: '15px', fontWeight: 800, letterSpacing: '0.15em', textAlign: 'center', backgroundColor: '#fff', outline: 'none', fontFamily: 'monospace', color: '#DC2626' }} />
+              <button onClick={() => handlePermanentDeleteStudent(deleteStuOtpInput.trim())} disabled={!deleteStuOtpInput.trim()} style={{ ...styles.saveSubmitBtn, marginTop: 0, backgroundColor: '#DC2626', opacity: deleteStuOtpInput.trim() ? 1 : 0.4 }} className="press-interactive">PERMANENTLY PURGE STUDENT</button>
+              <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel — Keep Student Record</button>
             </div>
           </div>
         </div>

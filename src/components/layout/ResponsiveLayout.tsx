@@ -505,8 +505,12 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
 
   if (portalRole === 'authenticator') {
     return (
-      <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: 'var(--bg-primary)' }}>
+      <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: 'var(--bg-primary)', position: 'relative' }}>
         {children}
+        {/* Global Permanent "TB" Trademark Badge */}
+        <div style={{ position: 'fixed', bottom: '12px', right: '16px', zIndex: 99999, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 10px', borderRadius: '8px', backgroundColor: 'rgba(15, 23, 42, 0.88)', backdropFilter: 'blur(8px)', border: '1.5px solid rgba(212, 175, 55, 0.5)', boxShadow: '0 4px 14px rgba(0,0,0,0.3)', color: 'var(--royal-gold)', fontSize: '11px', fontWeight: 900, letterSpacing: '0.1em', fontFamily: 'sans-serif' }}>
+          TB
+        </div>
       </div>
     );
   }
@@ -819,6 +823,11 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
 
         {children}
       </main>
+
+      {/* Global Permanent "TB" Trademark Badge */}
+      <div style={{ position: 'fixed', bottom: '12px', right: '16px', zIndex: 99999, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 10px', borderRadius: '8px', backgroundColor: 'rgba(15, 23, 42, 0.88)', backdropFilter: 'blur(8px)', border: '1.5px solid rgba(212, 175, 55, 0.5)', boxShadow: '0 4px 14px rgba(0,0,0,0.3)', color: 'var(--royal-gold)', fontSize: '11px', fontWeight: 900, letterSpacing: '0.1em', fontFamily: 'sans-serif' }}>
+        TB
+      </div>
     </div>
   );
 }
