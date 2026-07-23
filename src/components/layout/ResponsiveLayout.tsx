@@ -211,7 +211,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           backgroundColor: 'var(--bg-primary)',
         }}>
           <h5 style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
-            📍 Campus Location
+            Campus Location
           </h5>
           <span style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>
             Erragattu Gutta, Bheemaram, Hanumakonda, Telangana
@@ -225,7 +225,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           backgroundColor: 'var(--bg-primary)',
         }}>
           <h5 style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
-            📞 Contact Numbers
+            Contact Numbers
           </h5>
           <span style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>
             +91 7416 380 320 | +91 7416 380 324
@@ -239,7 +239,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           backgroundColor: 'var(--bg-primary)',
         }}>
           <h5 style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
-            🌐 Web Portal & Email
+            Web Portal & Email
           </h5>
           <span style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>
             www.inspirehnk.org <br />
@@ -259,9 +259,9 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {[
-          { title: '🥇 JEE Mains Excellence', desc: 'Over 45 students from our Hanumakonda campus secured ranks in the top 1000 in the recent JEE Mains session.', tag: 'Academic' },
-          { title: '🔬 Robotics Exhibition', desc: 'Intermediate science exhibition models for clean energy won 1st place in district evaluations.', tag: 'Science' },
-          { title: '🏆 Inter-College Basketball Gold', desc: 'Inspire Junior College Sports Team won the Inter-District Intermediate Championship finals.', tag: 'Sports' }
+          { title: 'JEE Mains Excellence', desc: 'Over 45 students from our Hanumakonda campus secured ranks in the top 1000 in the recent JEE Mains session.', tag: 'Academic' },
+          { title: 'Robotics Exhibition', desc: 'Intermediate science exhibition models for clean energy won 1st place in district evaluations.', tag: 'Science' },
+          { title: 'Inter-College Basketball Gold', desc: 'Inspire Junior College Sports Team won the Inter-District Intermediate Championship finals.', tag: 'Sports' }
         ].map((item, idx) => (
           <div key={idx} style={{
             padding: '14px',
@@ -421,7 +421,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
             }}
             className="press-interactive"
           >
-            {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
+            {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
           </button>
         </div>
 
@@ -496,7 +496,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           }}
           className="press-interactive"
         >
-          🔑 Reset Portal Security PIN
+          Reset Portal Security PIN
         </button>
 
       </div>
@@ -533,7 +533,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
             </div>
             <div style={styles.drawerProfileInfo}>
               <h3 style={styles.drawerProfileName}>{displayName}</h3>
-              <span style={styles.drawerProfileMeta}>👤 {displayId} &gt;</span>
+              <span style={styles.drawerProfileMeta}>{displayId} &gt;</span>
               <div style={styles.drawerBrandText}>{displayBrand}</div>
               <div style={{ marginTop: '10px' }}>
                 <LiveConnectionIndicator compact />
@@ -577,7 +577,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               }}
               style={styles.drawerLinkFooterBtn}
             >
-              👤 Switch Account
+              Switch Account
             </button>
             <div style={styles.footerBrandingWrapper}>
               <div style={styles.brandingCrestSmall}>I</div>

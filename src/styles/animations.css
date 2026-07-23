@@ -506,5 +506,86 @@
   animation-play-state: paused;
 }
 
+@keyframes marqueeReverse {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0%); }
+}
+
+.marquee-track-reverse {
+  display: flex;
+  width: 200%;
+  animation: marqueeReverse 28s linear infinite;
+}
+
+.marquee-track-reverse:hover {
+  animation-play-state: paused;
+}
+
+/* Kinetic Text & Hologram Animations */
+@keyframes neonPulse {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.6), 0 0 20px rgba(56, 189, 248, 0.4);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(245, 158, 11, 0.8), 0 0 35px rgba(245, 158, 11, 0.6);
+  }
+}
+
+.anim-neon-pulse {
+  animation: neonPulse 3s infinite ease-in-out;
+}
+
+@keyframes floatOrb {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-20px) scale(1.08);
+  }
+}
+
+.anim-float-orb {
+  animation: floatOrb 8s infinite ease-in-out;
+}
+
+/* Shiny 3D Glare Reflection on Hover */
+.shiny-3d-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-style: preserve-3d;
+}
+
+.shiny-3d-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 40%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.03) 60%,
+    transparent 100%
+  );
+  transform: rotate(30deg) translateY(-100%);
+  transition: transform 0.8s ease;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.shiny-3d-card:hover::before {
+  transform: rotate(30deg) translateY(100%);
+}
+
+.shiny-3d-card:hover {
+  transform: translateY(-10px) rotateX(4deg) rotateY(-3deg) scale(1.02);
+  box-shadow: 0 25px 50px -12px rgba(10, 37, 64, 0.25), 0 0 20px rgba(56, 189, 248, 0.2);
+}
+
+
 
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import collegeLogo from '../assets/college logo.png';
+import { Mesmerizing3DCanvas } from '../components/common/Mesmerizing3DCanvas';
+import { HeroVideoBackground } from '../components/common/HeroVideoBackground';
 
 interface ProgramCard {
   id: string;
@@ -370,33 +372,17 @@ export const PortfolioView: React.FC = () => {
       </header>
 
       {/* ─── 3. HERO SECTION WITH BACKGROUND VIDEO OVERLAY & 3D ELEMENTS ─── */}
-      <section style={{ position: 'relative', backgroundColor: '#0A2540', color: '#FFFFFF', minHeight: '640px', overflow: 'hidden', padding: '5rem 1.5rem 6rem', display: 'flex', alignItems: 'center' }}>
+      <section style={{ position: 'relative', backgroundColor: '#071626', color: '#FFFFFF', minHeight: '680px', overflow: 'hidden', padding: '5.5rem 1.5rem 6rem', display: 'flex', alignItems: 'center' }}>
         
-        {/* CINEMATIC HERO VIDEO BACKGROUND OVERLAY */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            opacity: 0.24,
-            filter: 'brightness(0.7) contrast(1.2)',
-            zIndex: 1,
-            pointerEvents: 'none'
-          }}
-        >
-          <source src="https://assets.mixkit.co/videos/preview/mixkit-university-students-working-in-a-chemistry-lab-41398-large.mp4" type="video/mp4" />
-        </video>
+        {/* PREMIUM HERO VIDEO BACKGROUND */}
+        <HeroVideoBackground overlayOpacity={0.7} />
 
-        {/* Ambient 3D Glowing Orbs & Geometry Grid */}
-        <div style={{ position: 'absolute', top: '-10%', left: '10%', width: '450px', height: '450px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(0, 194, 255, 0.25) 0%, rgba(10, 37, 64, 0) 70%)', filter: 'blur(80px)', zIndex: 2, pointerEvents: 'none' }} className="anim-float-3d" />
-        <div style={{ position: 'absolute', bottom: '-15%', right: '10%', width: '500px', height: '500px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(217, 119, 6, 0.25) 0%, rgba(10, 37, 64, 0) 70%)', filter: 'blur(90px)', zIndex: 2, pointerEvents: 'none' }} />
+        {/* MESMERIZING INTERACTIVE 3D PARTICLES & WIREFRAME GEOMETRY CANVAS */}
+        <Mesmerizing3DCanvas density={75} colorTheme="neon" interactive={true} />
+
+        {/* Ambient 3D Glowing Light Rays */}
+        <div style={{ position: 'absolute', top: '-10%', left: '10%', width: '480px', height: '480px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(56, 189, 248, 0.28) 0%, rgba(7, 22, 38, 0) 70%)', filter: 'blur(80px)', zIndex: 3, pointerEvents: 'none' }} className="anim-float-orb" />
+        <div style={{ position: 'absolute', bottom: '-15%', right: '8%', width: '520px', height: '520px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(245, 158, 11, 0.25) 0%, rgba(7, 22, 38, 0) 70%)', filter: 'blur(90px)', zIndex: 3, pointerEvents: 'none' }} className="anim-float-orb" />
 
         <div style={{ maxWidth: '1280px', margin: '0 auto', width: '100%', position: 'relative', zIndex: 10 }}>
           
@@ -404,14 +390,14 @@ export const PortfolioView: React.FC = () => {
             
             {/* Left Column Content */}
             <div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', color: '#38BDF8', padding: '6px 14px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '20px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#34D399', display: 'inline-block' }} />
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(56, 189, 248, 0.4)', backdropFilter: 'blur(12px)', color: '#38BDF8', padding: '6px 16px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '20px', boxShadow: '0 0 15px rgba(56, 189, 248, 0.2)' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#34D399', display: 'inline-block', boxShadow: '0 0 8px #34D399' }} />
                 <span>PREMIER JUNIOR COLLEGE IN HANUMAKONDA</span>
               </div>
 
               <h1 style={{ fontSize: 'clamp(2.4rem, 4.5vw, 3.6rem)', fontWeight: 850, color: '#FFFFFF', lineHeight: 1.15, letterSpacing: '-0.03em', marginBottom: '20px' }}>
                 Building Strong Foundations for{' '}
-                <span className="text-gradient-animated" style={{ display: 'inline-block', minWidth: '280px' }}>
+                <span className="text-gradient-animated anim-neon-pulse" style={{ display: 'inline-block', minWidth: '280px' }}>
                   {dynamicWords[wordIndex]}
                 </span>
               </h1>
@@ -468,18 +454,18 @@ export const PortfolioView: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Column 3D Elevated Card */}
+            {/* Right Column 3D Shiny Elevated Card */}
             <div className="card-3d-wrapper">
               <div
                 style={{
-                  backgroundColor: 'rgba(15, 23, 42, 0.75)',
-                  backdropFilter: 'blur(20px)',
-                  border: '1.5px solid rgba(255,255,255,0.18)',
+                  backgroundColor: 'rgba(15, 23, 42, 0.82)',
+                  backdropFilter: 'blur(24px)',
+                  border: '1.5px solid rgba(56, 189, 248, 0.3)',
                   borderRadius: '24px',
                   padding: '2.4rem',
-                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(56, 189, 248, 0.15)'
                 }}
-                className="card-3d-tilt"
+                className="card-3d-tilt shiny-3d-card"
               >
                 <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#D97706', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px' }}>
                   Academic Guarantee
@@ -538,7 +524,7 @@ export const PortfolioView: React.FC = () => {
               </h3>
             </div>
 
-            {/* Photo Cards Grid with Clean Placeholders */}
+            {/* Photo Cards Grid with Clean 3D Placeholders */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
               {photoPlaceholders.map((photo) => (
                 <div
@@ -548,10 +534,9 @@ export const PortfolioView: React.FC = () => {
                     border: '1px solid #E2E8F0',
                     borderRadius: '16px',
                     overflow: 'hidden',
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.04)',
-                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.04)'
                   }}
-                  className="card-hover-lift"
+                  className="card-hover-lift shiny-3d-card"
                 >
                   {/* Photo Container Placeholder Slot */}
                   <div
@@ -567,9 +552,6 @@ export const PortfolioView: React.FC = () => {
                       color: photo.accentColor
                     }}
                   >
-                    {/* Placeholder image tag slot - drop real photo URL in src */}
-                    {/* <img src="/path/to/real-photo.jpg" alt={photo.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> */}
-                    
                     <div style={{ marginBottom: '8px' }}>{photo.svgIcon}</div>
                     <span style={{ backgroundColor: '#FFFFFF', color: photo.accentColor, border: '1px solid #E2E8F0', fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
                       {photo.category}
@@ -588,6 +570,39 @@ export const PortfolioView: React.FC = () => {
 
         </div>
       </section>
+
+      {/* ─── SECONDARY REVERSE MOVING TEXT TICKER TAPE ─── */}
+      <div style={{ backgroundColor: '#051329', color: '#FFFFFF', padding: '12px 0', fontSize: '0.85rem', fontWeight: 700, overflow: 'hidden', borderTop: '1px solid rgba(56, 189, 248, 0.2)', borderBottom: '1px solid rgba(56, 189, 248, 0.2)' }}>
+        <div className="marquee-track-reverse">
+          <div style={{ display: 'flex', gap: '3rem', whiteSpace: 'nowrap', alignItems: 'center' }}>
+            <span style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8', border: '1px solid rgba(56, 189, 248, 0.4)', padding: '3px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.05em' }}>
+              NATIONAL RANK 1 NEET-UG
+            </span>
+            <span>SUPER-60 HIGH SCORER BATCH AT BHEEMARAM & HUNTER ROAD CAMPUS</span>
+            <span style={{ color: '#D97706', fontWeight: 800 }}>///</span>
+            <span>100% PASS GUARANTEE ICAI CA FOUNDATION ACADEMY</span>
+            <span style={{ color: '#D97706', fontWeight: 800 }}>///</span>
+            <span>3D DIGITAL BOTANY & ZOOLOGY DIAGNOSTIC LABS</span>
+            <span style={{ color: '#D97706', fontWeight: 800 }}>///</span>
+            <span>UPSC CIVIL SERVICES FOUNDATION PROGRAM</span>
+            <span style={{ color: '#D97706', fontWeight: 800 }}>///</span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '3rem', whiteSpace: 'nowrap', alignItems: 'center' }}>
+            <span style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8', border: '1px solid rgba(56, 189, 248, 0.4)', padding: '3px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.05em' }}>
+              NATIONAL RANK 1 NEET-UG
+            </span>
+            <span>SUPER-60 HIGH SCORER BATCH AT BHEEMARAM & HUNTER ROAD CAMPUS</span>
+            <span style={{ color: '#D97706', fontWeight: 800 }}>///</span>
+            <span>100% PASS GUARANTEE ICAI CA FOUNDATION ACADEMY</span>
+            <span style={{ color: '#D97706', fontWeight: 800 }}>///</span>
+            <span>3D DIGITAL BOTANY & ZOOLOGY DIAGNOSTIC LABS</span>
+            <span style={{ color: '#D97706', fontWeight: 800 }}>///</span>
+            <span>UPSC CIVIL SERVICES FOUNDATION PROGRAM</span>
+            <span style={{ color: '#D97706', fontWeight: 800 }}>///</span>
+          </div>
+        </div>
+      </div>
 
       {/* ─── 4. STATS STRIP ─── */}
       <section style={{ backgroundColor: '#051329', color: '#FFFFFF', padding: '3rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
@@ -683,7 +698,7 @@ export const PortfolioView: React.FC = () => {
                 boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
                 transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
               }}
-              className="card-hover-lift"
+              className="card-hover-lift shiny-3d-card"
             >
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
@@ -768,7 +783,7 @@ export const PortfolioView: React.FC = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '30px' }}>
             
-            <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+            <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }} className="shiny-3d-card">
               <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#EFF6FF', color: '#1D4ED8', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
@@ -781,7 +796,7 @@ export const PortfolioView: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+            <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }} className="shiny-3d-card">
               <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#ECFDF5', color: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
@@ -794,7 +809,7 @@ export const PortfolioView: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+            <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }} className="shiny-3d-card">
               <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#FEF3C7', color: '#B45309', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="20" x2="18" y2="10" />
@@ -808,7 +823,7 @@ export const PortfolioView: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+            <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }} className="shiny-3d-card">
               <div style={{ width: '50px', height: '50px', borderRadius: '12px', backgroundColor: '#F5F3FF', color: '#6D28D9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />

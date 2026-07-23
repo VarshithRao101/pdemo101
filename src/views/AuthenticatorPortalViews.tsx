@@ -68,7 +68,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     msg.toLowerCase().includes('not found') || 
                     msg.toLowerCase().includes('error') ||
                     msg.toLowerCase().includes('incorrect');
-    const symbol = isError ? '❌ ' : '✓ ';
+    const symbol = isError ? 'ERROR: ' : '✓ ';
     setToast(symbol + msg);
   };
 

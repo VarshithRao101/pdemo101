@@ -716,7 +716,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     msg.toLowerCase().includes('not found') || 
                     msg.toLowerCase().includes('error') ||
                     msg.toLowerCase().includes('incorrect');
-    const symbol = isError ? '❌ ' : '✓ ';
+    const symbol = isError ? 'ERROR: ' : '✓ ';
     setToastMessage(symbol + msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -2496,7 +2496,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     Enter the <strong>Fee Structure Security OTP</strong> from the Authenticator portal to unlock baseline fee editing for <strong>{selectedFeeBranch}</strong>.
                   </p>
                   <div style={styles.otpTipBanner}>
-                    💡 <strong>Tip:</strong> Copy Fee Structure OTP from Authenticator Portal or enter master PIN (080200).
+                    <strong>Tip:</strong> Copy Fee Structure OTP from Authenticator Portal or enter master PIN (080200).
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -2535,7 +2535,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     Enter the <strong>Academic Fee OTP</strong> from the Authenticator to finalize & propagate the new baseline fee rates for <strong>{selectedFeeBranch}</strong>.
                   </p>
                   <div style={styles.otpTipBanner}>
-                    💡 <strong>Note:</strong> Saving will update fee rates for non-customized student profiles in this campus.
+                    <strong>Note:</strong> Saving will update fee rates for non-customized student profiles in this campus.
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -2952,7 +2952,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     Enter the <strong>Fee Override Security OTP</strong> from the Authenticator portal to apply fee changes for <strong>{selectedFeeStudent.name}</strong>.
                   </p>
                   <div style={styles.otpTipBanner}>
-                    💡 <strong>Tip:</strong> Copy Fee Override OTP from Authenticator Portal or enter master PIN (080200).
+                    <strong>Tip:</strong> Copy Fee Override OTP from Authenticator Portal or enter master PIN (080200).
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -3521,7 +3521,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{w.role} • {w.monthPeriod} • ₹{(w.amount || w.salary || 0).toLocaleString('en-IN')}/mo</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button onClick={() => triggerWorkerAction('toggle', w)} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', backgroundColor: w.paid ? 'rgba(16,185,129,0.12)' : 'var(--royal-gold)', color: w.paid ? '#10B981' : '#000', fontWeight: 800, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }} className="press-interactive">{w.paid ? '🟢 Paid' : '🔴 Unpaid'}</button>
+                    <button onClick={() => triggerWorkerAction('toggle', w)} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', backgroundColor: w.paid ? 'rgba(16,185,129,0.12)' : 'var(--royal-gold)', color: w.paid ? '#10B981' : '#000', fontWeight: 800, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }} className="press-interactive">{w.paid ? 'Paid' : 'Unpaid'}</button>
                     <button onClick={() => triggerWorkerAction('delete', w)} style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
                   </div>
                 </div>
@@ -4105,13 +4105,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.65)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' }}>
           <div style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '20px', margin: '0 16px', backgroundColor: 'rgba(255,255,255,0.98)', border: '2px solid #EF4444', boxShadow: '0 25px 60px rgba(239,68,68,0.25)' }} className="anim-slide-up">
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', fontSize: '24px', fontWeight: 900 }}>⚠️</div>
+              <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', fontSize: '20px', fontWeight: 900 }}>!</div>
               <h3 style={{ margin: '0 0 6px', fontWeight: 900, fontSize: '16px', color: '#DC2626' }}>Permanent Database Purge</h3>
               <p style={{ margin: 0, fontSize: '12px', color: 'var(--dark-charcoal)', lineHeight: 1.5, fontWeight: 600 }}>
                 This action will <strong>PERMANENTLY DELETE</strong> student record for <strong style={{ color: '#DC2626' }}>{selectedStudent.name}</strong> ({selectedStudent.admissionNumber}) from MongoDB, fees, accountants, attendance, and all databases.
               </p>
               <div style={{ marginTop: '8px', padding: '6px 10px', backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: '8px', fontSize: '10.5px', color: '#B91C1C', fontWeight: 700 }}>
-                🚫 THIS ACTION CANNOT BE RECOVERED.
+                THIS ACTION CANNOT BE RECOVERED.
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
