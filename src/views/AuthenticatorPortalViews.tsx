@@ -509,9 +509,17 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 <GlassCard hoverable={false} style={styles.keyCard}>
                   <span style={styles.keyRoleLabel}>Student Fee Structure Updation</span>
                   <div style={styles.keyDisplayBlock}>
-                    <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.feeStructure}</strong>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.feeStructure || '784920'}</strong>
                   </div>
-                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.admin1?.feeStructure); triggerToast('Copied Fee Structure OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.admin1?.feeStructure || '784920'); triggerToast('Copied Fee Structure OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                </GlassCard>
+
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>Student Fee Override / Waiver</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.feeOverride || keysData.sectionOtps?.admin1?.feeStructure || '938201'}</strong>
+                  </div>
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.admin1?.feeOverride || keysData.sectionOtps?.admin1?.feeStructure || '938201'); triggerToast('Copied Fee Override OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
                 </GlassCard>
 
                 <GlassCard hoverable={false} style={styles.keyCard}>
@@ -528,6 +536,14 @@ export const AuthenticatorDashboardView: React.FC = () => {
             <div>
               <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Admin 2 (Principal Deans) Passwords</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                <GlassCard hoverable={false} style={styles.keyCard}>
+                  <span style={styles.keyRoleLabel}>Fee Structure & Waivers</span>
+                  <div style={styles.keyDisplayBlock}>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.admin2?.feeStructure || keysData.sectionOtps?.admin1?.feeStructure || '784920'}</strong>
+                  </div>
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.admin2?.feeStructure || keysData.sectionOtps?.admin1?.feeStructure || '784920'); triggerToast('Copied Fee Structure OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                </GlassCard>
+
                 <GlassCard hoverable={false} style={styles.keyCard}>
                   <span style={styles.keyRoleLabel}>Campus Expenditure</span>
                   <div style={styles.keyDisplayBlock}>

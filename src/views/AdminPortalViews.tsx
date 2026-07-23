@@ -324,6 +324,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [feeOtpInput, setFeeOtpInput] = useState('');
   const [isAcadFeeOtpOpen, setIsAcadFeeOtpOpen] = useState(false);
   const [acadFeeOtpInput, setAcadFeeOtpInput] = useState('');
+  const [isUnlockFeeOtpOpen, setIsUnlockFeeOtpOpen] = useState(false);
+  const [unlockFeeOtpInput, setUnlockFeeOtpInput] = useState('');
   const [isExpOtpOpen, setIsExpOtpOpen] = useState(false);
   const [expOtpInput, setExpOtpInput] = useState('');
   const [isWorkerOtpOpen, setIsWorkerOtpOpen] = useState(false);
@@ -1039,26 +1041,45 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     triggerToast('Academic Calendar timeline additions submitted.');
   };
 
-  const handleSaveAcademicFees = async () => {
+  const handleSaveAcademicFees = async (otpToUse: string) => {
+    if (!otpToUse || !otpToUse.trim()) {
+      triggerToast('Please enter a valid 6-digit Security Authorization Key / OTP.');
+      return;
+    }
     try {
+      setGlobalSecurityKey(otpToUse.trim());
       const saved = await admin2Service.updateFeeSettings({ ...feeRates, isLocked: true, branch: selectedFeeBranch });
       setFeeRates(saved);
       setIsEditingFees(false);
+      setIsAcadFeeOtpOpen(false);
+      setAcadFeeOtpInput('');
       triggerToast(`Academic baseline fees for ${selectedFeeBranch} finalized and locked.`);
       fetchStudents();
     } catch (err: any) {
-      triggerToast(err.message || 'Failed to save fee settings.');
+      triggerToast(err.message || 'Invalid Security OTP. Failed to save fee settings.');
     }
   };
 
-  const handleUnlockFees = async () => {
+  const handleUnlockFees = () => {
+    setUnlockFeeOtpInput('');
+    setIsUnlockFeeOtpOpen(true);
+  };
+
+  const handleConfirmUnlockFees = async (otpToUse: string) => {
+    if (!otpToUse || !otpToUse.trim()) {
+      triggerToast('Please enter a valid 6-digit Security Authorization Key / OTP.');
+      return;
+    }
     try {
+      setGlobalSecurityKey(otpToUse.trim());
       const saved = await admin2Service.updateFeeSettings({ isLocked: false, branch: selectedFeeBranch });
       setFeeRates(saved);
       setIsEditingFees(true);
-      triggerToast(`Academic baseline fees for ${selectedFeeBranch} unlocked for editing.`);
+      setIsUnlockFeeOtpOpen(false);
+      setUnlockFeeOtpInput('');
+      triggerToast(`Security OTP verified! Baseline fee rates for ${selectedFeeBranch} unlocked for editing.`);
     } catch (err: any) {
-      triggerToast(err.message || 'Failed to unlock fee settings.');
+      triggerToast(err.message || 'Invalid Security OTP. Failed to unlock fee editor.');
     }
   };
 
@@ -2343,19 +2364,80 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             </div>
           </GlassCard>
 
-          {/* Academic Fee OTP modal */}
-          {isAcadFeeOtpOpen && (
-            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
-              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '20px', margin: '0 16px' }} className="anim-slide-up glass-gold-ring">
+          {/* Unlock Academic Fee Editor OTP Modal */}
+          {isUnlockFeeOtpOpen && (
+            <div style={styles.modalOverlay} className="anim-fade-in">
+              <GlassCard hoverable={false} style={styles.modalContentCard} className="anim-scale-in glass-gold-ring">
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.1)', border: '2px solid rgba(212,175,55,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 12px' }}></div>
-                  <h3 style={{ margin: '0 0 4px', fontWeight: 900, fontSize: '1.15rem', color: 'var(--dark-charcoal)' }}>Fee Structure Verification</h3>
-                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Enter the <strong>Academic Fee OTP</strong> from the Authenticator to propagate the new fee structure.</p>
+                  <div style={styles.modalIconBadge}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                  </div>
+                  <h3 style={styles.modalHeading}>Unlock Fee Structure Editor</h3>
+                  <p style={styles.modalSubText}>
+                    Enter the <strong>Fee Structure Security OTP</strong> from the Authenticator portal to unlock baseline fee editing for <strong>{selectedFeeBranch}</strong>.
+                  </p>
+                  <div style={styles.otpTipBanner}>
+                    💡 <strong>Tip:</strong> Copy Fee Structure OTP from Authenticator Portal or enter master PIN (080200).
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <input type="text" autoFocus placeholder="Enter 6-character OTP..." value={acadFeeOtpInput} onChange={(e) => setAcadFeeOtpInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter' && acadFeeOtpInput.trim()) { handleSaveAcademicFees(); setIsAcadFeeOtpOpen(false); } }} style={{ padding: '13px 16px', border: '2px solid rgba(212,175,55,0.5)', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, letterSpacing: '0.15em', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.8)', outline: 'none', fontFamily: 'monospace', color: 'var(--dark-charcoal)' }} />
-                  <button onClick={() => { handleSaveAcademicFees(); setIsAcadFeeOtpOpen(false); }} disabled={!acadFeeOtpInput.trim()} style={{ ...styles.saveSubmitBtn, marginTop: 0, opacity: acadFeeOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">Confirm & Save Rates</button>
-                  <button onClick={() => { setIsAcadFeeOtpOpen(false); setAcadFeeOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="ENTER 6-DIGIT OTP"
+                    value={unlockFeeOtpInput}
+                    onChange={(e) => setUnlockFeeOtpInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && unlockFeeOtpInput.trim()) handleConfirmUnlockFees(unlockFeeOtpInput.trim()); }}
+                    style={styles.modalOtpInput}
+                  />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={() => { setIsUnlockFeeOtpOpen(false); setUnlockFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
+                    <button onClick={() => handleConfirmUnlockFees(unlockFeeOtpInput.trim())} disabled={!unlockFeeOtpInput.trim()} style={{ ...styles.modalConfirmBtn, opacity: unlockFeeOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">
+                      Verify & Unlock
+                    </button>
+                  </div>
+                </div>
+              </GlassCard>
+            </div>
+          )}
+
+          {/* Academic Fee Save OTP modal */}
+          {isAcadFeeOtpOpen && (
+            <div style={styles.modalOverlay} className="anim-fade-in">
+              <GlassCard hoverable={false} style={styles.modalContentCard} className="anim-scale-in glass-gold-ring">
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <div style={styles.modalIconBadge}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                  </div>
+                  <h3 style={styles.modalHeading}>Fee Structure Verification</h3>
+                  <p style={styles.modalSubText}>
+                    Enter the <strong>Academic Fee OTP</strong> from the Authenticator to finalize & propagate the new baseline fee rates for <strong>{selectedFeeBranch}</strong>.
+                  </p>
+                  <div style={styles.otpTipBanner}>
+                    💡 <strong>Note:</strong> Saving will update fee rates for non-customized student profiles in this campus.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="ENTER 6-DIGIT OTP"
+                    value={acadFeeOtpInput}
+                    onChange={(e) => setAcadFeeOtpInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && acadFeeOtpInput.trim()) handleSaveAcademicFees(acadFeeOtpInput.trim()); }}
+                    style={styles.modalOtpInput}
+                  />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={() => { setIsAcadFeeOtpOpen(false); setAcadFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
+                    <button onClick={() => handleSaveAcademicFees(acadFeeOtpInput.trim())} disabled={!acadFeeOtpInput.trim()} style={{ ...styles.modalConfirmBtn, opacity: acadFeeOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">
+                      Confirm & Save Rates
+                    </button>
+                  </div>
                 </div>
               </GlassCard>
             </div>
@@ -2716,11 +2798,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             </GlassCard>
           )}
 
-          {/* Modified fees section — Admin 1 only */}
-          {selectedFeeStudent && role === 'admin1' && (
+          {/* Modified fees section */}
+          {selectedFeeStudent && (
             <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
-              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)' }}>Modify Fee Waivers (Rector Control)</h4>
-              <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: '14px' }}>Changes will be reflected in the student's fee ledger after OTP verification.</p>
+              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)' }}>Modify Fee Waivers & Custom Overrides</h4>
+              <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: '14px' }}>Individual fee overrides & waivers are locked to the student profile upon verification.</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 {[['Tuition Waiver (₹)', editTuitionWaiver, setEditTuitionWaiver], ['Hostel Waiver (₹)', editHostelWaiver, setEditHostelWaiver], ['Transport Waiver (₹)', editTransportWaiver, setEditTransportWaiver], ['Misc Waiver (₹)', editMiscWaiver, setEditMiscWaiver]].map(([label, val, setter]: any) => (
                   <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -2730,24 +2812,49 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 ))}
               </div>
               <button onClick={() => { setFeeOtpInput(''); setIsFeeOtpOpen(true); }} style={{ ...styles.saveSubmitBtn, marginTop: '16px' }} className="press-interactive">
-                Submit Fee Changes
+                Submit Fee Override Changes
               </button>
             </GlassCard>
           )}
 
           {/* OTP modal for fee override */}
           {isFeeOtpOpen && selectedFeeStudent && (
-            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
-              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '20px', margin: '0 16px' }} className="anim-slide-up glass-gold-ring">
+            <div style={styles.modalOverlay} className="anim-fade-in">
+              <GlassCard hoverable={false} style={styles.modalContentCard} className="anim-scale-in glass-gold-ring">
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.1)', border: '2px solid rgba(212,175,55,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 12px' }}></div>
-                  <h3 style={{ margin: '0 0 4px', fontWeight: 900, fontSize: '1.15rem', color: 'var(--dark-charcoal)' }}>Fee Override Verification</h3>
-                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Enter the <strong>Student Administrative OTP</strong> from the Authenticator to apply fee changes for <strong>{selectedFeeStudent.name}</strong>.</p>
+                  <div style={styles.modalIconBadge}>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                      <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                  </div>
+                  <h3 style={styles.modalHeading}>Fee Override Verification</h3>
+                  <p style={styles.modalSubText}>
+                    Enter the <strong>Fee Override Security OTP</strong> from the Authenticator portal to apply fee changes for <strong>{selectedFeeStudent.name}</strong>.
+                  </p>
+                  <div style={styles.otpTipBanner}>
+                    💡 <strong>Tip:</strong> Copy Fee Override OTP from Authenticator Portal or enter master PIN (080200).
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <input type="text" autoFocus placeholder="Enter 6-character OTP..." value={feeOtpInput} onChange={(e) => setFeeOtpInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter' && feeOtpInput.trim()) handleApplyWaivers(feeOtpInput.trim()); }} style={{ padding: '13px 16px', border: '2px solid rgba(212,175,55,0.5)', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, letterSpacing: '0.15em', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.8)', outline: 'none', fontFamily: 'monospace', color: 'var(--dark-charcoal)' }} />
-                  <button onClick={() => handleApplyWaivers(feeOtpInput.trim())} disabled={!feeOtpInput.trim()} style={{ ...styles.saveSubmitBtn, marginTop: 0, opacity: feeOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">Confirm & Apply Waivers</button>
-                  <button onClick={() => { setIsFeeOtpOpen(false); setFeeOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="ENTER 6-DIGIT OTP"
+                    value={feeOtpInput}
+                    onChange={(e) => setFeeOtpInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && feeOtpInput.trim()) handleApplyWaivers(feeOtpInput.trim()); }}
+                    style={styles.modalOtpInput}
+                  />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={() => { setIsFeeOtpOpen(false); setFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
+                    <button onClick={() => handleApplyWaivers(feeOtpInput.trim())} disabled={!feeOtpInput.trim()} style={{ ...styles.modalConfirmBtn, opacity: feeOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">
+                      Confirm & Apply Waivers
+                    </button>
+                  </div>
                 </div>
               </GlassCard>
             </div>
@@ -4308,6 +4415,97 @@ const styles: { [key: string]: React.CSSProperties } = {
     maxHeight: '90%',
     overflowY: 'auto',
   },
+  modalOverlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    zIndex: 9999,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)'
+  },
+  modalContentCard: {
+    width: '100%',
+    maxWidth: '400px',
+    padding: '30px 26px',
+    borderRadius: '24px',
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    border: '1.5px solid rgba(212, 175, 55, 0.4)',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.25), 0 0 30px rgba(212, 175, 55, 0.2)',
+    margin: '0 16px'
+  },
+  modalIconBadge: {
+    width: '60px',
+    height: '60px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(212,175,55,0.05) 100%)',
+    border: '2px solid rgba(212,175,55,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '0 auto 14px',
+    boxShadow: '0 8px 20px rgba(212,175,55,0.2)'
+  },
+  modalHeading: {
+    margin: '0 0 6px 0',
+    fontWeight: 900,
+    fontSize: '1.2rem',
+    color: 'var(--dark-charcoal)'
+  },
+  modalSubText: {
+    margin: 0,
+    fontSize: '0.82rem',
+    color: 'var(--muted-gray)',
+    lineHeight: 1.5
+  },
+  otpTipBanner: {
+    marginTop: '10px',
+    padding: '8px 12px',
+    borderRadius: '10px',
+    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+    border: '1px dashed rgba(212, 175, 55, 0.3)',
+    fontSize: '11px',
+    color: '#854D0E',
+    textAlign: 'center'
+  },
+  modalOtpInput: {
+    padding: '14px 16px',
+    border: '2px solid rgba(212,175,55,0.6)',
+    borderRadius: '14px',
+    fontSize: '1.25rem',
+    fontWeight: 800,
+    letterSpacing: '0.2em',
+    textAlign: 'center',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    outline: 'none',
+    fontFamily: 'monospace',
+    color: 'var(--dark-charcoal)',
+    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.04)'
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    padding: '14px',
+    borderRadius: '14px',
+    border: 'none',
+    background: 'var(--gold-gradient)',
+    color: '#fff',
+    fontWeight: 800,
+    fontSize: '13px',
+    cursor: 'pointer',
+    boxShadow: '0 4px 14px rgba(212, 175, 55, 0.35)'
+  },
+  modalCancelBtn: {
+    padding: '14px 18px',
+    borderRadius: '14px',
+    border: '1px solid rgba(0,0,0,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    color: 'var(--dark-charcoal)',
+    fontWeight: 700,
+    fontSize: '13px',
+    cursor: 'pointer'
+  }
 };
 
 
