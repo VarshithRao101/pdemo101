@@ -162,7 +162,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           style={{ display: 'flex', flexDirection: 'column', gap: '14px', margin: '24px 0', width: '100%', maxWidth: '340px', marginLeft: 'auto', marginRight: 'auto' }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-            <label style={{ fontSize: '10.5px', color: 'var(--muted-gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <label style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               {currentMode === 'authenticator' ? 'Fixed Authenticator Account ID' : 'User ID / ID Card No'}
             </label>
             <input
@@ -175,20 +175,20 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                 width: '100%',
                 padding: '12px 14px',
                 borderRadius: '12px',
-                border: '1.5px solid rgba(0, 0, 0, 0.08)',
-                backgroundColor: currentMode === 'authenticator' ? 'rgba(240, 240, 240, 0.8)' : 'rgba(255, 255, 255, 0.6)',
+                border: '1.5px solid #CBD5E1',
+                backgroundColor: currentMode === 'authenticator' ? '#E2E8F0' : '#F8FAFC',
                 fontFamily: 'var(--font-family)',
-                fontSize: '13px',
-                color: 'var(--dark-charcoal)',
+                fontSize: '14px',
+                fontWeight: 600,
+                color: '#0F172A',
                 outline: 'none',
-                boxShadow: 'var(--shadow-sm)',
                 boxSizing: 'border-box'
               }}
             />
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-            <label style={{ fontSize: '10.5px', color: 'var(--muted-gray)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <label style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Password / Security PIN
             </label>
             <input
@@ -201,13 +201,13 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                 width: '100%',
                 padding: '12px 14px',
                 borderRadius: '12px',
-                border: '1.5px solid rgba(0, 0, 0, 0.08)',
-                backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                border: '1.5px solid #CBD5E1',
+                backgroundColor: '#F8FAFC',
                 fontFamily: 'var(--font-family)',
-                fontSize: '13px',
-                color: 'var(--dark-charcoal)',
+                fontSize: '14px',
+                fontWeight: 600,
+                color: '#0F172A',
                 outline: 'none',
-                boxShadow: 'var(--shadow-sm)',
                 boxSizing: 'border-box'
               }}
             />
@@ -221,11 +221,11 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
               borderRadius: '14px',
               border: 'none',
               cursor: 'pointer',
-              fontWeight: 800,
-              fontSize: '13px',
-              background: 'var(--gold-gradient)',
-              color: '#fff',
-              boxShadow: '0 4px 14px rgba(212, 175, 55, 0.3)',
+              fontWeight: 850,
+              fontSize: '14px',
+              backgroundColor: '#0A2540',
+              color: '#FFFFFF',
+              boxShadow: '0 6px 18px rgba(10, 37, 64, 0.3)',
               marginTop: '8px',
               transition: 'transform 0.2s ease, box-shadow 0.2s ease',
               display: 'flex',
@@ -354,20 +354,18 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           display: 'flex',
           flexDirection: 'column',
           padding: '30px 24px',
-          backgroundColor: 'rgba(255, 255, 255, 0.45)',
+          backgroundColor: '#FFFFFF',
           border: isError 
-            ? '1.5px solid rgba(239, 68, 68, 0.6)' 
+            ? '2px solid #EF4444' 
             : isSuccess 
-            ? '1.5px solid rgba(16, 185, 129, 0.6)' 
-            : '1.5px solid rgba(255, 255, 255, 0.65)',
+            ? '2px solid #10B981' 
+            : '1px solid #E2E8F0',
           boxShadow: isError 
-            ? '0 0 35px rgba(239, 68, 68, 0.3), 0 20px 50px rgba(0, 0, 0, 0.08)' 
+            ? '0 0 35px rgba(239, 68, 68, 0.4), 0 20px 50px rgba(0, 0, 0, 0.3)' 
             : isSuccess 
-            ? '0 0 45px rgba(16, 185, 129, 0.35), 0 20px 50px rgba(0, 0, 0, 0.08)' 
-            : '0 20px 50px rgba(0, 0, 0, 0.08)',
+            ? '0 0 45px rgba(16, 185, 129, 0.4), 0 20px 50px rgba(0, 0, 0, 0.3)' 
+            : '0 20px 50px rgba(0, 0, 0, 0.35)',
           borderRadius: '24px',
-          backdropFilter: 'blur(25px)',
-          WebkitBackdropFilter: 'blur(25px)',
           boxSizing: 'border-box',
           margin: 'auto 0',
           transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'
@@ -391,14 +389,14 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             <div style={{
               padding: '12px 18px',
               textAlign: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              border: isError ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(212, 175, 55, 0.3)',
+              backgroundColor: '#FFFFFF',
+              border: isError ? '1px solid #EF4444' : '1px solid #D97706',
               boxShadow: 'var(--shadow-lg)',
               borderRadius: '12px',
             }}>
               <span style={{
                 ...styles.toastText,
-                color: isError ? '#B91C1C' : 'var(--dark-charcoal)'
+                color: isError ? '#B91C1C' : '#0F172A'
               }}>{toastMessage}</span>
             </div>
           </div>
@@ -417,22 +415,20 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         display: 'flex',
         flexDirection: 'column',
         padding: '40px 34px',
-        backgroundColor: 'rgba(255, 255, 255, 0.45)', // Premium clear glass
+        backgroundColor: '#FFFFFF',
         border: isError 
-          ? '1.5px solid rgba(239, 68, 68, 0.6)' 
+          ? '2px solid #EF4444' 
           : isSuccess 
-          ? '1.5px solid rgba(16, 185, 129, 0.6)' 
-          : '1.5px solid rgba(255, 255, 255, 0.65)', // Delicate white border
+          ? '2px solid #10B981' 
+          : '1px solid #E2E8F0',
         boxShadow: isError 
-          ? '0 0 45px rgba(239, 68, 68, 0.35), 0 24px 60px rgba(0, 0, 0, 0.12)' 
+          ? '0 0 45px rgba(239, 68, 68, 0.4), 0 24px 60px rgba(0, 0, 0, 0.4)' 
           : isSuccess 
-          ? '0 0 55px rgba(16, 185, 129, 0.4), 0 24px 60px rgba(0, 0, 0, 0.12)' 
-          : '0 24px 60px rgba(0, 0, 0, 0.12)',
+          ? '0 0 55px rgba(16, 185, 129, 0.4), 0 24px 60px rgba(0, 0, 0, 0.4)' 
+          : '0 24px 60px rgba(0, 0, 0, 0.4)',
         borderRadius: '24px',
         position: 'relative',
         zIndex: 10,
-        backdropFilter: 'blur(25px)',
-        WebkitBackdropFilter: 'blur(25px)',
         transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'
       }} className={isError ? 'anim-shiver' : 'anim-scale-in'}>
         {renderContent()}
@@ -454,14 +450,14 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           <div style={{
             padding: '12px 18px',
             textAlign: 'center',
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            border: isError ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(212, 175, 55, 0.3)',
+            backgroundColor: '#FFFFFF',
+            border: isError ? '1px solid #EF4444' : '1px solid #D97706',
             boxShadow: 'var(--shadow-lg)',
             borderRadius: '12px',
           }}>
             <span style={{
               ...styles.toastText,
-              color: isError ? '#B91C1C' : 'var(--dark-charcoal)'
+              color: isError ? '#B91C1C' : '#0F172A'
             }}>{toastMessage}</span>
           </div>
         </div>
@@ -478,17 +474,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundImage: `url(${abstractBg})`,
+    backgroundColor: '#071626',
+    backgroundImage: `radial-gradient(circle at 50% 30%, #0D2847 0%, #071626 100%), url(${abstractBg})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
     padding: '24px',
-    position: 'absolute',
+    position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 999,
+    zIndex: 9999,
   },
   desktopBg: {
     width: '100vw',
@@ -496,16 +493,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundImage: `url(${abstractBg})`,
+    backgroundColor: '#071626',
+    backgroundImage: `radial-gradient(circle at 50% 30%, #0D2847 0%, #071626 100%), url(${abstractBg})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
-    position: 'absolute',
+    position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    overflow: 'hidden',
+    overflow: 'auto',
+    zIndex: 9999,
   },
   ambientGlow: {
     position: 'absolute',
