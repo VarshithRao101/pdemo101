@@ -261,22 +261,32 @@ export const apiClient = {
       }
 
       let role: 'admin1' | 'admin2' | 'accountant' | 'authenticator' = 'admin1';
+      let campus = 'Erragattugutta C1';
+      let name = identifier;
 
       if (isAuthIdent) {
         role = 'authenticator';
-      } else if (identifier.includes('admin2')) {
+        campus = 'All';
+        name = 'Security Authenticator';
+      } else if (identifier.includes('admin2') || identifier.includes('principal')) {
         role = 'admin2';
-      } else if (identifier.includes('accountant')) {
+        campus = identifier.includes('c2') || identifier.includes('e2') ? 'Erragattugutta C2' : 'Erragattugutta C1';
+        name = 'Admin 2 (Campus Principal)';
+      } else if (identifier.includes('accountant') || identifier.includes('acc')) {
         role = 'accountant';
+        campus = identifier.includes('c2') || identifier.includes('e2') ? 'Erragattugutta C2' : 'Erragattugutta C1';
+        name = 'Senior Accountant';
       } else {
         role = 'admin1';
+        campus = 'All';
+        name = 'Rector (Admin 1)';
       }
 
       return {
         status: 'success',
-        token: `mock-jwt-token-for-${identifier}`,
-        refreshToken: `mock-refresh-token-for-${identifier}`,
-        user: { id: `acc_${identifier}`, username: identifier, role, campus: role === 'authenticator' ? 'All' : 'Erragattugutta C1', name: role === 'authenticator' ? 'Security Authenticator' : identifier }
+        token: `mock-jwt-token-for-${role}-${identifier}`,
+        refreshToken: `mock-refresh-token-for-${role}-${identifier}`,
+        user: { id: `acc_${identifier}`, username: identifier, role, campus, name }
       } as any;
     }
 
@@ -284,17 +294,20 @@ export const apiClient = {
       let role: 'admin1' | 'admin2' | 'accountant' | 'authenticator' = 'admin1';
       const isAuthUrl = typeof window !== 'undefined' && (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator'));
 
-      if (username === '9059068384' || username.includes('authenticator') || isAuthUrl) {
+      if (username === '9059068384' || username.includes('authenticator') || username.includes('security') || isAuthUrl) {
         role = 'authenticator';
-      } else if (username.includes('admin2')) {
+      } else if (username.includes('admin2') || username.includes('principal')) {
         role = 'admin2';
-      } else if (username.includes('accountant')) {
+      } else if (username.includes('accountant') || username.includes('acc')) {
         role = 'accountant';
       }
 
+      const campus = role === 'authenticator' || role === 'admin1' ? 'All' : (username.includes('c2') || username.includes('e2') ? 'Erragattugutta C2' : 'Erragattugutta C1');
+      const name = role === 'authenticator' ? 'Security Authenticator' : role === 'admin2' ? 'Admin 2 (Campus Principal)' : role === 'accountant' ? 'Senior Accountant' : 'Rector (Admin 1)';
+
       return {
         status: 'success',
-        user: { id: `acc_${username}`, username, role, campus: role === 'authenticator' ? 'All' : 'Erragattugutta C1', name: role === 'authenticator' ? 'Security Authenticator' : username }
+        user: { id: `acc_${username}`, username, role, campus, name }
       } as any;
     }
 
