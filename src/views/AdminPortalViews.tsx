@@ -218,6 +218,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [newStuMobile, setNewStuMobile] = useState('');
   const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
   const [regStuOtpInput, setRegStuOtpInput] = useState('');
+  const [isSubmittingStudent, setIsSubmittingStudent] = useState(false);
 
   // Faculty Management States
   const [searchFac, setSearchFac] = useState('');
@@ -824,10 +825,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       triggerToast('Please enter a valid 6-digit security key.');
       return;
     }
-    setGlobalSecurityKey(regStuOtpInput.trim());
-    await handleRegisterStudent();
-    setIsRegStuOtpModalOpen(false);
-    setRegStuOtpInput('');
+    setIsSubmittingStudent(true);
+    try {
+      setGlobalSecurityKey(regStuOtpInput.trim());
+      await handleRegisterStudent();
+      setIsRegStuOtpModalOpen(false);
+      setRegStuOtpInput('');
+    } catch (err: any) {
+      triggerToast(err.message || 'Registration failed.');
+    } finally {
+      setIsSubmittingStudent(false);
+    }
   };
 
   const handleRegisterStudent = async () => {
@@ -892,16 +900,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       if (response && response.status === 'success') {
         const pin = response.credential?.pin || '784920';
         newStu.tempPassword = pin;
-        const next = [...students, newStu];
-        setStudents(next);
+        setStudents(prev => [...prev, newStu]);
+        setSelectedStudent(newStu);
+        setEditStudent({ ...newStu });
         setNewStuName('');
         setNewStuAdmissionNumber('');
         setNewStuFather('');
         setNewStuMobile('');
-        triggerToast(`Student registered successfully! Admission No: ${newAdm} (PIN: ${pin})`);
-        fetchStudents();
+        triggerToast(`✓ Student ${newStu.name} registered for ${newStuBranch}! ID: ${newAdm} (PIN: ${pin})`);
+        await fetchStudents();
       } else {
-        triggerToast('Failed to register student.');
+        triggerToast(response?.message || 'Failed to register student.');
       }
     } catch (err: any) {
       console.error(err);
@@ -1496,29 +1505,40 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               <div style={{ ...styles.overlaySheet, maxWidth: '440px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                   <h3 style={{ ...styles.modalTitle, color: 'var(--royal-gold)', margin: 0 }}>Security Authorization OTP</h3>
-                  <button onClick={() => setIsRegStuOtpModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>×</button>
+                  <button onClick={() => !isSubmittingStudent && setIsRegStuOtpModalOpen(false)} disabled={isSubmittingStudent} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: isSubmittingStudent ? 'not-allowed' : 'pointer', color: 'var(--muted-gray)' }}>×</button>
                 </div>
                 <p style={{ fontSize: '12px', color: 'var(--muted-gray)', marginBottom: '14px', lineHeight: 1.4 }}>
                   Enter your 6-digit Security Authorization Key / OTP to finalize student registration for <strong>{newStuName}</strong> (Adm No: {newStuAdmissionNumber || `ADM2400${students.length + 1}`}).
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
-                  <label style={styles.formLabel}>Enter 6-Digit Security Key (OTP)</label>
-                  <input
-                    type="text"
-                    placeholder="Enter OTP e.g. 080200 or Daily PIN"
-                    value={regStuOtpInput}
-                    onChange={(e) => setRegStuOtpInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && submitStudentRegistrationWithOtp()}
-                    style={{ ...styles.textInputBox, fontSize: '1.1rem', letterSpacing: '0.1em', fontFamily: 'monospace', borderColor: 'var(--royal-gold)' }}
-                    autoFocus
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button onClick={() => setIsRegStuOtpModalOpen(false)} style={{ ...styles.actionItemBtn, flex: 1 }} className="press-interactive">Cancel</button>
-                  <button onClick={submitStudentRegistrationWithOtp} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }} className="press-interactive">
-                    Confirm & Create Student
-                  </button>
-                </div>
+
+                {isSubmittingStudent ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 0', gap: '14px' }}>
+                    <div style={{ width: '32px', height: '32px', border: '3.5px solid rgba(212,175,55,0.2)', borderTopColor: '#D4AF37', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--royal-gold)' }}>Creating Student Profile & Generating PIN...</span>
+                    <span style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>Synchronizing {newStuBranch} Ledger...</span>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
+                      <label style={styles.formLabel}>Enter 6-Digit Security Key (OTP)</label>
+                      <input
+                        type="text"
+                        placeholder="Enter OTP e.g. 080200 or Daily PIN"
+                        value={regStuOtpInput}
+                        onChange={(e) => setRegStuOtpInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && submitStudentRegistrationWithOtp()}
+                        style={{ ...styles.textInputBox, fontSize: '1.1rem', letterSpacing: '0.1em', fontFamily: 'monospace', borderColor: 'var(--royal-gold)' }}
+                        autoFocus
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button onClick={() => setIsRegStuOtpModalOpen(false)} style={{ ...styles.actionItemBtn, flex: 1 }} className="press-interactive">Cancel</button>
+                      <button onClick={submitStudentRegistrationWithOtp} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }} className="press-interactive">
+                        Confirm & Create Student
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
