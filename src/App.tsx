@@ -80,6 +80,24 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
     checkSession().then((isValid) => {
       if (isValid) {
         setFlowStage('authenticated');
+      } else {
+        const hash = window.location.hash;
+        const isLoginHash = hash === AUTHENTICATOR_HASH ||
+          hash.includes('sec-auth-sys-9i0j7k8l') ||
+          hash === UNIVERSAL_HASH ||
+          hash.includes('v1-portal-gate-x89f2a7b') ||
+          hash.includes('login') ||
+          hash.includes('admin') ||
+          hash.includes('accountant') ||
+          hash.includes('authenticator') ||
+          hash.includes('portal') ||
+          hash.includes('rector') ||
+          hash.includes('principal') ||
+          hash.includes('fees');
+
+        if (isLoginHash) {
+          setFlowStage('pin');
+        }
       }
       setTimeout(() => {
         setIsInitialLoading(false);
