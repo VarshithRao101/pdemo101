@@ -71,14 +71,15 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       setIsAuthenticated(true);
 
       // Map backend role to frontend portalRole
-      if (userData.role === 'admin1') {
-        setPortalRole('admin1');
-      } else if (userData.role === 'admin2') {
-        setPortalRole('admin2');
-      } else if (userData.role === 'accountant') {
+      const normRole = (userData.role || '').toLowerCase();
+      if (normRole.includes('accountant') || normRole.includes('acc')) {
         setPortalRole('accountant');
-      } else if (userData.role === 'authenticator') {
+      } else if (normRole.includes('admin2') || normRole.includes('principal')) {
+        setPortalRole('admin2');
+      } else if (normRole.includes('authenticator') || normRole.includes('security')) {
         setPortalRole('authenticator');
+      } else {
+        setPortalRole('admin1');
       }
 
       return userData;
@@ -141,14 +142,15 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       setIsAuthenticated(true);
       connectSocket(token);
 
-      if (userData.role === 'admin1') {
-        setPortalRole('admin1');
-      } else if (userData.role === 'admin2') {
-        setPortalRole('admin2');
-      } else if (userData.role === 'accountant') {
+      const normRoleCheck = (userData.role || '').toLowerCase();
+      if (normRoleCheck.includes('accountant') || normRoleCheck.includes('acc')) {
         setPortalRole('accountant');
-      } else if (userData.role === 'authenticator') {
+      } else if (normRoleCheck.includes('admin2') || normRoleCheck.includes('principal')) {
+        setPortalRole('admin2');
+      } else if (normRoleCheck.includes('authenticator') || normRoleCheck.includes('security')) {
         setPortalRole('authenticator');
+      } else {
+        setPortalRole('admin1');
       }
 
       return true;

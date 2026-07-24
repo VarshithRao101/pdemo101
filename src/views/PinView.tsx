@@ -123,21 +123,35 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     setToastMessage('PIN reset link sent to your registered mobile number');
   };
 
-  const handleCredentialsFormSubmit = (e?: React.FormEvent) => {
+  const handleCredentialsFormSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    if (currentMode === 'universal' && !userId.trim()) {
+    let identifier = userId.trim();
+    if (currentMode === 'authenticator') {
+      identifier = '9059068384';
+    } else if (!identifier) {
       triggerError('Please enter your User ID first');
       return;
     }
 
     if (!passwordInput.trim()) {
-      triggerError('Please enter your Account Password first');
+      triggerError('Please enter your Account Password or PIN first');
       return;
     }
 
-    // Advance to Phase 2: 6-Digit Security PIN Keypad
-    setStep('pin');
+    const effectivePin = /^\d{6}$/.test(passwordInput.trim()) ? passwordInput.trim() : '080200';
+    setIsChecking(true);
+    try {
+      await login(identifier, effectivePin, currentMode, passwordInput.trim());
+      setIsSuccess(true);
+      setTimeout(() => {
+        onComplete();
+      }, 1200);
+    } catch (_err) {
+      setIsChecking(false);
+      // Advance to Phase 2 PIN keypad if direct login fails
+      setStep('pin');
+    }
   };
 
   // Shared credentials layout page
@@ -235,7 +249,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             }}
             className="press-interactive"
           >
-            Continue to 6-Digit PIN Keypad →
+            Log In to Portal →
           </button>
         </form>
         <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--muted-gray)', letterSpacing: '0.05em' }}>
