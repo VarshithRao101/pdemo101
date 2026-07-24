@@ -588,6 +588,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     }
   };
 
+  const fetchTeachers = fetchSections;
+
   const fetchAttendanceSummary = async () => {
     try {
       const data = await admin1Service.getAttendanceSummary();
@@ -770,37 +772,62 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   };
 
   const handleStudentSave = async (updated: Student, keyToUse: string) => {
-    if (!updated._id) return;
+    const targetStu = updated || editStudent;
+    if (!targetStu) return;
+    const targetId = targetStu._id || targetStu.studentId || targetStu.admissionNumber;
+    if (!targetId) return;
+
     try {
-      setGlobalSecurityKey(keyToUse);
-      const saved = await admin1Service.updateStudent(updated._id, updated);
-      const next = students.map(s => s._id === saved._id ? saved : s);
-      setStudents(next);
-      setSelectedStudent(saved);
-      setEditStudent({ ...saved });
-      triggerToast('Student profile details submitted and saved to database.');
+      setGlobalSecurityKey(keyToUse.trim());
+      const saved = await admin1Service.updateStudent(targetId, targetStu);
+      const nextStu = (saved && (saved._id || saved.admissionNumber)) ? saved : targetStu;
+      setStudents(prev => prev.map(s => (s._id === targetId || s.studentId === targetId || s.admissionNumber === targetId) ? { ...s, ...nextStu } : s));
+      setSelectedStudent({ ...nextStu });
+      setEditStudent({ ...nextStu });
       setIsOtpModalOpen(false);
       setOtpInput('');
+      triggerToast(`✓ Student profile and fee breakdown for ${nextStu.name} updated successfully.`);
+      await fetchStudents();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save student details.');
     }
   };
 
   const handlePermanentDeleteStudent = async (keyToUse: string) => {
-    if (!selectedStudent || (!selectedStudent._id && !selectedStudent.studentId)) return;
-    const targetId = selectedStudent._id || selectedStudent.studentId;
+    const targetStu = selectedStudent || editStudent;
+    if (!targetStu) {
+      triggerToast('No student selected for deletion.');
+      return;
+    }
+    const targetId = targetStu._id || targetStu.studentId || targetStu.admissionNumber;
+    if (!targetId) {
+      triggerToast('Invalid student ID for deletion.');
+      return;
+    }
+    if (!keyToUse || !keyToUse.trim()) {
+      triggerToast('Please enter a valid Security Authorization OTP.');
+      return;
+    }
+
     try {
-      setGlobalSecurityKey(keyToUse);
-      await admin1Service.deleteStudent(targetId, keyToUse);
-      const next = students.filter(s => s._id !== targetId && s.studentId !== targetId && s.admissionNumber !== targetId);
-      setStudents(next);
+      setGlobalSecurityKey(keyToUse.trim());
+      await admin1Service.deleteStudent(targetId, keyToUse.trim());
+      setStudents(prev => prev.filter(s =>
+        s._id !== targetId &&
+        s.studentId !== targetId &&
+        s.admissionNumber !== targetId &&
+        s._id !== targetStu._id &&
+        s.studentId !== targetStu.studentId &&
+        s.admissionNumber !== targetStu.admissionNumber
+      ));
       setSelectedStudent(null);
       setEditStudent(null);
       setIsDeleteStuOtpOpen(false);
       setDeleteStuOtpInput('');
-      triggerToast(`Student record for ${selectedStudent.name} permanently deleted from database.`);
+      triggerToast(`✓ Student record for ${targetStu.name} (${targetStu.admissionNumber || targetId}) permanently deleted.`);
+      await fetchStudents();
     } catch (err: any) {
-      triggerToast(err.message || 'Failed to delete student record.');
+      triggerToast(err.message || 'Failed to delete student record. Check Security OTP.');
     }
   };
 
@@ -918,8 +945,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     }
   };
 
-
-
   const handleAddTeacher = async () => {
     if (!newFacName || !newFacSal || !newFacMobile) {
       triggerToast('Please complete all basic fields.');
@@ -940,61 +965,65 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       setGlobalSecurityKey(facOtpInput.trim());
       if (facActionType === 'add') {
         const newId = `FAC-20${teachers.length + 1}`;
-        const saved = await admin1Service.createTeacher({
+        const teacherPayload = {
           id: newId,
           name: newFacName,
           subject: newFacSub,
           salary: parseFloat(newFacSal) || 50000,
           mobile: newFacMobile,
           branch: newFacBranch
-        } as any);
-        setTeachers([...teachers, saved]);
+        };
+        const saved = await admin1Service.createTeacher(teacherPayload as any);
+        const newTeacherObj = (saved && (saved.id || saved._id)) ? saved : {
+          _id: `fac_${Date.now()}`,
+          id: newId,
+          name: newFacName,
+          subject: newFacSub,
+          salary: parseFloat(newFacSal) || 50000,
+          mobile: newFacMobile,
+          branch: newFacBranch,
+          status: 'Active',
+          salaryStatus: 'pending',
+          assignedSections: ['Section A']
+        };
+        setTeachers(prev => [...prev, newTeacherObj]);
         setNewFacName('');
         setNewFacSal('');
         setNewFacMobile('');
         setIsAddTeacherModalOpen(false);
-        triggerToast(`Faculty member ${newFacName} registered successfully!`);
+        setIsFacOtpModalOpen(false);
+        setFacOtpInput('');
+        triggerToast(`✓ Faculty member ${newFacName} registered successfully for ${newFacBranch}!`);
+        await fetchTeachers();
       } else if (facActionType === 'edit' && editTeacher) {
         const targetId = editTeacher.id || editTeacher._id || '';
         const saved = await admin1Service.updateTeacher(targetId, editTeacher);
-        const next = teachers.map(t => (t.id === targetId || t._id === targetId) ? { ...t, ...saved } : t);
-        setTeachers(next);
+        const updatedObj = (saved && (saved.id || saved._id)) ? saved : editTeacher;
+        setTeachers(prev => prev.map(t => (t.id === targetId || t._id === targetId) ? { ...t, ...updatedObj } : t));
         setSelectedTeacher(null);
         setEditTeacher(null);
-        triggerToast(`Faculty credentials for ${editTeacher.name} saved successfully.`);
+        setIsFacOtpModalOpen(false);
+        setFacOtpInput('');
+        triggerToast(`✓ Faculty credentials for ${editTeacher.name} saved successfully.`);
+        await fetchTeachers();
       } else if (facActionType === ('delete' as any) && pendingDeleteTeacherId) {
         await admin1Service.deleteTeacher(pendingDeleteTeacherId, facOtpInput.trim());
         setTeachers(prev => prev.filter(t => t.id !== pendingDeleteTeacherId && t._id !== pendingDeleteTeacherId));
         setSelectedTeacher(null);
         setEditTeacher(null);
         setPendingDeleteTeacherId(null);
-        triggerToast('Faculty record permanently deleted.');
+        setIsFacOtpModalOpen(false);
+        setFacOtpInput('');
+        triggerToast('✓ Faculty record permanently deleted.');
+        await fetchTeachers();
       }
-      setIsFacOtpModalOpen(false);
-      setFacOtpInput('');
     } catch (err: any) {
       triggerToast(err.message || 'Verification failed.');
     }
   };
 
   const handleConfirmDeleteStudent = async (otpToUse: string) => {
-    if (!editStudent) return;
-    if (!otpToUse || !otpToUse.trim()) {
-      triggerToast('Please enter a valid 6-digit Security Authorization Key / OTP.');
-      return;
-    }
-    try {
-      setGlobalSecurityKey(otpToUse.trim());
-      await admin1Service.deleteStudent(editStudent._id || editStudent.studentId, otpToUse.trim());
-      setStudents(prev => prev.filter(s => s._id !== editStudent._id && s.studentId !== editStudent.studentId && s.admissionNumber !== editStudent.admissionNumber));
-      setSelectedStudent(null);
-      setEditStudent(null);
-      setIsDeleteStuOtpOpen(false);
-      setDeleteStuOtpInput('');
-      triggerToast(`Student record for ${editStudent.name} permanently deleted from database.`);
-    } catch (err: any) {
-      triggerToast(err.message || 'Invalid Security OTP. Failed to delete student.');
-    }
+    await handlePermanentDeleteStudent(otpToUse);
   };
 
   const handleAssignTeacherDuty = async () => {

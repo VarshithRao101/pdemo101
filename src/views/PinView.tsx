@@ -3,6 +3,7 @@ import PinEntry from '../components/common/PinEntry';
 import { useNavigation } from '../context/NavigationContext';
 import { InspireLogo } from '../components/common/InspireLogo';
 import abstractBg from '../assets/minimalist_portal_bg.png';
+import { apiClient } from '../services/apiClient';
 
 interface PinViewProps {
   onComplete: () => void;
@@ -135,22 +136,24 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     }
 
     if (!passwordInput.trim()) {
-      triggerError('Please enter your Account Password or PIN first');
+      triggerError('Please enter your Account Password first');
       return;
     }
 
-    const effectivePin = /^\d{6}$/.test(passwordInput.trim()) ? passwordInput.trim() : '080200';
     setIsChecking(true);
     try {
-      await login(identifier, effectivePin, currentMode, passwordInput.trim());
-      setIsSuccess(true);
-      setTimeout(() => {
-        onComplete();
-      }, 1200);
-    } catch (_err) {
+      const res = await apiClient.verifyCredentials(identifier, passwordInput.trim(), currentMode);
+      if (res && res.status === 'success') {
+        setStep('pin');
+        setPin('');
+        setIsError(false);
+      } else {
+        triggerError(res?.message || 'Incorrect User ID or Account Password.');
+      }
+    } catch (err: any) {
+      triggerError(err.message || 'Incorrect User ID or Account Password.');
+    } finally {
       setIsChecking(false);
-      // Advance to Phase 2 PIN keypad if direct login fails
-      setStep('pin');
     }
   };
 
@@ -203,11 +206,11 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
             <label style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Password / Security PIN
+              Account Password
             </label>
             <input
               type="password"
-              placeholder={currentMode === 'authenticator' ? 'Enter Security Password (080200)' : 'Enter Password or 6-digit PIN'}
+              placeholder={currentMode === 'authenticator' ? 'Enter Security Password (080200)' : 'Enter Account Password'}
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCredentialsFormSubmit(); } }}
@@ -249,7 +252,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             }}
             className="press-interactive"
           >
-            Log In to Portal →
+            Continue to 6-Digit Security Key →
           </button>
         </form>
         <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--muted-gray)', letterSpacing: '0.05em' }}>
@@ -429,17 +432,19 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         display: 'flex',
         flexDirection: 'column',
         padding: '40px 34px',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
         border: isError 
           ? '2px solid #EF4444' 
           : isSuccess 
           ? '2px solid #10B981' 
-          : '1px solid #E2E8F0',
+          : '1px solid rgba(212, 175, 55, 0.35)',
         boxShadow: isError 
           ? '0 0 45px rgba(239, 68, 68, 0.4), 0 24px 60px rgba(0, 0, 0, 0.4)' 
           : isSuccess 
           ? '0 0 55px rgba(16, 185, 129, 0.4), 0 24px 60px rgba(0, 0, 0, 0.4)' 
-          : '0 24px 60px rgba(0, 0, 0, 0.4)',
+          : '0 24px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(212, 175, 55, 0.15)',
         borderRadius: '24px',
         position: 'relative',
         zIndex: 10,
@@ -522,10 +527,11 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   ambientGlow: {
     position: 'absolute',
-    width: '560px',
-    height: '560px',
-    background: 'none',
+    width: '640px',
+    height: '640px',
+    background: 'radial-gradient(circle, rgba(212, 175, 55, 0.16) 0%, rgba(10, 37, 64, 0) 70%)',
     pointerEvents: 'none',
+    zIndex: 1,
   },
   header: {
     height: '44px',

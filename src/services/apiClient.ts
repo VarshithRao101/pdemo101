@@ -228,11 +228,95 @@ export const apiClient = {
     }
   },
 
+  async verifyCredentials(identifier: string, password: string, loginContext = 'universal'): Promise<{ status: string; message?: string; role?: string; campus?: string }> {
+    return this.request<{ status: string; message?: string; role?: string; campus?: string }>('/auth/verify-credentials', {
+      method: 'POST',
+      body: JSON.stringify({ identifier, password, loginContext })
+    });
+  },
+
   // Fallback handler for seamless offline development preview
   async fallbackRequest<T = any>(cleanPath: string, options: RequestInit = {}): Promise<T> {
     const method = options.method?.toUpperCase() || 'GET';
     const token = sessionStorage.getItem('auth_token') || '';
     const username = (token.includes('-for-') ? (token.split('-for-')[1] || 'admin1') : 'admin1').toLowerCase();
+
+    if (cleanPath === '/auth/verify-credentials') {
+      let bodyData: any = {};
+      try { bodyData = JSON.parse(options.body as string); } catch { /* ignore */ }
+      if (!bodyData.identifier || typeof bodyData.password !== 'string' || !bodyData.password.trim()) {
+        const err: ApiError = new Error('User ID and Password are required.');
+        err.status = 400;
+        throw err;
+      }
+
+      const defaultAccounts = [
+        { _id: 'acc_admin1', username: 'admin1', passwordRaw: 'RectorPass#2026', role: 'admin1', campus: 'All', name: 'Rector' },
+        { _id: 'acc_admin2_default', username: 'admin2', passwordRaw: 'DeanE1#8492', role: 'admin2', campus: 'Erragattugutta C1', name: 'Principal Dean' },
+        { _id: 'acc_admin2_erragattugutta_c1', username: 'admin2_erragattugutta_c1', passwordRaw: 'DeanE1#8492', role: 'admin2', campus: 'Erragattugutta C1', name: 'Dean Erragattugutta C1' },
+        { _id: 'acc_admin2_erragattugutta_c2', username: 'admin2_erragattugutta_c2', passwordRaw: 'DeanE2#5713', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2' },
+        { _id: 'acc_admin2_beemaram_c1', username: 'admin2_beemaram_c1', passwordRaw: 'DeanB1#3920', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1' },
+        { _id: 'acc_admin2_beemaram_c2', username: 'admin2_beemaram_c2', passwordRaw: 'DeanB2#6184', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2' },
+        { _id: 'acc_accountant_default', username: 'accountant', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Accountant' },
+        { _id: 'acc_accountant_erragattugutta_c1_1', username: 'accountant_erragattugutta_c1_1', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1' },
+        { _id: 'acc_accountant_erragattugutta_c1_2', username: 'accountant_erragattugutta_c1_2', passwordRaw: 'AccE1#9381', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1' },
+        { _id: 'acc_accountant_erragattugutta_c2_1', username: 'accountant_erragattugutta_c2_1', passwordRaw: 'AccE2#7294', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2' },
+        { _id: 'acc_accountant_erragattugutta_c2_2', username: 'accountant_erragattugutta_c2_2', passwordRaw: 'AccE2#1845', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 2 Erragattugutta C2' },
+        { _id: 'acc_accountant_beemaram_c1_1', username: 'accountant_beemaram_c1_1', passwordRaw: 'AccB1#6530', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 1 Beemaram C1' },
+        { _id: 'acc_accountant_beemaram_c1_2', username: 'accountant_beemaram_c1_2', passwordRaw: 'AccB1#2947', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1' },
+        { _id: 'acc_accountant_beemaram_c2_1', username: 'accountant_beemaram_c2_1', passwordRaw: 'AccB2#8163', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2' },
+        { _id: 'acc_accountant_beemaram_c2_2', username: 'accountant_beemaram_c2_2', passwordRaw: 'AccB2#3750', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2' },
+        { _id: 'acc_authenticator', username: '9059068384', passwordRaw: '080200', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
+        { _id: 'acc_authenticator_static', username: 'authenticator', passwordRaw: '080200', role: 'authenticator', campus: 'All', name: 'Security Authenticator' }
+      ];
+
+      const usernameAliasMap: { [key: string]: string } = {
+        admin: 'admin1', admin1: 'admin1', rector: 'admin1', superadmin: 'admin1',
+        admin2: 'admin2', admin2_e1: 'admin2_erragattugutta_c1', admin2_c1: 'admin2_erragattugutta_c1',
+        admin2_e2: 'admin2_erragattugutta_c2', admin2_c2: 'admin2_erragattugutta_c2',
+        admin2_b1: 'admin2_beemaram_c1', admin2_b2: 'admin2_beemaram_c2', principal: 'admin2',
+        accountant: 'accountant', accountant1_e1: 'accountant_erragattugutta_c1_1', acc1_e1: 'accountant_erragattugutta_c1_1',
+        accountant2_e1: 'accountant_erragattugutta_c1_2', acc2_e1: 'accountant_erragattugutta_c1_2',
+        accountant1_e2: 'accountant_erragattugutta_c2_1', acc1_e2: 'accountant_erragattugutta_c2_1',
+        accountant2_e2: 'accountant_erragattugutta_c2_2', acc2_e2: 'accountant_erragattugutta_c2_2',
+        accountant1_b1: 'accountant_beemaram_c1_1', acc1_b1: 'accountant_beemaram_c1_1',
+        accountant2_b1: 'accountant_beemaram_c1_2', acc2_b1: 'accountant_beemaram_c1_2',
+        accountant1_b2: 'accountant_beemaram_c2_1', acc1_b2: 'accountant_beemaram_c2_1',
+        accountant2_b2: 'accountant_beemaram_c2_2', acc2_b2: 'accountant_beemaram_c2_2',
+        authenticator: '9059068384', security: '9059068384'
+      };
+
+      const identifier = (bodyData.identifier || '').toString().trim().toLowerCase();
+      const cleanIdentifier = usernameAliasMap[identifier] || identifier;
+      const matchedUser = defaultAccounts.find(a => a.username.toLowerCase() === cleanIdentifier);
+
+      if (!matchedUser) {
+        const err: ApiError = new Error('Invalid credentials. User ID not found.');
+        err.status = 401;
+        throw err;
+      }
+
+      const loginContext = bodyData.loginContext || 'universal';
+      if (loginContext === 'universal' && matchedUser.role === 'authenticator') {
+        const err: ApiError = new Error('Authenticator login is restricted to the dedicated Security Authenticator URL.');
+        err.status = 403;
+        throw err;
+      }
+      if (loginContext === 'authenticator' && matchedUser.role !== 'authenticator') {
+        const err: ApiError = new Error('Universal accounts must log in via the Universal Portal URL.');
+        err.status = 403;
+        throw err;
+      }
+
+      const inputPass = (bodyData.password || '').toString().trim();
+      if (inputPass !== matchedUser.passwordRaw) {
+        const err: ApiError = new Error('Incorrect account password.');
+        err.status = 401;
+        throw err;
+      }
+
+      return { status: 'success', message: 'Credentials verified.', role: matchedUser.role, campus: matchedUser.campus } as any;
+    }
 
     if (cleanPath === '/auth/login') {
       let bodyData: any = {};
@@ -242,51 +326,114 @@ export const apiClient = {
         err.status = 400;
         throw err;
       }
-      const identifier = bodyData.identifier.toLowerCase();
-      const digitsOnly = identifier.replace(/[^0-9]/g, '');
-      const loginContext = bodyData.loginContext || 'universal';
-      const isAuthIdent = identifier === '9059068384' || digitsOnly === '9059068384' || identifier.includes('authenticator');
 
-      // Strict URL role isolation check
-      if (loginContext === 'universal' && isAuthIdent) {
+      const defaultAccounts = [
+        { _id: 'acc_admin1', username: 'admin1', passwordRaw: 'RectorPass#2026', role: 'admin1', campus: 'All', name: 'Rector' },
+        { _id: 'acc_admin2_default', username: 'admin2', passwordRaw: 'DeanE1#8492', role: 'admin2', campus: 'Erragattugutta C1', name: 'Principal Dean' },
+        { _id: 'acc_admin2_erragattugutta_c1', username: 'admin2_erragattugutta_c1', passwordRaw: 'DeanE1#8492', role: 'admin2', campus: 'Erragattugutta C1', name: 'Dean Erragattugutta C1' },
+        { _id: 'acc_admin2_erragattugutta_c2', username: 'admin2_erragattugutta_c2', passwordRaw: 'DeanE2#5713', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2' },
+        { _id: 'acc_admin2_beemaram_c1', username: 'admin2_beemaram_c1', passwordRaw: 'DeanB1#3920', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1' },
+        { _id: 'acc_admin2_beemaram_c2', username: 'admin2_beemaram_c2', passwordRaw: 'DeanB2#6184', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2' },
+        { _id: 'acc_accountant_default', username: 'accountant', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Accountant' },
+        { _id: 'acc_accountant_erragattugutta_c1_1', username: 'accountant_erragattugutta_c1_1', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1' },
+        { _id: 'acc_accountant_erragattugutta_c1_2', username: 'accountant_erragattugutta_c1_2', passwordRaw: 'AccE1#9381', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1' },
+        { _id: 'acc_accountant_erragattugutta_c2_1', username: 'accountant_erragattugutta_c2_1', passwordRaw: 'AccE2#7294', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2' },
+        { _id: 'acc_accountant_erragattugutta_c2_2', username: 'accountant_erragattugutta_c2_2', passwordRaw: 'AccE2#1845', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 2 Erragattugutta C2' },
+        { _id: 'acc_accountant_beemaram_c1_1', username: 'accountant_beemaram_c1_1', passwordRaw: 'AccB1#6530', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 1 Beemaram C1' },
+        { _id: 'acc_accountant_beemaram_c1_2', username: 'accountant_beemaram_c1_2', passwordRaw: 'AccB1#2947', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1' },
+        { _id: 'acc_accountant_beemaram_c2_1', username: 'accountant_beemaram_c2_1', passwordRaw: 'AccB2#8163', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2' },
+        { _id: 'acc_accountant_beemaram_c2_2', username: 'accountant_beemaram_c2_2', passwordRaw: 'AccB2#3750', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2' },
+        { _id: 'acc_authenticator', username: '9059068384', passwordRaw: '080200', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
+        { _id: 'acc_authenticator_static', username: 'authenticator', passwordRaw: '080200', role: 'authenticator', campus: 'All', name: 'Security Authenticator' }
+      ];
+
+      const usernameAliasMap: { [key: string]: string } = {
+        admin: 'admin1', admin1: 'admin1', rector: 'admin1', superadmin: 'admin1',
+        admin2: 'admin2', admin2_e1: 'admin2_erragattugutta_c1', admin2_c1: 'admin2_erragattugutta_c1',
+        admin2_e2: 'admin2_erragattugutta_c2', admin2_c2: 'admin2_erragattugutta_c2',
+        admin2_b1: 'admin2_beemaram_c1', admin2_b2: 'admin2_beemaram_c2', principal: 'admin2',
+        accountant: 'accountant', accountant1_e1: 'accountant_erragattugutta_c1_1', acc1_e1: 'accountant_erragattugutta_c1_1',
+        accountant2_e1: 'accountant_erragattugutta_c1_2', acc2_e1: 'accountant_erragattugutta_c1_2',
+        accountant1_e2: 'accountant_erragattugutta_c2_1', acc1_e2: 'accountant_erragattugutta_c2_1',
+        accountant2_e2: 'accountant_erragattugutta_c2_2', acc2_e2: 'accountant_erragattugutta_c2_2',
+        accountant1_b1: 'accountant_beemaram_c1_1', acc1_b1: 'accountant_beemaram_c1_1',
+        accountant2_b1: 'accountant_beemaram_c1_2', acc2_b1: 'accountant_beemaram_c1_2',
+        accountant1_b2: 'accountant_beemaram_c2_1', acc1_b2: 'accountant_beemaram_c2_1',
+        accountant2_b2: 'accountant_beemaram_c2_2', acc2_b2: 'accountant_beemaram_c2_2',
+        authenticator: '9059068384', security: '9059068384'
+      };
+
+      const identifier = (bodyData.identifier || '').toString().trim().toLowerCase();
+      const cleanIdentifier = usernameAliasMap[identifier] || identifier;
+      const matchedUser = defaultAccounts.find(a => a.username.toLowerCase() === cleanIdentifier);
+
+      if (!matchedUser) {
+        const err: ApiError = new Error('Invalid credentials. User ID not found.');
+        err.status = 401;
+        throw err;
+      }
+
+      const loginContext = bodyData.loginContext || 'universal';
+      if (loginContext === 'universal' && matchedUser.role === 'authenticator') {
         const err: ApiError = new Error('Authenticator login is restricted to the dedicated Security Authenticator URL.');
         err.status = 403;
         throw err;
       }
-
-      if (loginContext === 'authenticator' && !isAuthIdent) {
+      if (loginContext === 'authenticator' && matchedUser.role !== 'authenticator') {
         const err: ApiError = new Error('Universal accounts must log in via the Universal Portal URL.');
         err.status = 403;
         throw err;
       }
 
-      let role: 'admin1' | 'admin2' | 'accountant' | 'authenticator' = 'admin1';
-      let campus = 'Erragattugutta C1';
-      let name = identifier;
+      // Password check
+      const inputPass = (bodyData.password || '').toString().trim();
+      if (inputPass !== matchedUser.passwordRaw) {
+        const err: ApiError = new Error('Incorrect account password.');
+        err.status = 401;
+        throw err;
+      }
 
-      if (isAuthIdent) {
-        role = 'authenticator';
-        campus = 'All';
-        name = 'Security Authenticator';
-      } else if (identifier.includes('admin2') || identifier.includes('principal')) {
-        role = 'admin2';
-        campus = identifier.includes('c2') || identifier.includes('e2') ? 'Erragattugutta C2' : 'Erragattugutta C1';
-        name = 'Admin 2 (Campus Principal)';
-      } else if (identifier.includes('accountant') || identifier.includes('acc')) {
-        role = 'accountant';
-        campus = identifier.includes('c2') || identifier.includes('e2') ? 'Erragattugutta C2' : 'Erragattugutta C1';
-        name = 'Senior Accountant';
-      } else {
-        role = 'admin1';
-        campus = 'All';
-        name = 'Rector (Admin 1)';
+      // 6-Digit PIN check
+      const inputPin = (bodyData.pin || '').toString().trim();
+      const getLocalDateSeed = () => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      };
+      const generate24HourCode = (id: string) => {
+        if (id === 'authenticator' || id === '9059068384') return '080200';
+        let hash = 0;
+        const str = `${id}:${getLocalDateSeed()}:inspire_2026_static_secret_key`;
+        for (let i = 0; i < str.length; i++) {
+          hash = (hash << 5) - hash + str.charCodeAt(i);
+          hash |= 0;
+        }
+        return (100000 + (Math.abs(hash) % 900000)).toString();
+      };
+      const expectedPin = generate24HourCode(`pin_${matchedUser.username}`);
+
+      if (matchedUser.role === 'authenticator') {
+        if (inputPin !== '080200') {
+          const err: ApiError = new Error('Incorrect 6-digit Security PIN.');
+          err.status = 401;
+          throw err;
+        }
+      } else if (inputPin !== expectedPin) {
+        const err: ApiError = new Error(`Incorrect 6-digit Security PIN for ${matchedUser.username}. Check Security Authenticator Portal.`);
+        err.status = 401;
+        throw err;
       }
 
       return {
         status: 'success',
-        token: `mock-jwt-token-for-${role}-${identifier}`,
-        refreshToken: `mock-refresh-token-for-${role}-${identifier}`,
-        user: { id: `acc_${identifier}`, username: identifier, role, campus, name }
+        token: `jwt-token-for-${matchedUser.role}-${matchedUser.username}`,
+        refreshToken: `refresh-token-for-${matchedUser.role}-${matchedUser.username}`,
+        user: {
+          id: matchedUser._id,
+          username: matchedUser.username,
+          role: matchedUser.role,
+          campus: matchedUser.campus,
+          name: matchedUser.name
+        }
       } as any;
     }
 

@@ -800,6 +800,61 @@ app.get('/api/authenticator/sync-journal', authenticateToken, async (req, res) =
 });
 
 // --- AUTHENTICATION & REFRESH TOKEN ROUTES ---
+app.post('/api/auth/verify-credentials', async (req, res) => {
+  const { identifier, password, loginContext } = req.body;
+  if (!identifier || typeof identifier !== 'string' || !identifier.trim() ||
+      !password || typeof password !== 'string' || !password.trim()) {
+    return res.status(400).json({ status: 'error', message: 'User ID and Password are required.' });
+  }
+
+  const usernameAliasMap = {
+    admin: 'admin1', admin1: 'admin1', rector: 'admin1', superadmin: 'admin1',
+    admin2: 'admin2_erragattugutta_c1', admin2_e1: 'admin2_erragattugutta_c1', admin2_c1: 'admin2_erragattugutta_c1',
+    admin2_e2: 'admin2_erragattugutta_c2', admin2_c2: 'admin2_erragattugutta_c2',
+    admin2_b1: 'admin2_beemaram_c1', admin2_b2: 'admin2_beemaram_c2', principal: 'admin2_erragattugutta_c1',
+    accountant: 'accountant_erragattugutta_c1_1', accountant1: 'accountant_erragattugutta_c1_1',
+    acc: 'accountant_erragattugutta_c1_1', acc1: 'accountant_erragattugutta_c1_1',
+    accountant1_e2: 'accountant_erragattugutta_c2_1', acc1_e2: 'accountant_erragattugutta_c2_1',
+    authenticator: '9059068384', security: '9059068384'
+  };
+
+  const rawIdentifier = identifier.trim().toLowerCase();
+  let cleanIdentifier = usernameAliasMap[rawIdentifier] || rawIdentifier;
+  if (rawIdentifier.replace(/[^0-9]/g, '') === '9059068384') cleanIdentifier = '9059068384';
+
+  let matchedUser = null;
+  if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
+    try { matchedUser = await User.findOne({ username: cleanIdentifier }); } catch { /* fallback */ }
+  }
+  if (!matchedUser) {
+    matchedUser = inMemoryStore.users.find(u => u.username.toLowerCase() === cleanIdentifier);
+  }
+
+  if (!matchedUser) {
+    return res.status(401).json({ status: 'error', message: 'Invalid credentials. User ID not found.' });
+  }
+
+  const ctx = loginContext || 'universal';
+  if (ctx === 'universal' && matchedUser.role === 'authenticator') {
+    return res.status(403).json({ status: 'error', message: 'Authenticator login is restricted to the dedicated Security Authenticator URL.' });
+  }
+
+  if (ctx === 'authenticator' && matchedUser.role !== 'authenticator') {
+    return res.status(403).json({ status: 'error', message: 'Universal accounts must log in via the Universal Portal URL.' });
+  }
+
+  const passwordInput = password.trim();
+  const isPasswordValid = (matchedUser.password && bcrypt.compareSync(passwordInput, matchedUser.password)) ||
+    passwordInput === matchedUser.passwordRaw ||
+    (matchedUser.role === 'authenticator' && passwordInput === '080200');
+
+  if (!isPasswordValid) {
+    return res.status(401).json({ status: 'error', message: 'Incorrect account password.' });
+  }
+
+  return res.json({ status: 'success', message: 'Credentials verified.', role: matchedUser.role, campus: matchedUser.campus });
+});
+
 app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   const { identifier, password } = req.body;
   if (!identifier || typeof identifier !== 'string' || !identifier.trim() ||
@@ -876,36 +931,8 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
     matchedUser = inMemoryStore.users.find(u => u.username.toLowerCase() === cleanIdentifier);
   }
 
-  // Dynamic fallback match if user ID contains role keyword
   if (!matchedUser) {
-    let role = 'admin1';
-    let campus = 'Erragattugutta C1';
-    let name = rawIdentifier;
-
-    if (rawIdentifier.includes('auth') || rawIdentifier.includes('security') || digitsOnly === '9059068384') {
-      role = 'authenticator';
-      campus = 'All';
-      name = 'Security Authenticator';
-    } else if (rawIdentifier.includes('admin2') || rawIdentifier.includes('principal')) {
-      role = 'admin2';
-      name = 'Admin 2 (Campus Principal)';
-    } else if (rawIdentifier.includes('accountant') || rawIdentifier.includes('acc')) {
-      role = 'accountant';
-      name = 'Senior Accountant';
-    } else {
-      role = 'admin1';
-      campus = 'All';
-      name = 'Rector (Admin 1)';
-    }
-
-    matchedUser = {
-      _id: `acc_${rawIdentifier}`,
-      username: rawIdentifier,
-      role,
-      campus,
-      name,
-      passwordRaw: password.trim()
-    };
+    return res.status(401).json({ status: 'error', message: 'Invalid credentials. User ID not found.' });
   }
 
   const loginContext = req.body.loginContext || 'universal';
@@ -919,28 +946,24 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   }
 
   const currentDailyPin = get12HourAccountPin(matchedUser.username);
-
-  const pinInput = (req.body.pin || password || '').toString().trim();
   const passwordInput = (password || '').toString().trim();
+  const pinInput = (req.body.pin || '').toString().trim();
 
-  const isMasterKey = (val) => {
-    if (!val) return false;
-    const v = val.toString().trim().toLowerCase();
-    return v === '080200' || v === '784920' || v === '123456' || v === 'admin123' ||
-           v === 'admin' || v === 'admin1' || v === 'admin2' || v === 'accountant' || v === 'authenticator';
-  };
-
-  const isPasswordValid = isMasterKey(passwordInput) || isMasterKey(pinInput) ||
-    (matchedUser.password && bcrypt.compareSync(passwordInput, matchedUser.password)) ||
+  // 1. Password Verification
+  const isPasswordValid = (matchedUser.password && bcrypt.compareSync(passwordInput, matchedUser.password)) ||
     passwordInput === matchedUser.passwordRaw ||
-    (matchedUser.passwordRaw && passwordInput === matchedUser.passwordRaw);
+    (matchedUser.role === 'authenticator' && passwordInput === '080200');
 
-  const isPinValid = isMasterKey(pinInput) || isMasterKey(passwordInput) ||
-    (matchedUser.role === 'authenticator' && (pinInput === '080200' || passwordInput === '080200')) ||
+  if (!isPasswordValid) {
+    return res.status(401).json({ status: 'error', message: 'Incorrect account password.' });
+  }
+
+  // 2. 6-Digit Security Key / PIN Verification
+  const isPinValid = (matchedUser.role === 'authenticator' && pinInput === '080200') ||
     pinInput === currentDailyPin;
 
-  if (!isPasswordValid && !isPinValid) {
-    return res.status(401).json({ status: 'error', message: 'Invalid credentials. Password or 6-digit Security PIN mismatch.' });
+  if (!isPinValid) {
+    return res.status(401).json({ status: 'error', message: 'Incorrect 6-digit Security PIN for this account. Check Security Authenticator Portal.' });
   }
 
   const sessionGuid = crypto.randomUUID ? crypto.randomUUID() : `sess_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
@@ -1248,7 +1271,7 @@ app.post(['/api/admin1/students', '/api/admin/students'], authenticateToken, enf
   return res.json({ status: 'success', data: newStu, credential: { pin: '784920', username: admNo } });
 });
 
-app.patch('/api/admin1/students/:id', authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.patch(['/api/admin1/students/:id', '/api/admin/students/:id'], authenticateToken, enforceCampusIsolation, async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
 
@@ -1311,7 +1334,7 @@ app.patch('/api/admin1/students/:id', authenticateToken, enforceCampusIsolation,
   return res.json({ status: 'success', data: { ...(existingStudent?.toObject ? existingStudent.toObject() : existingStudent), ...updateBody } });
 });
 
-app.delete('/api/admin1/students/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+app.delete(['/api/admin1/students/:id', '/api/admin/students/:id'], authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
 
@@ -1346,7 +1369,7 @@ app.delete('/api/admin1/students/:id', authenticateToken, enforceCampusIsolation
   return res.json({ status: 'success', message: 'Student record permanently deleted from database.' });
 });
 
-app.get('/api/admin1/teachers', authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.get(['/api/admin1/teachers', '/api/admin/teachers'], authenticateToken, enforceCampusIsolation, async (req, res) => {
   const branch = req.targetCampus;
   let list = [];
   if (isMongoConnected) {
@@ -1375,7 +1398,7 @@ app.get('/api/admin1/teachers', authenticateToken, enforceCampusIsolation, async
   return res.json({ status: 'success', data: list });
 });
 
-app.post('/api/admin1/teachers', authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.post(['/api/admin1/teachers', '/api/admin/teachers'], authenticateToken, enforceCampusIsolation, async (req, res) => {
   const branch = normalizeCampusName(req.body.branch || req.targetCampus);
   const newTeacher = { ...req.body, _id: `t_${Date.now()}`, branch };
   if (isMongoConnected) {
@@ -1389,7 +1412,7 @@ app.post('/api/admin1/teachers', authenticateToken, enforceCampusIsolation, asyn
   return res.json({ status: 'success', data: newTeacher });
 });
 
-app.patch('/api/admin1/teachers/:id', authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.patch(['/api/admin1/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, enforceCampusIsolation, async (req, res) => {
   const { id } = req.params;
   const updateData = { ...req.body };
   if (isMongoConnected) {
@@ -1404,7 +1427,7 @@ app.patch('/api/admin1/teachers/:id', authenticateToken, enforceCampusIsolation,
   return res.json({ status: 'success', data: { id, ...updateData } });
 });
 
-app.delete('/api/admin1/teachers/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+app.delete(['/api/admin1/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
   const { id } = req.params;
   if (isMongoConnected) {
     try { await Teacher.deleteMany({ $or: [{ _id: id }, { id }] }); } catch { /* fallback */ }

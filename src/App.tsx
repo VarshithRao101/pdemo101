@@ -26,7 +26,17 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       if (isAuthenticated) {
         setFlowStage('authenticated');
       } else {
-        if (hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l') || hash === UNIVERSAL_HASH || hash.includes('v1-portal-gate-x89f2a7b')) {
+        const isLoginHash = hash === AUTHENTICATOR_HASH ||
+          hash.includes('sec-auth-sys-9i0j7k8l') ||
+          hash === UNIVERSAL_HASH ||
+          hash.includes('v1-portal-gate-x89f2a7b') ||
+          hash.includes('login') ||
+          hash.includes('admin') ||
+          hash.includes('accountant') ||
+          hash.includes('authenticator') ||
+          hash.includes('portal');
+
+        if (isLoginHash) {
           setFlowStage('pin');
         } else {
           setFlowStage('portfolio');
