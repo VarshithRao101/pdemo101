@@ -1097,7 +1097,7 @@ export const PortfolioView: React.FC = () => {
 
           {/* Bottom Copyright */}
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', fontSize: '0.82rem', color: '#94A3B8' }}>
-            <div>&copy; 2026 Inspire Junior College. All rights reserved.</div>
+            <div>&copy; 2026 Inspire Junior College X Trent B. All rights reserved. Powered by Trent B Technologies.</div>
             <div style={{ display: 'flex', gap: '20px' }}>
               <span>Privacy Policy</span>
               <span>Terms of Admissions</span>

@@ -394,40 +394,78 @@ async function seedInitialData() {
 
 const activeSessionGuidMap = {};
 
-function get12HourAccountPin(username) {
-  if (username === '9059068384' || username === 'authenticator') return '080200';
-  const window12h = Math.floor(Date.now() / (12 * 60 * 60 * 1000));
-  const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${username}:${window12h}`).digest('hex');
-  const numericVal = parseInt(hmac.substring(0, 8), 16);
+function getLocalDateSeedServer() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function generate24HourDeterministicCodeServer(identifier, dateSeed = getLocalDateSeedServer()) {
+  if (identifier === 'authenticator' || identifier === '9059068384') return '080200';
+  let hash = 0;
+  const str = `${identifier}:${dateSeed}:inspire_2026_static_secret_key`;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const numericVal = Math.abs(hash);
   return (100000 + (numericVal % 900000)).toString();
 }
 
-// Security Keys Generator
+function get12HourAccountPin(username) {
+  return generate24HourDeterministicCodeServer(`pin_${username}`);
+}
+
+// Security Keys Generator (Constant for 24 hours until 00:00:00)
 function generateSecurityKeys() {
-  const genOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+  const dateSeed = getLocalDateSeedServer();
+  const genOtp = (slot) => generate24HourDeterministicCodeServer(`otp_${slot}`, dateSeed);
+  const genPin = (uname) => generate24HourDeterministicCodeServer(`pin_${uname}`, dateSeed);
+
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
 
   return {
-    generatedAt: Date.now(),
+    generatedAt: d.getTime(),
+    dateSeed,
     dailyPins: {
-      admin1: get12HourAccountPin('admin1'),
+      admin1: genPin('admin1'),
       authenticator: '080200',
-      admin2_erragattugutta_c1: get12HourAccountPin('admin2_erragattugutta_c1'),
-      admin2_erragattugutta_c2: get12HourAccountPin('admin2_erragattugutta_c2'),
-      admin2_beemaram_c1: get12HourAccountPin('admin2_beemaram_c1'),
-      admin2_beemaram_c2: get12HourAccountPin('admin2_beemaram_c2'),
-      accountant_erragattugutta_c1_1: get12HourAccountPin('accountant_erragattugutta_c1_1'),
-      accountant_erragattugutta_c1_2: get12HourAccountPin('accountant_erragattugutta_c1_2'),
-      accountant_erragattugutta_c2_1: get12HourAccountPin('accountant_erragattugutta_c2_1'),
-      accountant_erragattugutta_c2_2: get12HourAccountPin('accountant_erragattugutta_c2_2'),
-      accountant_beemaram_c1_1: get12HourAccountPin('accountant_beemaram_c1_1'),
-      accountant_beemaram_c1_2: get12HourAccountPin('accountant_beemaram_c1_2'),
-      accountant_beemaram_c2_1: get12HourAccountPin('accountant_beemaram_c2_1'),
-      accountant_beemaram_c2_2: get12HourAccountPin('accountant_beemaram_c2_2'),
+      admin2_erragattugutta_c1: genPin('admin2_erragattugutta_c1'),
+      admin2_erragattugutta_c2: genPin('admin2_erragattugutta_c2'),
+      admin2_beemaram_c1: genPin('admin2_beemaram_c1'),
+      admin2_beemaram_c2: genPin('admin2_beemaram_c2'),
+      accountant_erragattugutta_c1_1: genPin('accountant_erragattugutta_c1_1'),
+      accountant_erragattugutta_c1_2: genPin('accountant_erragattugutta_c1_2'),
+      accountant_erragattugutta_c2_1: genPin('accountant_erragattugutta_c2_1'),
+      accountant_erragattugutta_c2_2: genPin('accountant_erragattugutta_c2_2'),
+      accountant_beemaram_c1_1: genPin('accountant_beemaram_c1_1'),
+      accountant_beemaram_c1_2: genPin('accountant_beemaram_c1_2'),
+      accountant_beemaram_c2_1: genPin('accountant_beemaram_c2_1'),
+      accountant_beemaram_c2_2: genPin('accountant_beemaram_c2_2'),
     },
     sectionOtps: {
-      admin1: { studentRegistry: genOtp(), facultyManagement: genOtp(), feeStructure: genOtp(), feeOverride: genOtp(), expenditure: genOtp() },
-      admin2: { feeStructure: genOtp(), feeOverride: genOtp(), expenditure: genOtp(), workerPayments: genOtp() },
-      accountant: { studentDetails: genOtp(), fees: genOtp(), hostel: genOtp() }
+      admin1: {
+        studentRegistry: genOtp('admin1_studentRegistry'),
+        facultyManagement: genOtp('admin1_management'),
+        management: genOtp('admin1_management'),
+        feeStructure: genOtp('admin1_feeStructure'),
+        feeOverride: genOtp('admin1_feeOverride'),
+        expenditure: genOtp('admin1_expenditure')
+      },
+      admin2: {
+        feeStructure: genOtp('admin2_feeStructure'),
+        feeOverride: genOtp('admin2_feeOverride'),
+        expenditure: genOtp('admin2_expenditure'),
+        workerPayments: genOtp('admin2_workerPayments')
+      },
+      accountant: {
+        studentDetails: genOtp('accountant_studentDetails'),
+        fees: genOtp('accountant_fees'),
+        hostel: genOtp('accountant_hostel')
+      }
     }
   };
 }
@@ -556,14 +594,21 @@ function requireSecurityOtp(req, res, next) {
 
   const currentDailyPin = get12HourAccountPin(cleanUsername);
   const admin1Pin = get12HourAccountPin('admin1');
+  const validKeys = generateSecurityKeys();
 
-  // Accept master PIN 080200, account daily PIN, admin1 PIN, or valid 6-digit OTP
-  const isMasterPin = otp === '080200';
-  const isDailyPin = otp === currentDailyPin || otp === admin1Pin;
-  const isValidFormat = /^\d{6}$/.test(otp) || otp.length >= 4;
+  // Collect all active 24h section OTPs and PINs
+  const activeKeysSet = new Set([
+    '080200',
+    currentDailyPin,
+    admin1Pin,
+    ...Object.values(validKeys.dailyPins),
+    ...Object.values(validKeys.sectionOtps.admin1),
+    ...Object.values(validKeys.sectionOtps.admin2),
+    ...Object.values(validKeys.sectionOtps.accountant)
+  ]);
 
-  if (!isMasterPin && !isDailyPin && !isValidFormat) {
-    return res.status(403).json({ status: 'error', message: 'Invalid security authentication OTP/PIN.' });
+  if (!activeKeysSet.has(otp) && otp !== '080200') {
+    return res.status(403).json({ status: 'error', message: 'Invalid security authentication OTP/PIN for today\'s 24-hour slot.' });
   }
   next();
 }
@@ -1145,14 +1190,6 @@ app.post(['/api/admin1/students', '/api/admin/students'], authenticateToken, enf
   if (!inMemoryStore.students[branch]) inMemoryStore.students[branch] = [];
   inMemoryStore.students[branch].push(newStu);
 
-  // Store in primary default lists as well to guarantee cross-branch visibility
-  ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].forEach(bKey => {
-    if (bKey !== branch) {
-      if (!inMemoryStore.students[bKey]) inMemoryStore.students[bKey] = [];
-      inMemoryStore.students[bKey].push(newStu);
-    }
-  });
-
   await logSyncJournal('POST /api/admin1/students', branch, 'success', `Registered student ${admNo} with campus fee structure for ${branch}`, req.user);
   return res.json({ status: 'success', data: newStu, credential: { pin: '784920', username: admNo } });
 });
@@ -1296,6 +1333,35 @@ app.post('/api/admin1/teachers', authenticateToken, enforceCampusIsolation, asyn
   });
   await logSyncJournal('POST /api/admin1/teachers', branch, 'success', `Created faculty ${newTeacher.name} for ${branch}`, req.user);
   return res.json({ status: 'success', data: newTeacher });
+});
+
+app.patch('/api/admin1/teachers/:id', authenticateToken, enforceCampusIsolation, async (req, res) => {
+  const { id } = req.params;
+  const updateData = { ...req.body };
+  if (isMongoConnected) {
+    try { await Teacher.findOneAndUpdate({ $or: [{ _id: id }, { id }] }, updateData); } catch { /* fallback */ }
+  }
+  Object.keys(inMemoryStore.teachers).forEach(bKey => {
+    const list = inMemoryStore.teachers[bKey] || [];
+    const idx = list.findIndex(t => t._id === id || t.id === id);
+    if (idx !== -1) list[idx] = { ...list[idx], ...updateData };
+  });
+  await logSyncJournal(`PATCH /api/admin1/teachers/${id}`, req.targetCampus, 'success', `Updated faculty credentials for ${id}`, req.user);
+  return res.json({ status: 'success', data: { id, ...updateData } });
+});
+
+app.delete('/api/admin1/teachers/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+  const { id } = req.params;
+  if (isMongoConnected) {
+    try { await Teacher.deleteMany({ $or: [{ _id: id }, { id }] }); } catch { /* fallback */ }
+  }
+  Object.keys(inMemoryStore.teachers).forEach(bKey => {
+    if (Array.isArray(inMemoryStore.teachers[bKey])) {
+      inMemoryStore.teachers[bKey] = inMemoryStore.teachers[bKey].filter(t => t._id !== id && t.id !== id);
+    }
+  });
+  await logSyncJournal(`DELETE /api/admin1/teachers/${id}`, req.targetCampus, 'success', `Permanently purged faculty record ${id}`, req.user);
+  return res.json({ status: 'success', message: 'Teacher record permanently deleted.' });
 });
 
 app.get('/api/admin1/sections', authenticateToken, enforceCampusIsolation, async (req, res) => {
@@ -1754,6 +1820,52 @@ app.get('/api/accountant/hostel', authenticateToken, (req, res) => {
 
 app.get('/api/accountant/attendance', authenticateToken, (req, res) => res.json({ status: 'success', data: [] }));
 app.post('/api/accountant/attendance', authenticateToken, (req, res) => res.json({ status: 'success', message: 'Attendance records saved.' }));
+
+// --- DAILY BACKUP SYSTEM ENDPOINTS (VERCEL CRON & SYSTEM ONLY) ---
+const backupService = require('./backupService.cjs');
+
+app.get('/api/system/verify-drive', async (req, res) => {
+  const cronSecret = process.env.CRON_SECRET || process.env.BACKUP_ENCRYPTION_KEY || 'inspire-cron-secret-2026';
+  const authHeader = req.headers['authorization'] || '';
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const isSecretMatch = req.query.secret === cronSecret || authHeader === `Bearer ${cronSecret}`;
+
+  if (!isVercelCron && !isSecretMatch && process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ status: 'error', message: 'Unauthorized system access.' });
+  }
+
+  const result = await backupService.verifyGoogleDriveAccess();
+  if (result.success) {
+    return res.json({ status: 'success', data: result });
+  } else {
+    return res.status(500).json({ status: 'error', message: result.error });
+  }
+});
+
+app.get('/api/system/run-backup', async (req, res) => {
+  const cronSecret = process.env.CRON_SECRET || process.env.BACKUP_ENCRYPTION_KEY || 'inspire-cron-secret-2026';
+  const authHeader = req.headers['authorization'] || '';
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const isSecretMatch = req.query.secret === cronSecret || authHeader === `Bearer ${cronSecret}`;
+
+  if (!isVercelCron && !isSecretMatch && process.env.NODE_ENV === 'production') {
+    return res.status(401).json({ status: 'error', message: 'Unauthorized: Backup execution restricted to Vercel Cron or system secrets.' });
+  }
+
+  try {
+    const result = await backupService.runDailyBackup();
+    return res.json({
+      status: 'success',
+      message: 'Daily backup generated, encrypted (AES-256-GCM), and uploaded to Google Drive.',
+      data: result
+    });
+  } catch (err) {
+    return res.status(500).json({
+      status: 'error',
+      message: `Daily Backup Execution Failed: ${err.message}`
+    });
+  }
+});
 
 // --- HEALTH CHECK ROUTE ---
 app.get('/api/health', (req, res) => {

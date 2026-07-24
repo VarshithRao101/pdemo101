@@ -10,10 +10,13 @@ import { AuthenticatorDashboardView } from './views/AuthenticatorPortalViews';
 const UNIVERSAL_HASH = '#/v1-portal-gate-x89f2a7b';
 const AUTHENTICATOR_HASH = '#/sec-auth-sys-9i0j7k8l';
 
+import { HorizontalProgressBarLoader } from './components/common/HorizontalProgressBarLoader';
+
 const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
   const { portalRole, checkSession, logout, isAuthenticated, setPortalRole } = useNavigation();
   const [flowStage, setFlowStage] = useState<'portfolio' | 'pin' | 'authenticated'>('portfolio');
   const [currentHash, setCurrentHash] = useState<string>(window.location.hash);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Listen for hash changes
   useEffect(() => {
@@ -56,8 +59,22 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       if (isValid) {
         setFlowStage('authenticated');
       }
+      setTimeout(() => {
+        setIsInitialLoading(false);
+      }, 800);
     });
   }, [checkSession]);
+
+  if (isInitialLoading) {
+    return (
+      <HorizontalProgressBarLoader
+        message="Initializing Inspire ERP Systems..."
+        subMessage="Trent B Technologies"
+        durationMs={1200}
+        onComplete={() => setIsInitialLoading(false)}
+      />
+    );
+  }
 
   // Wire global logout
   useEffect(() => {

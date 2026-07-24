@@ -29,17 +29,14 @@ export const LiveConnectionIndicator: React.FC<LiveConnectionIndicatorProps> = (
         display: 'inline-flex',
         alignItems: 'center',
         gap: compact ? '6px' : '8px',
-        padding: compact ? '4px 8px' : '6px 10px',
-        borderRadius: '999px',
-        border: '1px solid rgba(148, 163, 184, 0.18)',
-        backgroundColor: 'rgba(255, 255, 255, 0.45)',
+        padding: compact ? '2px 4px' : '4px 6px',
+        border: 'none',
+        backgroundColor: 'transparent',
         color: 'var(--dark-charcoal)',
         fontSize: compact ? '10px' : '11px',
         fontWeight: 800,
         letterSpacing: '0.02em',
-        boxShadow: 'var(--shadow-sm)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
+        boxShadow: 'none',
       }}
       title={`Realtime status: ${label}`}
     >

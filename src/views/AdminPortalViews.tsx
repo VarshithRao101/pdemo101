@@ -340,6 +340,31 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [workerOtpInput, setWorkerOtpInput] = useState('');
   const [workerPendingAction, setWorkerPendingAction] = useState<any>(null);
 
+  const [isDeleteStuOtpOpen, setIsDeleteStuOtpOpen] = useState(false);
+  const [deleteStuOtpInput, setDeleteStuOtpInput] = useState('');
+  const [pendingDeleteTeacherId, setPendingDeleteTeacherId] = useState<string | null>(null);
+
+  const [otpCountdown, setOtpCountdown] = useState('');
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = new Date();
+      const midnight = new Date();
+      midnight.setHours(23, 59, 59, 999);
+      const diffMs = midnight.getTime() - now.getTime();
+      if (diffMs <= 0) {
+        setOtpCountdown('00h 00m 00s');
+        return;
+      }
+      const h = String(Math.floor(diffMs / (1000 * 60 * 60))).padStart(2, '0');
+      const m = String(Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+      const s = String(Math.floor((diffMs % (1000 * 60)) / 1000)).padStart(2, '0');
+      setOtpCountdown(`${h}h ${m}m ${s}s`);
+    };
+    updateTimer();
+    const timer = setInterval(updateTimer, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     if (user?.campus && user.campus !== 'All') {
       setSelectedFeeBranch(user.campus as any);
@@ -905,7 +930,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     }
 
     try {
-      setGlobalSecurityKey(facOtpInput);
+      setGlobalSecurityKey(facOtpInput.trim());
       if (facActionType === 'add') {
         const newId = `FAC-20${teachers.length + 1}`;
         const saved = await admin1Service.createTeacher({
@@ -923,18 +948,252 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         setIsAddTeacherModalOpen(false);
         triggerToast(`Faculty member ${newFacName} registered successfully!`);
       } else if (facActionType === 'edit' && editTeacher) {
-        const saved = await admin1Service.updateTeacher(editTeacher.id, editTeacher);
-        const next = teachers.map(t => t.id === saved.id ? saved : t);
+        const targetId = editTeacher.id || editTeacher._id;
+        const saved = await admin1Service.updateTeacher(targetId, editTeacher);
+        const next = teachers.map(t => (t.id === targetId || t._id === targetId) ? { ...t, ...saved } : t);
         setTeachers(next);
         setSelectedTeacher(null);
         setEditTeacher(null);
-        triggerToast(`Faculty credentials for ${saved.name} saved successfully.`);
+        triggerToast(`Faculty credentials for ${editTeacher.name} saved successfully.`);
+      } else if (facActionType === ('delete' as any) && pendingDeleteTeacherId) {
+        await admin1Service.deleteTeacher(pendingDeleteTeacherId, facOtpInput.trim());
+        setTeachers(prev => prev.filter(t => t.id !== pendingDeleteTeacherId && t._id !== pendingDeleteTeacherId));
+        setSelectedTeacher(null);
+        setEditTeacher(null);
+        setPendingDeleteTeacherId(null);
+        triggerToast('Faculty record permanently deleted.');
       }
       setIsFacOtpModalOpen(false);
       setFacOtpInput('');
     } catch (err: any) {
       triggerToast(err.message || 'Verification failed.');
     }
+  };
+
+  const handleConfirmDeleteStudent = async (otpToUse: string) => {
+    if (!editStudent) return;
+    if (!otpToUse || !otpToUse.trim()) {
+      triggerToast('Please enter a valid 6-digit Security Authorization Key / OTP.');
+      return;
+    }
+    try {
+      setGlobalSecurityKey(otpToUse.trim());
+      await admin1Service.deleteStudent(editStudent._id || editStudent.studentId, otpToUse.trim());
+      setStudents(prev => prev.filter(s => s._id !== editStudent._id && s.studentId !== editStudent.studentId && s.admissionNumber !== editStudent.admissionNumber));
+      setSelectedStudent(null);
+      setEditStudent(null);
+      setIsDeleteStuOtpOpen(false);
+      setDeleteStuOtpInput('');
+      triggerToast(`Student record for ${editStudent.name} permanently deleted from database.`);
+    } catch (err: any) {
+      triggerToast(err.message || 'Invalid Security OTP. Failed to delete student.');
+    }
+  };
+
+  const handleDownloadExpenditureReport = () => {
+    const branchName = role === 'admin1' ? selectedExpBranch : loggedInCampus;
+    const listToPrint = filteredExpenditures;
+    const totalAmount = totalFiltered;
+    const currentDateStr = new Date().toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      triggerToast('Please allow popups to download the expenditure PDF report.');
+      return;
+    }
+
+    const rowsHtml = listToPrint.map((exp, idx) => `
+      <tr style="border-bottom: 1px solid #E2E8F0; background-color: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
+        <td style="padding: 10px 14px; font-weight: 700; color: #334155;">${idx + 1}</td>
+        <td style="padding: 10px 14px; font-weight: 700; color: #0F172A;">${exp.category || 'General'}</td>
+        <td style="padding: 10px 14px; color: #475569;">${exp.description || '—'}</td>
+        <td style="padding: 10px 14px; color: #64748B;">${typeof exp.date === 'string' ? exp.date.split('T')[0] : exp.date}</td>
+        <td style="padding: 10px 14px; font-weight: 800; color: #DC2626; text-align: right;">₹${Number(exp.amount || 0).toLocaleString('en-IN')}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(\`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Campus Expenditure Report - \${branchName}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap');
+            body {
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              margin: 0;
+              padding: 36px;
+              color: #0F172A;
+              background: #FFFFFF;
+            }
+            .header-box {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 3px solid #D4AF37;
+              padding-bottom: 20px;
+              margin-bottom: 24px;
+            }
+            .title-area h1 {
+              margin: 0;
+              font-size: 22px;
+              font-weight: 900;
+              color: #070B19;
+              letter-spacing: -0.02em;
+            }
+            .title-area h2 {
+              margin: 4px 0 0 0;
+              font-size: 13px;
+              font-weight: 800;
+              color: #D4AF37;
+              text-transform: uppercase;
+              letter-spacing: 0.08em;
+            }
+            .meta-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 16px;
+              margin-bottom: 24px;
+            }
+            .meta-card {
+              background: #F8FAFC;
+              border: 1px solid #E2E8F0;
+              border-radius: 12px;
+              padding: 14px;
+            }
+            .meta-card label {
+              font-size: 10px;
+              font-weight: 800;
+              color: #64748B;
+              text-transform: uppercase;
+              display: block;
+              margin-bottom: 4px;
+            }
+            .meta-card strong {
+              font-size: 16px;
+              font-weight: 800;
+              color: #0F172A;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+              font-size: 12px;
+            }
+            th {
+              background: #070B19;
+              color: #FFFFFF;
+              padding: 12px 14px;
+              text-align: left;
+              font-weight: 800;
+              letter-spacing: 0.03em;
+            }
+            th.num { text-align: right; }
+            .sig-section {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 60px;
+              padding-top: 20px;
+              border-top: 1px dashed #CBD5E1;
+            }
+            .sig-box {
+              text-align: center;
+              width: 180px;
+            }
+            .sig-line {
+              border-top: 1.5px solid #0F172A;
+              margin-bottom: 6px;
+            }
+            .sig-title {
+              font-size: 11px;
+              font-weight: 800;
+              color: #334155;
+            }
+            .footer-brand {
+              margin-top: 40px;
+              text-align: center;
+              font-size: 10px;
+              font-weight: 700;
+              color: #94A3B8;
+              border-top: 1px solid #E2E8F0;
+              padding-top: 14px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header-box">
+            <div class="title-area">
+              <h1>INSPIRE JUNIOR COLLEGE</h1>
+              <h2>Campus Expenditure & Financial Ledger Report</h2>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-weight: 900; font-size: 16px; color: #070B19;">INSPIRE ERP</div>
+              <div style="font-size: 11px; color: #64748B;">Central Audit System</div>
+            </div>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta-card">
+              <label>Campus Location</label>
+              <strong>\${branchName}</strong>
+            </div>
+            <div class="meta-card">
+              <label>Report Date</label>
+              <strong>\${currentDateStr}</strong>
+            </div>
+            <div class="meta-card" style="border-color: #D4AF37; background: rgba(212,175,55,0.05);">
+              <label style="color: #D4AF37;">Total Expenditure</label>
+              <strong style="color: #DC2626; font-size: 18px;">₹\${totalAmount.toLocaleString('en-IN')}</strong>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 40px;">#</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Log Date</th>
+                <th class="num">Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              \${rowsHtml || '<tr><td colspan="5" style="text-align:center; padding: 20px;">No expenditure logs found.</td></tr>'}
+            </tbody>
+          </table>
+
+          <div class="sig-section">
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div class="sig-title">Senior Accounts Officer</div>
+            </div>
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div class="sig-title">Campus Principal Dean</div>
+            </div>
+            <div class="sig-box">
+              <div class="sig-line"></div>
+              <div class="sig-title">Rector / Managing Trustee</div>
+            </div>
+          </div>
+
+          <div class="footer-brand">
+            Inspire Junior College X Trent B — Generated via Trent B Technologies Audit Engine
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    \`);
+    printWindow.document.close();
   };
 
   const handleAssignTeacherDuty = async () => {
@@ -1080,15 +1339,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     try {
       setGlobalSecurityKey(otpToUse.trim());
       const payload = {
-        tuition: Number(editTuitionRate) || 0,
-        hostel: Number(editHostelRate) || 0,
-        transport: Number(editTransportRate) || 0,
-        misc: Number(editMiscRate) || 0,
+        tuition: Number(feeRates.tuition !== undefined ? feeRates.tuition : editTuitionRate) || 0,
+        hostel: Number(feeRates.hostel !== undefined ? feeRates.hostel : editHostelRate) || 0,
+        transport: Number(feeRates.transport !== undefined ? feeRates.transport : editTransportRate) || 0,
+        misc: Number(feeRates.misc !== undefined ? feeRates.misc : editMiscRate) || 0,
         isLocked: true,
         branch: selectedFeeBranch
       };
       const saved = await admin2Service.updateFeeSettings(payload);
       setFeeRates(saved);
+      setEditTuitionRate(String(saved.tuition));
+      setEditHostelRate(String(saved.hostel));
+      setEditTransportRate(String(saved.transport));
+      setEditMiscRate(String(saved.misc));
       setIsEditingFees(false);
       setIsAcadFeeOtpOpen(false);
       setAcadFeeOtpInput('');
@@ -1495,8 +1758,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           <button onClick={() => { setActivePage('menu'); setSelectedTeacher(null); setEditTeacher(null); }} style={styles.backArrowBtn} className="press-interactive">
             Back to Cockpit
           </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Faculty Management</h1>
-          <p style={styles.subtitle}>View faculty list, assign classroom duties, check salary ledgers</p>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Management</h1>
+          <p style={styles.subtitle}>View faculty & staff list, assign classroom duties, check salary ledgers</p>
         </header>
 
         <main style={styles.content}>
@@ -1671,13 +1934,30 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleTeacherSave(editTeacher)}
-                    style={{ ...styles.saveSubmitBtn, marginTop: '8px' }}
-                    className="press-interactive"
-                  >
-                    Save Changes
-                  </button>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                    <button
+                      onClick={() => handleTeacherSave(editTeacher)}
+                      style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0 }}
+                      className="press-interactive"
+                    >
+                      Save Changes
+                    </button>
+                    {role === 'admin1' && (
+                      <button
+                        onClick={() => {
+                          if (!editTeacher) return;
+                          setFacActionType('delete' as any);
+                          setPendingDeleteTeacherId(editTeacher.id || editTeacher._id);
+                          setFacOtpInput('');
+                          setIsFacOtpModalOpen(true);
+                        }}
+                        style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#DC2626', color: '#fff', border: 'none' }}
+                        className="press-interactive"
+                      >
+                        Delete Faculty
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2374,12 +2654,48 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
     const locked = feeRates.isLocked && !isEditingFees;
     const feeBarItems = [
-      { key: 'tuition', label: 'Academic Tuition Fee', icon: '', value: feeRates.tuition, setter: (v: number) => setFeeRates({ ...feeRates, tuition: v }) },
-      { key: 'hostel', label: 'Hostel / Residential Fee', icon: '', value: feeRates.hostel, setter: (v: number) => setFeeRates({ ...feeRates, hostel: v }) },
-      { key: 'transport', label: 'Transport / Bus Fee', icon: '', value: feeRates.transport, setter: (v: number) => setFeeRates({ ...feeRates, transport: v }) },
-      { key: 'misc', label: 'Miscellaneous / Lab Fee', icon: '', value: feeRates.misc, setter: (v: number) => setFeeRates({ ...feeRates, misc: v }) },
+      {
+        key: 'tuition',
+        label: 'Academic Tuition Fee',
+        icon: '',
+        value: feeRates.tuition,
+        setter: (v: number) => {
+          setFeeRates(prev => ({ ...prev, tuition: v }));
+          setEditTuitionRate(String(v));
+        }
+      },
+      {
+        key: 'hostel',
+        label: 'Hostel / Residential Fee',
+        icon: '',
+        value: feeRates.hostel,
+        setter: (v: number) => {
+          setFeeRates(prev => ({ ...prev, hostel: v }));
+          setEditHostelRate(String(v));
+        }
+      },
+      {
+        key: 'transport',
+        label: 'Transport / Bus Fee',
+        icon: '',
+        value: feeRates.transport,
+        setter: (v: number) => {
+          setFeeRates(prev => ({ ...prev, transport: v }));
+          setEditTransportRate(String(v));
+        }
+      },
+      {
+        key: 'misc',
+        label: 'Miscellaneous / Lab Fee',
+        icon: '',
+        value: feeRates.misc,
+        setter: (v: number) => {
+          setFeeRates(prev => ({ ...prev, misc: v }));
+          setEditMiscRate(String(v));
+        }
+      },
     ];
-    const grandTotal = feeBarItems.reduce((s, f) => s + (f.value || 0), 0);
+    const grandTotal = feeBarItems.reduce((s, f) => s + (Number(f.value) || 0), 0);
 
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -2442,10 +2758,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                         type="number"
                         min="0"
                         disabled={locked}
-                        value={fee.value}
+                        value={fee.value === '' || fee.value === undefined || isNaN(fee.value) ? '' : fee.value}
                         onChange={(e) => {
                           const val = e.target.value;
-                          fee.setter(val === '' ? '' as any : (parseFloat(val) || 0));
+                          fee.setter(val === '' ? '' as any : parseFloat(val));
                         }}
                         style={{ ...styles.textInputBox, width: '100%', paddingLeft: '24px', textAlign: 'right', fontWeight: 800, fontSize: '14px', opacity: locked ? 0.65 : 1, borderColor: locked ? 'rgba(0,0,0,0.1)' : 'rgba(212,175,55,0.4)' }}
                       />
@@ -2552,6 +2868,46 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     <button onClick={() => { setIsAcadFeeOtpOpen(false); setAcadFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
                     <button onClick={() => handleSaveAcademicFees(acadFeeOtpInput.trim())} disabled={!acadFeeOtpInput.trim()} style={{ ...styles.modalConfirmBtn, opacity: acadFeeOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">
                       Confirm & Save Rates
+                    </button>
+                  </div>
+                </div>
+              </GlassCard>
+            </div>
+          {/* Delete Student OTP Verification Modal */}
+          {isDeleteStuOtpOpen && editStudent && (
+            <div style={styles.modalOverlay} className="anim-fade-in">
+              <GlassCard hoverable={false} style={styles.modalContentCard} className="anim-scale-in glass-gold-ring">
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <div style={{ ...styles.modalIconBadge, backgroundColor: 'rgba(239,68,68,0.1)', border: '2px solid rgba(239,68,68,0.4)' }}>
+                    <span style={{ fontSize: '24px' }}>🗑️</span>
+                  </div>
+                  <h3 style={{ ...styles.modalHeading, color: '#DC2626' }}>Delete Student Record</h3>
+                  <p style={styles.modalSubText}>
+                    Enter the <strong>Student Registry OTP</strong> to permanently purge <strong>{editStudent.name}</strong> ({editStudent.admissionNumber}).
+                  </p>
+                  <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '8px' }}>
+                    24h Key Reset Timer: {otpCountdown}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="ENTER 6-DIGIT OTP"
+                    value={deleteStuOtpInput}
+                    onChange={(e) => setDeleteStuOtpInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && deleteStuOtpInput.trim()) handleConfirmDeleteStudent(deleteStuOtpInput.trim()); }}
+                    style={{ ...styles.modalOtpInput, borderColor: 'rgba(239,68,68,0.5)' }}
+                  />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
+                    <button
+                      onClick={() => handleConfirmDeleteStudent(deleteStuOtpInput.trim())}
+                      disabled={!deleteStuOtpInput.trim()}
+                      style={{ ...styles.modalConfirmBtn, backgroundColor: '#DC2626', opacity: deleteStuOtpInput.trim() ? 1 : 0.5 }}
+                      className="press-interactive"
+                    >
+                      Confirm & Purge Record
                     </button>
                   </div>
                 </div>

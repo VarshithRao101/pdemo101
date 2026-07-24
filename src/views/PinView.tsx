@@ -238,6 +238,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             Continue to 6-Digit PIN Keypad →
           </button>
         </form>
+        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--muted-gray)', letterSpacing: '0.05em' }}>
+          Trent B Technologies
+        </div>
       </>
     );
   };
@@ -300,6 +303,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           isError={isError}
           isChecking={isChecking}
         />
+        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--muted-gray)', letterSpacing: '0.05em' }}>
+          Trent B Technologies
+        </div>
       </>
     );
   };

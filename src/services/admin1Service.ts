@@ -69,6 +69,13 @@ export const admin1Service = {
     return res.data;
   },
 
+  async deleteTeacher(id: string, otpKey?: string): Promise<{ status: string; message: string }> {
+    const headers: Record<string, string> = {};
+    if (otpKey) headers['X-Security-OTP'] = otpKey;
+    const res = await apiClient.request<{ status: string; message: string }>(`/admin1/teachers/${id}`, { method: 'DELETE', headers });
+    return res;
+  },
+
   // Bulletins Desk
   async getBulletins(): Promise<Bulletin[]> {
     const res = await apiClient.get<{ status: string; data: Bulletin[] }>('/admin1/bulletins');

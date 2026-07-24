@@ -23,70 +23,75 @@ export const setGlobalSecurityKey = (key: string) => {
   activeSecurityKey = key;
 };
 
-// Generate security keys for offline fallback / Authenticator display
-export const getOrGenerateSecurityKeys = () => {
-  const stored = localStorage.getItem('jc_security_keys');
-  const now = Date.now();
-  const rotationInterval = 24 * 60 * 60 * 1000; // 24 hours constant window
+// Helper to get local date seed YYYY-MM-DD
+export const getLocalDateSeed = (): string => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      if (parsed.generatedAt && (now - parsed.generatedAt < rotationInterval)) {
-        return parsed;
-      }
-    } catch {
-      // JSON parse error, regenerate
-    }
+// Deterministic 6-digit number generator seeded by identifier + dateSeed (24-hour static key)
+export const generate24HourDeterministicCode = (identifier: string, dateSeed = getLocalDateSeed()): string => {
+  if (identifier === 'authenticator' || identifier === '9059068384') return '080200';
+  let hash = 0;
+  const str = `${identifier}:${dateSeed}:inspire_2026_static_secret_key`;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
   }
+  const numericVal = Math.abs(hash);
+  return (100000 + (numericVal % 900000)).toString();
+};
 
-  const genOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+// Generate security keys for Authenticator display & key verification (Constant for 24 hours until 00:00:00)
+export const getOrGenerateSecurityKeys = () => {
+  const dateSeed = getLocalDateSeed();
+  const genOtp = (slot: string) => generate24HourDeterministicCode(`otp_${slot}`, dateSeed);
+  const genPin = (uname: string) => generate24HourDeterministicCode(`pin_${uname}`, dateSeed);
 
-  const generatePinForUser = (uname: string) => {
-    if (uname === 'authenticator' || uname === '9059068384') return '080200';
-    const window12h = Math.floor(Date.now() / (12 * 60 * 60 * 1000));
-    let hash = 0;
-    const str = `${uname}:${window12h}`;
-    for (let i = 0; i < str.length; i++) {
-      hash = (hash << 5) - hash + str.charCodeAt(i);
-      hash |= 0;
-    }
-    return (100000 + (Math.abs(hash) % 900000)).toString();
-  };
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
 
   const keys = {
-    generatedAt: now,
+    generatedAt: d.getTime(),
+    dateSeed,
     dailyPins: {
-      admin1: generatePinForUser('admin1'),
+      admin1: genPin('admin1'),
       authenticator: '080200',
-      admin2_erragattugutta_c1: generatePinForUser('admin2_erragattugutta_c1'),
-      admin2_erragattugutta_c2: generatePinForUser('admin2_erragattugutta_c2'),
-      admin2_beemaram_c1: generatePinForUser('admin2_beemaram_c1'),
-      admin2_beemaram_c2: generatePinForUser('admin2_beemaram_c2'),
-      accountant_erragattugutta_c1_1: generatePinForUser('accountant_erragattugutta_c1_1'),
-      accountant_erragattugutta_c1_2: generatePinForUser('accountant_erragattugutta_c1_2'),
-      accountant_erragattugutta_c2_1: generatePinForUser('accountant_erragattugutta_c2_1'),
-      accountant_erragattugutta_c2_2: generatePinForUser('accountant_erragattugutta_c2_2'),
-      accountant_beemaram_c1_1: generatePinForUser('accountant_beemaram_c1_1'),
-      accountant_beemaram_c1_2: generatePinForUser('accountant_beemaram_c1_2'),
-      accountant_beemaram_c2_1: generatePinForUser('accountant_beemaram_c2_1'),
-      accountant_beemaram_c2_2: generatePinForUser('accountant_beemaram_c2_2'),
+      admin2_erragattugutta_c1: genPin('admin2_erragattugutta_c1'),
+      admin2_erragattugutta_c2: genPin('admin2_erragattugutta_c2'),
+      admin2_beemaram_c1: genPin('admin2_beemaram_c1'),
+      admin2_beemaram_c2: genPin('admin2_beemaram_c2'),
+      accountant_erragattugutta_c1_1: genPin('accountant_erragattugutta_c1_1'),
+      accountant_erragattugutta_c1_2: genPin('accountant_erragattugutta_c1_2'),
+      accountant_erragattugutta_c2_1: genPin('accountant_erragattugutta_c2_1'),
+      accountant_erragattugutta_c2_2: genPin('accountant_erragattugutta_c2_2'),
+      accountant_beemaram_c1_1: genPin('accountant_beemaram_c1_1'),
+      accountant_beemaram_c1_2: genPin('accountant_beemaram_c1_2'),
+      accountant_beemaram_c2_1: genPin('accountant_beemaram_c2_1'),
+      accountant_beemaram_c2_2: genPin('accountant_beemaram_c2_2'),
     },
     sectionOtps: {
       admin1: {
-        studentRegistry: genOtp(),
-        facultyManagement: genOtp(),
-        feeStructure: genOtp(),
-        expenditure: genOtp()
+        studentRegistry: genOtp('admin1_studentRegistry'),
+        facultyManagement: genOtp('admin1_management'),
+        management: genOtp('admin1_management'),
+        feeStructure: genOtp('admin1_feeStructure'),
+        feeOverride: genOtp('admin1_feeOverride'),
+        expenditure: genOtp('admin1_expenditure')
       },
       admin2: {
-        expenditure: genOtp(),
-        workerPayments: genOtp()
+        feeStructure: genOtp('admin2_feeStructure'),
+        feeOverride: genOtp('admin2_feeOverride'),
+        expenditure: genOtp('admin2_expenditure'),
+        workerPayments: genOtp('admin2_workerPayments')
       },
       accountant: {
-        studentDetails: genOtp(),
-        fees: genOtp(),
-        hostel: genOtp()
+        studentDetails: genOtp('accountant_studentDetails'),
+        fees: genOtp('accountant_fees'),
+        hostel: genOtp('accountant_hostel')
       }
     }
   };

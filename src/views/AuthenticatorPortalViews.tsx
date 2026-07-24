@@ -499,11 +499,11 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 </GlassCard>
 
                 <GlassCard hoverable={false} style={styles.keyCard}>
-                  <span style={styles.keyRoleLabel}>Faculty Management</span>
+                  <span style={styles.keyRoleLabel}>Management</span>
                   <div style={styles.keyDisplayBlock}>
-                    <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.facultyManagement}</strong>
+                    <strong style={styles.keyValue}>{keysData.sectionOtps?.admin1?.management || keysData.sectionOtps?.admin1?.facultyManagement}</strong>
                   </div>
-                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.admin1?.facultyManagement); triggerToast('Copied Faculty Management OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
+                  <button onClick={() => { copyToClipboard(keysData.sectionOtps?.admin1?.management || keysData.sectionOtps?.admin1?.facultyManagement); triggerToast('Copied Management OTP'); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy OTP</button>
                 </GlassCard>
 
                 <GlassCard hoverable={false} style={styles.keyCard}>

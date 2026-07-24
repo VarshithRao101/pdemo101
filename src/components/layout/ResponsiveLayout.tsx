@@ -86,7 +86,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   const displayName = user?.name || 'Staff Member';
   const displayId = user?.username || '—';
   const displayInitials = getInitials(displayName);
-  const displayBrand = 'INSPIRE JUNIOR COLLEGE';
+  const displayBrand = 'INSPIRE JUNIOR COLLEGE X TRENT B';
 
 
 
