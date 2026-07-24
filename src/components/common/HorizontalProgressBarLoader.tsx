@@ -4,12 +4,14 @@ import { InspireLogo } from './InspireLogo';
 interface HorizontalProgressBarLoaderProps {
   onComplete?: () => void;
   message?: string;
+  subMessage?: string;
   durationMs?: number;
 }
 
 export const HorizontalProgressBarLoader: React.FC<HorizontalProgressBarLoaderProps> = ({
   onComplete,
   message = 'Initializing System Engine & Syncing Campus Ledger...',
+  subMessage,
   durationMs = 1200
 }) => {
   const [progress, setProgress] = useState<number>(0);
@@ -84,6 +86,11 @@ export const HorizontalProgressBarLoader: React.FC<HorizontalProgressBarLoaderPr
           >
             {message}
           </p>
+          {subMessage && (
+            <div style={{ fontSize: '11px', color: 'var(--royal-gold)', marginTop: '4px', fontWeight: 700 }}>
+              {subMessage}
+            </div>
+          )}
         </div>
 
         {/* 2D Horizontal Progress Bar Container */}
