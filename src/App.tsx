@@ -29,14 +29,6 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
         return;
       }
 
-      const explicitPublicHashes = ['#/portfolio', '#programs', '#why-us', '#campuses', '#enquiry', '#contact'];
-      const isExplicitPublicNav = explicitPublicHashes.some(h => hash.startsWith(h));
-
-      if (isExplicitPublicNav && !hash.includes('admin') && !hash.includes('accountant') && !hash.includes('authenticator') && !hash.includes('gate') && !hash.includes('login')) {
-        setFlowStage('portfolio');
-        return;
-      }
-
       const isLoginHash = hash === AUTHENTICATOR_HASH ||
         hash.includes('sec-auth-sys-9i0j7k8l') ||
         hash === UNIVERSAL_HASH ||
@@ -49,7 +41,19 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
 
       if (isLoginHash) {
         setFlowStage('pin');
+        return;
       }
+
+      const explicitPublicHashes = ['#/portfolio', '#programs', '#why-us', '#campuses', '#enquiry', '#contact'];
+      const isExplicitPublicNav = explicitPublicHashes.some(h => hash.startsWith(h));
+
+      if (isExplicitPublicNav) {
+        setFlowStage('portfolio');
+        return;
+      }
+
+      // Preserve pin flowStage if user is currently logging in
+      setFlowStage(prev => (prev === 'pin' ? 'pin' : 'portfolio'));
     };
 
     window.addEventListener('hashchange', handleHashChange);

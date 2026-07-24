@@ -126,7 +126,10 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   };
 
   const handleCredentialsFormSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
     let identifier = userId.trim();
     if (currentMode === 'authenticator') {
