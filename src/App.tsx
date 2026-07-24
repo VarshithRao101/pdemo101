@@ -65,17 +65,6 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
     });
   }, [checkSession]);
 
-  if (isInitialLoading) {
-    return (
-      <HorizontalProgressBarLoader
-        message="Initializing Inspire ERP Systems..."
-        subMessage="Trent B Technologies"
-        durationMs={1200}
-        onComplete={() => setIsInitialLoading(false)}
-      />
-    );
-  }
-
   // Wire global logout
   useEffect(() => {
     (window as any).logoutUser = () => {
@@ -109,6 +98,17 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       document.documentElement.classList.remove('neo-2d');
     }
   }, [flowStage]);
+
+  if (isInitialLoading) {
+    return (
+      <HorizontalProgressBarLoader
+        message="Initializing Inspire ERP Systems..."
+        subMessage="Trent B Technologies"
+        durationMs={1200}
+        onComplete={() => setIsInitialLoading(false)}
+      />
+    );
+  }
 
   const renderActiveView = () => {
     if (portalRole === 'admin1') {
