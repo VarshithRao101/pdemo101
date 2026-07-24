@@ -83,8 +83,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       // On success: trigger custom success animation
       setIsSuccess(true);
       setTimeout(() => {
+        window.location.hash = '#/dashboard';
         onComplete();
-      }, 1500);
+      }, 1200);
     } catch (err: any) {
       const msg =
         err?.data?.message || err?.message || (err?.status === 429
