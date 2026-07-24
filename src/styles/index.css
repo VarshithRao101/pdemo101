@@ -136,6 +136,16 @@ p {
 }
 
 /* Responsive adjustments */
+.desktop-nav {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .desktop-nav {
+    display: flex !important;
+  }
+}
+
 @media (min-width: 768px) {
   .view-container {
     padding-bottom: 32px !important; /* Sidebar layout doesn't need space for bottom navigation bar */

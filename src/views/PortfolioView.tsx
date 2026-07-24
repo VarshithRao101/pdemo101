@@ -283,7 +283,7 @@ export const PortfolioView: React.FC = () => {
           </a>
 
           {/* Navigation Links */}
-          <nav style={{ display: 'none', alignItems: 'center', gap: '2.2rem' }} className="desktop-nav">
+          <nav style={{ alignItems: 'center', gap: '2.2rem' }} className="desktop-nav">
             <a href="#programs" style={{ fontSize: '0.92rem', fontWeight: 600, color: '#334155', textDecoration: 'none', transition: 'color 0.2s' }}>Programs & Streams</a>
             <a href="#why-us" style={{ fontSize: '0.92rem', fontWeight: 600, color: '#334155', textDecoration: 'none', transition: 'color 0.2s' }}>Why Choose Us</a>
             <a href="#campuses" style={{ fontSize: '0.92rem', fontWeight: 600, color: '#334155', textDecoration: 'none', transition: 'color 0.2s' }}>Campus Locations</a>
