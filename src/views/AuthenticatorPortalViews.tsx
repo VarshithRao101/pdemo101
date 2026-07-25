@@ -418,9 +418,15 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 2: Admin 2 (Principal Deans) – 4 Campuses</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                 {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(campusName => {
-                  const suffix = campusName.toLowerCase().replace(/\s+/g, '');
+                  const campusKeyMap: Record<string, string> = {
+                    'Erragattugutta C1': 'erragattugutta_c1',
+                    'Erragattugutta C2': 'erragattugutta_c2',
+                    'Beemaram C1': 'beemaram_c1',
+                    'Beemaram C2': 'beemaram_c2',
+                  };
+                  const suffix = campusKeyMap[campusName] || campusName.toLowerCase().replace(/\s+/g, '_');
                   const username = `admin2_${suffix}`;
-                  const dailyPin = keysData.dailyPins?.[username];
+                  const dailyPin = keysData.dailyPins?.[username] || keysData.dailyPins?.[`admin2_${suffix.replace(/_/g, '')}`];
 
                   return (
                     <GlassCard key={campusName} hoverable={false} style={styles.keyCard}>
@@ -430,7 +436,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       </div>
                       <div style={{ ...styles.keyDisplayBlock, padding: '8px 12px' }}>
                         <span style={{ fontSize: '8px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase' }}>Daily Login PIN</span>
-                        <strong style={{ fontSize: '1.2rem', color: 'var(--dark-charcoal)', letterSpacing: '0.05em' }}>{dailyPin || '784920'}</strong>
+                        <strong style={{ fontSize: '1.2rem', color: 'var(--dark-charcoal)', letterSpacing: '0.05em' }}>{dailyPin}</strong>
                       </div>
                       <div style={{ display: 'flex', gap: '6px' }}>
                         <button onClick={() => { copyToClipboard(dailyPin); triggerToast(`Copied Login PIN for ${campusName}`); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy Login PIN</button>
@@ -446,11 +452,17 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 3: Accountant Portals – 8 Accounts</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                 {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(campusName => {
-                  const suffix = campusName.toLowerCase().replace(/\s+/g, '');
+                  const campusKeyMap: Record<string, string> = {
+                    'Erragattugutta C1': 'erragattugutta_c1',
+                    'Erragattugutta C2': 'erragattugutta_c2',
+                    'Beemaram C1': 'beemaram_c1',
+                    'Beemaram C2': 'beemaram_c2',
+                  };
+                  const suffix = campusKeyMap[campusName] || campusName.toLowerCase().replace(/\s+/g, '_');
                   
                   return [1, 2].map(num => {
                     const username = `accountant_${suffix}_${num}`;
-                    const dailyPin = keysData.dailyPins?.[username];
+                    const dailyPin = keysData.dailyPins?.[username] || keysData.dailyPins?.[`accountant_${suffix.replace(/_/g, '')}_${num}`];
 
                     return (
                       <GlassCard key={username} hoverable={false} style={styles.keyCard}>
@@ -460,7 +472,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         </div>
                         <div style={{ ...styles.keyDisplayBlock, padding: '8px 12px' }}>
                           <span style={{ fontSize: '8px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase' }}>Daily Login PIN</span>
-                          <strong style={{ fontSize: '1.2rem', color: 'var(--dark-charcoal)', letterSpacing: '0.05em' }}>{dailyPin || '319482'}</strong>
+                          <strong style={{ fontSize: '1.2rem', color: 'var(--dark-charcoal)', letterSpacing: '0.05em' }}>{dailyPin}</strong>
                         </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button onClick={() => { copyToClipboard(dailyPin); triggerToast(`Copied Login PIN for ${username}`); }} style={{ ...styles.copyBtn, width: '100%' }} className="press-interactive">Copy Login PIN</button>

@@ -73,17 +73,30 @@ export const getOrGenerateSecurityKeys = () => {
       admin1: genPin('admin1'),
       authenticator: '789456', // Static permanent PIN for Security Authenticator login
       admin2_erragattugutta_c1: genPin('admin2_erragattugutta_c1'),
+      admin2_erragattuguttac1: genPin('admin2_erragattugutta_c1'),
       admin2_erragattugutta_c2: genPin('admin2_erragattugutta_c2'),
+      admin2_erragattuguttac2: genPin('admin2_erragattugutta_c2'),
       admin2_beemaram_c1: genPin('admin2_beemaram_c1'),
+      admin2_beemaramc1: genPin('admin2_beemaram_c1'),
       admin2_beemaram_c2: genPin('admin2_beemaram_c2'),
+      admin2_beemaramc2: genPin('admin2_beemaram_c2'),
+
       accountant_erragattugutta_c1_1: genPin('accountant_erragattugutta_c1_1'),
+      accountant_erragattuguttac1_1: genPin('accountant_erragattugutta_c1_1'),
       accountant_erragattugutta_c1_2: genPin('accountant_erragattugutta_c1_2'),
+      accountant_erragattuguttac1_2: genPin('accountant_erragattugutta_c1_2'),
       accountant_erragattugutta_c2_1: genPin('accountant_erragattugutta_c2_1'),
+      accountant_erragattuguttac2_1: genPin('accountant_erragattugutta_c2_1'),
       accountant_erragattugutta_c2_2: genPin('accountant_erragattugutta_c2_2'),
+      accountant_erragattuguttac2_2: genPin('accountant_erragattugutta_c2_2'),
       accountant_beemaram_c1_1: genPin('accountant_beemaram_c1_1'),
+      accountant_beemaramc1_1: genPin('accountant_beemaram_c1_1'),
       accountant_beemaram_c1_2: genPin('accountant_beemaram_c1_2'),
+      accountant_beemaramc1_2: genPin('accountant_beemaram_c1_2'),
       accountant_beemaram_c2_1: genPin('accountant_beemaram_c2_1'),
+      accountant_beemaramc2_1: genPin('accountant_beemaram_c2_1'),
       accountant_beemaram_c2_2: genPin('accountant_beemaram_c2_2'),
+      accountant_beemaramc2_2: genPin('accountant_beemaram_c2_2'),
     },
     sectionOtps: {
       admin1: {
@@ -448,7 +461,8 @@ export const apiClient = {
         generate24HourDeterministicCode('pin_accountant_beemaram_c1_1'),
         generate24HourDeterministicCode('pin_accountant_beemaram_c1_2'),
         generate24HourDeterministicCode('pin_accountant_beemaram_c2_1'),
-        generate24HourDeterministicCode('pin_accountant_beemaram_c2_2')
+        '784920',
+        '319482'
       ]);
 
       if (matchedUser.role === 'authenticator') {
