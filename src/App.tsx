@@ -24,8 +24,24 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       const hash = window.location.hash;
       setCurrentHash(hash);
 
+      // Already authenticated — never regress to portfolio on internal navigation
       if (isAuthenticated) {
         setFlowStage('authenticated');
+        return;
+      }
+
+      // Internal authenticated hashes (set after login)
+      const isInternalDashboardHash =
+        hash.includes('dashboard') ||
+        hash.includes('keys') ||
+        hash.includes('accounts') ||
+        hash.includes('reports') ||
+        hash.includes('attendance') ||
+        hash.includes('backup');
+
+      // If we're mid-login or just completed login, stay on pin/authenticated
+      if (isInternalDashboardHash) {
+        setFlowStage(prev => (prev === 'authenticated' ? 'authenticated' : prev === 'pin' ? 'pin' : 'portfolio'));
         return;
       }
 
@@ -52,8 +68,8 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
         return;
       }
 
-      // Preserve pin flowStage if user is currently logging in
-      setFlowStage(prev => (prev === 'pin' ? 'pin' : 'portfolio'));
+      // Preserve current stage — never forcibly drop to portfolio unless explicit
+      setFlowStage(prev => (prev === 'pin' || prev === 'authenticated' ? prev : 'portfolio'));
     };
 
     window.addEventListener('hashchange', handleHashChange);

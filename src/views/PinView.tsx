@@ -80,11 +80,11 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
     try {
       await login(identifier, pin, currentMode, passwordInput.trim());
-      // On success: trigger custom success animation
+      // On success: trigger success animation then enter portal
       setIsSuccess(true);
       setTimeout(() => {
-        window.location.hash = '#/dashboard';
-        onComplete();
+        onComplete(); // Set authenticated FIRST
+        window.location.hash = '#/dashboard'; // Then set hash
       }, 1200);
     } catch (err: any) {
       const msg =

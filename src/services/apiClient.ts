@@ -12,6 +12,19 @@ export const getApiBaseUrl = (): string => {
   return (import.meta.env && import.meta.env.DEV) ? 'http://localhost:5000/api' : '/api';
 };
 
+// Detect static-only / no-backend deployment (Vercel frontend-only, GitHub Pages, etc.)
+// Set VITE_HAS_BACKEND=true in Vercel env vars when a real backend exists.
+const isStaticOnlyDeploy = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  // If an explicit env flag says backend exists, trust it
+  if (import.meta.env && import.meta.env.VITE_HAS_BACKEND === 'true') return false;
+  // On localhost always try real backend first
+  const host = window.location.hostname;
+  if (host === 'localhost' || host === '127.0.0.1') return false;
+  // On any public domain without VITE_HAS_BACKEND, assume static-only
+  return true;
+};
+
 export interface ApiError extends Error {
   status?: number;
   data?: any;
@@ -150,8 +163,14 @@ export const apiClient = {
   },
 
   async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const baseUrl = getApiBaseUrl();
     const cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+    // Static-only deploy (Vercel frontend, no backend) — skip network entirely
+    if (isStaticOnlyDeploy()) {
+      return this.fallbackRequest<T>(cleanPath, options);
+    }
+
+    const baseUrl = getApiBaseUrl();
     const url = `${baseUrl}${cleanPath}`;
 
     const token = sessionStorage.getItem('auth_token');
@@ -179,7 +198,12 @@ export const apiClient = {
         credentials: 'include'
       });
 
-      const data = await response.json().catch(() => ({}));
+      const data = await response.json().catch(() => null);
+
+      // If we got non-JSON back (e.g. Vercel 404 HTML), treat as no-backend
+      if (data === null) {
+        return this.fallbackRequest<T>(cleanPath, options);
+      }
 
       if (!response.ok) {
         // Intercept 401 Access Token Expiration & Silently Refresh Token
@@ -193,14 +217,14 @@ export const apiClient = {
                 body: JSON.stringify({ refreshToken }),
                 credentials: 'include'
               });
-              const refreshData = await refreshRes.json();
-              if (refreshRes.ok && refreshData.token) {
+              const refreshData = await refreshRes.json().catch(() => null);
+              if (refreshRes.ok && refreshData?.token) {
                 sessionStorage.setItem('auth_token', refreshData.token);
                 headers['Authorization'] = `Bearer ${refreshData.token}`;
                 // Retry original request with fresh access token
                 const retryRes = await fetch(url, { ...options, headers, credentials: 'include' });
-                const retryData = await retryRes.json().catch(() => ({}));
-                if (retryRes.ok) return retryData as T;
+                const retryData = await retryRes.json().catch(() => null);
+                if (retryRes.ok && retryData) return retryData as T;
               }
             } catch {
               // Refresh failed
@@ -223,8 +247,14 @@ export const apiClient = {
 
       return data as T;
     } catch (err: any) {
-      // If backend network server is starting or unreachable, fallback to client mock handler for seamless offline preview
-      if (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
+      // Backend unreachable — fallback to client mock handler for seamless offline preview
+      if (
+        err.name === 'TypeError' ||
+        err.message?.includes('Failed to fetch') ||
+        err.message?.includes('NetworkError') ||
+        err.message?.includes('fetch') ||
+        err.message?.includes('Load failed')
+      ) {
         return this.fallbackRequest<T>(cleanPath, options);
       }
       throw err;
