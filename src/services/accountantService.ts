@@ -47,6 +47,27 @@ export const getStudentProfile = async (id: string): Promise<StudentProfile> => 
   return res.data;
 };
 
+export const createStudent = async (studentData: Partial<StudentProfile>): Promise<StudentProfile> => {
+  const res = await apiClient.post<{ status: string; data: StudentProfile }>('/accountant/students', studentData);
+  return res.data;
+};
+
+export const updateStudent = async (id: string, fields: Partial<StudentProfile>, securityKey?: string): Promise<StudentProfile> => {
+  const res = await apiClient.patch<{ status: string; data: StudentProfile }>(
+    `/accountant/students/${id}`,
+    fields,
+    securityKey ? { headers: { 'x-security-key': securityKey } } : {}
+  );
+  return res.data;
+};
+
+export const deleteStudent = async (id: string, securityKey?: string): Promise<void> => {
+  await apiClient.delete(
+    `/accountant/students/${id}`,
+    securityKey ? { headers: { 'x-security-key': securityKey } } : {}
+  );
+};
+
 export const updateStudentBio = async (id: string, fields: Partial<StudentProfile>, securityKey?: string): Promise<StudentProfile> => {
   const res = await apiClient.patch<{ status: string; data: StudentProfile }>(
     `/accountant/students/${id}/bio`, 

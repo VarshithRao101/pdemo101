@@ -214,7 +214,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             </label>
             <input
               type="password"
-              placeholder={currentMode === 'authenticator' ? 'Enter Security Password (080200)' : 'Enter Account Password'}
+              placeholder={currentMode === 'authenticator' ? 'Enter Security Password' : 'Enter Account Password'}
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCredentialsFormSubmit(); } }}

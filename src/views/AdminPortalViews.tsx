@@ -1552,7 +1552,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       <label style={styles.formLabel}>Enter 6-Digit Security Key (OTP)</label>
                       <input
                         type="text"
-                        placeholder="Enter OTP e.g. 080200 or Daily PIN"
+                        placeholder="Enter OTP or Daily PIN"
                         value={regStuOtpInput}
                         onChange={(e) => setRegStuOtpInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && submitStudentRegistrationWithOtp()}
@@ -2695,7 +2695,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     Enter the <strong>Fee Structure Security OTP</strong> from the Authenticator portal to unlock baseline fee editing for <strong>{selectedFeeBranch}</strong>.
                   </p>
                   <div style={styles.otpTipBanner}>
-                    <strong>Tip:</strong> Copy Fee Structure OTP from Authenticator Portal or enter master PIN (080200).
+                    <strong>Tip:</strong> Copy Fee Structure OTP from Authenticator Portal.
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -3151,7 +3151,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     Enter the <strong>Fee Override Security OTP</strong> from the Authenticator portal to apply fee changes for <strong>{selectedFeeStudent.name}</strong>.
                   </p>
                   <div style={styles.otpTipBanner}>
-                    <strong>Tip:</strong> Copy Fee Override OTP from Authenticator Portal or enter master PIN (080200).
+                    <strong>Tip:</strong> Copy Fee Override OTP from Authenticator Portal.
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

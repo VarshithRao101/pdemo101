@@ -260,6 +260,34 @@ export const AccountantDashboardView: React.FC = () => {
   const [livePulseKey, setLivePulseKey] = useState<'students' | 'fees' | 'attendance' | 'hostel' | 'settings' | null>(null);
   const [securityKey, setSecurityKey] = useState('');
 
+  // New Student & Delete Student Modals
+  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+  const [isDeleteConfirmModalOpen, setIsDeleteConfirmModalOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+
+  const initialNewStudent = {
+    admissionNumber: '',
+    name: '',
+    fatherName: '',
+    motherName: '',
+    mobile: '',
+    parentMobile: '',
+    email: '',
+    address: '',
+    residentialAddress: '',
+    hostelStatus: 'Day Scholar' as const,
+    transportStatus: 'Self Transport' as const,
+    course: 'MPC',
+    section: 'MPC-A',
+    branch: loggedInCampus,
+    tuitionFee: 120000,
+    hostelFee: 0,
+    transportFee: 0,
+    miscellaneousFee: 5000,
+    previousPending: 0
+  };
+  const [newStudentData, setNewStudentData] = useState(initialNewStudent);
+
   // Search parameters (Local Edit Buffer state)
   const [searchAdmNo, setSearchAdmNo] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -483,29 +511,64 @@ export const AccountantDashboardView: React.FC = () => {
   };
 
 
+  const handleCreateStudent = async () => {
+    if (!newStudentData.name.trim() || !newStudentData.admissionNumber.trim()) {
+      triggerToast('Student Name and Admission Number are required.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const created = await accountantService.createStudent({
+        ...newStudentData,
+        branch: loggedInCampus,
+        studentId: newStudentData.admissionNumber,
+        rollNumber: newStudentData.admissionNumber,
+        registrationNumber: newStudentData.admissionNumber
+      });
+      setStudents(prev => [created as any, ...prev]);
+      triggerToast(`Student ${created.name} (${created.admissionNumber}) registered successfully!`);
+      setIsAddStudentModalOpen(false);
+      setNewStudentData({ ...initialNewStudent, branch: loggedInCampus });
+      fetchDashboardSummary();
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to create student.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteStudentConfirm = async () => {
+    if (!studentToDelete) return;
+    const targetId = studentToDelete._id || studentToDelete.studentId || studentToDelete.admissionNumber;
+    setIsLoading(true);
+    try {
+      await accountantService.deleteStudent(targetId);
+      setStudents(prev => prev.filter(s => (s._id || s.studentId || s.admissionNumber) !== targetId));
+      triggerToast(`Student ${studentToDelete.name} permanently deleted from database.`);
+      setIsDeleteConfirmModalOpen(false);
+      setStudentToDelete(null);
+      if (selectedStudent && (selectedStudent._id === targetId || selectedStudent.studentId === targetId || selectedStudent.admissionNumber === targetId)) {
+        setIsStudentModalOpen(false);
+        setSelectedStudent(null);
+        setEditStudent(null);
+      }
+      fetchDashboardSummary();
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to delete student.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleStudentSave = async (updated: Student, otp: string) => {
     if (!updated._id) return;
     setIsLoading(true);
     try {
-      const res = await accountantService.updateStudentBio(updated._id, {
-        admissionNumber: updated.admissionNumber,
-        name: updated.name,
-        fatherName: updated.fatherName,
-        motherName: updated.motherName,
-        mobile: updated.mobile,
-        parentMobile: updated.parentMobile,
-        email: updated.email,
-        address: updated.address,
-        residentialAddress: updated.residentialAddress,
-        hostelStatus: updated.hostelStatus,
-        transportStatus: updated.transportStatus,
-        hostelBlock: updated.hostelBlock,
-        hostelRoom: updated.hostelRoom
-      }, otp);
+      const res = await accountantService.updateStudent(updated._id, updated, otp);
       setSelectedStudent(res as any);
       setEditStudent({ ...res } as any);
       setStudents(prev => prev.map(s => s._id === res._id ? (res as any) : s));
-      triggerToast('Student profile bio details submitted and saved to database.');
+      triggerToast('Student profile details & fee structure updated in database.');
       setIsStudentModalOpen(false);
       setIsStuOtpModalOpen(false);
       setStuOtpInput('');
@@ -588,7 +651,9 @@ export const AccountantDashboardView: React.FC = () => {
         category: collectCategory
       }, otp || securityKey);
       
-      const updatedStudent = res.student;
+      const updatedStudent = res.student && res.student.remainingBalance !== undefined
+        ? res.student
+        : { ...selectedStudent, ...res.student, remainingBalance: (selectedStudent!.remainingBalance - paymentAmount), totalPaid: (selectedStudent!.totalPaid + paymentAmount) };
       setSelectedStudent(updatedStudent as any);
       setEditStudent(updatedStudent as any);
       setStudents(prev => prev.map(s => s._id === updatedStudent._id ? (updatedStudent as any) : s));
@@ -936,7 +1001,9 @@ export const AccountantDashboardView: React.FC = () => {
              (s.rollNumber || '').toLowerCase().includes(q) ||
              (s.registrationNumber || '').toLowerCase().includes(q) ||
              (s.mobile || '').includes(q) ||
-             (s.parentMobile || '').includes(q);
+             (s.parentMobile || '').includes(q) ||
+             (s.course || '').toLowerCase().includes(q) ||
+             (s.branch || '').toLowerCase().includes(q);
     });
 
     return (
@@ -946,279 +1013,244 @@ export const AccountantDashboardView: React.FC = () => {
           <button onClick={() => { setActiveSubPage('menu'); setSelectedStudent(null); setEditStudent(null); setSearchAdmNo(''); }} style={styles.backArrowBtn} className="press-interactive">
             ← Back to Cockpit
           </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Student Search Console</h1>
-          <p style={styles.subtitle}>Audit student details profiles and update registration fields</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', marginTop: '8px' }}>
+            <div>
+              <h1 style={styles.title}>Student Management Console</h1>
+              <p style={styles.subtitle}>Audit profiles, edit fee structures, register new students, or purge records from database</p>
+            </div>
+            <button
+              onClick={() => {
+                setNewStudentData({ ...initialNewStudent, branch: loggedInCampus });
+                setIsAddStudentModalOpen(true);
+              }}
+              style={{
+                ...styles.actionItemBtn,
+                backgroundColor: '#10B981',
+                color: '#FFFFFF',
+                border: 'none',
+                fontWeight: 900,
+                fontSize: '12px',
+                padding: '10px 18px',
+                borderRadius: '10px',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              className="press-interactive"
+            >
+              + Register New Student
+            </button>
+          </div>
         </header>
 
         <main style={styles.content}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <input
-                type="text"
-                placeholder="Search Student by Name, ID, or Adm No..."
-                value={searchAdmNo}
-                onChange={(e) => setSearchAdmNo(e.target.value)}
-                style={styles.textInputBox}
-              />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }}>
+            {/* Search & Filter Bar */}
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Search Student by Name, ID, Adm No, Roll No, Phone..."
+                  value={searchAdmNo}
+                  onChange={(e) => setSearchAdmNo(e.target.value)}
+                  style={{ ...styles.textInputBox, fontSize: '13px', padding: '12px 14px' }}
+                />
+              </div>
               {searchAdmNo && (
                 <button
                   onClick={() => setSearchAdmNo('')}
                   style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--muted-gray)',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#EF4444',
+                    borderRadius: '8px',
+                    padding: '8px 14px',
                     cursor: 'pointer',
                     fontSize: '11px',
-                    fontWeight: 700,
-                    marginRight: '8px',
+                    fontWeight: 800,
                     textTransform: 'uppercase'
                   }}
                 >
-                  Clear
+                  Clear Search
                 </button>
               )}
+              <div style={{ fontSize: '12px', color: 'var(--muted-gray)', fontWeight: 700, padding: '0 8px' }}>
+                Showing <strong>{filteredSearchList.length}</strong> Students
+              </div>
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
-              {filteredSearchList.map(s => (
-                <GlassCard key={s.studentId} hoverable={true} style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.7)' }}>
-                  <div>
-                    <strong style={{ fontSize: '14px', color: 'var(--dark-charcoal)' }}>{s.name}</strong>
-                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '3px' }}>
-                      ID: {s.studentId} • Adm: {s.admissionNumber} • Branch: {s.branch} ({s.course})
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '1px' }}>
-                      Contact: {s.mobile} • Status: <span style={{ fontWeight: 800, color: s.hostelStatus === 'Resident' ? 'var(--royal-gold)' : '#10B981' }}>{s.hostelStatus}</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={async () => {
-                      setIsLoading(true);
-                      try {
-                        const fullProfile = await accountantService.getStudentProfile(s._id || s.studentId);
-                        setSelectedStudent(fullProfile as any);
-                        setEditStudent({ ...fullProfile } as any);
-                        setIsStudentModalOpen(true);
-                      } catch {
-                        triggerToast('Failed to load profile.');
-                      } finally {
-                        setIsLoading(false);
-                      }
+
+            {/* STUDENT BOXES GRID */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: '16px',
+              marginTop: '8px'
+            }}>
+              {filteredSearchList.map(s => {
+                const totalPaid = Number(s.totalPaid || 0);
+                const remaining = Number(s.remainingBalance || 0);
+                const totalFee = totalPaid + remaining;
+                const paidPct = totalFee > 0 ? Math.min(100, Math.round((totalPaid / totalFee) * 100)) : 100;
+                const isResident = s.hostelStatus === 'Resident';
+
+                return (
+                  <GlassCard
+                    key={s._id || s.studentId}
+                    hoverable={true}
+                    style={{
+                      padding: '18px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: '14px',
+                      backgroundColor: 'rgba(255, 255, 255, 0.85)',
+                      border: '1.5px solid rgba(226, 232, 240, 0.9)',
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)',
+                      transition: 'all 0.2s ease'
                     }}
-                    style={{ ...styles.actionItemBtn, border: '1.5px solid var(--royal-gold)', color: 'var(--royal-gold)', background: 'transparent' }}
-                    className="press-interactive"
                   >
-                    Edit Profile
-                  </button>
-                </GlassCard>
-              ))}
+                    {/* Top Row: Avatar + Name + Adm Badge */}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <div style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '12px',
+                        backgroundColor: isResident ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                        color: isResident ? '#D97706' : '#059669',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '15px',
+                        fontWeight: 900,
+                        flexShrink: 0
+                      }}>
+                        {(s.name || 'S').charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <strong style={{ fontSize: '15px', color: 'var(--dark-charcoal)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {s.name}
+                          </strong>
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', fontWeight: 600 }}>
+                          Adm: <span style={{ color: '#1E293B', fontWeight: 800 }}>{s.admissionNumber || s.studentId}</span> • Roll: <span style={{ color: '#1E293B', fontWeight: 800 }}>{s.rollNumber || s.studentId}</span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
+                          {s.branch || loggedInCampus} ({s.course || 'MPC'}{s.section ? ` - ${s.section}` : ''})
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Middle Info Row: Contact & Badges */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: '#F8FAFC', padding: '10px 12px', borderRadius: '10px', fontSize: '11px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                        <span>Student Mob: <strong>{s.mobile || 'N/A'}</strong></span>
+                        <span>Parent: <strong>{s.parentMobile || 'N/A'}</strong></span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: 800,
+                          padding: '2px 8px',
+                          borderRadius: '999px',
+                          backgroundColor: isResident ? 'rgba(245, 158, 11, 0.15)' : 'rgba(148, 163, 184, 0.15)',
+                          color: isResident ? '#B45309' : '#475569'
+                        }}>
+                          🏠 {s.hostelStatus || 'Day Scholar'}
+                        </span>
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: 800,
+                          padding: '2px 8px',
+                          borderRadius: '999px',
+                          backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                          color: '#1D4ED8'
+                        }}>
+                          🚌 {s.transportStatus || 'Self Transport'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Financial Progress Bar */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800 }}>
+                        <span style={{ color: '#059669' }}>Paid: ₹{totalPaid.toLocaleString('en-IN')}</span>
+                        <span style={{ color: remaining > 0 ? '#DC2626' : '#059669' }}>
+                          Due: ₹{remaining.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <div style={{ width: '100%', height: '6px', backgroundColor: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
+                        <div style={{ width: `${paidPct}%`, height: '100%', backgroundColor: remaining > 0 ? '#F59E0B' : '#10B981', transition: 'width 0.4s ease' }} />
+                      </div>
+                    </div>
+
+                    {/* Card Action Buttons */}
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                      <button
+                        onClick={async () => {
+                          setIsLoading(true);
+                          try {
+                            const fullProfile = await accountantService.getStudentProfile(s._id || s.studentId || s.admissionNumber);
+                            setSelectedStudent(fullProfile as any);
+                            setEditStudent({ ...fullProfile } as any);
+                            setIsStudentModalOpen(true);
+                          } catch {
+                            setSelectedStudent(s);
+                            setEditStudent({ ...s });
+                            setIsStudentModalOpen(true);
+                          } finally {
+                            setIsLoading(false);
+                          }
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          border: '1.5px solid var(--royal-gold)',
+                          color: '#7C5A00',
+                          backgroundColor: '#FFFDF5',
+                          borderRadius: '8px',
+                          fontWeight: 800,
+                          fontSize: '11px',
+                          cursor: 'pointer'
+                        }}
+                        className="press-interactive"
+                      >
+                        ✏️ Edit Profile & Fees
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setStudentToDelete(s);
+                          setIsDeleteConfirmModalOpen(true);
+                        }}
+                        style={{
+                          padding: '8px 12px',
+                          border: '1.5px solid rgba(239, 68, 68, 0.3)',
+                          color: '#DC2626',
+                          backgroundColor: 'rgba(254, 242, 242, 0.8)',
+                          borderRadius: '8px',
+                          fontWeight: 800,
+                          fontSize: '11px',
+                          cursor: 'pointer'
+                        }}
+                        className="press-interactive"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </GlassCard>
+                );
+              })}
               {filteredSearchList.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted-gray)', fontSize: '12px' }}>
-                  No student records match your query. Try searching by Name or Admission Number.
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px 20px', color: 'var(--muted-gray)', fontSize: '13px', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: '16px' }}>
+                  No student records match your search criteria. Try searching by Name, Admission Number, or Phone.
                 </div>
               )}
             </div>
           </div>
 
-          {/* STUDENT EDIT MODAL OVERLAY */}
-          {isStudentModalOpen && selectedStudent && editStudent && !isStuOtpModalOpen && (
-            <div style={styles.overlayOverlay}>
-              <div style={{ ...styles.overlaySheet, maxWidth: '520px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                  <h3 style={styles.modalTitle}>Edit Student Details</h3>
-                  <button
-                    onClick={() => { setIsStudentModalOpen(false); setSelectedStudent(null); setEditStudent(null); }}
-                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
-                  >
-                    ×
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Admission Number</label>
-                      <input
-                        type="text"
-                        value={editStudent.admissionNumber}
-                        onChange={(e) => setEditStudent({ ...editStudent, admissionNumber: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Student Name</label>
-                      <input
-                        type="text"
-                        value={editStudent.name}
-                        onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Father Name</label>
-                      <input
-                        type="text"
-                        value={editStudent.fatherName}
-                        onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Mother Name</label>
-                      <input
-                        type="text"
-                        value={editStudent.motherName}
-                        onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Mobile Number</label>
-                      <input
-                        type="text"
-                        value={editStudent.mobile}
-                        onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Parent Contact</label>
-                      <input
-                        type="text"
-                        value={editStudent.parentMobile}
-                        onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={styles.formLabel}>Email Address</label>
-                    <input
-                      type="email"
-                      value={editStudent.email || ''}
-                      onChange={(e) => setEditStudent({ ...editStudent, email: e.target.value })}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={styles.formLabel}>Correspondence Address</label>
-                    <input
-                      type="text"
-                      value={editStudent.address}
-                      onChange={(e) => setEditStudent({ ...editStudent, address: e.target.value })}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={styles.formLabel}>Residential Address</label>
-                    <input
-                      type="text"
-                      value={editStudent.residentialAddress}
-                      onChange={(e) => setEditStudent({ ...editStudent, residentialAddress: e.target.value })}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Hostel Status</label>
-                      <select
-                        value={editStudent.hostelStatus}
-                        onChange={(e) => setEditStudent({ ...editStudent, hostelStatus: e.target.value as any })}
-                        style={styles.selectInput}
-                      >
-                        <option value="Resident">Resident</option>
-                        <option value="Day Scholar">Day Scholar</option>
-                      </select>
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Transport Status</label>
-                      <select
-                        value={editStudent.transportStatus}
-                        onChange={(e) => setEditStudent({ ...editStudent, transportStatus: e.target.value as any })}
-                        style={styles.selectInput}
-                      >
-                        <option value="College Bus">College Bus</option>
-                        <option value="Self Transport">Self Transport</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setStuOtpInput('');
-                    setIsStuOtpModalOpen(true);
-                  }}
-                  style={{ ...styles.saveSubmitBtn, marginTop: '16px' }}
-                  className="press-interactive"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STUDENT EDIT OTP VERIFICATION HOVER OVERLAY */}
-          {isStuOtpModalOpen && selectedStudent && editStudent && (
-            <div style={{ ...styles.overlayOverlay, zIndex: 1100 }}>
-              <div style={{ ...styles.overlaySheet, maxWidth: '380px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <h3 style={styles.modalTitle}>Security Verification Required</h3>
-                  <button
-                    onClick={() => setIsStuOtpModalOpen(false)}
-                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
-                  >
-                    ×
-                  </button>
-                </div>
-
-                <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
-                  Please enter your security authentication key to authorize student profile updates for <strong>{editStudent.name}</strong>.
-                </p>
-
-                <input
-                  type="text"
-                  placeholder="Enter 6-digit OTP code (e.g. 111111)"
-                  value={stuOtpInput}
-                  onChange={(e) => setStuOtpInput(e.target.value)}
-                  style={{ ...styles.textInputBox, width: '100%', marginBottom: '12px' }}
-                />
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    onClick={() => {
-                      if (stuOtpInput && stuOtpInput.trim()) {
-                        handleStudentSave(editStudent, stuOtpInput);
-                      } else {
-                        triggerToast('Invalid security authentication key.');
-                      }
-                    }}
-                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0 }}
-                    className="press-interactive"
-                  >
-                    Confirm Update
-                  </button>
-                  <button
-                    onClick={() => setIsStuOtpModalOpen(false)}
-                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
-                    className="press-interactive"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </main>
       </div>
     );
@@ -1895,6 +1927,528 @@ export const AccountantDashboardView: React.FC = () => {
 
             </div>
           </div>
+
+          {/* DETAILED STUDENT EDIT MODAL (ADMIN 1 STYLE - BIO + FEE BREAKDOWN + DELETE) */}
+          {isStudentModalOpen && selectedStudent && editStudent && !isStuOtpModalOpen && (
+            <div style={styles.overlayOverlay}>
+              <div style={{ ...styles.overlaySheet, maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '12px' }}>
+                  <div>
+                    <h3 style={styles.modalTitle}>Detailed Student Editor</h3>
+                    <p style={{ fontSize: '11px', color: '#64748B', margin: 0 }}>
+                      Edit profile bio details and custom fee structure breakdown for <strong>{editStudent.name}</strong>
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setIsStudentModalOpen(false); setSelectedStudent(null); setEditStudent(null); }}
+                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* SECTION 1: BIO & ACADEMIC INFO */}
+                  <div style={{ backgroundColor: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 900, color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                      📋 Section 1: Bio & Academic Profile
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Admission Number</label>
+                          <input
+                            type="text"
+                            value={editStudent.admissionNumber || ''}
+                            onChange={(e) => setEditStudent({ ...editStudent, admissionNumber: e.target.value })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Student Name</label>
+                          <input
+                            type="text"
+                            value={editStudent.name || ''}
+                            onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Father Name</label>
+                          <input
+                            type="text"
+                            value={editStudent.fatherName || ''}
+                            onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Mother Name</label>
+                          <input
+                            type="text"
+                            value={editStudent.motherName || ''}
+                            onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Mobile Number</label>
+                          <input
+                            type="text"
+                            value={editStudent.mobile || ''}
+                            onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Parent Contact</label>
+                          <input
+                            type="text"
+                            value={editStudent.parentMobile || ''}
+                            onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Course</label>
+                          <input
+                            type="text"
+                            value={editStudent.course || 'MPC'}
+                            onChange={(e) => setEditStudent({ ...editStudent, course: e.target.value })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Section</label>
+                          <input
+                            type="text"
+                            value={editStudent.section || 'Section A'}
+                            onChange={(e) => setEditStudent({ ...editStudent, section: e.target.value })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Hostel Status</label>
+                          <select
+                            value={editStudent.hostelStatus}
+                            onChange={(e) => setEditStudent({ ...editStudent, hostelStatus: e.target.value as any })}
+                            style={styles.selectInput}
+                          >
+                            <option value="Resident">Resident</option>
+                            <option value="Day Scholar">Day Scholar</option>
+                          </select>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Transport Status</label>
+                          <select
+                            value={editStudent.transportStatus}
+                            onChange={(e) => setEditStudent({ ...editStudent, transportStatus: e.target.value as any })}
+                            style={styles.selectInput}
+                          >
+                            <option value="College Bus">College Bus</option>
+                            <option value="Self Transport">Self Transport</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Correspondence Address</label>
+                        <input
+                          type="text"
+                          value={editStudent.address || ''}
+                          onChange={(e) => setEditStudent({ ...editStudent, address: e.target.value })}
+                          style={styles.textInputBox}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECTION 2: FEE STRUCTURE & WAIVERS */}
+                  <div style={{ backgroundColor: '#FFFDF5', padding: '14px', borderRadius: '12px', border: '1px solid #FCD34D' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 900, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                      💰 Section 2: Fee Structure & Waivers
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Tuition Fee (₹)</label>
+                          <input
+                            type="number"
+                            value={editStudent.tuitionFee ?? 120000}
+                            onChange={(e) => setEditStudent({ ...editStudent, tuitionFee: parseFloat(e.target.value) || 0 })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Hostel Fee (₹)</label>
+                          <input
+                            type="number"
+                            value={editStudent.hostelFee ?? 0}
+                            onChange={(e) => setEditStudent({ ...editStudent, hostelFee: parseFloat(e.target.value) || 0 })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Transport Fee (₹)</label>
+                          <input
+                            type="number"
+                            value={editStudent.transportFee ?? 0}
+                            onChange={(e) => setEditStudent({ ...editStudent, transportFee: parseFloat(e.target.value) || 0 })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Misc Fee (₹)</label>
+                          <input
+                            type="number"
+                            value={editStudent.miscellaneousFee ?? 5000}
+                            onChange={(e) => setEditStudent({ ...editStudent, miscellaneousFee: parseFloat(e.target.value) || 0 })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Previous Pending (₹)</label>
+                          <input
+                            type="number"
+                            value={editStudent.previousPending ?? 0}
+                            onChange={(e) => setEditStudent({ ...editStudent, previousPending: parseFloat(e.target.value) || 0 })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={styles.formLabel}>Total Fee Paid (₹)</label>
+                          <input
+                            type="number"
+                            value={editStudent.totalPaid ?? 0}
+                            onChange={(e) => setEditStudent({ ...editStudent, totalPaid: parseFloat(e.target.value) || 0 })}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* MODAL ACTION BUTTONS */}
+                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                  <button
+                    onClick={() => {
+                      setStuOtpInput('');
+                      setIsStuOtpModalOpen(true);
+                    }}
+                    style={{ ...styles.saveSubmitBtn, flex: 2 }}
+                    className="press-interactive"
+                  >
+                    💾 Save Changes to Database
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setStudentToDelete(editStudent);
+                      setIsDeleteConfirmModalOpen(true);
+                    }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                      color: '#DC2626',
+                      border: '1.5px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '12px',
+                      fontWeight: 800,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      padding: '12px'
+                    }}
+                    className="press-interactive"
+                  >
+                    🗑️ Delete Student
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* REGISTER NEW STUDENT MODAL OVERLAY */}
+          {isAddStudentModalOpen && (
+            <div style={styles.overlayOverlay}>
+              <div style={{ ...styles.overlaySheet, maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '10px' }}>
+                  <h3 style={styles.modalTitle}>Register New Student</h3>
+                  <button
+                    onClick={() => setIsAddStudentModalOpen(false)}
+                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Admission Number *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 2400101"
+                        value={newStudentData.admissionNumber}
+                        onChange={(e) => setNewStudentData({ ...newStudentData, admissionNumber: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Student Full Name *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Rahul Sharma"
+                        value={newStudentData.name}
+                        onChange={(e) => setNewStudentData({ ...newStudentData, name: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Father Name</label>
+                      <input
+                        type="text"
+                        value={newStudentData.fatherName}
+                        onChange={(e) => setNewStudentData({ ...newStudentData, fatherName: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Mother Name</label>
+                      <input
+                        type="text"
+                        value={newStudentData.motherName}
+                        onChange={(e) => setNewStudentData({ ...newStudentData, motherName: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Mobile Number</label>
+                      <input
+                        type="text"
+                        value={newStudentData.mobile}
+                        onChange={(e) => setNewStudentData({ ...newStudentData, mobile: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Parent Contact</label>
+                      <input
+                        type="text"
+                        value={newStudentData.parentMobile}
+                        onChange={(e) => setNewStudentData({ ...newStudentData, parentMobile: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Course</label>
+                      <input
+                        type="text"
+                        value={newStudentData.course}
+                        onChange={(e) => setNewStudentData({ ...newStudentData, course: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Section</label>
+                      <input
+                        type="text"
+                        value={newStudentData.section}
+                        onChange={(e) => setNewStudentData({ ...newStudentData, section: e.target.value })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Hostel</label>
+                      <select
+                        value={newStudentData.hostelStatus}
+                        onChange={(e) => setNewStudentData({ ...newStudentData, hostelStatus: e.target.value as any })}
+                        style={styles.selectInput}
+                      >
+                        <option value="Resident">Resident</option>
+                        <option value="Day Scholar">Day Scholar</option>
+                      </select>
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Transport</label>
+                      <select
+                        value={newStudentData.transportStatus}
+                        onChange={(e) => setNewStudentData({ ...newStudentData, transportStatus: e.target.value as any })}
+                        style={styles.selectInput}
+                      >
+                        <option value="College Bus">College Bus</option>
+                        <option value="Self Transport">Self Transport</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Tuition Fee (₹)</label>
+                      <input
+                        type="number"
+                        value={newStudentData.tuitionFee}
+                        onChange={(e) => setNewStudentData({ ...newStudentData, tuitionFee: parseFloat(e.target.value) || 0 })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Hostel Fee (₹)</label>
+                      <input
+                        type="number"
+                        value={newStudentData.hostelFee}
+                        onChange={(e) => setNewStudentData({ ...newStudentData, hostelFee: parseFloat(e.target.value) || 0 })}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleCreateStudent}
+                  style={{ ...styles.saveSubmitBtn, marginTop: '20px', backgroundColor: '#10B981', color: '#FFFFFF' }}
+                  className="press-interactive"
+                >
+                  ✓ Register Student in Database
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* DELETE CONFIRMATION MODAL OVERLAY */}
+          {isDeleteConfirmModalOpen && studentToDelete && (
+            <div style={{ ...styles.overlayOverlay, zIndex: 1200 }}>
+              <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid #DC2626' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h3 style={{ ...styles.modalTitle, color: '#DC2626' }}>⚠️ Delete Student Permanently</h3>
+                  <button
+                    onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }}
+                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5, marginBottom: '16px' }}>
+                  Are you sure you want to permanently delete student <strong>{studentToDelete.name}</strong> (ID / Adm No: <strong>{studentToDelete.admissionNumber || studentToDelete.studentId}</strong>) from the database?
+                  <br /><br />
+                  <span style={{ color: '#DC2626', fontWeight: 700 }}>
+                    This will purge all receipts, attendance records, and user login credentials for this student. This operation cannot be undone.
+                  </span>
+                </p>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      border: '1px solid #CBD5E1',
+                      backgroundColor: '#F8FAFC',
+                      color: '#475569',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={handleDeleteStudentConfirm}
+                    style={{
+                      flex: 1.5,
+                      padding: '10px',
+                      border: 'none',
+                      backgroundColor: '#DC2626',
+                      color: '#FFFFFF',
+                      borderRadius: '10px',
+                      fontWeight: 900,
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)'
+                    }}
+                    className="press-interactive"
+                  >
+                    Permanently Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STUDENT EDIT OTP VERIFICATION HOVER OVERLAY */}
+          {isStuOtpModalOpen && selectedStudent && editStudent && (
+            <div style={{ ...styles.overlayOverlay, zIndex: 1100 }}>
+              <div style={{ ...styles.overlaySheet, maxWidth: '380px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h3 style={styles.modalTitle}>Security Verification Required</h3>
+                  <button
+                    onClick={() => setIsStuOtpModalOpen(false)}
+                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
+                  Please enter your security authentication key to authorize student profile updates for <strong>{editStudent.name}</strong>.
+                </p>
+
+                <input
+                  type="text"
+                  placeholder="Enter 6-digit OTP code (e.g. 111111)"
+                  value={stuOtpInput}
+                  onChange={(e) => setStuOtpInput(e.target.value)}
+                  style={{ ...styles.textInputBox, width: '100%', marginBottom: '12px' }}
+                />
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => {
+                      if (stuOtpInput && stuOtpInput.trim()) {
+                        handleStudentSave(editStudent, stuOtpInput);
+                      } else {
+                        triggerToast('Invalid security authentication key.');
+                      }
+                    }}
+                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0 }}
+                    className="press-interactive"
+                  >
+                    Confirm Update
+                  </button>
+                  <button
+                    onClick={() => setIsStuOtpModalOpen(false)}
+                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
+                    className="press-interactive"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     );

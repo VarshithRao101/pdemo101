@@ -317,7 +317,6 @@ function normalizeCampusName(name) {
 }
 
 // Default accounts data (Renamed 4 Campuses: Erragattugutta C1, Erragattugutta C2, Beemaram C1, Beemaram C2)
-const AUTHENTICATOR_STATIC_PASSWORD_HASH = bcrypt.hashSync('080200', 10);
 
 const defaultAccounts = [
   { _id: 'acc_admin1', username: 'admin1', passwordRaw: 'RectorPass#2026', role: 'admin1', campus: 'All', name: 'Rector', email: 'rector@inspire.edu', mobile: '9988770000', department: 'Administration', address: 'Central Campus' },
@@ -326,7 +325,7 @@ const defaultAccounts = [
   { _id: 'acc_admin2_erragattugutta_c2', username: 'admin2_erragattugutta_c2', passwordRaw: 'DeanE2#5713', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2', email: 'dean.e2@inspire.edu', mobile: '9988770022', department: 'Administration', address: 'Erragattugutta Campus C2' },
   { _id: 'acc_admin2_beemaram_c1', username: 'admin2_beemaram_c1', passwordRaw: 'DeanB1#3920', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1', email: 'dean.i1@inspire.edu', mobile: '9988770033', department: 'Administration', address: 'Beemaram Campus C1' },
   { _id: 'acc_admin2_beemaram_c2', username: 'admin2_beemaram_c2', passwordRaw: 'DeanB2#6184', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2', email: 'dean.b2@inspire.edu', mobile: '9988770044', department: 'Administration', address: 'Beemaram Campus C2' },
-  { _id: 'acc_accountant_default', username: 'accountant', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Accountant', email: 'accountant@inspire.edu', mobile: '9988771100', department: 'Finance Dept', address: 'Erragattugutta Campus C1' },
+
   { _id: 'acc_accountant_erragattugutta_c1_1', username: 'accountant_erragattugutta_c1_1', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1', email: 'acc1.e1@inspire.edu', mobile: '9988771101', department: 'Finance Dept', address: 'Erragattugutta Campus C1' },
   { _id: 'acc_accountant_erragattugutta_c1_2', username: 'accountant_erragattugutta_c1_2', passwordRaw: 'AccE1#9381', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1', email: 'acc2.e1@inspire.edu', mobile: '9988771102', department: 'Finance Dept', address: 'Erragattugutta Campus C1' },
   { _id: 'acc_accountant_erragattugutta_c2_1', username: 'accountant_erragattugutta_c2_1', passwordRaw: 'AccE2#7294', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2', email: 'acc1.e2@inspire.edu', mobile: '9988772201', department: 'Finance Dept', address: 'Erragattugutta Campus C2' },
@@ -335,8 +334,8 @@ const defaultAccounts = [
   { _id: 'acc_accountant_beemaram_c1_2', username: 'accountant_beemaram_c1_2', passwordRaw: 'AccB1#2947', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1', email: 'acc2.i1@inspire.edu', mobile: '9988773302', department: 'Finance Dept', address: 'Beemaram Campus C1' },
   { _id: 'acc_accountant_beemaram_c2_1', username: 'accountant_beemaram_c2_1', passwordRaw: 'AccB2#8163', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2', email: 'acc1.b2@inspire.edu', mobile: '9988774401', department: 'Finance Dept', address: 'Beemaram Campus C2' },
   { _id: 'acc_accountant_beemaram_c2_2', username: 'accountant_beemaram_c2_2', passwordRaw: 'AccB2#3750', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2', email: 'acc2.b2@inspire.edu', mobile: '9988774402', department: 'Finance Dept', address: 'Beemaram Campus C2' },
-  { _id: 'acc_authenticator_static', username: '9059068384', passwordRaw: '080200', role: 'authenticator', campus: 'All', name: 'Security Authenticator', email: 'sec9059@inspire.edu', mobile: '9059068384', department: 'Security Console', address: 'Central Security' },
-  { _id: 'acc_authenticator', username: 'authenticator', passwordRaw: '080200', role: 'authenticator', campus: 'All', name: 'Security Admin', email: 'sec@inspire.edu', mobile: '9059068384', department: 'Security', address: 'Central Campus' }
+  { _id: 'acc_authenticator_static', username: '9059068384', passwordRaw: 'SecAuth#9059', role: 'authenticator', campus: 'All', name: 'Security Authenticator', email: 'sec9059@inspire.edu', mobile: '9059068384', department: 'Security Console', address: 'Central Security' },
+  { _id: 'acc_authenticator', username: 'authenticator', passwordRaw: 'SecAuth#9059', role: 'authenticator', campus: 'All', name: 'Security Admin', email: 'sec@inspire.edu', mobile: '9059068384', department: 'Security', address: 'Central Campus' }
 ];
 
 // In-Memory fallback store with pre-hashed passwords
@@ -369,6 +368,16 @@ let isSeeded = false;
 async function seedInitialData() {
   if (isMongoConnected && !isSeeded) {
     try {
+      // Remove stale duplicate default accountant if it exists
+      await User.deleteOne({ _id: 'acc_accountant_default' }).catch(() => {});
+
+      // Migrate authenticator password from old 080200 to new SecAuth#9059
+      const newAuthHash = bcrypt.hashSync('SecAuth#9059', 10);
+      await User.updateMany(
+        { role: 'authenticator' },
+        { $set: { password: newAuthHash, passwordRaw: 'SecAuth#9059' } }
+      ).catch(() => {});
+
       const userCount = await User.countDocuments();
       if (userCount === 0) {
         const docsToInsert = inMemoryStore.users.map(u => ({
@@ -403,7 +412,6 @@ function getLocalDateSeedServer() {
 }
 
 function generate24HourDeterministicCodeServer(identifier, dateSeed = getLocalDateSeedServer()) {
-  if (identifier === 'authenticator' || identifier === '9059068384') return '080200';
   let hash = 0;
   const str = `${identifier}:${dateSeed}:inspire_2026_static_secret_key`;
   for (let i = 0; i < str.length; i++) {
@@ -432,7 +440,7 @@ function generateSecurityKeys() {
     dateSeed,
     dailyPins: {
       admin1: genPin('admin1'),
-      authenticator: '080200',
+      authenticator: genPin('authenticator'),
       admin2_erragattugutta_c1: genPin('admin2_erragattugutta_c1'),
       admin2_erragattugutta_c2: genPin('admin2_erragattugutta_c2'),
       admin2_beemaram_c1: genPin('admin2_beemaram_c1'),
@@ -598,7 +606,6 @@ function requireSecurityOtp(req, res, next) {
 
   // Collect all active 24h section OTPs and PINs
   const activeKeysSet = new Set([
-    '080200',
     currentDailyPin,
     admin1Pin,
     ...Object.values(validKeys.dailyPins),
@@ -607,7 +614,7 @@ function requireSecurityOtp(req, res, next) {
     ...Object.values(validKeys.sectionOtps.accountant)
   ]);
 
-  if (!activeKeysSet.has(otp) && otp !== '080200') {
+  if (!activeKeysSet.has(otp)) {
     return res.status(403).json({ status: 'error', message: 'Invalid security authentication OTP/PIN for today\'s 24-hour slot.' });
   }
   next();
@@ -768,7 +775,9 @@ app.get('/api/authenticator/pins', authenticateToken, requireRole('authenticator
 
   inMemoryStore.users.forEach(u => {
     if (u.username === '9059068384' || u.username === 'authenticator' || u.role === 'authenticator') {
-      pinMap[u.username] = { fixed: true, note: 'Static credential, not rotating', pin: '080200' };
+      const hmacAuth = crypto.createHmac('sha256', JWT_SECRET).update(`${u.username}:${dateKey}`).digest('hex');
+      const authPin = (100000 + (parseInt(hmacAuth.substring(0, 8), 16) % 900000)).toString();
+      pinMap[u.username] = { fixed: false, note: 'Rotates daily at midnight UTC', pin: authPin };
       return;
     }
     const hmac = crypto.createHmac('sha256', JWT_SECRET).update(`${u.username}:${dateKey}`).digest('hex');
@@ -845,8 +854,7 @@ app.post('/api/auth/verify-credentials', async (req, res) => {
 
   const passwordInput = password.trim();
   const isPasswordValid = (matchedUser.password && bcrypt.compareSync(passwordInput, matchedUser.password)) ||
-    passwordInput === matchedUser.passwordRaw ||
-    (matchedUser.role === 'authenticator' && passwordInput === '080200');
+    passwordInput === matchedUser.passwordRaw;
 
   if (!isPasswordValid) {
     return res.status(401).json({ status: 'error', message: 'Incorrect account password.' });
@@ -944,8 +952,7 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   // 1. Password Verification
   const passwordInput = (password || '').toString().trim();
   const isPasswordValid = (matchedUser.password && bcrypt.compareSync(passwordInput, matchedUser.password)) ||
-    passwordInput === matchedUser.passwordRaw ||
-    (matchedUser.role === 'authenticator' && passwordInput === '080200');
+    passwordInput === matchedUser.passwordRaw;
 
   if (!isPasswordValid) {
     return res.status(401).json({ status: 'error', message: 'Incorrect account password.' });
@@ -955,20 +962,16 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   const rawId = (identifier || '').toString().trim().toLowerCase();
   const validKeys = generateSecurityKeys();
   const allowedPinsSet = new Set([
-    '080200',
-    '784920',
-    '111111',
-    '123456',
     get12HourAccountPin(matchedUser.username),
     get12HourAccountPin(rawId),
-    get12HourAccountPin('accountant'),
+    get12HourAccountPin('accountant_erragattugutta_c1_1'),
     get12HourAccountPin('admin1'),
-    get12HourAccountPin('admin2'),
+    get12HourAccountPin('admin2_erragattugutta_c1'),
     ...Object.values(validKeys.dailyPins)
   ]);
 
   const pinInput = (req.body.pin || '').toString().trim();
-  const isPinValid = (matchedUser.role === 'authenticator' && pinInput === '080200') ||
+  const isPinValid = (matchedUser.role === 'authenticator' && pinInput === matchedUser.passwordRaw) ||
     allowedPinsSet.has(pinInput);
 
   if (!isPinValid) {
@@ -1218,7 +1221,7 @@ app.get('/api/admin1/students', authenticateToken, enforceCampusIsolation, async
   return res.json({ status: 'success', data: filtered });
 });
 
-app.post(['/api/admin1/students', '/api/admin/students'], authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.post(['/api/admin1/students', '/api/admin/students', '/api/accountant/students'], authenticateToken, enforceCampusIsolation, async (req, res) => {
   const branch = normalizeCampusName(req.body.branch || req.targetCampus);
   const admNo = (req.body.admissionNumber || req.body.studentId || `2400${Math.floor(100 + Math.random() * 900)}`).toString().trim();
 
@@ -1280,7 +1283,7 @@ app.post(['/api/admin1/students', '/api/admin/students'], authenticateToken, enf
   return res.json({ status: 'success', data: newStu, credential: { pin: '784920', username: admNo } });
 });
 
-app.patch(['/api/admin1/students/:id', '/api/admin/students/:id'], authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.patch(['/api/admin1/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, enforceCampusIsolation, async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
 
@@ -1339,11 +1342,11 @@ app.patch(['/api/admin1/students/:id', '/api/admin/students/:id'], authenticateT
     if (idx !== -1) list[idx] = { ...list[idx], ...updateBody };
   });
 
-  await logSyncJournal(`PATCH /api/admin1/students/${id}`, branch, 'success', `Updated student profile and fee breakdown for ${id}`, req.user);
+  await logSyncJournal(`PATCH /api/accountant/students/${id}`, branch, 'success', `Updated student profile and fee breakdown for ${id}`, req.user);
   return res.json({ status: 'success', data: { ...(existingStudent?.toObject ? existingStudent.toObject() : existingStudent), ...updateBody } });
 });
 
-app.delete(['/api/admin1/students/:id', '/api/admin/students/:id'], authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+app.delete(['/api/admin1/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, enforceCampusIsolation, async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
 
@@ -1864,30 +1867,114 @@ app.post('/api/accountant/students/:id/payments', authenticateToken, enforceCamp
   const branch = req.targetCampus;
   const amountPaid = Number(req.body.amount || 0);
 
+  if (!amountPaid || amountPaid <= 0) {
+    return res.status(400).json({ status: 'error', message: 'Invalid payment amount.' });
+  }
+
+  // --- Find the student ---
+  let student = null;
+  if (isMongoConnected) {
+    try { student = await Student.findById(id); } catch { /* fallback */ }
+    if (!student) {
+      try {
+        const q = id.toLowerCase().trim();
+        const all = await Student.find({});
+        student = all.find(s =>
+          (s.studentId && s.studentId.toLowerCase() === q) ||
+          (s.admissionNumber && s.admissionNumber.toLowerCase() === q)
+        );
+      } catch { /* fallback */ }
+    }
+  }
+  if (!student) {
+    const allMem = Object.values(inMemoryStore.students).flat();
+    const q = id.toLowerCase().trim();
+    student = allMem.find(s =>
+      (s._id && s._id.toLowerCase() === q) ||
+      (s.studentId && s.studentId.toLowerCase() === q) ||
+      (s.admissionNumber && s.admissionNumber.toLowerCase() === q)
+    );
+  }
+  if (!student) {
+    return res.status(404).json({ status: 'error', message: 'Student not found.' });
+  }
+
+  const stuObj = student.toObject ? student.toObject() : { ...student };
+  const prevBalance = Number(stuObj.remainingBalance ?? 0);
+  const prevTotalPaid = Number(stuObj.totalPaid ?? 0);
+
+  if (amountPaid > prevBalance) {
+    return res.status(400).json({ status: 'error', message: 'Payment exceeds remaining balance.' });
+  }
+
+  const newTotalPaid = prevTotalPaid + amountPaid;
+  const newBalance = Math.max(0, prevBalance - amountPaid);
+
   const receiptNo = `REC-5${Math.floor(10000 + Math.random() * 90000)}`;
   const newPayment = {
     _id: `PAY-${Date.now()}`,
     receiptNumber: receiptNo,
-    studentId: id,
-    student: id,
+    studentId: stuObj.studentId || stuObj.admissionNumber || id,
+    student: stuObj._id || id,
     date: new Date(),
     category: req.body.category || 'Academic Fee',
     installment: req.body.installment || 'Installment',
     amount: amountPaid,
-    balance: 0,
+    balance: newBalance,
     mode: req.body.mode || 'Cash',
     cashier: req.user.name || 'Senior Accountant',
     branch
   };
 
+  // --- Persist payment record ---
   if (isMongoConnected) {
     try { await Payment.create(newPayment); } catch { /* fallback */ }
   }
   if (!inMemoryStore.payments[branch]) inMemoryStore.payments[branch] = [];
   inMemoryStore.payments[branch].push(newPayment);
 
-  await logSyncJournal(`POST /api/accountant/students/${id}/payments`, branch, 'success', '', req.user);
-  return res.json({ status: 'success', data: { payment: newPayment, student: { _id: id, totalPaid: amountPaid } } });
+  // --- Update student's financial totals in DB and inMemoryStore ---
+  const studentUpdate = { totalPaid: newTotalPaid, remainingBalance: newBalance };
+  if (isMongoConnected) {
+    try {
+      await Student.findByIdAndUpdate(stuObj._id, { $set: studentUpdate });
+    } catch { /* fallback */ }
+  }
+  // Update inMemoryStore
+  Object.keys(inMemoryStore.students).forEach(bKey => {
+    const memIdx = inMemoryStore.students[bKey].findIndex(s =>
+      s._id === stuObj._id || s.studentId === stuObj.studentId
+    );
+    if (memIdx !== -1) {
+      inMemoryStore.students[bKey][memIdx] = {
+        ...inMemoryStore.students[bKey][memIdx],
+        ...studentUpdate
+      };
+    }
+  });
+
+  // --- Gather all receipts for the student to return full receipts list ---
+  let allReceipts = [];
+  if (isMongoConnected) {
+    try {
+      allReceipts = await Payment.find({ $or: [{ studentId: stuObj.studentId }, { student: stuObj._id }] });
+    } catch { /* fallback */ }
+  }
+  if (!allReceipts || allReceipts.length === 0) {
+    const memPayments = Object.values(inMemoryStore.payments).flat();
+    allReceipts = memPayments.filter(p =>
+      p.studentId === stuObj.studentId || p.student === stuObj._id
+    );
+  }
+
+  const updatedStudent = {
+    ...stuObj,
+    ...studentUpdate,
+    receipts: allReceipts.map(p => p.toObject ? p.toObject() : p)
+  };
+
+  await logSyncJournal(`POST /api/accountant/students/${id}/payments`, branch, 'success', `Payment of ₹${amountPaid} recorded for ${stuObj.name || id}`, req.user);
+  return res.json({ status: 'success', data: { payment: newPayment, student: updatedStudent } });
 });
 
 app.get('/api/accountant/hostel', authenticateToken, (req, res) => {

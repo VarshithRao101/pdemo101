@@ -34,7 +34,6 @@ export const getLocalDateSeed = (): string => {
 
 // Deterministic 6-digit number generator seeded by identifier + dateSeed (24-hour static key)
 export const generate24HourDeterministicCode = (identifier: string, dateSeed = getLocalDateSeed()): string => {
-  if (identifier === 'authenticator' || identifier === '9059068384') return '080200';
   let hash = 0;
   const str = `${identifier}:${dateSeed}:inspire_2026_static_secret_key`;
   for (let i = 0; i < str.length; i++) {
@@ -59,7 +58,7 @@ export const getOrGenerateSecurityKeys = () => {
     dateSeed,
     dailyPins: {
       admin1: genPin('admin1'),
-      authenticator: '080200',
+      authenticator: genPin('authenticator'),
       admin2_erragattugutta_c1: genPin('admin2_erragattugutta_c1'),
       admin2_erragattugutta_c2: genPin('admin2_erragattugutta_c2'),
       admin2_beemaram_c1: genPin('admin2_beemaram_c1'),
@@ -144,6 +143,10 @@ export const apiClient = {
       method: 'PUT',
       body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
     });
+  },
+
+  async delete<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   },
 
   async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -257,7 +260,7 @@ export const apiClient = {
         { _id: 'acc_admin2_erragattugutta_c2', username: 'admin2_erragattugutta_c2', passwordRaw: 'DeanE2#5713', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2' },
         { _id: 'acc_admin2_beemaram_c1', username: 'admin2_beemaram_c1', passwordRaw: 'DeanB1#3920', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1' },
         { _id: 'acc_admin2_beemaram_c2', username: 'admin2_beemaram_c2', passwordRaw: 'DeanB2#6184', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2' },
-        { _id: 'acc_accountant_default', username: 'accountant', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Accountant' },
+
         { _id: 'acc_accountant_erragattugutta_c1_1', username: 'accountant_erragattugutta_c1_1', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1' },
         { _id: 'acc_accountant_erragattugutta_c1_2', username: 'accountant_erragattugutta_c1_2', passwordRaw: 'AccE1#9381', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1' },
         { _id: 'acc_accountant_erragattugutta_c2_1', username: 'accountant_erragattugutta_c2_1', passwordRaw: 'AccE2#7294', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2' },
@@ -266,8 +269,8 @@ export const apiClient = {
         { _id: 'acc_accountant_beemaram_c1_2', username: 'accountant_beemaram_c1_2', passwordRaw: 'AccB1#2947', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1' },
         { _id: 'acc_accountant_beemaram_c2_1', username: 'accountant_beemaram_c2_1', passwordRaw: 'AccB2#8163', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2' },
         { _id: 'acc_accountant_beemaram_c2_2', username: 'accountant_beemaram_c2_2', passwordRaw: 'AccB2#3750', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2' },
-        { _id: 'acc_authenticator', username: '9059068384', passwordRaw: '080200', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
-        { _id: 'acc_authenticator_static', username: 'authenticator', passwordRaw: '080200', role: 'authenticator', campus: 'All', name: 'Security Authenticator' }
+        { _id: 'acc_authenticator', username: '9059068384', passwordRaw: 'SecAuth#9059', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
+        { _id: 'acc_authenticator_static', username: 'authenticator', passwordRaw: 'SecAuth#9059', role: 'authenticator', campus: 'All', name: 'Security Authenticator' }
       ];
 
       const usernameAliasMap: { [key: string]: string } = {
@@ -275,7 +278,7 @@ export const apiClient = {
         admin2: 'admin2', admin2_e1: 'admin2_erragattugutta_c1', admin2_c1: 'admin2_erragattugutta_c1',
         admin2_e2: 'admin2_erragattugutta_c2', admin2_c2: 'admin2_erragattugutta_c2',
         admin2_b1: 'admin2_beemaram_c1', admin2_b2: 'admin2_beemaram_c2', principal: 'admin2',
-        accountant: 'accountant', accountant1_e1: 'accountant_erragattugutta_c1_1', acc1_e1: 'accountant_erragattugutta_c1_1',
+        accountant: 'accountant_erragattugutta_c1_1', accountant1_e1: 'accountant_erragattugutta_c1_1', acc1_e1: 'accountant_erragattugutta_c1_1',
         accountant2_e1: 'accountant_erragattugutta_c1_2', acc2_e1: 'accountant_erragattugutta_c1_2',
         accountant1_e2: 'accountant_erragattugutta_c2_1', acc1_e2: 'accountant_erragattugutta_c2_1',
         accountant2_e2: 'accountant_erragattugutta_c2_2', acc2_e2: 'accountant_erragattugutta_c2_2',
@@ -334,7 +337,7 @@ export const apiClient = {
         { _id: 'acc_admin2_erragattugutta_c2', username: 'admin2_erragattugutta_c2', passwordRaw: 'DeanE2#5713', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2' },
         { _id: 'acc_admin2_beemaram_c1', username: 'admin2_beemaram_c1', passwordRaw: 'DeanB1#3920', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1' },
         { _id: 'acc_admin2_beemaram_c2', username: 'admin2_beemaram_c2', passwordRaw: 'DeanB2#6184', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2' },
-        { _id: 'acc_accountant_default', username: 'accountant', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Accountant' },
+
         { _id: 'acc_accountant_erragattugutta_c1_1', username: 'accountant_erragattugutta_c1_1', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1' },
         { _id: 'acc_accountant_erragattugutta_c1_2', username: 'accountant_erragattugutta_c1_2', passwordRaw: 'AccE1#9381', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1' },
         { _id: 'acc_accountant_erragattugutta_c2_1', username: 'accountant_erragattugutta_c2_1', passwordRaw: 'AccE2#7294', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2' },
@@ -343,8 +346,8 @@ export const apiClient = {
         { _id: 'acc_accountant_beemaram_c1_2', username: 'accountant_beemaram_c1_2', passwordRaw: 'AccB1#2947', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1' },
         { _id: 'acc_accountant_beemaram_c2_1', username: 'accountant_beemaram_c2_1', passwordRaw: 'AccB2#8163', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2' },
         { _id: 'acc_accountant_beemaram_c2_2', username: 'accountant_beemaram_c2_2', passwordRaw: 'AccB2#3750', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2' },
-        { _id: 'acc_authenticator', username: '9059068384', passwordRaw: '080200', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
-        { _id: 'acc_authenticator_static', username: 'authenticator', passwordRaw: '080200', role: 'authenticator', campus: 'All', name: 'Security Authenticator' }
+        { _id: 'acc_authenticator', username: '9059068384', passwordRaw: 'SecAuth#9059', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
+        { _id: 'acc_authenticator_static', username: 'authenticator', passwordRaw: 'SecAuth#9059', role: 'authenticator', campus: 'All', name: 'Security Authenticator' }
       ];
 
       const usernameAliasMap: { [key: string]: string } = {
@@ -352,7 +355,7 @@ export const apiClient = {
         admin2: 'admin2', admin2_e1: 'admin2_erragattugutta_c1', admin2_c1: 'admin2_erragattugutta_c1',
         admin2_e2: 'admin2_erragattugutta_c2', admin2_c2: 'admin2_erragattugutta_c2',
         admin2_b1: 'admin2_beemaram_c1', admin2_b2: 'admin2_beemaram_c2', principal: 'admin2',
-        accountant: 'accountant', accountant1_e1: 'accountant_erragattugutta_c1_1', acc1_e1: 'accountant_erragattugutta_c1_1',
+        accountant: 'accountant_erragattugutta_c1_1', accountant1_e1: 'accountant_erragattugutta_c1_1', acc1_e1: 'accountant_erragattugutta_c1_1',
         accountant2_e1: 'accountant_erragattugutta_c1_2', acc2_e1: 'accountant_erragattugutta_c1_2',
         accountant1_e2: 'accountant_erragattugutta_c2_1', acc1_e2: 'accountant_erragattugutta_c2_1',
         accountant2_e2: 'accountant_erragattugutta_c2_2', acc2_e2: 'accountant_erragattugutta_c2_2',
@@ -400,7 +403,6 @@ export const apiClient = {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       };
       const generate24HourCode = (id: string) => {
-        if (id === 'authenticator' || id === '9059068384') return '080200';
         let hash = 0;
         const str = `${id}:${getLocalDateSeed()}:inspire_2026_static_secret_key`;
         for (let i = 0; i < str.length; i++) {
@@ -411,15 +413,8 @@ export const apiClient = {
       };
       const rawId = (bodyData.identifier || '').toString().trim().toLowerCase();
       const validPins = new Set([
-        '080200',
-        '784920',
-        '111111',
-        '123456',
         generate24HourCode(`pin_${matchedUser.username}`),
         generate24HourCode(`pin_${rawId}`),
-        generate24HourCode('pin_accountant'),
-        generate24HourCode('pin_admin1'),
-        generate24HourCode('pin_admin2'),
         generate24HourCode('pin_accountant_erragattugutta_c1_1'),
         generate24HourCode('pin_accountant_erragattugutta_c1_2'),
         generate24HourCode('pin_accountant_erragattugutta_c2_1'),
@@ -427,11 +422,16 @@ export const apiClient = {
         generate24HourCode('pin_accountant_beemaram_c1_1'),
         generate24HourCode('pin_accountant_beemaram_c1_2'),
         generate24HourCode('pin_accountant_beemaram_c2_1'),
-        generate24HourCode('pin_accountant_beemaram_c2_2')
+        generate24HourCode('pin_accountant_beemaram_c2_2'),
+        generate24HourCode('pin_admin1'),
+        generate24HourCode('pin_admin2_erragattugutta_c1'),
+        generate24HourCode('pin_admin2_erragattugutta_c2'),
+        generate24HourCode('pin_admin2_beemaram_c1'),
+        generate24HourCode('pin_admin2_beemaram_c2')
       ]);
 
       if (matchedUser.role === 'authenticator') {
-        if (inputPin !== '080200') {
+        if (inputPin !== matchedUser.passwordRaw) {
           const err: ApiError = new Error('Incorrect 6-digit Security PIN.');
           err.status = 401;
           throw err;
@@ -497,7 +497,7 @@ export const apiClient = {
         { _id: 'acc_accountant_b1_2', username: 'accountant_beemaram_c1_2', password: 'AccB1#2947', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1', email: 'acc2.i1@inspire.edu', mobile: '9988773302', department: 'Finance Dept', address: 'Beemaram Campus C1' },
         { _id: 'acc_accountant_b2_1', username: 'accountant_beemaram_c2_1', password: 'AccB2#8163', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2', email: 'acc1.b2@inspire.edu', mobile: '9988774401', department: 'Finance Dept', address: 'Beemaram Campus C2' },
         { _id: 'acc_accountant_b2_2', username: 'accountant_beemaram_c2_2', password: 'AccB2#3750', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2', email: 'acc2.b2@inspire.edu', mobile: '9988774402', department: 'Finance Dept', address: 'Beemaram Campus C2' },
-        { _id: 'acc_authenticator', username: '9059068384', password: '080200', role: 'authenticator', campus: 'All', name: 'Security Authenticator', email: 'sec9059@inspire.edu', mobile: '9059068384', department: 'Security Console', address: 'Central Security' }
+        { _id: 'acc_authenticator', username: '9059068384', password: 'SecAuth#9059', role: 'authenticator', campus: 'All', name: 'Security Authenticator', email: 'sec9059@inspire.edu', mobile: '9059068384', department: 'Security Console', address: 'Central Security' }
       ];
       return { status: 'success', data: accountsList } as any;
     }
@@ -537,7 +537,7 @@ export const apiClient = {
       return { status: 'success', data: { collectionToday, pendingCount: 0, pendingAmount: 0, absentCount: 0 } } as any;
     }
 
-    if (cleanPath.includes('/admin/students') && method === 'POST') {
+    if ((cleanPath.includes('/admin/students') || cleanPath.includes('/accountant/students')) && method === 'POST') {
       const parsedBody = options.body ? JSON.parse(options.body as string) : {};
       const admNo = (parsedBody.admissionNumber || parsedBody.studentId || `2400${Math.floor(100 + Math.random() * 900)}`).toString().trim();
       const branch = parsedBody.branch || 'Erragattugutta C1';
@@ -565,13 +565,33 @@ export const apiClient = {
         transportFee,
         miscellaneousFee,
         remainingBalance: totalFee,
-        isCustomFee: false
+        isCustomFee: false,
+        totalPaid: 0,
+        receipts: []
       };
+
+      const allStudents: any[] = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      allStudents.push(newStu);
+      localStorage.setItem('jc_students', JSON.stringify(allStudents));
+
       return {
         status: 'success',
         data: newStu,
         credential: { pin: '784920', username: admNo }
       } as any;
+    }
+
+    if (cleanPath.includes('/students/') && method === 'DELETE') {
+      const parts = cleanPath.split('/students/');
+      const targetId = parts[1] ? parts[1].toLowerCase().trim() : '';
+      const allStudents: any[] = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      const filtered = allStudents.filter(s =>
+        (s._id || '').toLowerCase() !== targetId &&
+        (s.studentId || '').toLowerCase() !== targetId &&
+        (s.admissionNumber || '').toLowerCase() !== targetId
+      );
+      localStorage.setItem('jc_students', JSON.stringify(filtered));
+      return { status: 'success', message: 'Student record permanently deleted.' } as any;
     }
 
     if (cleanPath.includes('/fee-override') && method === 'PATCH') {
@@ -589,6 +609,76 @@ export const apiClient = {
           totalPaid: 0, remainingBalance: 125000
         }
       } as any;
+    }
+
+    if (cleanPath.includes('/payments') && method === 'POST') {
+      const parsedBody = options.body ? JSON.parse(options.body as string) : {};
+      const amountPaid = Number(parsedBody.amount || 0);
+      if (!amountPaid || amountPaid <= 0) {
+        const err: ApiError = new Error('Invalid payment amount.');
+        err.status = 400;
+        throw err;
+      }
+
+      // Read student from localStorage
+      const parts = cleanPath.split('/students/');
+      const targetId = parts[1] ? parts[1].split('/')[0].toLowerCase().trim() : '';
+      const allStudents: any[] = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      const stuIdx = allStudents.findIndex(s =>
+        (s._id && s._id.toLowerCase() === targetId) ||
+        (s.studentId && s.studentId.toLowerCase() === targetId) ||
+        (s.admissionNumber && s.admissionNumber.toLowerCase() === targetId)
+      );
+
+      const stu = stuIdx !== -1 ? { ...allStudents[stuIdx] } : {
+        _id: `stu_${targetId}`, studentId: targetId.toUpperCase(), admissionNumber: targetId.toUpperCase(),
+        name: `Student (${targetId.toUpperCase()})`, totalPaid: 0, remainingBalance: 125000, receipts: []
+      };
+
+      const prevBalance = Number(stu.remainingBalance ?? 0);
+      const prevTotalPaid = Number(stu.totalPaid ?? 0);
+
+      if (amountPaid > prevBalance) {
+        const err: ApiError = new Error('Payment exceeds remaining balance.');
+        err.status = 400;
+        throw err;
+      }
+
+      const newBalance = Math.max(0, prevBalance - amountPaid);
+      const newTotalPaid = prevTotalPaid + amountPaid;
+      const receiptNo = `REC-5${Math.floor(10000 + Math.random() * 90000)}`;
+      const newReceipt = {
+        receiptNumber: receiptNo,
+        date: new Date().toLocaleDateString('en-IN'),
+        category: parsedBody.category || 'Academic Fee',
+        installment: parsedBody.installment || 'Installment',
+        amount: amountPaid,
+        balance: newBalance,
+        mode: parsedBody.mode || 'Cash',
+        cashier: username || 'Senior Accountant'
+      };
+
+      const updatedStu = {
+        ...stu,
+        totalPaid: newTotalPaid,
+        remainingBalance: newBalance,
+        receipts: [...(stu.receipts || []), newReceipt]
+      };
+
+      // Persist back to localStorage
+      if (stuIdx !== -1) {
+        allStudents[stuIdx] = updatedStu;
+      } else {
+        allStudents.push(updatedStu);
+      }
+      localStorage.setItem('jc_students', JSON.stringify(allStudents));
+
+      // Update payments ledger in localStorage
+      const allPayments: any[] = JSON.parse(localStorage.getItem('jc_payments') || '[]');
+      allPayments.push({ ...newReceipt, studentId: stu.studentId || targetId });
+      localStorage.setItem('jc_payments', JSON.stringify(allPayments));
+
+      return { status: 'success', data: { payment: newReceipt, student: updatedStu } } as any;
     }
 
     if (cleanPath.includes('/students/') && method === 'GET') {
