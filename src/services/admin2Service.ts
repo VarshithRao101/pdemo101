@@ -63,6 +63,21 @@ export interface FeeBreakdown {
   miscWaiver: number;
   totalPaid: number;
   remainingBalance: number;
+  feeAdjustments?: FeeAdjustment[];
+}
+
+export interface FeeAdjustment {
+  _id?: string;
+  id?: string;
+  type?: string;
+  amount: number;
+  previousBalance: number;
+  updatedBalance: number;
+  previousFeeTotal: number;
+  updatedFeeTotal: number;
+  branch?: string;
+  note?: string;
+  createdAt?: string;
 }
 
 export const admin2Service = {

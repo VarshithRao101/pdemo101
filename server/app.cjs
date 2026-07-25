@@ -179,6 +179,7 @@ const studentSchema = new mongoose.Schema({
   hostelWaiver: { type: Number, default: 0 },
   transportWaiver: { type: Number, default: 0 },
   miscWaiver: { type: Number, default: 0 },
+  feeAdjustments: [{ type: Object }],
   isCustomFee: { type: Boolean, default: false },
   marks: [{ subject: String, midterm: Number, final: Number }]
 }, { timestamps: true });
@@ -324,6 +325,65 @@ function normalizeHostelStatus(status) {
 function normalizeTransportStatus(status) {
   const value = (status || '').toString().trim().toLowerCase();
   return value === 'college bus' || value === 'college transport' || value === 'transport';
+}
+
+function normalizeAdmissionNumber(value) {
+  return (value || '').toString().trim().toLowerCase();
+}
+
+function getStudentFeeTotal(student) {
+  return Number(student?.tuitionFee || 0) +
+    Number(student?.hostelFee || 0) +
+    Number(student?.transportFee || 0) +
+    Number(student?.miscellaneousFee || 0) +
+    Number(student?.previousPending || 0);
+}
+
+function createFeeAdjustmentRecord(student, branch, previousBalance, updatedBalance, previousFeeTotal, updatedFeeTotal) {
+  const adjustmentAmount = Math.round(updatedFeeTotal - previousFeeTotal);
+  if (!adjustmentAmount) return null;
+
+  return {
+    _id: `FADJ-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    id: `FADJ-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    type: 'fee_structure_update',
+    amount: adjustmentAmount,
+    previousBalance: Math.max(0, Number(previousBalance || 0)),
+    updatedBalance: Math.max(0, Number(updatedBalance || 0)),
+    previousFeeTotal,
+    updatedFeeTotal,
+    branch,
+    note: adjustmentAmount > 0
+      ? `Fee structure updated: additional ₹${adjustmentAmount.toLocaleString('en-IN')} applied.`
+      : `Fee structure updated: ₹${Math.abs(adjustmentAmount).toLocaleString('en-IN')} reduced from balance.`,
+    createdAt: new Date().toISOString()
+  };
+}
+
+async function findStudentByAdmissionNumber(admissionNumber) {
+  const normalized = normalizeAdmissionNumber(admissionNumber);
+  if (!normalized) return null;
+
+  if (isMongoConnected) {
+    try {
+      const found = await Student.findOne({
+        $or: [
+          { admissionNumber: admissionNumber },
+          { admissionNumber: { $regex: new RegExp(`^${admissionNumber}$`, 'i') } },
+          { studentId: admissionNumber },
+          { studentId: { $regex: new RegExp(`^${admissionNumber}$`, 'i') } }
+        ]
+      });
+      if (found) return found;
+    } catch { /* fallback */ }
+  }
+
+  const allStudents = Object.values(inMemoryStore.students).flat();
+  return allStudents.find(student =>
+    normalizeAdmissionNumber(student.admissionNumber) === normalized ||
+    normalizeAdmissionNumber(student.studentId) === normalized ||
+    normalizeAdmissionNumber(student._id) === normalized
+  ) || null;
 }
 
 // Default accounts data (Renamed 4 Campuses: Erragattugutta C1, Erragattugutta C2, Beemaram C1, Beemaram C2)
@@ -1235,6 +1295,14 @@ app.post(['/api/admin1/students', '/api/admin/students', '/api/accountant/studen
   const branch = normalizeCampusName(req.body.branch || req.targetCampus);
   const admNo = (req.body.admissionNumber || req.body.studentId || `2400${Math.floor(100 + Math.random() * 900)}`).toString().trim();
 
+  const existingAdmission = await findStudentByAdmissionNumber(admNo);
+  if (existingAdmission) {
+    return res.status(409).json({
+      status: 'error',
+      message: `Admission number ${admNo} already exists. Please use a unique admission number.`
+    });
+  }
+
   // Resolve campus-specific baseline fee settings
   let campusFeeSettings = inMemoryStore.feeSettings[branch];
   if (!campusFeeSettings && isMongoConnected) {
@@ -1281,6 +1349,7 @@ app.post(['/api/admin1/students', '/api/admin/students', '/api/accountant/studen
     hostelWaiver,
     transportWaiver,
     miscWaiver,
+    feeAdjustments: [],
     isCustomFee
   };
   if (isMongoConnected) {
@@ -1539,6 +1608,8 @@ app.patch('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation,
 
     // UNLESS student fee was manually edited / fee waiver applied, update student fee to match new campus fee structure
     if (!hasCustomFee) {
+      const previousFeeTotal = getStudentFeeTotal(stu);
+      const previousBalance = Number(stu.remainingBalance || 0);
       const tuitionFee = Number(updated.tuition !== undefined ? updated.tuition : (stu.tuitionFee || 120000));
       const miscellaneousFee = Number(updated.misc !== undefined ? updated.misc : (stu.miscellaneousFee || 5000));
       const hostelFee = normalizeHostelStatus(stu.hostelStatus) ? Number(updated.hostel !== undefined ? updated.hostel : (stu.hostelFee || 85000)) : 0;
@@ -1546,15 +1617,22 @@ app.patch('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation,
       
       const previousPending = Number(stu.previousPending || 0);
       const totalPaid = Number(stu.totalPaid || 0);
-      const totalFee = tuitionFee + hostelFee + transportFee + miscellaneousFee + previousPending;
-      const remainingBalance = Math.max(0, totalFee - totalPaid);
+      const updatedFeeTotal = tuitionFee + hostelFee + transportFee + miscellaneousFee + previousPending;
+      const feeDifference = updatedFeeTotal - previousFeeTotal;
+      const remainingBalance = Math.max(0, previousBalance + feeDifference);
+      const feeAdjustment = feeDifference === 0
+        ? null
+        : createFeeAdjustmentRecord(stu, branch, previousBalance, remainingBalance, previousFeeTotal, updatedFeeTotal);
 
       const stuUpdate = {
         tuitionFee,
         miscellaneousFee,
         hostelFee,
         transportFee,
-        remainingBalance
+        remainingBalance,
+        ...(feeAdjustment ? {
+          feeAdjustments: [feeAdjustment, ...(Array.isArray(stu.feeAdjustments) ? stu.feeAdjustments : [])]
+        } : {})
       };
 
       if (isMongoConnected) {
@@ -1838,7 +1916,8 @@ app.get('/api/admin2/students/:id/fee-breakdown', authenticateToken, async (req,
       miscWaiver,
       totalPaid,
       remainingBalance,
-      isCustomFee: Boolean(targetStudent.isCustomFee)
+      isCustomFee: Boolean(targetStudent.isCustomFee),
+      feeAdjustments: targetStudent.feeAdjustments || []
     }
   });
 });

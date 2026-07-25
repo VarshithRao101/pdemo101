@@ -593,6 +593,37 @@ export const apiClient = {
         const branch = parsedBody.branch || 'Erragattugutta C1';
         allFeeSettings[branch] = { ...allFeeSettings[branch], ...parsedBody };
         localStorage.setItem('jc_fee_settings', JSON.stringify(allFeeSettings));
+        const allStudents = getOrInitStudents();
+        const updatedStudents = allStudents.map(student => {
+          if (student.branch !== branch) return student;
+          const totalWaivers = Number(student.tuitionWaiver || 0) + Number(student.hostelWaiver || 0) + Number(student.transportWaiver || 0) + Number(student.miscWaiver || 0);
+          if (student.isCustomFee || totalWaivers > 0) return student;
+
+          const previousFeeTotal = Number(student.tuitionFee || 0) + Number(student.hostelFee || 0) + Number(student.transportFee || 0) + Number(student.miscellaneousFee || 0) + Number(student.previousPending || 0);
+          const tuitionFee = Number(parsedBody.tuition !== undefined ? parsedBody.tuition : student.tuitionFee || 120000);
+          const miscellaneousFee = Number(parsedBody.misc !== undefined ? parsedBody.misc : student.miscellaneousFee || 5000);
+          const hostelFee = normalizeHostelStatus(student.hostelStatus) ? Number(parsedBody.hostel !== undefined ? parsedBody.hostel : student.hostelFee || 85000) : 0;
+          const transportFee = normalizeTransportStatus(student.transportStatus) ? Number(parsedBody.transport !== undefined ? parsedBody.transport : student.transportFee || 15000) : 0;
+          const updatedFeeTotal = tuitionFee + hostelFee + transportFee + miscellaneousFee + Number(student.previousPending || 0);
+          const amount = updatedFeeTotal - previousFeeTotal;
+          const previousBalance = Number(student.remainingBalance || 0);
+          const remainingBalance = Math.max(0, previousBalance + amount);
+          const feeAdjustments = amount === 0 ? student.feeAdjustments : [{
+            _id: `fee_adj_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            type: 'fee_structure_update',
+            amount,
+            previousBalance,
+            updatedBalance: remainingBalance,
+            previousFeeTotal,
+            updatedFeeTotal,
+            branch,
+            note: amount > 0 ? `Fee structure updated: additional ₹${amount.toLocaleString('en-IN')} applied.` : `Fee structure updated: ₹${Math.abs(amount).toLocaleString('en-IN')} reduced from balance.`,
+            createdAt: new Date().toISOString()
+          }, ...(Array.isArray(student.feeAdjustments) ? student.feeAdjustments : [])];
+          return { ...student, tuitionFee, hostelFee, transportFee, miscellaneousFee, remainingBalance, feeAdjustments };
+        });
+        localStorage.setItem('jc_students', JSON.stringify(updatedStudents));
+        triggerPortalDataSync('students');
         return { status: 'success', data: allFeeSettings[branch] } as any;
       }
       const urlParams = new URLSearchParams(cleanPath.split('?')[1] || '');
@@ -668,7 +699,7 @@ export const apiClient = {
       const individualOverrideDeduction = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
       const baseFee = tuitionFee + hostelFee + transportFee + miscFee + previousPending;
       const remainingBalance = Math.max(0, baseFee - individualOverrideDeduction - totalPaid);
-      return { status: 'success', data: { baseFee, tuitionFee, hostelFee, transportFee, miscFee, previousPending, scholarshipCategory: individualOverrideDeduction > 0 ? 'Individual Fee Waiver' : 'None', scholarshipPct: 0, scholarshipDeduction: 0, individualOverrideDeduction, tuitionWaiver, hostelWaiver, transportWaiver, miscWaiver, totalPaid, remainingBalance, isCustomFee: Boolean(student.isCustomFee), branch } } as any;
+      return { status: 'success', data: { baseFee, tuitionFee, hostelFee, transportFee, miscFee, previousPending, scholarshipCategory: individualOverrideDeduction > 0 ? 'Individual Fee Waiver' : 'None', scholarshipPct: 0, scholarshipDeduction: 0, individualOverrideDeduction, tuitionWaiver, hostelWaiver, transportWaiver, miscWaiver, totalPaid, remainingBalance, isCustomFee: Boolean(student.isCustomFee), feeAdjustments: student.feeAdjustments || [], branch } } as any;
     }
     // Auto-purge old stored mock student data so user starts with a 100% empty database
     if (typeof window !== 'undefined' && !localStorage.getItem('jc_db_purged_v3')) {
@@ -722,6 +753,13 @@ export const apiClient = {
       const parsedBody = options.body ? JSON.parse(options.body as string) : {};
       const admNo = (parsedBody.admissionNumber || parsedBody.studentId || `2400${Math.floor(100 + Math.random() * 900)}`).toString().trim();
       const branch = parsedBody.branch || 'Erragattugutta C1';
+      const allStudents = getOrInitStudents();
+      const normalizedAdmission = admNo.toLowerCase();
+      if (allStudents.some(student => (student.admissionNumber || student.studentId || '').toLowerCase() === normalizedAdmission)) {
+        const err: ApiError = new Error(`Admission number ${admNo} already exists. Please use a unique admission number.`);
+        err.status = 409;
+        throw err;
+      }
 
       const allFeeSettings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
       const campusFee = allFeeSettings[branch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
@@ -748,10 +786,10 @@ export const apiClient = {
         remainingBalance: totalFee,
         isCustomFee: false,
         totalPaid: 0,
-        receipts: []
+        receipts: [],
+        feeAdjustments: []
       };
 
-      const allStudents = getOrInitStudents();
       allStudents.unshift(newStu);
       localStorage.setItem('jc_students', JSON.stringify(allStudents));
       logTransactionInJournal(`Create Student (${admNo})`, branch, 'success');

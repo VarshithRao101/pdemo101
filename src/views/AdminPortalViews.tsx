@@ -222,6 +222,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [newStuMobile, setNewStuMobile] = useState('');
   const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
   const [regStuOtpInput, setRegStuOtpInput] = useState('');
+  const [regStuError, setRegStuError] = useState('');
   const [isSubmittingStudent, setIsSubmittingStudent] = useState(false);
 
   // Faculty Management States
@@ -872,6 +873,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       return;
     }
     setRegStuOtpInput('');
+    setRegStuError('');
     setIsRegStuOtpModalOpen(true);
   };
 
@@ -887,6 +889,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       setIsRegStuOtpModalOpen(false);
       setRegStuOtpInput('');
     } catch (err: any) {
+      if (err?.status === 409) setRegStuError(err.message);
       triggerToast(err.message || 'Registration failed.');
     } finally {
       setIsSubmittingStudent(false);
@@ -969,7 +972,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       }
     } catch (err: any) {
       console.error(err);
-      triggerToast(err.message || 'Error during student registration.');
+      throw err;
     }
   };
 
@@ -1435,9 +1438,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       type="text"
                       placeholder={`e.g. ADM2400${students.length + 1}`}
                       value={newStuAdmissionNumber}
-                      onChange={(e) => setNewStuAdmissionNumber(e.target.value)}
-                      style={styles.textInputBox}
+                      onChange={(e) => { setNewStuAdmissionNumber(e.target.value); setRegStuError(''); }}
+                      style={{ ...styles.textInputBox, borderColor: regStuError ? '#EF4444' : undefined }}
                     />
+                    {regStuError && <span style={{ color: '#DC2626', fontSize: '11px', fontWeight: 700 }}>{regStuError}</span>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                     <label style={styles.formLabel}>Full Student Name</label>
@@ -1490,6 +1494,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 <p style={{ fontSize: '12px', color: 'var(--muted-gray)', marginBottom: '14px', lineHeight: 1.4 }}>
                   Enter your 6-digit Security Authorization Key / OTP to finalize student registration for <strong>{newStuName}</strong> (Adm No: {newStuAdmissionNumber || `ADM2400${students.length + 1}`}).
                 </p>
+                {regStuError && <div style={{ marginBottom: '14px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', fontSize: '12px', fontWeight: 700 }}>{regStuError}</div>}
 
                 {isSubmittingStudent ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 0', gap: '14px' }}>

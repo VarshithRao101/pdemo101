@@ -157,6 +157,16 @@ interface Receipt {
   cashier: string;
 }
 
+interface FeeAdjustment {
+  _id?: string;
+  id?: string;
+  amount: number;
+  previousBalance: number;
+  updatedBalance: number;
+  note?: string;
+  createdAt?: string;
+}
+
 interface Student {
   _id?: string;
   admissionNumber: string;
@@ -187,6 +197,7 @@ interface Student {
   totalPaid: number;
   remainingBalance: number;
   receipts: Receipt[];
+  feeAdjustments?: FeeAdjustment[];
 }
 
 interface Attendee {
@@ -289,6 +300,7 @@ export const AccountantDashboardView: React.FC = () => {
     previousPending: 0
   };
   const [newStudentData, setNewStudentData] = useState(initialNewStudent);
+  const [newStudentAdmissionError, setNewStudentAdmissionError] = useState('');
 
   // Search parameters (Local Edit Buffer state)
   const [searchAdmNo, setSearchAdmNo] = useState('');
@@ -548,6 +560,7 @@ export const AccountantDashboardView: React.FC = () => {
       setNewStudentData({ ...initialNewStudent, branch: loggedInCampus });
       fetchDashboardSummary();
     } catch (err: any) {
+      if (err?.status === 409) setNewStudentAdmissionError(err.message);
       triggerToast(err.message || 'Failed to create student.');
     } finally {
       setIsLoading(false);
@@ -1038,6 +1051,7 @@ export const AccountantDashboardView: React.FC = () => {
             <button
               onClick={() => {
                 setNewStudentData({ ...initialNewStudent, branch: loggedInCampus });
+                setNewStudentAdmissionError('');
                 setIsAddStudentModalOpen(true);
               }}
               style={{
@@ -1484,6 +1498,16 @@ export const AccountantDashboardView: React.FC = () => {
               <div style={{ marginTop: '10px' }}>
                 <h4 style={{ ...styles.sectionSubtitle, borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '6px' }}>Receipt Logs / Transaction History</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                  {selectedStudent.feeAdjustments?.map((adjustment) => (
+                    <div key={adjustment._id || adjustment.id || adjustment.createdAt} style={{ ...styles.receiptRowItem, borderColor: '#FBBF24', backgroundColor: '#FFFBEB' }}>
+                      <div>
+                        <strong style={{ fontSize: '13px', color: '#92400E' }}>Fee Structure Revision</strong>
+                        <div style={{ fontSize: '10px', color: '#92400E', marginTop: '2px' }}>{adjustment.note || 'Baseline fee structure was updated.'}</div>
+                        <div style={{ fontSize: '10px', color: 'var(--muted-gray)', marginTop: '2px' }}>Balance: ₹{adjustment.previousBalance.toLocaleString('en-IN')} → ₹{adjustment.updatedBalance.toLocaleString('en-IN')} {adjustment.createdAt ? `• ${new Date(adjustment.createdAt).toLocaleDateString('en-GB')}` : ''}</div>
+                      </div>
+                      <span style={{ fontWeight: 800, fontSize: '14px', color: adjustment.amount >= 0 ? '#B45309' : '#10B981' }}>{adjustment.amount >= 0 ? '+' : '-'}₹{Math.abs(adjustment.amount).toLocaleString('en-IN')}</span>
+                    </div>
+                  ))}
                   {selectedStudent.receipts && selectedStudent.receipts.map((receipt) => (
                     <div key={receipt.receiptNumber} style={styles.receiptRowItem}>
                       <div>
@@ -2136,7 +2160,7 @@ export const AccountantDashboardView: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '10px' }}>
                   <h3 style={styles.modalTitle}>Register New Student</h3>
                   <button
-                    onClick={() => setIsAddStudentModalOpen(false)}
+                    onClick={() => { setIsAddStudentModalOpen(false); setNewStudentAdmissionError(''); }}
                     style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
                     Ã—
@@ -2151,9 +2175,10 @@ export const AccountantDashboardView: React.FC = () => {
                         type="text"
                         placeholder="e.g. 2400101"
                         value={newStudentData.admissionNumber}
-                        onChange={(e) => setNewStudentData({ ...newStudentData, admissionNumber: e.target.value })}
-                        style={styles.textInputBox}
+                        onChange={(e) => { setNewStudentData({ ...newStudentData, admissionNumber: e.target.value }); setNewStudentAdmissionError(''); }}
+                        style={{ ...styles.textInputBox, borderColor: newStudentAdmissionError ? '#EF4444' : undefined }}
                       />
+                      {newStudentAdmissionError && <span style={{ color: '#DC2626', fontSize: '11px', fontWeight: 700 }}>{newStudentAdmissionError}</span>}
                     </div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <label style={styles.formLabel}>Student Full Name *</label>
@@ -2252,26 +2277,6 @@ export const AccountantDashboardView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Tuition Fee (₹)</label>
-                      <input
-                        type="number"
-                        value={newStudentData.tuitionFee}
-                        onChange={(e) => setNewStudentData({ ...newStudentData, tuitionFee: parseFloat(e.target.value) || 0 })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Hostel Fee (₹)</label>
-                      <input
-                        type="number"
-                        value={newStudentData.hostelFee}
-                        onChange={(e) => setNewStudentData({ ...newStudentData, hostelFee: parseFloat(e.target.value) || 0 })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                  </div>
                 </div>
 
                 <button
