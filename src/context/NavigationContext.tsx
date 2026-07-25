@@ -206,8 +206,6 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
     
     if (window.location.hash) {
       handlePopState();
-    } else {
-      window.history.replaceState(null, '', '#/dashboard');
     }
     
     return () => window.removeEventListener('popstate', handlePopState);

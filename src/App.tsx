@@ -24,7 +24,20 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       const hash = window.location.hash;
       setCurrentHash(hash);
 
-      // Already authenticated — never regress to portfolio on internal navigation
+      const isLoginGateHash = hash === AUTHENTICATOR_HASH ||
+        hash.includes('sec-auth-sys-9i0j7k8l') ||
+        hash === UNIVERSAL_HASH ||
+        hash.includes('v1-portal-gate-x89f2a7b') ||
+        hash.includes('login') ||
+        hash.includes('authenticator') ||
+        hash.includes('portal-gate');
+
+      if (isLoginGateHash) {
+        setFlowStage('pin');
+        return;
+      }
+
+      // If authenticated and accessing internal dashboard hashes
       if (isAuthenticated) {
         setFlowStage('authenticated');
         return;
@@ -39,37 +52,20 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
         hash.includes('attendance') ||
         hash.includes('backup');
 
-      // If we're mid-login or just completed login, stay on pin/authenticated
       if (isInternalDashboardHash) {
-        setFlowStage(prev => (prev === 'authenticated' ? 'authenticated' : prev === 'pin' ? 'pin' : 'portfolio'));
+        setFlowStage(prev => (prev === 'authenticated' ? 'authenticated' : 'pin'));
         return;
       }
 
-      const isLoginHash = hash === AUTHENTICATOR_HASH ||
-        hash.includes('sec-auth-sys-9i0j7k8l') ||
-        hash === UNIVERSAL_HASH ||
-        hash.includes('v1-portal-gate-x89f2a7b') ||
-        hash.includes('login') ||
-        hash.includes('admin') ||
-        hash.includes('accountant') ||
-        hash.includes('authenticator') ||
-        hash.includes('portal');
-
-      if (isLoginHash) {
-        setFlowStage('pin');
-        return;
-      }
-
-      const explicitPublicHashes = ['#/portfolio', '#programs', '#why-us', '#campuses', '#enquiry', '#contact'];
-      const isExplicitPublicNav = explicitPublicHashes.some(h => hash.startsWith(h));
+      const explicitPublicHashes = ['#/portfolio', '#programs', '#why-us', '#campuses', '#enquiry', '#contact', '', '#'];
+      const isExplicitPublicNav = explicitPublicHashes.some(h => hash === h || (h !== '' && h !== '#' && hash.startsWith(h)));
 
       if (isExplicitPublicNav) {
         setFlowStage('portfolio');
         return;
       }
 
-      // Preserve current stage — never forcibly drop to portfolio unless explicit
-      setFlowStage(prev => (prev === 'pin' || prev === 'authenticated' ? prev : 'portfolio'));
+      setFlowStage(prev => (prev === 'authenticated' ? 'authenticated' : 'portfolio'));
     };
 
     window.addEventListener('hashchange', handleHashChange);
@@ -94,26 +90,21 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
     sessionChecked.current = true;
 
     checkSession().then((isValid) => {
-      if (isValid) {
+      const hash = window.location.hash;
+      const isLoginGateHash = hash === AUTHENTICATOR_HASH ||
+        hash.includes('sec-auth-sys-9i0j7k8l') ||
+        hash === UNIVERSAL_HASH ||
+        hash.includes('v1-portal-gate-x89f2a7b') ||
+        hash.includes('login') ||
+        hash.includes('authenticator') ||
+        hash.includes('portal-gate');
+
+      if (isLoginGateHash) {
+        setFlowStage('pin');
+      } else if (isValid) {
         setFlowStage('authenticated');
       } else {
-        const hash = window.location.hash;
-        const isLoginHash = hash === AUTHENTICATOR_HASH ||
-          hash.includes('sec-auth-sys-9i0j7k8l') ||
-          hash === UNIVERSAL_HASH ||
-          hash.includes('v1-portal-gate-x89f2a7b') ||
-          hash.includes('login') ||
-          hash.includes('admin') ||
-          hash.includes('accountant') ||
-          hash.includes('authenticator') ||
-          hash.includes('portal') ||
-          hash.includes('rector') ||
-          hash.includes('principal') ||
-          hash.includes('fees');
-
-        if (isLoginHash) {
-          setFlowStage('pin');
-        }
+        setFlowStage('portfolio');
       }
       setTimeout(() => {
         setIsInitialLoading(false);
