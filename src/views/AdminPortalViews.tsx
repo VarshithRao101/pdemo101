@@ -318,7 +318,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   const [editTuitionRate, setEditTuitionRate] = useState('120000');
   const [editHostelRate, setEditHostelRate] = useState('85000');
-  const [editTransportRate, setEditTransportRate] = useState('15000');
   const [editMiscRate, setEditMiscRate] = useState('5000');
 
   const [isDeleteStuOtpOpen, setIsDeleteStuOtpOpen] = useState(false);
@@ -330,7 +329,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [selectedFeeStudent, setSelectedFeeStudent] = useState<Student | null>(null);
   const [editTuitionWaiver, setEditTuitionWaiver] = useState('0');
   const [editHostelWaiver, setEditHostelWaiver] = useState('0');
-  const [editTransportWaiver, setEditTransportWaiver] = useState('0');
   const [editMiscWaiver, setEditMiscWaiver] = useState('0');
 
   // OTP modal state for each guarded action
@@ -397,7 +395,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       setFeeRates(data);
       setEditTuitionRate(String(data.tuition !== undefined ? data.tuition : 120000));
       setEditHostelRate(String(data.hostel !== undefined ? data.hostel : 85000));
-      setEditTransportRate(String(data.transport !== undefined ? data.transport : 15000));
       setEditMiscRate(String(data.misc !== undefined ? data.misc : 5000));
     } catch (err: any) { triggerToast(err.message || 'Failed to load fee settings.'); }
   };
@@ -904,7 +901,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     const newAdm = newStuAdmissionNumber.trim() || `ADM2400${students.length + 1}`;
     
     // Get campus-specific baseline fee settings
-    let campusFee = { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
+    let campusFee = { tuition: 120000, hostel: 85000, transport: 0, misc: 5000 };
     try {
       const fetchedFee = await admin2Service.getFeeSettings(newStuBranch);
       if (fetchedFee && fetchedFee.tuition) {
@@ -1202,7 +1199,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       const payload = {
         tuition: Number(feeRates.tuition !== undefined ? feeRates.tuition : editTuitionRate) || 0,
         hostel: Number(feeRates.hostel !== undefined ? feeRates.hostel : editHostelRate) || 0,
-        transport: Number(feeRates.transport !== undefined ? feeRates.transport : editTransportRate) || 0,
+        transport: 0,
         misc: Number(feeRates.misc !== undefined ? feeRates.misc : editMiscRate) || 0,
         isLocked: true,
         branch: selectedFeeBranch
@@ -1211,7 +1208,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       setFeeRates(saved);
       setEditTuitionRate(String(saved.tuition));
       setEditHostelRate(String(saved.hostel));
-      setEditTransportRate(String(saved.transport));
       setEditMiscRate(String(saved.misc));
       setIsEditingFees(false);
       setIsAcadFeeOtpOpen(false);
@@ -2514,16 +2510,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         }
       },
       {
-        key: 'transport',
-        label: 'Transport / Bus Fee',
-        icon: '',
-        value: feeRates.transport,
-        setter: (v: number) => {
-          setFeeRates(prev => ({ ...prev, transport: v }));
-          setEditTransportRate(String(v));
-        }
-      },
-      {
         key: 'misc',
         label: 'Miscellaneous / Lab Fee',
         icon: '',
@@ -2966,7 +2952,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           setFeeBreakdownData(breakdown);
           setEditTuitionWaiver(String(breakdown.tuitionWaiver));
           setEditHostelWaiver(String(breakdown.hostelWaiver));
-          setEditTransportWaiver(String(breakdown.transportWaiver));
           setEditMiscWaiver(String(breakdown.miscWaiver));
           triggerToast(`Loaded fee record for ${match.name}`);
         } catch (err: any) {
@@ -2987,7 +2972,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         const res = await admin2Service.applyFeeOverride(selectedFeeStudent._id || 'fallback_id', {
           tuitionWaiver: Number(editTuitionWaiver) || 0,
           hostelWaiver: Number(editHostelWaiver) || 0,
-          transportWaiver: Number(editTransportWaiver) || 0,
+          transportWaiver: 0,
           miscWaiver: Number(editMiscWaiver) || 0,
         }, targetBranch);
         if (res.status === 'success') {
@@ -3043,7 +3028,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <h5 style={{ margin: '0 0 8px', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Fee Transaction History</h5>
                   <div style={styles.metaRow}><span>Base Tuition Fee</span><strong>₹{(feeBreakdownData.tuitionFee||0).toLocaleString('en-IN')}</strong></div>
                   {feeBreakdownData.hostelFee > 0 && <div style={styles.metaRow}><span>Hostel Fee</span><strong>₹{feeBreakdownData.hostelFee.toLocaleString('en-IN')}</strong></div>}
-                  {feeBreakdownData.transportFee > 0 && <div style={styles.metaRow}><span>Transport Fee</span><strong>₹{feeBreakdownData.transportFee.toLocaleString('en-IN')}</strong></div>}
                   {feeBreakdownData.miscFee > 0 && <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>₹{feeBreakdownData.miscFee.toLocaleString('en-IN')}</strong></div>}
                   {feeBreakdownData.previousPending > 0 && <div style={styles.metaRow}><span>Previous Pending</span><strong>₹{feeBreakdownData.previousPending.toLocaleString('en-IN')}</strong></div>}
                   <div style={{ ...styles.metaRow, borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span><strong>Total Base Fee</strong></span><strong>₹{(feeBreakdownData.baseFee||0).toLocaleString('en-IN')}</strong></div>
@@ -3078,11 +3062,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: '14px' }}>Individual fee overrides & waivers are locked to the student profile upon verification.</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 {[
-                  ['Tuition Waiver (₹)', editTuitionWaiver, setEditTuitionWaiver, (feeBreakdownData?.tuitionFee || 0) > 0],
-                  ['Hostel Waiver (₹)', editHostelWaiver, setEditHostelWaiver, (feeBreakdownData?.hostelFee || 0) > 0],
-                  ['Transport Waiver (₹)', editTransportWaiver, setEditTransportWaiver, (feeBreakdownData?.transportFee || 0) > 0],
-                  ['Misc Waiver (₹)', editMiscWaiver, setEditMiscWaiver, (feeBreakdownData?.miscFee || 0) > 0]
-                ].filter(([, , , isApplicable]) => isApplicable).map(([label, val, setter]: any) => (
+                  ['Tuition Waiver (₹)', editTuitionWaiver, setEditTuitionWaiver],
+                  ['Hostel Waiver (₹)', editHostelWaiver, setEditHostelWaiver],
+                  ['Misc Waiver (₹)', editMiscWaiver, setEditMiscWaiver]
+                ].map(([label, val, setter]: any) => (
                   <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>{label}</label>
                     <input type="number" min="0" value={val} onChange={(e) => setter(e.target.value)} style={styles.textInputBox} />

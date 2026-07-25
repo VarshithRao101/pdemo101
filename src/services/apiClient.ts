@@ -291,11 +291,6 @@ export const apiClient = {
       const value = (status || '').toString().trim().toLowerCase();
       return value === 'resident' || value === 'hostelite' || value === 'hostel';
     };
-    const normalizeTransportStatus = (status: any) => {
-      const value = (status || '').toString().trim().toLowerCase();
-      return value === 'college bus' || value === 'college transport' || value === 'transport';
-    };
-
     if (cleanPath === '/auth/verify-credentials') {
       let bodyData: any = {};
       try { bodyData = JSON.parse(options.body as string); } catch { /* ignore */ }
@@ -603,7 +598,7 @@ export const apiClient = {
           const tuitionFee = Number(parsedBody.tuition !== undefined ? parsedBody.tuition : student.tuitionFee || 120000);
           const miscellaneousFee = Number(parsedBody.misc !== undefined ? parsedBody.misc : student.miscellaneousFee || 5000);
           const hostelFee = normalizeHostelStatus(student.hostelStatus) ? Number(parsedBody.hostel !== undefined ? parsedBody.hostel : student.hostelFee || 85000) : 0;
-          const transportFee = normalizeTransportStatus(student.transportStatus) ? Number(parsedBody.transport !== undefined ? parsedBody.transport : student.transportFee || 15000) : 0;
+          const transportFee = 0;
           const updatedFeeTotal = tuitionFee + hostelFee + transportFee + miscellaneousFee + Number(student.previousPending || 0);
           const amount = updatedFeeTotal - previousFeeTotal;
           const previousBalance = Number(student.remainingBalance || 0);
@@ -628,7 +623,7 @@ export const apiClient = {
       }
       const urlParams = new URLSearchParams(cleanPath.split('?')[1] || '');
       const branch = urlParams.get('branch') || 'Erragattugutta C1';
-      const feeData = allFeeSettings[branch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000, isLocked: true };
+      const feeData = allFeeSettings[branch] || { tuition: 120000, hostel: 85000, transport: 0, misc: 5000, isLocked: true };
       return { status: 'success', data: feeData } as any;
     }
 
@@ -650,7 +645,7 @@ export const apiClient = {
       const targetStudent = { ...allStudents[stuIdx] };
       const tuitionWaiver = Number(parsedBody.tuitionWaiver || 0);
       const hostelWaiver = Number(parsedBody.hostelWaiver || 0);
-      const transportWaiver = Number(parsedBody.transportWaiver || 0);
+      const transportWaiver = 0;
       const miscWaiver = Number(parsedBody.miscWaiver || 0);
       const totalWaivers = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
       const totalFee = Number(targetStudent.tuitionFee || 0) + Number(targetStudent.hostelFee || 0) + Number(targetStudent.transportFee || 0) + Number(targetStudent.miscellaneousFee || 0) + Number(targetStudent.previousPending || 0);
@@ -762,12 +757,12 @@ export const apiClient = {
       }
 
       const allFeeSettings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
-      const campusFee = allFeeSettings[branch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
+      const campusFee = allFeeSettings[branch] || { tuition: 120000, hostel: 85000, transport: 0, misc: 5000 };
 
       const tuitionFee = Number(parsedBody.tuitionFee !== undefined ? parsedBody.tuitionFee : campusFee.tuition);
       const miscellaneousFee = Number(parsedBody.miscellaneousFee !== undefined ? parsedBody.miscellaneousFee : campusFee.misc);
       const hostelFee = Number(parsedBody.hostelFee !== undefined ? parsedBody.hostelFee : (normalizeHostelStatus(parsedBody.hostelStatus) ? campusFee.hostel : 0));
-      const transportFee = Number(parsedBody.transportFee !== undefined ? parsedBody.transportFee : (normalizeTransportStatus(parsedBody.transportStatus) ? campusFee.transport : 0));
+      const transportFee = 0;
 
       const totalFee = tuitionFee + hostelFee + transportFee + miscellaneousFee;
 

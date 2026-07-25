@@ -216,7 +216,7 @@ const feeSettingsSchema = new mongoose.Schema({
   branch: { type: String, required: true, unique: true },
   tuition: { type: Number, default: 120000 },
   hostel: { type: Number, default: 85000 },
-  transport: { type: Number, default: 15000 },
+  transport: { type: Number, default: 0 },
   misc: { type: Number, default: 5000 },
   isLocked: { type: Boolean, default: true },
   academicYear: { type: String, default: '2026-2027' },
@@ -418,10 +418,10 @@ const inMemoryStore = {
   teachers: {},
   payments: {},
   feeSettings: {
-    'Erragattugutta C1': { branch: 'Erragattugutta C1', tuition: 120000, hostel: 85000, transport: 15000, misc: 5000, isLocked: true },
-    'Erragattugutta C2': { branch: 'Erragattugutta C2', tuition: 120000, hostel: 85000, transport: 15000, misc: 5000, isLocked: true },
-    'Beemaram C1': { branch: 'Beemaram C1', tuition: 110000, hostel: 80000, transport: 15000, misc: 5000, isLocked: true },
-    'Beemaram C2': { branch: 'Beemaram C2', tuition: 110000, hostel: 80000, transport: 15000, misc: 5000, isLocked: true }
+    'Erragattugutta C1': { branch: 'Erragattugutta C1', tuition: 120000, hostel: 85000, transport: 0, misc: 5000, isLocked: true },
+    'Erragattugutta C2': { branch: 'Erragattugutta C2', tuition: 120000, hostel: 85000, transport: 0, misc: 5000, isLocked: true },
+    'Beemaram C1': { branch: 'Beemaram C1', tuition: 110000, hostel: 80000, transport: 0, misc: 5000, isLocked: true },
+    'Beemaram C2': { branch: 'Beemaram C2', tuition: 110000, hostel: 80000, transport: 0, misc: 5000, isLocked: true }
   },
   expenditures: {},
   workerPayments: {},
@@ -1309,19 +1309,19 @@ app.post(['/api/admin1/students', '/api/admin/students', '/api/accountant/studen
     try { campusFeeSettings = await FeeSettings.findOne({ branch }); } catch { /* fallback */ }
   }
   if (!campusFeeSettings) {
-    campusFeeSettings = { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000 };
+    campusFeeSettings = { tuition: 120000, hostel: 85000, transport: 0, misc: 5000 };
   }
 
   const tuitionFee = Number(req.body.tuitionFee !== undefined ? req.body.tuitionFee : campusFeeSettings.tuition);
   const miscellaneousFee = Number(req.body.miscellaneousFee !== undefined ? req.body.miscellaneousFee : campusFeeSettings.misc);
   const hostelFee = Number(req.body.hostelFee !== undefined ? req.body.hostelFee : (normalizeHostelStatus(req.body.hostelStatus) ? campusFeeSettings.hostel : 0));
-  const transportFee = Number(req.body.transportFee !== undefined ? req.body.transportFee : (normalizeTransportStatus(req.body.transportStatus) ? campusFeeSettings.transport : 0));
+  const transportFee = 0;
   
   const previousPending = Number(req.body.previousPending || 0);
   const totalPaid = Number(req.body.totalPaid || 0);
   const tuitionWaiver = Number(req.body.tuitionWaiver || 0);
   const hostelWaiver = Number(req.body.hostelWaiver || 0);
-  const transportWaiver = Number(req.body.transportWaiver || 0);
+  const transportWaiver = 0;
   const miscWaiver = Number(req.body.miscWaiver || 0);
 
   const totalWaivers = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
@@ -1575,7 +1575,7 @@ app.get('/api/admin1/attendance-summary', authenticateToken, (req, res) => res.j
 // --- ADMIN 2 ROUTES ---
 app.get('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation, async (req, res) => {
   const branch = req.targetCampus;
-  let settings = inMemoryStore.feeSettings[branch] || { branch, tuition: 120000, hostel: 85000, transport: 15000, misc: 5000, isLocked: true };
+  let settings = inMemoryStore.feeSettings[branch] || { branch, tuition: 120000, hostel: 85000, transport: 0, misc: 5000, isLocked: true };
   if (isMongoConnected) {
     try {
       const dbSettings = await FeeSettings.findOne({ branch });
@@ -1613,7 +1613,7 @@ app.patch('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation,
       const tuitionFee = Number(updated.tuition !== undefined ? updated.tuition : (stu.tuitionFee || 120000));
       const miscellaneousFee = Number(updated.misc !== undefined ? updated.misc : (stu.miscellaneousFee || 5000));
       const hostelFee = normalizeHostelStatus(stu.hostelStatus) ? Number(updated.hostel !== undefined ? updated.hostel : (stu.hostelFee || 85000)) : 0;
-      const transportFee = normalizeTransportStatus(stu.transportStatus) ? Number(updated.transport !== undefined ? updated.transport : (stu.transportFee || 15000)) : 0;
+      const transportFee = 0;
       
       const previousPending = Number(stu.previousPending || 0);
       const totalPaid = Number(stu.totalPaid || 0);
@@ -1674,7 +1674,7 @@ app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, enf
 
   const tWaiver = Number(tuitionWaiver !== undefined ? tuitionWaiver : (targetStudent.tuitionWaiver || 0));
   const hWaiver = Number(hostelWaiver !== undefined ? hostelWaiver : (targetStudent.hostelWaiver || 0));
-  const trWaiver = Number(transportWaiver !== undefined ? transportWaiver : (targetStudent.transportWaiver || 0));
+  const trWaiver = 0;
   const mWaiver = Number(miscWaiver !== undefined ? miscWaiver : (targetStudent.miscWaiver || 0));
   const totalWaivers = tWaiver + hWaiver + trWaiver + mWaiver;
 
