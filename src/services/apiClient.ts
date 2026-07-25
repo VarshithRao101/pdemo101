@@ -299,8 +299,8 @@ export const apiClient = {
         { _id: 'acc_accountant_beemaram_c1_2', username: 'accountant_beemaram_c1_2', passwordRaw: 'AccB1#2947', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1' },
         { _id: 'acc_accountant_beemaram_c2_1', username: 'accountant_beemaram_c2_1', passwordRaw: 'AccB2#8163', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2' },
         { _id: 'acc_accountant_beemaram_c2_2', username: 'accountant_beemaram_c2_2', passwordRaw: 'AccB2#3750', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2' },
-        { _id: 'acc_authenticator', username: '9059068384', passwordRaw: '00112233', pin6: '987654', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
-        { _id: 'acc_authenticator_static', username: 'authenticator', passwordRaw: '00112233', pin6: '987654', role: 'authenticator', campus: 'All', name: 'Security Authenticator' }
+        { _id: 'acc_authenticator', username: '9059068384', passwordRaw: '00112233', pin6: '789456', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
+        { _id: 'acc_authenticator_static', username: 'authenticator', passwordRaw: '00112233', pin6: '789456', role: 'authenticator', campus: 'All', name: 'Security Authenticator' }
       ];
 
       const usernameAliasMap: { [key: string]: string } = {
@@ -376,8 +376,8 @@ export const apiClient = {
         { _id: 'acc_accountant_beemaram_c1_2', username: 'accountant_beemaram_c1_2', passwordRaw: 'AccB1#2947', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1' },
         { _id: 'acc_accountant_beemaram_c2_1', username: 'accountant_beemaram_c2_1', passwordRaw: 'AccB2#8163', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2' },
         { _id: 'acc_accountant_beemaram_c2_2', username: 'accountant_beemaram_c2_2', passwordRaw: 'AccB2#3750', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2' },
-        { _id: 'acc_authenticator', username: '9059068384', passwordRaw: '00112233', pin6: '987654', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
-        { _id: 'acc_authenticator_static', username: 'authenticator', passwordRaw: '00112233', pin6: '987654', role: 'authenticator', campus: 'All', name: 'Security Authenticator' }
+        { _id: 'acc_authenticator', username: '9059068384', passwordRaw: '00112233', pin6: '789456', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
+        { _id: 'acc_authenticator_static', username: 'authenticator', passwordRaw: '00112233', pin6: '789456', role: 'authenticator', campus: 'All', name: 'Security Authenticator' }
       ];
 
       const usernameAliasMap: { [key: string]: string } = {
@@ -461,7 +461,7 @@ export const apiClient = {
       ]);
 
       if (matchedUser.role === 'authenticator') {
-        const expectedPin = (matchedUser as any).pin6 || '987654';
+        const expectedPin = (matchedUser as any).pin6 || '789456';
         if (inputPin !== expectedPin) {
           const err: ApiError = new Error('Incorrect 6-digit Security PIN.');
           err.status = 401;
