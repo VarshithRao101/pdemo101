@@ -220,7 +220,7 @@ const feeSettingsSchema = new mongoose.Schema({
   isLocked: { type: Boolean, default: true },
   academicYear: { type: String, default: '2026-2027' },
   installments: { type: String, default: '3 Installments' },
-  lateFeeRules: { type: String, default: 'â‚¹100 per day after due date' },
+  lateFeeRules: { type: String, default: '₹100 per day after due date' },
   scholarshipRules: { type: String, default: 'Merit: 50% waiver, Sports: 30% waiver' }
 }, { timestamps: true });
 
@@ -1781,7 +1781,7 @@ app.get('/api/admin2/enrollment-stats', authenticateToken, (req, res) => {
 });
 
 app.get(['/api/accountant/late-fees-settings', '/api/admin2/late-fees-settings'], authenticateToken, (req, res) => {
-  return res.json({ status: 'success', data: { lateFeeRules: 'â‚¹100 per day after due date' } });
+  return res.json({ status: 'success', data: { lateFeeRules: '₹100 per day after due date' } });
 });
 
 app.get(['/api/accountant/scholarships', '/api/admin2/scholarships'], authenticateToken, (req, res) => {
@@ -2051,7 +2051,7 @@ app.post('/api/accountant/students/:id/payments', authenticateToken, enforceCamp
     receipts: allReceipts.map(p => p.toObject ? p.toObject() : p)
   };
 
-  await logSyncJournal(`POST /api/accountant/students/${id}/payments`, branch, 'success', `Payment of â‚¹${amountPaid} recorded for ${stuObj.name || id}`, req.user);
+  await logSyncJournal(`POST /api/accountant/students/${id}/payments`, branch, 'success', `Payment of ₹${amountPaid} recorded for ${stuObj.name || id}`, req.user);
   return res.json({ status: 'success', data: { payment: newPayment, student: updatedStudent } });
 });
 

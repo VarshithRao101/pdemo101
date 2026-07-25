@@ -675,7 +675,7 @@ export const AccountantDashboardView: React.FC = () => {
       setEditStudent(updatedStudent as any);
       setStudents(prev => prev.map(s => s._id === updatedStudent._id ? (updatedStudent as any) : s));
       setCollectAmount('');
-      triggerToast(`Payment logged: â‚¹${paymentAmount.toLocaleString('en-IN')}`);
+      triggerToast(`Payment logged: ₹${paymentAmount.toLocaleString('en-IN')}`);
       setIsPayOtpModalOpen(false);
       setPayOtpInput('');
       fetchDashboardSummary();
@@ -1193,9 +1193,9 @@ export const AccountantDashboardView: React.FC = () => {
                     {/* Financial Progress Bar */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800 }}>
-                        <span style={{ color: '#059669' }}>Paid: â‚¹{totalPaid.toLocaleString('en-IN')}</span>
+                        <span style={{ color: '#059669' }}>Paid: ₹{totalPaid.toLocaleString('en-IN')}</span>
                         <span style={{ color: remaining > 0 ? '#DC2626' : '#059669' }}>
-                          Due: â‚¹{remaining.toLocaleString('en-IN')}
+                          Due: ₹{remaining.toLocaleString('en-IN')}
                         </span>
                       </div>
                       <div style={{ width: '100%', height: '6px', backgroundColor: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
@@ -1336,7 +1336,7 @@ export const AccountantDashboardView: React.FC = () => {
                       </div>
                     </div>
                     <span style={{ fontSize: '11px', fontWeight: 800, color: s.remainingBalance > 0 ? '#EF4444' : '#10B981' }}>
-                      {s.remainingBalance > 0 ? `Pending: â‚¹${s.remainingBalance.toLocaleString('en-IN')}` : 'Sattled'}
+                      {s.remainingBalance > 0 ? `Pending: ₹${s.remainingBalance.toLocaleString('en-IN')}` : 'Sattled'}
                     </span>
                   </GlassCard>
                 ))}
@@ -1371,16 +1371,16 @@ export const AccountantDashboardView: React.FC = () => {
                 {/* Column 1: Fee Breakdown */}
                 <div style={styles.readOnlyBlock}>
                   <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '6px' }}>Fee Balance Breakdown</h4>
-                  <div style={styles.metaRow}><span>Tuition Fee</span><strong>â‚¹{selectedStudent.tuitionFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Hostel Fee</span><strong>â‚¹{selectedStudent.hostelFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Transport Fee</span><strong>â‚¹{selectedStudent.transportFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>â‚¹{selectedStudent.miscellaneousFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Previous Pending</span><strong style={{ color: '#EF4444' }}>â‚¹{selectedStudent.previousPending.toLocaleString('en-IN')}</strong></div>
-                  <div style={{ ...styles.metaRow, borderTop: '1.5px solid var(--card-border)', paddingTop: '6px' }}><span>Total Paid</span><strong style={{ color: '#10B981' }}>â‚¹{selectedStudent.totalPaid.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Tuition Fee</span><strong>₹{selectedStudent.tuitionFee.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Hostel Fee</span><strong>₹{selectedStudent.hostelFee.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Transport Fee</span><strong>₹{selectedStudent.transportFee.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>₹{selectedStudent.miscellaneousFee.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Previous Pending</span><strong style={{ color: '#EF4444' }}>₹{selectedStudent.previousPending.toLocaleString('en-IN')}</strong></div>
+                  <div style={{ ...styles.metaRow, borderTop: '1.5px solid var(--card-border)', paddingTop: '6px' }}><span>Total Paid</span><strong style={{ color: '#10B981' }}>₹{selectedStudent.totalPaid.toLocaleString('en-IN')}</strong></div>
                   <div style={{ ...styles.metaRow, borderTop: '2px solid var(--royal-gold)', paddingTop: '8px', marginTop: '4px' }}>
                     <span style={{ fontWeight: 800 }}>Remaining Balance</span>
                     <strong style={{ fontSize: '18px', color: selectedStudent.remainingBalance > 0 ? '#B45309' : '#10B981' }}>
-                      â‚¹{selectedStudent.remainingBalance.toLocaleString('en-IN')}
+                      ₹{selectedStudent.remainingBalance.toLocaleString('en-IN')}
                     </strong>
                   </div>
                 </div>
@@ -1392,7 +1392,7 @@ export const AccountantDashboardView: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                          <label style={styles.formLabel}>Amount (â‚¹)</label>
+                          <label style={styles.formLabel}>Amount (₹)</label>
                           <input
                             type="number"
                             placeholder="e.g. 15000"
@@ -1493,7 +1493,7 @@ export const AccountantDashboardView: React.FC = () => {
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontWeight: 800, fontSize: '14px', color: '#10B981' }}>â‚¹{receipt.amount.toLocaleString('en-IN')}</span>
+                        <span style={{ fontWeight: 800, fontSize: '14px', color: '#10B981' }}>₹{receipt.amount.toLocaleString('en-IN')}</span>
                         <button
                           onClick={() => {
                             setSelectedReceipt(receipt);
@@ -1532,7 +1532,7 @@ export const AccountantDashboardView: React.FC = () => {
                 </div>
 
                 <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
-                  You are logging a fee payment of <strong>â‚¹{(pendingPayType === 'full' ? selectedStudent.remainingBalance : pendingPayType === 'partial' ? Math.floor(selectedStudent.remainingBalance / 2) : parseFloat(collectAmount)).toLocaleString('en-IN')}</strong> for student <strong>{selectedStudent.name}</strong>. Enter your Accountant authorization OTP to confirm.
+                  You are logging a fee payment of <strong>₹{(pendingPayType === 'full' ? selectedStudent.remainingBalance : pendingPayType === 'partial' ? Math.floor(selectedStudent.remainingBalance / 2) : parseFloat(collectAmount)).toLocaleString('en-IN')}</strong> for student <strong>{selectedStudent.name}</strong>. Enter your Accountant authorization OTP to confirm.
                 </p>
 
                 <input
@@ -1607,8 +1607,8 @@ export const AccountantDashboardView: React.FC = () => {
                     <div style={styles.metaRow}><span>Student Name:</span><strong>{selectedStudent.name}</strong></div>
                     <div style={styles.metaRow}><span>Admission No:</span><strong>{selectedStudent.admissionNumber}</strong></div>
                     <div style={styles.metaRow}><span>Fee Category:</span><strong>{selectedReceipt.category}</strong></div>
-                    <div style={styles.metaRow}><span>Amount Paid:</span><strong style={{ color: '#10B981', fontSize: '15px' }}>â‚¹{selectedReceipt.amount.toLocaleString('en-IN')}</strong></div>
-                    <div style={styles.metaRow}><span>Remaining Bal:</span><strong>â‚¹{selectedReceipt.balance.toLocaleString('en-IN')}</strong></div>
+                    <div style={styles.metaRow}><span>Amount Paid:</span><strong style={{ color: '#10B981', fontSize: '15px' }}>₹{selectedReceipt.amount.toLocaleString('en-IN')}</strong></div>
+                    <div style={styles.metaRow}><span>Remaining Bal:</span><strong>₹{selectedReceipt.balance.toLocaleString('en-IN')}</strong></div>
                   </div>
                 </div>
               </div>
@@ -1805,9 +1805,9 @@ export const AccountantDashboardView: React.FC = () => {
 
         <main style={{ ...styles.content, gap: '16px' }}>
           <div style={styles.readOnlyBlock}>
-            <div style={styles.metaRow}><span>Total Monthly Collection Target</span><strong>â‚¹68,50,000</strong></div>
-            <div style={styles.metaRow}><span>Total Realized Income</span><strong style={{ color: '#10B981' }}>â‚¹{allTransactions.reduce((a, t) => a + t.receipt.amount, 0).toLocaleString('en-IN')}</strong></div>
-            <div style={styles.metaRow}><span>Pending Arrears Balance</span><strong style={{ color: '#EF4444' }}>â‚¹{students.reduce((sum, s) => sum + s.remainingBalance, 0).toLocaleString('en-IN')}</strong></div>
+            <div style={styles.metaRow}><span>Total Monthly Collection Target</span><strong>₹68,50,000</strong></div>
+            <div style={styles.metaRow}><span>Total Realized Income</span><strong style={{ color: '#10B981' }}>₹{allTransactions.reduce((a, t) => a + t.receipt.amount, 0).toLocaleString('en-IN')}</strong></div>
+            <div style={styles.metaRow}><span>Pending Arrears Balance</span><strong style={{ color: '#EF4444' }}>₹{students.reduce((sum, s) => sum + s.remainingBalance, 0).toLocaleString('en-IN')}</strong></div>
           </div>
 
           <h4 style={styles.sectionSubtitle}>Collection Audit Logs</h4>
@@ -1819,7 +1819,7 @@ export const AccountantDashboardView: React.FC = () => {
                   <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{tx.receipt.category} â€¢ {tx.receipt.installment}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontWeight: 850, color: '#10B981' }}>+ â‚¹{tx.receipt.amount.toLocaleString('en-IN')}</span>
+                  <span style={{ fontWeight: 850, color: '#10B981' }}>+ ₹{tx.receipt.amount.toLocaleString('en-IN')}</span>
                   <div style={{ fontSize: '8px', color: 'var(--muted-gray)' }}>{tx.receipt.date}</div>
                 </div>
               </div>
@@ -2254,7 +2254,7 @@ export const AccountantDashboardView: React.FC = () => {
 
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Tuition Fee (â‚¹)</label>
+                      <label style={styles.formLabel}>Tuition Fee (₹)</label>
                       <input
                         type="number"
                         value={newStudentData.tuitionFee}
@@ -2263,7 +2263,7 @@ export const AccountantDashboardView: React.FC = () => {
                       />
                     </div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Hostel Fee (â‚¹)</label>
+                      <label style={styles.formLabel}>Hostel Fee (₹)</label>
                       <input
                         type="number"
                         value={newStudentData.hostelFee}
@@ -2527,7 +2527,7 @@ export const AccountantDashboardView: React.FC = () => {
             <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Fee Collected Today</span>
               <strong style={{ ...styles.metricValue, color: '#10B981' }}>
-                â‚¹{feeCollectedToday.toLocaleString('en-IN')}
+                ₹{feeCollectedToday.toLocaleString('en-IN')}
               </strong>
               <span style={styles.metricSub}>Real-time ledger sync</span>
               <span className="glass-status-pill status-paid">Collected</span>
@@ -2535,7 +2535,7 @@ export const AccountantDashboardView: React.FC = () => {
             <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Pending Fees Total</span>
               <strong style={{ ...styles.metricValue, color: '#EF4444' }}>
-                â‚¹{pendingFeesTotal.toLocaleString('en-IN')}
+                ₹{pendingFeesTotal.toLocaleString('en-IN')}
               </strong>
               <span style={styles.metricSub}>Across all enrolled students</span>
               <span className="glass-status-pill status-unpaid">Pending</span>

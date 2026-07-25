@@ -1666,7 +1666,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       <span style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 600 }}>({t.subject})</span>
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>
-                      Salary: â‚¹{(t.salary || 0).toLocaleString('en-IN')} â€¢ Campus: {t.branch || 'Erragattugutta C1'}
+                      Salary: ₹{(t.salary || 0).toLocaleString('en-IN')} â€¢ Campus: {t.branch || 'Erragattugutta C1'}
                     </div>
                   </div>
                   <button
@@ -1747,7 +1747,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Monthly Salary (â‚¹)</label>
+                      <label style={styles.formLabel}>Monthly Salary (₹)</label>
                       <input
                         type="number"
                         value={editTeacher.salary || ''}
@@ -1856,7 +1856,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Monthly Salary (â‚¹)</label>
+                      <label style={styles.formLabel}>Monthly Salary (₹)</label>
                       <input
                         type="number"
                         placeholder="e.g. 75000"
@@ -2587,7 +2587,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   </div>
                   <div style={{ width: '140px', flexShrink: 0 }}>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                      <span style={{ position: 'absolute', left: '10px', fontSize: '13px', fontWeight: 900, color: locked ? 'var(--muted-gray)' : 'var(--royal-gold)' }}>â‚¹</span>
+                      <span style={{ position: 'absolute', left: '10px', fontSize: '13px', fontWeight: 900, color: locked ? 'var(--muted-gray)' : 'var(--royal-gold)' }}>₹</span>
                       <input
                         type="number"
                         min="0"
@@ -2608,7 +2608,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             {/* Total row */}
             <div style={{ borderTop: '2px solid var(--royal-gold)', marginTop: '10px', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 900, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Total Annual Fee</span>
-              <strong style={{ fontSize: '20px', fontWeight: 900, color: 'var(--royal-gold)' }}>â‚¹{grandTotal.toLocaleString('en-IN')}</strong>
+              <strong style={{ fontSize: '20px', fontWeight: 900, color: 'var(--royal-gold)' }}>₹{grandTotal.toLocaleString('en-IN')}</strong>
             </div>
 
             {/* Action buttons */}
@@ -3036,28 +3036,28 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               {feeBreakdownData ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <h5 style={{ margin: '0 0 8px', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Fee Transaction History</h5>
-                  <div style={styles.metaRow}><span>Base Tuition Fee</span><strong>â‚¹{(feeBreakdownData.tuitionFee||0).toLocaleString('en-IN')}</strong></div>
-                  {feeBreakdownData.hostelFee > 0 && <div style={styles.metaRow}><span>Hostel Fee</span><strong>â‚¹{feeBreakdownData.hostelFee.toLocaleString('en-IN')}</strong></div>}
-                  {feeBreakdownData.transportFee > 0 && <div style={styles.metaRow}><span>Transport Fee</span><strong>â‚¹{feeBreakdownData.transportFee.toLocaleString('en-IN')}</strong></div>}
-                  {feeBreakdownData.miscFee > 0 && <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>â‚¹{feeBreakdownData.miscFee.toLocaleString('en-IN')}</strong></div>}
-                  {feeBreakdownData.previousPending > 0 && <div style={styles.metaRow}><span>Previous Pending</span><strong>â‚¹{feeBreakdownData.previousPending.toLocaleString('en-IN')}</strong></div>}
-                  <div style={{ ...styles.metaRow, borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span><strong>Total Base Fee</strong></span><strong>â‚¹{(feeBreakdownData.baseFee||0).toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Base Tuition Fee</span><strong>₹{(feeBreakdownData.tuitionFee||0).toLocaleString('en-IN')}</strong></div>
+                  {feeBreakdownData.hostelFee > 0 && <div style={styles.metaRow}><span>Hostel Fee</span><strong>₹{feeBreakdownData.hostelFee.toLocaleString('en-IN')}</strong></div>}
+                  {feeBreakdownData.transportFee > 0 && <div style={styles.metaRow}><span>Transport Fee</span><strong>₹{feeBreakdownData.transportFee.toLocaleString('en-IN')}</strong></div>}
+                  {feeBreakdownData.miscFee > 0 && <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>₹{feeBreakdownData.miscFee.toLocaleString('en-IN')}</strong></div>}
+                  {feeBreakdownData.previousPending > 0 && <div style={styles.metaRow}><span>Previous Pending</span><strong>₹{feeBreakdownData.previousPending.toLocaleString('en-IN')}</strong></div>}
+                  <div style={{ ...styles.metaRow, borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span><strong>Total Base Fee</strong></span><strong>₹{(feeBreakdownData.baseFee||0).toLocaleString('en-IN')}</strong></div>
                   {feeBreakdownData.scholarshipDeduction > 0 && (
                     <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
                       <span>Scholarship ({feeBreakdownData.scholarshipCategory}: {feeBreakdownData.scholarshipPct}%)</span>
-                      <strong>- â‚¹{feeBreakdownData.scholarshipDeduction.toLocaleString('en-IN')}</strong>
+                      <strong>- ₹{feeBreakdownData.scholarshipDeduction.toLocaleString('en-IN')}</strong>
                     </div>
                   )}
                   {feeBreakdownData.individualOverrideDeduction > 0 && (
                     <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
                       <span>Fee Waivers Applied</span>
-                      <strong>- â‚¹{feeBreakdownData.individualOverrideDeduction.toLocaleString('en-IN')}</strong>
+                      <strong>- ₹{feeBreakdownData.individualOverrideDeduction.toLocaleString('en-IN')}</strong>
                     </div>
                   )}
-                  <div style={{ ...styles.metaRow, color: '#D32F2F', borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span>Total Paid by Student</span><strong>- â‚¹{(feeBreakdownData.totalPaid||0).toLocaleString('en-IN')}</strong></div>
+                  <div style={{ ...styles.metaRow, color: '#D32F2F', borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span>Total Paid by Student</span><strong>- ₹{(feeBreakdownData.totalPaid||0).toLocaleString('en-IN')}</strong></div>
                   <div style={{ ...styles.metaRow, backgroundColor: 'rgba(212,175,55,0.08)', padding: '12px', borderRadius: '12px', marginTop: '6px' }}>
                     <span style={{ fontWeight: 800, color: 'var(--royal-gold)' }}>Remaining Balance</span>
-                    <strong style={{ fontSize: '16px', color: 'var(--royal-gold)', fontWeight: 900 }}>â‚¹{(feeBreakdownData.remainingBalance||0).toLocaleString('en-IN')}</strong>
+                    <strong style={{ fontSize: '16px', color: 'var(--royal-gold)', fontWeight: 900 }}>₹{(feeBreakdownData.remainingBalance||0).toLocaleString('en-IN')}</strong>
                   </div>
                 </div>
               ) : (
@@ -3072,7 +3072,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)' }}>Modify Fee Waivers & Custom Overrides</h4>
               <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: '14px' }}>Individual fee overrides & waivers are locked to the student profile upon verification.</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {[['Tuition Waiver (â‚¹)', editTuitionWaiver, setEditTuitionWaiver], ['Hostel Waiver (â‚¹)', editHostelWaiver, setEditHostelWaiver], ['Transport Waiver (â‚¹)', editTransportWaiver, setEditTransportWaiver], ['Misc Waiver (â‚¹)', editMiscWaiver, setEditMiscWaiver]].map(([label, val, setter]: any) => (
+                {[['Tuition Waiver (₹)', editTuitionWaiver, setEditTuitionWaiver], ['Hostel Waiver (₹)', editHostelWaiver, setEditHostelWaiver], ['Transport Waiver (₹)', editTransportWaiver, setEditTransportWaiver], ['Misc Waiver (₹)', editMiscWaiver, setEditMiscWaiver]].map(([label, val, setter]: any) => (
                   <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>{label}</label>
                     <input type="number" min="0" value={val} onChange={(e) => setter(e.target.value)} style={styles.textInputBox} />
@@ -3223,7 +3223,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           <text x="10" y="${y + 12}" font-size="9" font-weight="bold" fill="#475569">${cat}</text>
           <rect x="90" y="${y}" width="280" height="14" rx="4" fill="#cbd5e1" />
           <rect x="90" y="${y}" width="${width}" height="14" rx="4" fill="#0D9488" />
-          <text x="${95 + width}" y="${y + 11}" font-size="8.5" font-weight="bold" fill="#0D9488">â‚¹${amt.toLocaleString('en-IN')}</text>
+          <text x="${95 + width}" y="${y + 11}" font-size="8.5" font-weight="bold" fill="#0D9488">₹${amt.toLocaleString('en-IN')}</text>
         `;
       });
 
@@ -3294,12 +3294,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <td>${typeof e.date === 'string' ? e.date.split('T')[0] : e.date}</td>
                   <td>${e.category}</td>
                   <td>${e.description}</td>
-                  <td style="text-align: right;">â‚¹${e.amount.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right;">₹${e.amount.toLocaleString('en-IN')}</td>
                 </tr>
               `).join('')}
               <tr class="total-row">
                 <td colspan="3">Grand Total</td>
-                <td style="text-align: right;">â‚¹${total.toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">₹${total.toLocaleString('en-IN')}</td>
               </tr>
             </tbody>
           </table>
@@ -3371,7 +3371,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     <div class="row"><span>Logged By</span><strong>Administrator â€” ${role === 'admin1' ? 'Rector' : 'Principal'}</strong></div>
     <div class="total-row">
       <div class="total-label">Total Amount Spent</div>
-      <div class="total-amt">â‚¹${exp.amount.toLocaleString('en-IN')}</div>
+      <div class="total-amt">₹${exp.amount.toLocaleString('en-IN')}</div>
     </div>
     <div style="margin-top:20px;text-align:right;">
       <div class="stamp"> APPROVED</div>
@@ -3418,7 +3418,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 return (
                   <div key={b} onClick={() => setSelectedExpBranch(b as any)} style={{ padding: '12px 10px', borderRadius: '12px', border: isActive ? '2px solid var(--royal-gold)' : '1px solid rgba(255,255,255,0.1)', background: isActive ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }} className="press-interactive">
                     <div style={{ fontSize: '10px', color: isActive ? 'var(--royal-gold)' : 'var(--muted-gray)', fontWeight: 800 }}>{b}</div>
-                    <strong style={{ fontSize: '14px', color: '#EF4444', display: 'block', marginTop: '4px' }}>â‚¹{total.toLocaleString('en-IN')}</strong>
+                    <strong style={{ fontSize: '14px', color: '#EF4444', display: 'block', marginTop: '4px' }}>₹{total.toLocaleString('en-IN')}</strong>
                   </div>
                 );
               })}
@@ -3442,7 +3442,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={styles.formLabel}>Amount (â‚¹)</label>
+                <label style={styles.formLabel}>Amount (₹)</label>
                 <input type="number" min="0" value={newExpAmt} onChange={(e) => setNewExpAmt(e.target.value)} style={styles.textInputBox} placeholder="e.g. 12000" />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: '1 / -1' }}>
@@ -3459,7 +3459,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>
-                Recent Entries {role === 'admin1' ? `(${selectedExpBranch})` : `(${loggedInCampus})`} â€” Total: â‚¹{totalFiltered.toLocaleString('en-IN')}
+                Recent Entries {role === 'admin1' ? `(${selectedExpBranch})` : `(${loggedInCampus})`} â€” Total: ₹{totalFiltered.toLocaleString('en-IN')}
               </h4>
               <button 
                 onClick={handleDownloadExpenditureReport} 
@@ -3490,7 +3490,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{typeof exp.date === 'string' ? exp.date.split('T')[0] : exp.date}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                      <strong style={{ fontSize: '14px', color: '#EF4444' }}>â‚¹{exp.amount.toLocaleString('en-IN')}</strong>
+                      <strong style={{ fontSize: '14px', color: '#EF4444' }}>₹{exp.amount.toLocaleString('en-IN')}</strong>
                       <button onClick={() => handleDownloadBill(exp)} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(212,175,55,0.4)', backgroundColor: 'rgba(212,175,55,0.06)', color: 'var(--royal-gold)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }} title="Download Bill">Bill</button>
                       {role === 'admin1' && (
                         <button onClick={() => handleDeleteExpenditure(exp)} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
@@ -3512,7 +3512,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Enter the <strong>Expenditure OTP</strong> from the Authenticator to log this entry.</p>
                   <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '10px', fontSize: '12px', textAlign: 'left' }}>
                     <div style={{ fontWeight: 700 }}>{newExpCat} â€” {newExpDesc}</div>
-                    <div style={{ color: '#EF4444', fontWeight: 900, fontSize: '16px', marginTop: '4px' }}>â‚¹{Number(newExpAmt).toLocaleString('en-IN')}</div>
+                    <div style={{ color: '#EF4444', fontWeight: 900, fontSize: '16px', marginTop: '4px' }}>₹{Number(newExpAmt).toLocaleString('en-IN')}</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -3568,7 +3568,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Faculty Roster â€” {teacherList.length} Members</h4>
               <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981', backgroundColor: 'rgba(16,185,129,0.08)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)' }}>
-                Total: â‚¹{teacherList.reduce((s, t) => s + (t.salary||0), 0).toLocaleString('en-IN')} / mo
+                Total: ₹{teacherList.reduce((s, t) => s + (t.salary||0), 0).toLocaleString('en-IN')} / mo
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -3579,7 +3579,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{t.subject} â€¢ {t.assignedClasses?.[0] || 'Unassigned'}</div>
                   </div>
                   <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                    <strong style={{ fontSize: '14px', color: 'var(--royal-gold)' }}>â‚¹{(t.salary||0).toLocaleString('en-IN')}</strong>
+                    <strong style={{ fontSize: '14px', color: 'var(--royal-gold)' }}>₹{(t.salary||0).toLocaleString('en-IN')}</strong>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '10px', color: t.salaryStatus === 'paid' ? '#10B981' : '#EF4444', fontWeight: 700 }}>
                         {t.salaryStatus === 'paid' ? ` Paid${t.salaryPaymentDate ? ` (${t.salaryPaymentDate})` : ''}` : 'â— Pending'}
@@ -3656,7 +3656,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Name</label><input type="text" value={newWorkerName} onChange={(e) => setNewWorkerName(e.target.value)} style={styles.textInputBox} placeholder="e.g. Ramesh Kumar" /></div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Role</label><input type="text" value={newWorkerRole} onChange={(e) => setNewWorkerRole(e.target.value)} style={styles.textInputBox} placeholder="e.g. Plumber" /></div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Monthly Wage (â‚¹)</label><input type="number" min="0" value={newWorkerWage} onChange={(e) => setNewWorkerWage(e.target.value)} style={styles.textInputBox} placeholder="e.g. 15000" /></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Monthly Wage (₹)</label><input type="number" min="0" value={newWorkerWage} onChange={(e) => setNewWorkerWage(e.target.value)} style={styles.textInputBox} placeholder="e.g. 15000" /></div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Period</label><input type="text" value={newWorkerPeriod} onChange={(e) => setNewWorkerPeriod(e.target.value)} style={styles.textInputBox} placeholder="e.g. July 2026" /></div>
             </div>
             <button onClick={() => triggerWorkerAction('add', { name: newWorkerName, role: newWorkerRole, wage: newWorkerWage, period: newWorkerPeriod })} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">Add Worker Entry</button>
@@ -3671,7 +3671,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 <div key={w._id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: `1.5px solid ${w.paid ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, backgroundColor: w.paid ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{w.workerName || w.name}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{w.role} â€¢ {w.monthPeriod} â€¢ â‚¹{(w.amount || w.salary || 0).toLocaleString('en-IN')}/mo</div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{w.role} â€¢ {w.monthPeriod} â€¢ ₹{(w.amount || w.salary || 0).toLocaleString('en-IN')}/mo</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button onClick={() => triggerWorkerAction('toggle', w)} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', backgroundColor: w.paid ? 'rgba(16,185,129,0.12)' : 'var(--royal-gold)', color: w.paid ? '#10B981' : '#000', fontWeight: 800, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }} className="press-interactive">{w.paid ? 'Paid' : 'Unpaid'}</button>
@@ -4015,13 +4015,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <div style={styles.metricsGrid}>
                     <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
                       <span style={styles.metricLabel}>Monthly Fee Collected</span>
-                      <strong style={{ ...styles.metricValue, color: '#10B981' }}>â‚¹{monthlyFeeCollectedVal.toLocaleString('en-IN')}</strong>
+                      <strong style={{ ...styles.metricValue, color: '#10B981' }}>₹{monthlyFeeCollectedVal.toLocaleString('en-IN')}</strong>
                       <span style={styles.metricSub}>From {localStudents.length} campus profiles</span>
                       <span className="glass-status-pill status-paid">Collected</span>
                     </GlassCard>
                     <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
                       <span style={styles.metricLabel}>Monthly Expenditure</span>
-                      <strong style={{ ...styles.metricValue, color: '#EF4444' }}>â‚¹{monthlyExpenditureVal.toLocaleString('en-IN')}</strong>
+                      <strong style={{ ...styles.metricValue, color: '#EF4444' }}>₹{monthlyExpenditureVal.toLocaleString('en-IN')}</strong>
                       <span style={styles.metricSub}>Local campus ledger total</span>
                       <span className="glass-status-pill status-warning">Paid Out</span>
                     </GlassCard>
