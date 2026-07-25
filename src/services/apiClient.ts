@@ -428,36 +428,27 @@ export const apiClient = {
 
       // 6-Digit PIN check
       const inputPin = (bodyData.pin || '').toString().trim();
-      const getLocalDateSeed = () => {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      };
-      const generate24HourCode = (id: string) => {
-        let hash = 0;
-        const str = `${id}:${getLocalDateSeed()}:inspire_2026_static_secret_key`;
-        for (let i = 0; i < str.length; i++) {
-          hash = (hash << 5) - hash + str.charCodeAt(i);
-          hash |= 0;
-        }
-        return (100000 + (Math.abs(hash) % 900000)).toString();
-      };
+      const activeKeys = getOrGenerateSecurityKeys();
       const rawId = (bodyData.identifier || '').toString().trim().toLowerCase();
+      
       const validPins = new Set([
-        generate24HourCode(`pin_${matchedUser.username}`),
-        generate24HourCode(`pin_${rawId}`),
-        generate24HourCode('pin_accountant_erragattugutta_c1_1'),
-        generate24HourCode('pin_accountant_erragattugutta_c1_2'),
-        generate24HourCode('pin_accountant_erragattugutta_c2_1'),
-        generate24HourCode('pin_accountant_erragattugutta_c2_2'),
-        generate24HourCode('pin_accountant_beemaram_c1_1'),
-        generate24HourCode('pin_accountant_beemaram_c1_2'),
-        generate24HourCode('pin_accountant_beemaram_c2_1'),
-        generate24HourCode('pin_accountant_beemaram_c2_2'),
-        generate24HourCode('pin_admin1'),
-        generate24HourCode('pin_admin2_erragattugutta_c1'),
-        generate24HourCode('pin_admin2_erragattugutta_c2'),
-        generate24HourCode('pin_admin2_beemaram_c1'),
-        generate24HourCode('pin_admin2_beemaram_c2')
+        ...Object.values(activeKeys.dailyPins || {}),
+        generate24HourDeterministicCode(`pin_${matchedUser.username}`),
+        generate24HourDeterministicCode(`pin_${rawId}`),
+        generate24HourDeterministicCode(`pin_${cleanIdentifier}`),
+        generate24HourDeterministicCode('pin_admin1'),
+        generate24HourDeterministicCode('pin_admin2_erragattugutta_c1'),
+        generate24HourDeterministicCode('pin_admin2_erragattugutta_c2'),
+        generate24HourDeterministicCode('pin_admin2_beemaram_c1'),
+        generate24HourDeterministicCode('pin_admin2_beemaram_c2'),
+        generate24HourDeterministicCode('pin_accountant_erragattugutta_c1_1'),
+        generate24HourDeterministicCode('pin_accountant_erragattugutta_c1_2'),
+        generate24HourDeterministicCode('pin_accountant_erragattugutta_c2_1'),
+        generate24HourDeterministicCode('pin_accountant_erragattugutta_c2_2'),
+        generate24HourDeterministicCode('pin_accountant_beemaram_c1_1'),
+        generate24HourDeterministicCode('pin_accountant_beemaram_c1_2'),
+        generate24HourDeterministicCode('pin_accountant_beemaram_c2_1'),
+        generate24HourDeterministicCode('pin_accountant_beemaram_c2_2')
       ]);
 
       if (matchedUser.role === 'authenticator') {
