@@ -593,19 +593,19 @@ export const apiClient = {
       }
     }
 
+    // Auto-purge old stored mock student data so user starts with a 100% empty database
+    if (typeof window !== 'undefined' && !localStorage.getItem('jc_db_purged_v3')) {
+      localStorage.removeItem('jc_students');
+      localStorage.removeItem('jc_payments');
+      localStorage.setItem('jc_db_purged_v3', 'true');
+    }
+
     const getOrInitStudents = (): any[] => {
       const existing = localStorage.getItem('jc_students');
       if (existing) {
         try {
           const parsed = JSON.parse(existing);
-          if (Array.isArray(parsed)) {
-            // Filter out default mock students if present from old local storage
-            const realStudents = parsed.filter((s: any) => !['stu_2400101', 'stu_2400102', 'stu_2400103', 'stu_2400104', 'stu_2400105'].includes(s._id));
-            if (realStudents.length !== parsed.length) {
-              localStorage.setItem('jc_students', JSON.stringify(realStudents));
-            }
-            return realStudents;
-          }
+          if (Array.isArray(parsed)) return parsed;
         } catch { /* ignore */ }
       }
       return [];
@@ -740,10 +740,12 @@ export const apiClient = {
         (s.admissionNumber && s.admissionNumber.toLowerCase() === targetId)
       );
 
-      const stu = stuIdx !== -1 ? { ...allStudents[stuIdx] } : {
-        _id: `stu_${targetId}`, studentId: targetId.toUpperCase(), admissionNumber: targetId.toUpperCase(),
-        name: `Student (${targetId.toUpperCase()})`, totalPaid: 0, remainingBalance: 125000, receipts: []
-      };
+      if (stuIdx === -1) {
+        const err: ApiError = new Error(`Student record (${targetId.toUpperCase()}) not found in database.`);
+        err.status = 404;
+        throw err;
+      }
+      const stu = { ...allStudents[stuIdx] };
 
       const prevBalance = Number(stu.remainingBalance ?? 0);
       const prevTotalPaid = Number(stu.totalPaid ?? 0);
@@ -805,15 +807,12 @@ export const apiClient = {
             (s.studentId || '').toLowerCase() === targetId ||
             (s.admissionNumber || '').toLowerCase() === targetId
           );
-          const stuData = found || {
-            _id: `stu_${targetId}`, admissionNumber: targetId.toUpperCase(), studentId: targetId.toUpperCase(),
-            rollNumber: targetId.toUpperCase(), registrationNumber: targetId.toUpperCase(), name: `Student (${targetId.toUpperCase()})`,
-            fatherName: 'Mr. Student Father', motherName: 'Mrs. Student Mother', mobile: '9876543210', parentMobile: '9876543210',
-            email: `${targetId}@inspire.edu`, address: 'Campus Hostel', residentialAddress: 'Day Scholar', hostelStatus: 'Day Scholar',
-            transportStatus: 'Self Transport', course: 'MPC', section: 'Section A', branch: 'Erragattugutta C1',
-            tuitionFee: 120000, hostelFee: 0, transportFee: 0, miscellaneousFee: 5000, previousPending: 0, totalPaid: 0, remainingBalance: 125000, receipts: []
-          };
-          return { status: 'success', data: stuData } as any;
+          if (!found) {
+            const err: ApiError = new Error(`Student with ID ${targetId} not found.`);
+            err.status = 404;
+            throw err;
+          }
+          return { status: 'success', data: found } as any;
         }
       }
 
