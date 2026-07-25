@@ -3077,7 +3077,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)' }}>Modify Fee Waivers & Custom Overrides</h4>
               <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: '14px' }}>Individual fee overrides & waivers are locked to the student profile upon verification.</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {[['Tuition Waiver (₹)', editTuitionWaiver, setEditTuitionWaiver], ['Hostel Waiver (₹)', editHostelWaiver, setEditHostelWaiver], ['Transport Waiver (₹)', editTransportWaiver, setEditTransportWaiver], ['Misc Waiver (₹)', editMiscWaiver, setEditMiscWaiver]].map(([label, val, setter]: any) => (
+                {[
+                  ['Tuition Waiver (₹)', editTuitionWaiver, setEditTuitionWaiver, (feeBreakdownData?.tuitionFee || 0) > 0],
+                  ['Hostel Waiver (₹)', editHostelWaiver, setEditHostelWaiver, (feeBreakdownData?.hostelFee || 0) > 0],
+                  ['Transport Waiver (₹)', editTransportWaiver, setEditTransportWaiver, (feeBreakdownData?.transportFee || 0) > 0],
+                  ['Misc Waiver (₹)', editMiscWaiver, setEditMiscWaiver, (feeBreakdownData?.miscFee || 0) > 0]
+                ].filter(([, , , isApplicable]) => isApplicable).map(([label, val, setter]: any) => (
                   <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>{label}</label>
                     <input type="number" min="0" value={val} onChange={(e) => setter(e.target.value)} style={styles.textInputBox} />
