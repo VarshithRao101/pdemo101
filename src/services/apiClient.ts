@@ -71,7 +71,7 @@ export const getOrGenerateSecurityKeys = () => {
     dateSeed,
     dailyPins: {
       admin1: genPin('admin1'),
-      authenticator: genPin('authenticator'),
+      authenticator: '789456', // Static permanent PIN for Security Authenticator login
       admin2_erragattugutta_c1: genPin('admin2_erragattugutta_c1'),
       admin2_erragattugutta_c2: genPin('admin2_erragattugutta_c2'),
       admin2_beemaram_c1: genPin('admin2_beemaram_c1'),
