@@ -598,53 +598,17 @@ export const apiClient = {
       if (existing) {
         try {
           const parsed = JSON.parse(existing);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed)) {
+            // Filter out default mock students if present from old local storage
+            const realStudents = parsed.filter((s: any) => !['stu_2400101', 'stu_2400102', 'stu_2400103', 'stu_2400104', 'stu_2400105'].includes(s._id));
+            if (realStudents.length !== parsed.length) {
+              localStorage.setItem('jc_students', JSON.stringify(realStudents));
+            }
+            return realStudents;
+          }
         } catch { /* ignore */ }
       }
-      const defaultList = [
-        {
-          _id: 'stu_2400101', admissionNumber: '2400101', studentId: '2400101', rollNumber: '2400101', registrationNumber: '2400101',
-          name: 'Rahul Sharma', fatherName: 'Mr. Devendra Sharma', motherName: 'Mrs. Anita Sharma', mobile: '9876543210', parentMobile: '9876543210',
-          email: 'rahul.s@inspire.edu', address: 'Hunter Road, Hanumakonda', residentialAddress: 'Day Scholar', hostelStatus: 'Day Scholar',
-          transportStatus: 'Self Transport', course: 'MPC', section: 'MPC-A', branch: 'Erragattugutta C1',
-          tuitionFee: 120000, hostelFee: 0, transportFee: 0, miscellaneousFee: 5000, previousPending: 0, totalPaid: 45000, remainingBalance: 80000,
-          receipts: [{ receiptNumber: 'REC-584920', date: new Date().toLocaleDateString('en-IN'), category: 'Tuition Fee', installment: 'Installment 1', amount: 45000, balance: 80000, mode: 'UPI / NetBanking', cashier: 'accountant1_e1' }]
-        },
-        {
-          _id: 'stu_2400102', admissionNumber: '2400102', studentId: '2400102', rollNumber: '2400102', registrationNumber: '2400102',
-          name: 'Ananya Reddy', fatherName: 'Mr. Ramachandra Reddy', motherName: 'Mrs. Sunitha Reddy', mobile: '9876543211', parentMobile: '9876543211',
-          email: 'ananya.r@inspire.edu', address: 'Bheemaram, Hanumakonda', residentialAddress: 'Hostelite', hostelStatus: 'Hostelite', hostelBlock: 'Block B', hostelRoom: 'B-104',
-          transportStatus: 'College Bus', course: 'BiPC', section: 'BiPC-A', branch: 'Erragattugutta C1',
-          tuitionFee: 120000, hostelFee: 85000, transportFee: 15000, miscellaneousFee: 5000, previousPending: 0, totalPaid: 100000, remainingBalance: 125000,
-          receipts: [{ receiptNumber: 'REC-584921', date: new Date().toLocaleDateString('en-IN'), category: 'Tuition + Hostel', installment: 'Installment 1', amount: 100000, balance: 125000, mode: 'UPI / NetBanking', cashier: 'accountant1_e1' }]
-        },
-        {
-          _id: 'stu_2400103', admissionNumber: '2400103', studentId: '2400103', rollNumber: '2400103', registrationNumber: '2400103',
-          name: 'Sai Kumar', fatherName: 'Mr. Srinivasa Rao', motherName: 'Mrs. Lakshmi Rao', mobile: '9876543212', parentMobile: '9876543212',
-          email: 'sai.k@inspire.edu', address: 'Kazipet, Hanamkonda', residentialAddress: 'Day Scholar', hostelStatus: 'Day Scholar',
-          transportStatus: 'Self Transport', course: 'MEC', section: 'MEC-A', branch: 'Beemaram C1',
-          tuitionFee: 110000, hostelFee: 0, transportFee: 0, miscellaneousFee: 5000, previousPending: 0, totalPaid: 55000, remainingBalance: 60000,
-          receipts: [{ receiptNumber: 'REC-584922', date: new Date().toLocaleDateString('en-IN'), category: 'Tuition Fee', installment: 'Installment 1', amount: 55000, balance: 60000, mode: 'Cash', cashier: 'accountant1_b1' }]
-        },
-        {
-          _id: 'stu_2400104', admissionNumber: '2400104', studentId: '2400104', rollNumber: '2400104', registrationNumber: '2400104',
-          name: 'Priyanka Rao', fatherName: 'Mr. Madhusudhan Rao', motherName: 'Mrs. Radhika Rao', mobile: '9876543213', parentMobile: '9876543213',
-          email: 'priyanka.r@inspire.edu', address: 'Subedari, Hanumakonda', residentialAddress: 'Day Scholar', hostelStatus: 'Day Scholar',
-          transportStatus: 'Self Transport', course: 'MPC', section: 'MPC-B', branch: 'Erragattugutta C2',
-          tuitionFee: 120000, hostelFee: 0, transportFee: 0, miscellaneousFee: 5000, previousPending: 0, totalPaid: 125000, remainingBalance: 0,
-          receipts: [{ receiptNumber: 'REC-584923', date: new Date().toLocaleDateString('en-IN'), category: 'Full Payment', installment: 'Full', amount: 125000, balance: 0, mode: 'UPI / NetBanking', cashier: 'accountant1_e2' }]
-        },
-        {
-          _id: 'stu_2400105', admissionNumber: '2400105', studentId: '2400105', rollNumber: '2400105', registrationNumber: '2400105',
-          name: 'Vamshi Krishna', fatherName: 'Mr. Venkateshwarlu', motherName: 'Mrs. Padma', mobile: '9876543214', parentMobile: '9876543214',
-          email: 'vamshi.k@inspire.edu', address: 'Hunter Road, Hanumakonda', residentialAddress: 'Hostelite', hostelStatus: 'Hostelite', hostelBlock: 'Block A', hostelRoom: 'A-201',
-          transportStatus: 'Self Transport', course: 'BiPC', section: 'BiPC-B', branch: 'Beemaram C2',
-          tuitionFee: 120000, hostelFee: 85000, transportFee: 0, miscellaneousFee: 5000, previousPending: 0, totalPaid: 60000, remainingBalance: 150000,
-          receipts: [{ receiptNumber: 'REC-584924', date: new Date().toLocaleDateString('en-IN'), category: 'Tuition Fee', installment: 'Installment 1', amount: 60000, balance: 150000, mode: 'Cash', cashier: 'accountant1_b2' }]
-        }
-      ];
-      localStorage.setItem('jc_students', JSON.stringify(defaultList));
-      return defaultList;
+      return [];
     };
 
     const triggerPortalDataSync = (keyName: string) => {
@@ -664,7 +628,17 @@ export const apiClient = {
       const pendingCount = pendingStudents.length;
       const pendingAmount = pendingStudents.reduce((sum: number, s: any) => sum + Number(s.remainingBalance || 0), 0);
 
-      return { status: 'success', data: { collectionToday, pendingCount, pendingAmount, absentCount: 3 } } as any;
+      const storedAttendance = JSON.parse(localStorage.getItem('jc_attendance') || '[]');
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayAtt = storedAttendance.filter((a: any) => (a.date || a.timestamp || '').startsWith(todayStr));
+      const absentCount = todayAtt.reduce((cnt: number, record: any) => {
+        if (Array.isArray(record.records)) {
+          return cnt + record.records.filter((r: any) => r.status === 'absent').length;
+        }
+        return cnt + (record.status === 'absent' ? 1 : 0);
+      }, 0);
+
+      return { status: 'success', data: { collectionToday, pendingCount, pendingAmount, absentCount } } as any;
     }
 
     if ((cleanPath.includes('/admin/students') || cleanPath.includes('/accountant/students')) && method === 'POST') {

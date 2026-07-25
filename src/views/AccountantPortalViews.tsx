@@ -522,7 +522,7 @@ export const AccountantDashboardView: React.FC = () => {
                     msg.toLowerCase().includes('not found') || 
                     msg.toLowerCase().includes('error') ||
                     msg.toLowerCase().includes('incorrect');
-    const symbol = isError ? 'ERROR: ' : '✓ ';
+    const symbol = isError ? 'ERROR: ' : 'Success: ';
     setToastMessage(symbol + msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -1175,7 +1175,7 @@ export const AccountantDashboardView: React.FC = () => {
                           backgroundColor: isResident ? 'rgba(245, 158, 11, 0.15)' : 'rgba(148, 163, 184, 0.15)',
                           color: isResident ? '#B45309' : '#475569'
                         }}>
-                          🏠 {s.hostelStatus || 'Day Scholar'}
+                          {s.hostelStatus || 'Day Scholar'}
                         </span>
                         <span style={{
                           fontSize: '10px',
@@ -1185,7 +1185,7 @@ export const AccountantDashboardView: React.FC = () => {
                           backgroundColor: 'rgba(59, 130, 246, 0.12)',
                           color: '#1D4ED8'
                         }}>
-                          🚌 {s.transportStatus || 'Self Transport'}
+                          {s.transportStatus || 'Self Transport'}
                         </span>
                       </div>
                     </div>
@@ -1234,7 +1234,7 @@ export const AccountantDashboardView: React.FC = () => {
                         }}
                         className="press-interactive"
                       >
-                        ✏️ Edit Profile & Fees
+                        Edit Profile & Fees
                       </button>
 
                       <button
@@ -1254,7 +1254,7 @@ export const AccountantDashboardView: React.FC = () => {
                         }}
                         className="press-interactive"
                       >
-                        🗑️ Delete
+                        Delete
                       </button>
                     </div>
                   </GlassCard>
@@ -2191,7 +2191,7 @@ export const AccountantDashboardView: React.FC = () => {
                     }}
                     className="press-interactive"
                   >
-                    🗑️ Delete Student
+                    Delete Student
                   </button>
                 </div>
               </div>
@@ -2359,7 +2359,7 @@ export const AccountantDashboardView: React.FC = () => {
             <div style={{ ...styles.overlayOverlay, zIndex: 1200 }}>
               <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid #DC2626' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <h3 style={{ ...styles.modalTitle, color: '#DC2626' }}>⚠️ Delete Student Permanently</h3>
+                  <h3 style={{ ...styles.modalTitle, color: '#DC2626' }}>Delete Student Permanently</h3>
                   <button
                     onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }}
                     style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}

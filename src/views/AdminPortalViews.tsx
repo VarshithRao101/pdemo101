@@ -770,7 +770,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     msg.toLowerCase().includes('not found') || 
                     msg.toLowerCase().includes('error') ||
                     msg.toLowerCase().includes('incorrect');
-    const symbol = isError ? 'ERROR: ' : '✓ ';
+    const symbol = isError ? 'ERROR: ' : 'Success: ';
     setToastMessage(symbol + msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -814,7 +814,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       setEditStudent({ ...nextStu });
       setIsOtpModalOpen(false);
       setOtpInput('');
-      triggerToast(`✓ Student profile and fee breakdown for ${nextStu.name} updated successfully.`);
+      triggerToast(`Student profile and fee breakdown for ${nextStu.name} updated successfully.`);
       await fetchStudents();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save student details.');
@@ -852,7 +852,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       setEditStudent(null);
       setIsDeleteStuOtpOpen(false);
       setDeleteStuOtpInput('');
-      triggerToast(`✓ Student record for ${targetStu.name} (${targetStu.admissionNumber || targetId}) permanently deleted.`);
+      triggerToast(`Student record for ${targetStu.name} (${targetStu.admissionNumber || targetId}) permanently deleted.`);
       await fetchStudents();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to delete student record. Check Security OTP.');
@@ -1592,7 +1592,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               <GlassCard hoverable={false} style={styles.modalContentCard} className="anim-scale-in glass-gold-ring">
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                   <div style={{ ...styles.modalIconBadge, backgroundColor: 'rgba(239,68,68,0.1)', border: '2px solid rgba(239,68,68,0.4)' }}>
-                    <span style={{ fontSize: '24px' }}>🗑️</span>
+                    <span style={{ fontSize: '13px', fontWeight: 900, color: '#DC2626' }}>DELETE</span>
                   </div>
                   <h3 style={{ ...styles.modalHeading, color: '#DC2626' }}>Delete Student Record</h3>
                   <p style={styles.modalSubText}>
