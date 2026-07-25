@@ -450,6 +450,10 @@ export const AccountantDashboardView: React.FC = () => {
   }, [fetchDashboardSummary, fetchAllStudents]);
 
   useEffect(() => {
+    const handleSync = () => refreshWithPulse('students');
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('jc_sync_data', handleSync);
+
     const unsubscribers = [
       onSocketEvent('student:created', () => refreshWithPulse('students')),
       onSocketEvent('fee:updated', () => refreshWithPulse('fees')),
@@ -459,6 +463,8 @@ export const AccountantDashboardView: React.FC = () => {
     ];
 
     return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('jc_sync_data', handleSync);
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
   }, [refreshWithPulse]);

@@ -572,10 +572,78 @@ export const apiClient = {
       }
     }
 
+    const getOrInitStudents = (): any[] => {
+      const existing = localStorage.getItem('jc_students');
+      if (existing) {
+        try {
+          const parsed = JSON.parse(existing);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch { /* ignore */ }
+      }
+      const defaultList = [
+        {
+          _id: 'stu_2400101', admissionNumber: '2400101', studentId: '2400101', rollNumber: '2400101', registrationNumber: '2400101',
+          name: 'Rahul Sharma', fatherName: 'Mr. Devendra Sharma', motherName: 'Mrs. Anita Sharma', mobile: '9876543210', parentMobile: '9876543210',
+          email: 'rahul.s@inspire.edu', address: 'Hunter Road, Hanumakonda', residentialAddress: 'Day Scholar', hostelStatus: 'Day Scholar',
+          transportStatus: 'Self Transport', course: 'MPC', section: 'MPC-A', branch: 'Erragattugutta C1',
+          tuitionFee: 120000, hostelFee: 0, transportFee: 0, miscellaneousFee: 5000, previousPending: 0, totalPaid: 45000, remainingBalance: 80000,
+          receipts: [{ receiptNumber: 'REC-584920', date: new Date().toLocaleDateString('en-IN'), category: 'Tuition Fee', installment: 'Installment 1', amount: 45000, balance: 80000, mode: 'UPI / NetBanking', cashier: 'accountant1_e1' }]
+        },
+        {
+          _id: 'stu_2400102', admissionNumber: '2400102', studentId: '2400102', rollNumber: '2400102', registrationNumber: '2400102',
+          name: 'Ananya Reddy', fatherName: 'Mr. Ramachandra Reddy', motherName: 'Mrs. Sunitha Reddy', mobile: '9876543211', parentMobile: '9876543211',
+          email: 'ananya.r@inspire.edu', address: 'Bheemaram, Hanumakonda', residentialAddress: 'Hostelite', hostelStatus: 'Hostelite', hostelBlock: 'Block B', hostelRoom: 'B-104',
+          transportStatus: 'College Bus', course: 'BiPC', section: 'BiPC-A', branch: 'Erragattugutta C1',
+          tuitionFee: 120000, hostelFee: 85000, transportFee: 15000, miscellaneousFee: 5000, previousPending: 0, totalPaid: 100000, remainingBalance: 125000,
+          receipts: [{ receiptNumber: 'REC-584921', date: new Date().toLocaleDateString('en-IN'), category: 'Tuition + Hostel', installment: 'Installment 1', amount: 100000, balance: 125000, mode: 'UPI / NetBanking', cashier: 'accountant1_e1' }]
+        },
+        {
+          _id: 'stu_2400103', admissionNumber: '2400103', studentId: '2400103', rollNumber: '2400103', registrationNumber: '2400103',
+          name: 'Sai Kumar', fatherName: 'Mr. Srinivasa Rao', motherName: 'Mrs. Lakshmi Rao', mobile: '9876543212', parentMobile: '9876543212',
+          email: 'sai.k@inspire.edu', address: 'Kazipet, Hanamkonda', residentialAddress: 'Day Scholar', hostelStatus: 'Day Scholar',
+          transportStatus: 'Self Transport', course: 'MEC', section: 'MEC-A', branch: 'Beemaram C1',
+          tuitionFee: 110000, hostelFee: 0, transportFee: 0, miscellaneousFee: 5000, previousPending: 0, totalPaid: 55000, remainingBalance: 60000,
+          receipts: [{ receiptNumber: 'REC-584922', date: new Date().toLocaleDateString('en-IN'), category: 'Tuition Fee', installment: 'Installment 1', amount: 55000, balance: 60000, mode: 'Cash', cashier: 'accountant1_b1' }]
+        },
+        {
+          _id: 'stu_2400104', admissionNumber: '2400104', studentId: '2400104', rollNumber: '2400104', registrationNumber: '2400104',
+          name: 'Priyanka Rao', fatherName: 'Mr. Madhusudhan Rao', motherName: 'Mrs. Radhika Rao', mobile: '9876543213', parentMobile: '9876543213',
+          email: 'priyanka.r@inspire.edu', address: 'Subedari, Hanumakonda', residentialAddress: 'Day Scholar', hostelStatus: 'Day Scholar',
+          transportStatus: 'Self Transport', course: 'MPC', section: 'MPC-B', branch: 'Erragattugutta C2',
+          tuitionFee: 120000, hostelFee: 0, transportFee: 0, miscellaneousFee: 5000, previousPending: 0, totalPaid: 125000, remainingBalance: 0,
+          receipts: [{ receiptNumber: 'REC-584923', date: new Date().toLocaleDateString('en-IN'), category: 'Full Payment', installment: 'Full', amount: 125000, balance: 0, mode: 'UPI / NetBanking', cashier: 'accountant1_e2' }]
+        },
+        {
+          _id: 'stu_2400105', admissionNumber: '2400105', studentId: '2400105', rollNumber: '2400105', registrationNumber: '2400105',
+          name: 'Vamshi Krishna', fatherName: 'Mr. Venkateshwarlu', motherName: 'Mrs. Padma', mobile: '9876543214', parentMobile: '9876543214',
+          email: 'vamshi.k@inspire.edu', address: 'Hunter Road, Hanumakonda', residentialAddress: 'Hostelite', hostelStatus: 'Hostelite', hostelBlock: 'Block A', hostelRoom: 'A-201',
+          transportStatus: 'Self Transport', course: 'BiPC', section: 'BiPC-B', branch: 'Beemaram C2',
+          tuitionFee: 120000, hostelFee: 85000, transportFee: 0, miscellaneousFee: 5000, previousPending: 0, totalPaid: 60000, remainingBalance: 150000,
+          receipts: [{ receiptNumber: 'REC-584924', date: new Date().toLocaleDateString('en-IN'), category: 'Tuition Fee', installment: 'Installment 1', amount: 60000, balance: 150000, mode: 'Cash', cashier: 'accountant1_b2' }]
+        }
+      ];
+      localStorage.setItem('jc_students', JSON.stringify(defaultList));
+      return defaultList;
+    };
+
+    const triggerPortalDataSync = (keyName: string) => {
+      if (typeof window !== 'undefined') {
+        try {
+          window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new CustomEvent('jc_sync_data', { detail: { key: keyName } }));
+        } catch { /* ignore */ }
+      }
+    };
+
     if (cleanPath.includes('/dashboard-summary')) {
+      const allStudents = getOrInitStudents();
       const storedPayments = JSON.parse(localStorage.getItem('jc_payments') || '[]');
-      const collectionToday = storedPayments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
-      return { status: 'success', data: { collectionToday, pendingCount: 0, pendingAmount: 0, absentCount: 0 } } as any;
+      const collectionToday = storedPayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+      const pendingStudents = allStudents.filter((s: any) => Number(s.remainingBalance || 0) > 0);
+      const pendingCount = pendingStudents.length;
+      const pendingAmount = pendingStudents.reduce((sum: number, s: any) => sum + Number(s.remainingBalance || 0), 0);
+
+      return { status: 'success', data: { collectionToday, pendingCount, pendingAmount, absentCount: 3 } } as any;
     }
 
     if ((cleanPath.includes('/admin/students') || cleanPath.includes('/accountant/students')) && method === 'POST') {
@@ -611,9 +679,11 @@ export const apiClient = {
         receipts: []
       };
 
-      const allStudents: any[] = JSON.parse(localStorage.getItem('jc_students') || '[]');
-      allStudents.push(newStu);
+      const allStudents = getOrInitStudents();
+      allStudents.unshift(newStu);
       localStorage.setItem('jc_students', JSON.stringify(allStudents));
+      logTransactionInJournal(`Create Student (${admNo})`, branch, 'success');
+      triggerPortalDataSync('students');
 
       return {
         status: 'success',
@@ -622,34 +692,39 @@ export const apiClient = {
       } as any;
     }
 
+    if (cleanPath.includes('/students/') && method === 'PATCH') {
+      const parts = cleanPath.split('/students/');
+      const targetId = parts[1] ? parts[1].split('/')[0].toLowerCase().trim() : '';
+      const parsedBody = options.body ? JSON.parse(options.body as string) : {};
+      const allStudents = getOrInitStudents();
+
+      const stuIdx = allStudents.findIndex(s =>
+        (s._id || '').toLowerCase() === targetId ||
+        (s.studentId || '').toLowerCase() === targetId ||
+        (s.admissionNumber || '').toLowerCase() === targetId
+      );
+
+      if (stuIdx !== -1) {
+        allStudents[stuIdx] = { ...allStudents[stuIdx], ...parsedBody };
+        localStorage.setItem('jc_students', JSON.stringify(allStudents));
+        triggerPortalDataSync('students');
+        return { status: 'success', data: allStudents[stuIdx] } as any;
+      }
+      return { status: 'success', data: parsedBody } as any;
+    }
+
     if (cleanPath.includes('/students/') && method === 'DELETE') {
       const parts = cleanPath.split('/students/');
       const targetId = parts[1] ? parts[1].toLowerCase().trim() : '';
-      const allStudents: any[] = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      const allStudents = getOrInitStudents();
       const filtered = allStudents.filter(s =>
         (s._id || '').toLowerCase() !== targetId &&
         (s.studentId || '').toLowerCase() !== targetId &&
         (s.admissionNumber || '').toLowerCase() !== targetId
       );
       localStorage.setItem('jc_students', JSON.stringify(filtered));
+      triggerPortalDataSync('students');
       return { status: 'success', message: 'Student record permanently deleted.' } as any;
-    }
-
-    if (cleanPath.includes('/fee-override') && method === 'PATCH') {
-      const parsedBody = options.body ? JSON.parse(options.body as string) : {};
-      return { status: 'success', data: { ...parsedBody, isCustomFee: true } } as any;
-    }
-
-    if (cleanPath.includes('/fee-breakdown')) {
-      return {
-        status: 'success',
-        data: {
-          baseFee: 125000, tuitionFee: 120000, hostelFee: 0, transportFee: 0, miscFee: 5000,
-          previousPending: 0, scholarshipCategory: 'None', scholarshipPct: 0, scholarshipDeduction: 0,
-          individualOverrideDeduction: 0, tuitionWaiver: 0, hostelWaiver: 0, transportWaiver: 0, miscWaiver: 0,
-          totalPaid: 0, remainingBalance: 125000
-        }
-      } as any;
     }
 
     if (cleanPath.includes('/payments') && method === 'POST') {
@@ -661,10 +736,9 @@ export const apiClient = {
         throw err;
       }
 
-      // Read student from localStorage
       const parts = cleanPath.split('/students/');
       const targetId = parts[1] ? parts[1].split('/')[0].toLowerCase().trim() : '';
-      const allStudents: any[] = JSON.parse(localStorage.getItem('jc_students') || '[]');
+      const allStudents = getOrInitStudents();
       const stuIdx = allStudents.findIndex(s =>
         (s._id && s._id.toLowerCase() === targetId) ||
         (s.studentId && s.studentId.toLowerCase() === targetId) ||
@@ -703,59 +777,136 @@ export const apiClient = {
         ...stu,
         totalPaid: newTotalPaid,
         remainingBalance: newBalance,
-        receipts: [...(stu.receipts || []), newReceipt]
+        receipts: [newReceipt, ...(stu.receipts || [])]
       };
 
-      // Persist back to localStorage
       if (stuIdx !== -1) {
         allStudents[stuIdx] = updatedStu;
       } else {
-        allStudents.push(updatedStu);
+        allStudents.unshift(updatedStu);
       }
       localStorage.setItem('jc_students', JSON.stringify(allStudents));
 
-      // Update payments ledger in localStorage
       const allPayments: any[] = JSON.parse(localStorage.getItem('jc_payments') || '[]');
-      allPayments.push({ ...newReceipt, studentId: stu.studentId || targetId });
+      allPayments.unshift({ ...newReceipt, studentId: stu.studentId || targetId, studentName: stu.name });
       localStorage.setItem('jc_payments', JSON.stringify(allPayments));
+
+      logTransactionInJournal(`Record Payment (₹${amountPaid}) for ${stu.name || targetId}`, stu.branch || 'Erragattugutta C1', 'success');
+      triggerPortalDataSync('payments');
 
       return { status: 'success', data: { payment: newReceipt, student: updatedStu } } as any;
     }
 
-    if (cleanPath.includes('/students/') && method === 'GET') {
-      const parts = cleanPath.split('/students/');
-      const targetId = parts[1] ? parts[1].toLowerCase().trim() : '';
-      return {
-        status: 'success',
-        data: {
-          _id: `stu_${targetId}`,
-          admissionNumber: targetId.toUpperCase(),
-          studentId: targetId.toUpperCase(),
-          rollNumber: targetId.toUpperCase(),
-          registrationNumber: targetId.toUpperCase(),
-          name: `Student (${targetId.toUpperCase()})`,
-          fatherName: 'Mr. Student Father',
-          motherName: 'Mrs. Student Mother',
-          mobile: '9876543210',
-          parentMobile: '9876543210',
-          email: `${targetId}@inspire.edu`,
-          address: 'Campus Hostel',
-          residentialAddress: 'Day Scholar',
-          hostelStatus: 'Day Scholar',
-          transportStatus: 'Self Transport',
-          course: 'MPC',
-          section: 'Section A',
-          branch: 'Erragattugutta C1',
-          tuitionFee: 120000,
-          hostelFee: 0,
-          transportFee: 0,
-          miscellaneousFee: 5000,
-          previousPending: 0,
-          totalPaid: 0,
-          remainingBalance: 125000,
-          receipts: []
+    if (cleanPath.includes('/students') && method === 'GET') {
+      const allStudents = getOrInitStudents();
+      const parts = cleanPath.split('/students');
+      const paramStr = parts[1] || '';
+
+      if (paramStr.startsWith('/') && paramStr.length > 1) {
+        const targetId = paramStr.replace(/^\//, '').split('?')[0].toLowerCase().trim();
+        if (targetId && targetId !== 'search') {
+          const found = allStudents.find((s: any) =>
+            (s._id || '').toLowerCase() === targetId ||
+            (s.studentId || '').toLowerCase() === targetId ||
+            (s.admissionNumber || '').toLowerCase() === targetId
+          );
+          const stuData = found || {
+            _id: `stu_${targetId}`, admissionNumber: targetId.toUpperCase(), studentId: targetId.toUpperCase(),
+            rollNumber: targetId.toUpperCase(), registrationNumber: targetId.toUpperCase(), name: `Student (${targetId.toUpperCase()})`,
+            fatherName: 'Mr. Student Father', motherName: 'Mrs. Student Mother', mobile: '9876543210', parentMobile: '9876543210',
+            email: `${targetId}@inspire.edu`, address: 'Campus Hostel', residentialAddress: 'Day Scholar', hostelStatus: 'Day Scholar',
+            transportStatus: 'Self Transport', course: 'MPC', section: 'Section A', branch: 'Erragattugutta C1',
+            tuitionFee: 120000, hostelFee: 0, transportFee: 0, miscellaneousFee: 5000, previousPending: 0, totalPaid: 0, remainingBalance: 125000, receipts: []
+          };
+          return { status: 'success', data: stuData } as any;
         }
-      } as any;
+      }
+
+      const queryIdx = cleanPath.indexOf('?');
+      let search = '';
+      if (queryIdx !== -1) {
+        const params = new URLSearchParams(cleanPath.slice(queryIdx));
+        search = (params.get('search') || '').toLowerCase().trim();
+      }
+
+      if (search) {
+        const filtered = allStudents.filter((s: any) =>
+          (s.name || '').toLowerCase().includes(search) ||
+          (s.admissionNumber || '').toLowerCase().includes(search) ||
+          (s.studentId || '').toLowerCase().includes(search) ||
+          (s.mobile || '').toLowerCase().includes(search) ||
+          (s.course || '').toLowerCase().includes(search) ||
+          (s.branch || '').toLowerCase().includes(search)
+        );
+        return { status: 'success', data: filtered } as any;
+      }
+
+      return { status: 'success', data: allStudents } as any;
+    }
+
+    if (cleanPath.includes('/bulletins')) {
+      const storedBulletins: any[] = JSON.parse(localStorage.getItem('jc_bulletins') || '[]');
+      if (method === 'POST') {
+        const parsedBody = options.body ? JSON.parse(options.body as string) : {};
+        const newBul = {
+          ...parsedBody,
+          _id: `bul_${Date.now()}`,
+          id: `bul_${Date.now()}`,
+          date: parsedBody.date || new Date().toISOString().split('T')[0],
+          createdAt: new Date().toISOString()
+        };
+        storedBulletins.unshift(newBul);
+        localStorage.setItem('jc_bulletins', JSON.stringify(storedBulletins));
+        triggerPortalDataSync('bulletins');
+        return { status: 'success', data: newBul } as any;
+      }
+      return { status: 'success', data: storedBulletins } as any;
+    }
+
+    if (cleanPath.includes('/teachers')) {
+      const storedTeachers: any[] = JSON.parse(localStorage.getItem('jc_teachers') || '[]');
+      if (method === 'POST') {
+        const parsedBody = options.body ? JSON.parse(options.body as string) : {};
+        const newFac = {
+          ...parsedBody,
+          _id: `fac_${Date.now()}`,
+          id: `fac_${Date.now()}`
+        };
+        storedTeachers.unshift(newFac);
+        localStorage.setItem('jc_teachers', JSON.stringify(storedTeachers));
+        triggerPortalDataSync('teachers');
+        return { status: 'success', data: newFac } as any;
+      }
+      return { status: 'success', data: storedTeachers } as any;
+    }
+
+    if (cleanPath.includes('/expenditures')) {
+      const storedExp: any[] = JSON.parse(localStorage.getItem('jc_expenditures') || '[]');
+      if (method === 'POST') {
+        const parsedBody = options.body ? JSON.parse(options.body as string) : {};
+        const newExp = {
+          ...parsedBody,
+          _id: `exp_${Date.now()}`,
+          id: `exp_${Date.now()}`
+        };
+        storedExp.unshift(newExp);
+        localStorage.setItem('jc_expenditures', JSON.stringify(storedExp));
+        triggerPortalDataSync('expenditures');
+        return { status: 'success', data: newExp } as any;
+      }
+      return { status: 'success', data: storedExp } as any;
+    }
+
+    if (cleanPath.includes('/attendance')) {
+      const storedAtt: any[] = JSON.parse(localStorage.getItem('jc_attendance') || '[]');
+      if (method === 'POST') {
+        const parsedBody = options.body ? JSON.parse(options.body as string) : {};
+        storedAtt.unshift({ ...parsedBody, _id: `att_${Date.now()}`, timestamp: new Date().toISOString() });
+        localStorage.setItem('jc_attendance', JSON.stringify(storedAtt.slice(0, 500)));
+        triggerPortalDataSync('attendance');
+        return { status: 'success', message: 'Attendance records saved successfully.' } as any;
+      }
+      return { status: 'success', data: storedAtt } as any;
     }
 
     return { status: 'success', data: method === 'GET' ? [] : {} } as any;
