@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ERP System - Express / MongoDB Production App
  * Serverless-compatible Mongoose Connection Caching, Persistent Rate Limiting,
  * Server-side JWT Access + Refresh Tokens (HTTP-Only Cookie / Bearer),
@@ -220,7 +220,7 @@ const feeSettingsSchema = new mongoose.Schema({
   isLocked: { type: Boolean, default: true },
   academicYear: { type: String, default: '2026-2027' },
   installments: { type: String, default: '3 Installments' },
-  lateFeeRules: { type: String, default: '₹100 per day after due date' },
+  lateFeeRules: { type: String, default: 'â‚¹100 per day after due date' },
   scholarshipRules: { type: String, default: 'Merit: 50% waiver, Sports: 30% waiver' }
 }, { timestamps: true });
 
@@ -314,6 +314,16 @@ function normalizeCampusName(name) {
   if (/indbimar\s*1|beemaram\s*c?1/i.test(s)) return 'Beemaram C1';
   if (/bhimaram\s*2|beemaram\s*c?2/i.test(s)) return 'Beemaram C2';
   return s;
+}
+
+function normalizeHostelStatus(status) {
+  const value = (status || '').toString().trim().toLowerCase();
+  return value === 'resident' || value === 'hostelite' || value === 'hostel';
+}
+
+function normalizeTransportStatus(status) {
+  const value = (status || '').toString().trim().toLowerCase();
+  return value === 'college bus' || value === 'college transport' || value === 'transport';
 }
 
 // Default accounts data (Renamed 4 Campuses: Erragattugutta C1, Erragattugutta C2, Beemaram C1, Beemaram C2)
@@ -1236,8 +1246,8 @@ app.post(['/api/admin1/students', '/api/admin/students', '/api/accountant/studen
 
   const tuitionFee = Number(req.body.tuitionFee !== undefined ? req.body.tuitionFee : campusFeeSettings.tuition);
   const miscellaneousFee = Number(req.body.miscellaneousFee !== undefined ? req.body.miscellaneousFee : campusFeeSettings.misc);
-  const hostelFee = Number(req.body.hostelFee !== undefined ? req.body.hostelFee : (req.body.hostelStatus === 'Hostelite' ? campusFeeSettings.hostel : 0));
-  const transportFee = Number(req.body.transportFee !== undefined ? req.body.transportFee : (req.body.transportStatus === 'College Transport' ? campusFeeSettings.transport : 0));
+  const hostelFee = Number(req.body.hostelFee !== undefined ? req.body.hostelFee : (normalizeHostelStatus(req.body.hostelStatus) ? campusFeeSettings.hostel : 0));
+  const transportFee = Number(req.body.transportFee !== undefined ? req.body.transportFee : (normalizeTransportStatus(req.body.transportStatus) ? campusFeeSettings.transport : 0));
   
   const previousPending = Number(req.body.previousPending || 0);
   const totalPaid = Number(req.body.totalPaid || 0);
@@ -1531,8 +1541,8 @@ app.patch('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation,
     if (!hasCustomFee) {
       const tuitionFee = Number(updated.tuition !== undefined ? updated.tuition : (stu.tuitionFee || 120000));
       const miscellaneousFee = Number(updated.misc !== undefined ? updated.misc : (stu.miscellaneousFee || 5000));
-      const hostelFee = stu.hostelStatus === 'Hostelite' ? Number(updated.hostel !== undefined ? updated.hostel : (stu.hostelFee || 85000)) : 0;
-      const transportFee = stu.transportStatus === 'College Transport' ? Number(updated.transport !== undefined ? updated.transport : (stu.transportFee || 15000)) : 0;
+      const hostelFee = normalizeHostelStatus(stu.hostelStatus) ? Number(updated.hostel !== undefined ? updated.hostel : (stu.hostelFee || 85000)) : 0;
+      const transportFee = normalizeTransportStatus(stu.transportStatus) ? Number(updated.transport !== undefined ? updated.transport : (stu.transportFee || 15000)) : 0;
       
       const previousPending = Number(stu.previousPending || 0);
       const totalPaid = Number(stu.totalPaid || 0);
@@ -1618,11 +1628,19 @@ app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, enf
 });
 
 app.get(['/api/admin2/expenditure', '/api/admin2/expenditures'], authenticateToken, enforceCampusIsolation, async (req, res) => {
-  const branch = req.targetCampus;
-  let list = inMemoryStore.expenditures[branch] || [];
+  const requestedBranch = normalizeCampusName(req.query.branch || req.body.branch || '');
+  const shouldReturnAll = req.user?.role === 'admin1' && !requestedBranch;
+
+  let list = shouldReturnAll
+    ? Object.values(inMemoryStore.expenditures).flat()
+    : (inMemoryStore.expenditures[requestedBranch || req.targetCampus] || []);
+
   if (isMongoConnected) {
-    try { list = await Expenditure.find({ branch }); } catch { /* fallback */ }
+    try {
+      list = shouldReturnAll ? await Expenditure.find({}) : await Expenditure.find({ branch: requestedBranch || req.targetCampus });
+    } catch { /* fallback */ }
   }
+
   return res.json({ status: 'success', data: list });
 });
 
@@ -1638,6 +1656,29 @@ app.post(['/api/admin2/expenditure', '/api/admin2/expenditures'], authenticateTo
   return res.json({ status: 'success', data: newExp });
 });
 
+app.patch(['/api/admin2/expenditure/:id', '/api/admin2/expenditures/:id'], authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+  const { id } = req.params;
+  const branch = normalizeCampusName(req.query.branch || req.body.branch || req.targetCampus);
+  const updates = { ...req.body, branch };
+
+  if (isMongoConnected) {
+    try { await Expenditure.findOneAndUpdate({ $or: [{ _id: id }, { id }] }, updates, { new: true }); } catch { /* fallback */ }
+  }
+
+  const buckets = branch ? [branch] : Object.keys(inMemoryStore.expenditures);
+  let updated = null;
+  for (const bucket of buckets) {
+    const idx = (inMemoryStore.expenditures[bucket] || []).findIndex(e => e._id === id || e.id === id);
+    if (idx !== -1) {
+      inMemoryStore.expenditures[bucket][idx] = { ...inMemoryStore.expenditures[bucket][idx], ...updates };
+      updated = inMemoryStore.expenditures[bucket][idx];
+      break;
+    }
+  }
+
+  return res.json({ status: 'success', data: updated || updates });
+});
+
 app.delete(['/api/admin2/expenditure/:id', '/api/admin2/expenditures/:id'], authenticateToken, enforceCampusIsolation, async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
@@ -1651,17 +1692,20 @@ app.delete(['/api/admin2/expenditure/:id', '/api/admin2/expenditures/:id'], auth
 });
 
 app.get('/api/admin2/worker-payments', authenticateToken, enforceCampusIsolation, async (req, res) => {
-  const branch = req.targetCampus;
-  let list = inMemoryStore.workerPayments[branch] || [];
+  const requestedBranch = normalizeCampusName(req.query.branch || req.body.branch || '');
+  const shouldReturnAll = req.user?.role === 'admin1' && !requestedBranch;
+  let list = shouldReturnAll
+    ? Object.values(inMemoryStore.workerPayments).flat()
+    : (inMemoryStore.workerPayments[requestedBranch || req.targetCampus] || []);
   if (isMongoConnected) {
-    try { list = await WorkerPayment.find({ branch }); } catch { /* fallback */ }
+    try { list = shouldReturnAll ? await WorkerPayment.find({}) : await WorkerPayment.find({ branch: requestedBranch || req.targetCampus }); } catch { /* fallback */ }
   }
   return res.json({ status: 'success', data: list });
 });
 
 app.post('/api/admin2/worker-payments', authenticateToken, enforceCampusIsolation, async (req, res) => {
-  const branch = req.targetCampus;
-  const newWp = { ...req.body, _id: `WP-${Date.now()}`, id: `WP-${Date.now()}`, branch };
+  const branch = normalizeCampusName(req.body.branch || req.targetCampus);
+  const newWp = { ...req.body, _id: 'WP-' + Date.now(), id: 'WP-' + Date.now(), branch };
   if (isMongoConnected) {
     try { await WorkerPayment.create(newWp); } catch { /* fallback */ }
   }
@@ -1670,6 +1714,40 @@ app.post('/api/admin2/worker-payments', authenticateToken, enforceCampusIsolatio
   return res.json({ status: 'success', data: newWp });
 });
 
+app.patch('/api/admin2/worker-payments/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+  const { id } = req.params;
+  const branch = normalizeCampusName(req.query.branch || req.body.branch || req.targetCampus);
+  const updates = { ...req.body, branch };
+  let updated = null;
+  if (isMongoConnected) {
+    try { updated = await WorkerPayment.findOneAndUpdate({ $or: [{ _id: id }, { id }] }, updates, { new: true }); } catch { /* fallback */ }
+  }
+  const buckets = branch ? [branch] : Object.keys(inMemoryStore.workerPayments);
+  for (const bucket of buckets) {
+    const idx = (inMemoryStore.workerPayments[bucket] || []).findIndex(w => w._id === id || w.id === id);
+    if (idx !== -1) {
+      inMemoryStore.workerPayments[bucket][idx] = { ...inMemoryStore.workerPayments[bucket][idx], ...updates };
+      updated = inMemoryStore.workerPayments[bucket][idx];
+      break;
+    }
+  }
+  return res.json({ status: 'success', data: updated || updates });
+});
+
+app.delete('/api/admin2/worker-payments/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+  const { id } = req.params;
+  const branch = normalizeCampusName(req.query.branch || req.body.branch || req.targetCampus);
+  if (isMongoConnected) {
+    try { await WorkerPayment.deleteMany({ $or: [{ _id: id }, { id }] }); } catch { /* fallback */ }
+  }
+  const buckets = branch ? [branch] : Object.keys(inMemoryStore.workerPayments);
+  for (const bucket of buckets) {
+    if (Array.isArray(inMemoryStore.workerPayments[bucket])) {
+      inMemoryStore.workerPayments[bucket] = inMemoryStore.workerPayments[bucket].filter(w => w._id !== id && w.id !== id);
+    }
+  }
+  return res.json({ status: 'success', message: 'Worker payment deleted.' });
+});
 app.get('/api/admin2/staff-salaries', authenticateToken, enforceCampusIsolation, async (req, res) => {
   const branch = req.targetCampus;
   let teachersList = inMemoryStore.teachers[branch] || [];
@@ -1703,7 +1781,7 @@ app.get('/api/admin2/enrollment-stats', authenticateToken, (req, res) => {
 });
 
 app.get(['/api/accountant/late-fees-settings', '/api/admin2/late-fees-settings'], authenticateToken, (req, res) => {
-  return res.json({ status: 'success', data: { lateFeeRules: '₹100 per day after due date' } });
+  return res.json({ status: 'success', data: { lateFeeRules: 'â‚¹100 per day after due date' } });
 });
 
 app.get(['/api/accountant/scholarships', '/api/admin2/scholarships'], authenticateToken, (req, res) => {
@@ -1973,7 +2051,7 @@ app.post('/api/accountant/students/:id/payments', authenticateToken, enforceCamp
     receipts: allReceipts.map(p => p.toObject ? p.toObject() : p)
   };
 
-  await logSyncJournal(`POST /api/accountant/students/${id}/payments`, branch, 'success', `Payment of ₹${amountPaid} recorded for ${stuObj.name || id}`, req.user);
+  await logSyncJournal(`POST /api/accountant/students/${id}/payments`, branch, 'success', `Payment of â‚¹${amountPaid} recorded for ${stuObj.name || id}`, req.user);
   return res.json({ status: 'success', data: { payment: newPayment, student: updatedStudent } });
 });
 
@@ -2065,3 +2143,5 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
+

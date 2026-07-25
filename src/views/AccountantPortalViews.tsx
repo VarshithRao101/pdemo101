@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
@@ -198,7 +198,7 @@ interface Attendee {
 }
 
 
-// ─── MAIN CONSOLIDATED ACCOUNTANT COCKPIT VIEW ───
+// â”€â”€â”€ MAIN CONSOLIDATED ACCOUNTANT COCKPIT VIEW â”€â”€â”€
 const RECEIPT_INSTITUTION_NAME = 'Inspire Royal Residential Junior College';
 const RECEIPT_INSTITUTION_ADDRESS = '12-4-98, Gold Avenue, Saraswathi Nagar, Vijayawada, Andhra Pradesh 520008';
 
@@ -675,7 +675,7 @@ export const AccountantDashboardView: React.FC = () => {
       setEditStudent(updatedStudent as any);
       setStudents(prev => prev.map(s => s._id === updatedStudent._id ? (updatedStudent as any) : s));
       setCollectAmount('');
-      triggerToast(`Payment logged: ₹${paymentAmount.toLocaleString('en-IN')}`);
+      triggerToast(`Payment logged: â‚¹${paymentAmount.toLocaleString('en-IN')}`);
       setIsPayOtpModalOpen(false);
       setPayOtpInput('');
       fetchDashboardSummary();
@@ -1028,7 +1028,7 @@ export const AccountantDashboardView: React.FC = () => {
         {renderBackgroundDesign('emerald')}
         <header style={styles.header}>
           <button onClick={() => { setActiveSubPage('menu'); setSelectedStudent(null); setEditStudent(null); setSearchAdmNo(''); }} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            â† Back to Cockpit
           </button>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', marginTop: '8px' }}>
             <div>
@@ -1152,7 +1152,7 @@ export const AccountantDashboardView: React.FC = () => {
                           </strong>
                         </div>
                         <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', fontWeight: 600 }}>
-                          Adm: <span style={{ color: '#1E293B', fontWeight: 800 }}>{s.admissionNumber || s.studentId}</span> • Roll: <span style={{ color: '#1E293B', fontWeight: 800 }}>{s.rollNumber || s.studentId}</span>
+                          Adm: <span style={{ color: '#1E293B', fontWeight: 800 }}>{s.admissionNumber || s.studentId}</span> â€¢ Roll: <span style={{ color: '#1E293B', fontWeight: 800 }}>{s.rollNumber || s.studentId}</span>
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
                           {s.branch || loggedInCampus} ({s.course || 'MPC'}{s.section ? ` - ${s.section}` : ''})
@@ -1193,9 +1193,9 @@ export const AccountantDashboardView: React.FC = () => {
                     {/* Financial Progress Bar */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800 }}>
-                        <span style={{ color: '#059669' }}>Paid: ₹{totalPaid.toLocaleString('en-IN')}</span>
+                        <span style={{ color: '#059669' }}>Paid: â‚¹{totalPaid.toLocaleString('en-IN')}</span>
                         <span style={{ color: remaining > 0 ? '#DC2626' : '#059669' }}>
-                          Due: ₹{remaining.toLocaleString('en-IN')}
+                          Due: â‚¹{remaining.toLocaleString('en-IN')}
                         </span>
                       </div>
                       <div style={{ width: '100%', height: '6px', backgroundColor: '#E2E8F0', borderRadius: '999px', overflow: 'hidden' }}>
@@ -1273,7 +1273,7 @@ export const AccountantDashboardView: React.FC = () => {
     );
   }
 
-  // ─── SUBPAGE 2: FEE COLLECTION DESK (Sub-page) ───
+  // â”€â”€â”€ SUBPAGE 2: FEE COLLECTION DESK (Sub-page) â”€â”€â”€
   if (activeSubPage === 'fee_collection') {
     const filteredCollectList = students.filter(s => {
       const q = feeCollectAdm.toLowerCase().trim();
@@ -1292,7 +1292,7 @@ export const AccountantDashboardView: React.FC = () => {
         {renderBackgroundDesign('gold')}
         <header style={styles.header}>
           <button onClick={() => { setActiveSubPage('menu'); setSelectedStudent(null); setEditStudent(null); setFeeCollectAdm(''); }} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            â† Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Fee Collection Desk</h1>
           <p style={styles.subtitle}>Directly search student record lists and collect term fees</p>
@@ -1332,11 +1332,11 @@ export const AccountantDashboardView: React.FC = () => {
                     <div>
                       <strong style={{ fontSize: '14px', color: 'var(--dark-charcoal)' }}>{s.name}</strong>
                       <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '3px' }}>
-                        ID: {s.studentId} • Adm: {s.admissionNumber} • Branch: {s.branch}
+                        ID: {s.studentId} â€¢ Adm: {s.admissionNumber} â€¢ Branch: {s.branch}
                       </div>
                     </div>
                     <span style={{ fontSize: '11px', fontWeight: 800, color: s.remainingBalance > 0 ? '#EF4444' : '#10B981' }}>
-                      {s.remainingBalance > 0 ? `Pending: ₹${s.remainingBalance.toLocaleString('en-IN')}` : 'Sattled'}
+                      {s.remainingBalance > 0 ? `Pending: â‚¹${s.remainingBalance.toLocaleString('en-IN')}` : 'Sattled'}
                     </span>
                   </GlassCard>
                 ))}
@@ -1354,7 +1354,7 @@ export const AccountantDashboardView: React.FC = () => {
                 <div>
                   <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{selectedStudent.name}</h4>
                   <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>
-                    Adm No: {selectedStudent.admissionNumber} • Roll: {selectedStudent.rollNumber || 'N/A'} • Branch: {selectedStudent.branch}
+                    Adm No: {selectedStudent.admissionNumber} â€¢ Roll: {selectedStudent.rollNumber || 'N/A'} â€¢ Branch: {selectedStudent.branch}
                   </div>
                 </div>
                 <button
@@ -1371,16 +1371,16 @@ export const AccountantDashboardView: React.FC = () => {
                 {/* Column 1: Fee Breakdown */}
                 <div style={styles.readOnlyBlock}>
                   <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '6px' }}>Fee Balance Breakdown</h4>
-                  <div style={styles.metaRow}><span>Tuition Fee</span><strong>₹{selectedStudent.tuitionFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Hostel Fee</span><strong>₹{selectedStudent.hostelFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Transport Fee</span><strong>₹{selectedStudent.transportFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>₹{selectedStudent.miscellaneousFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Previous Pending</span><strong style={{ color: '#EF4444' }}>₹{selectedStudent.previousPending.toLocaleString('en-IN')}</strong></div>
-                  <div style={{ ...styles.metaRow, borderTop: '1.5px solid var(--card-border)', paddingTop: '6px' }}><span>Total Paid</span><strong style={{ color: '#10B981' }}>₹{selectedStudent.totalPaid.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Tuition Fee</span><strong>â‚¹{selectedStudent.tuitionFee.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Hostel Fee</span><strong>â‚¹{selectedStudent.hostelFee.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Transport Fee</span><strong>â‚¹{selectedStudent.transportFee.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>â‚¹{selectedStudent.miscellaneousFee.toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Previous Pending</span><strong style={{ color: '#EF4444' }}>â‚¹{selectedStudent.previousPending.toLocaleString('en-IN')}</strong></div>
+                  <div style={{ ...styles.metaRow, borderTop: '1.5px solid var(--card-border)', paddingTop: '6px' }}><span>Total Paid</span><strong style={{ color: '#10B981' }}>â‚¹{selectedStudent.totalPaid.toLocaleString('en-IN')}</strong></div>
                   <div style={{ ...styles.metaRow, borderTop: '2px solid var(--royal-gold)', paddingTop: '8px', marginTop: '4px' }}>
                     <span style={{ fontWeight: 800 }}>Remaining Balance</span>
                     <strong style={{ fontSize: '18px', color: selectedStudent.remainingBalance > 0 ? '#B45309' : '#10B981' }}>
-                      ₹{selectedStudent.remainingBalance.toLocaleString('en-IN')}
+                      â‚¹{selectedStudent.remainingBalance.toLocaleString('en-IN')}
                     </strong>
                   </div>
                 </div>
@@ -1392,7 +1392,7 @@ export const AccountantDashboardView: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                          <label style={styles.formLabel}>Amount (₹)</label>
+                          <label style={styles.formLabel}>Amount (â‚¹)</label>
                           <input
                             type="number"
                             placeholder="e.g. 15000"
@@ -1474,7 +1474,7 @@ export const AccountantDashboardView: React.FC = () => {
                     </div>
                   ) : (
                     <div style={{ textAlign: 'center', color: '#10B981', fontWeight: 800, padding: '30px 10px' }}>
-                      ✓ All student baseline fees have been fully settled. Remaining balance is zero.
+                      âœ“ All student baseline fees have been fully settled. Remaining balance is zero.
                     </div>
                   )}
                 </div>
@@ -1489,11 +1489,11 @@ export const AccountantDashboardView: React.FC = () => {
                       <div>
                         <strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>{receipt.installment} ({receipt.category})</strong>
                         <div style={{ fontSize: '10px', color: 'var(--muted-gray)', marginTop: '2px' }}>
-                          Ref ID: {receipt.receiptNumber} • {new Date(receipt.date).toLocaleDateString('en-GB')} • Mode: {receipt.mode}
+                          Ref ID: {receipt.receiptNumber} â€¢ {new Date(receipt.date).toLocaleDateString('en-GB')} â€¢ Mode: {receipt.mode}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontWeight: 800, fontSize: '14px', color: '#10B981' }}>₹{receipt.amount.toLocaleString('en-IN')}</span>
+                        <span style={{ fontWeight: 800, fontSize: '14px', color: '#10B981' }}>â‚¹{receipt.amount.toLocaleString('en-IN')}</span>
                         <button
                           onClick={() => {
                             setSelectedReceipt(receipt);
@@ -1527,12 +1527,12 @@ export const AccountantDashboardView: React.FC = () => {
                     onClick={() => setIsPayOtpModalOpen(false)}
                     style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
-                    ×
+                    Ã—
                   </button>
                 </div>
 
                 <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
-                  You are logging a fee payment of <strong>₹{(pendingPayType === 'full' ? selectedStudent.remainingBalance : pendingPayType === 'partial' ? Math.floor(selectedStudent.remainingBalance / 2) : parseFloat(collectAmount)).toLocaleString('en-IN')}</strong> for student <strong>{selectedStudent.name}</strong>. Enter your Accountant authorization OTP to confirm.
+                  You are logging a fee payment of <strong>â‚¹{(pendingPayType === 'full' ? selectedStudent.remainingBalance : pendingPayType === 'partial' ? Math.floor(selectedStudent.remainingBalance / 2) : parseFloat(collectAmount)).toLocaleString('en-IN')}</strong> for student <strong>{selectedStudent.name}</strong>. Enter your Accountant authorization OTP to confirm.
                 </p>
 
                 <input
@@ -1607,8 +1607,8 @@ export const AccountantDashboardView: React.FC = () => {
                     <div style={styles.metaRow}><span>Student Name:</span><strong>{selectedStudent.name}</strong></div>
                     <div style={styles.metaRow}><span>Admission No:</span><strong>{selectedStudent.admissionNumber}</strong></div>
                     <div style={styles.metaRow}><span>Fee Category:</span><strong>{selectedReceipt.category}</strong></div>
-                    <div style={styles.metaRow}><span>Amount Paid:</span><strong style={{ color: '#10B981', fontSize: '15px' }}>₹{selectedReceipt.amount.toLocaleString('en-IN')}</strong></div>
-                    <div style={styles.metaRow}><span>Remaining Bal:</span><strong>₹{selectedReceipt.balance.toLocaleString('en-IN')}</strong></div>
+                    <div style={styles.metaRow}><span>Amount Paid:</span><strong style={{ color: '#10B981', fontSize: '15px' }}>â‚¹{selectedReceipt.amount.toLocaleString('en-IN')}</strong></div>
+                    <div style={styles.metaRow}><span>Remaining Bal:</span><strong>â‚¹{selectedReceipt.balance.toLocaleString('en-IN')}</strong></div>
                   </div>
                 </div>
               </div>
@@ -1625,7 +1625,7 @@ export const AccountantDashboardView: React.FC = () => {
     );
   }
 
-  // ─── SUBPAGE 3: ATTENDANCE CONSOLE (Sub-page) ───
+  // â”€â”€â”€ SUBPAGE 3: ATTENDANCE CONSOLE (Sub-page) â”€â”€â”€
   if (activeSubPage === 'attendance') {
     const studentsList = attendanceRoster.filter(a => a.type === 'student' && a.section === selectedSection);
     const facultyList = attendanceRoster.filter(a => a.type === 'faculty');
@@ -1635,7 +1635,7 @@ export const AccountantDashboardView: React.FC = () => {
         {renderBackgroundDesign('sapphire')}
         <header style={styles.header}>
           <button onClick={() => { setActiveSubPage('menu'); }} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            â† Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Attendance Marking Console</h1>
           <p style={styles.subtitle}>Directly log daily presenters, leaves, and absentees timeline</p>
@@ -1701,7 +1701,7 @@ export const AccountantDashboardView: React.FC = () => {
                   <div key={stu.id} style={styles.receiptRowItem}>
                     <div>
                       <strong>{stu.name}</strong>
-                      <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>ID: {stu.id} • Roster Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{stu.status}</span></div>
+                      <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>ID: {stu.id} â€¢ Roster Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{stu.status}</span></div>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       {(['present', 'absent', 'late'] as const).map((st) => (
@@ -1741,7 +1741,7 @@ export const AccountantDashboardView: React.FC = () => {
                   <div key={fac.id} style={styles.receiptRowItem}>
                     <div>
                       <strong>{fac.name}</strong>
-                      <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Code: {fac.id} • Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{fac.status}</span></div>
+                      <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Code: {fac.id} â€¢ Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{fac.status}</span></div>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       {(['present', 'absent', 'leave'] as const).map((st) => (
@@ -1788,7 +1788,7 @@ export const AccountantDashboardView: React.FC = () => {
     );
   }
 
-  // ─── SUBPAGE 4: COLLECTION REPORTS (Sub-page) ───
+  // â”€â”€â”€ SUBPAGE 4: COLLECTION REPORTS (Sub-page) â”€â”€â”€
   if (activeSubPage === 'reports') {
     const allTransactions = students.flatMap(s => s.receipts.map(r => ({ student: s, receipt: r })));
 
@@ -1797,7 +1797,7 @@ export const AccountantDashboardView: React.FC = () => {
         {renderBackgroundDesign('ruby')}
         <header style={styles.header}>
           <button onClick={() => { setActiveSubPage('menu'); }} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            â† Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Auditing Reports compiler</h1>
           <p style={styles.subtitle}>Audit transaction streams, check category totals and export ledgers</p>
@@ -1805,9 +1805,9 @@ export const AccountantDashboardView: React.FC = () => {
 
         <main style={{ ...styles.content, gap: '16px' }}>
           <div style={styles.readOnlyBlock}>
-            <div style={styles.metaRow}><span>Total Monthly Collection Target</span><strong>₹68,50,000</strong></div>
-            <div style={styles.metaRow}><span>Total Realized Income</span><strong style={{ color: '#10B981' }}>₹{allTransactions.reduce((a, t) => a + t.receipt.amount, 0).toLocaleString('en-IN')}</strong></div>
-            <div style={styles.metaRow}><span>Pending Arrears Balance</span><strong style={{ color: '#EF4444' }}>₹{students.reduce((sum, s) => sum + s.remainingBalance, 0).toLocaleString('en-IN')}</strong></div>
+            <div style={styles.metaRow}><span>Total Monthly Collection Target</span><strong>â‚¹68,50,000</strong></div>
+            <div style={styles.metaRow}><span>Total Realized Income</span><strong style={{ color: '#10B981' }}>â‚¹{allTransactions.reduce((a, t) => a + t.receipt.amount, 0).toLocaleString('en-IN')}</strong></div>
+            <div style={styles.metaRow}><span>Pending Arrears Balance</span><strong style={{ color: '#EF4444' }}>â‚¹{students.reduce((sum, s) => sum + s.remainingBalance, 0).toLocaleString('en-IN')}</strong></div>
           </div>
 
           <h4 style={styles.sectionSubtitle}>Collection Audit Logs</h4>
@@ -1815,11 +1815,11 @@ export const AccountantDashboardView: React.FC = () => {
             {allTransactions.map((tx, idx) => (
               <div key={idx} style={styles.receiptRowItem}>
                 <div>
-                  <strong>{tx.receipt.receiptNumber} • {tx.student.name}</strong>
-                  <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{tx.receipt.category} • {tx.receipt.installment}</div>
+                  <strong>{tx.receipt.receiptNumber} â€¢ {tx.student.name}</strong>
+                  <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{tx.receipt.category} â€¢ {tx.receipt.installment}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontWeight: 850, color: '#10B981' }}>+ ₹{tx.receipt.amount.toLocaleString('en-IN')}</span>
+                  <span style={{ fontWeight: 850, color: '#10B981' }}>+ â‚¹{tx.receipt.amount.toLocaleString('en-IN')}</span>
                   <div style={{ fontSize: '8px', color: 'var(--muted-gray)' }}>{tx.receipt.date}</div>
                 </div>
               </div>
@@ -1835,14 +1835,14 @@ export const AccountantDashboardView: React.FC = () => {
     );
   }
 
-  // ─── SUBPAGE 5: HOSTEL ADMISSIONS (Moved from Admin Dashboard) ───
+  // â”€â”€â”€ SUBPAGE 5: HOSTEL ADMISSIONS (Moved from Admin Dashboard) â”€â”€â”€
   if (activeSubPage === 'hostel') {
     return (
       <div style={styles.container} className="view-container anim-slide-up">
         {renderBackgroundDesign('orange')}
         <header style={styles.header}>
           <button onClick={() => { setActiveSubPage('menu'); setSelectedStudent(null); setEditStudent(null); }} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            â† Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Hostel Room Admissions</h1>
           <p style={styles.subtitle}>Allocate campus block occupancies, assign dorm rooms and submit transfers</p>
@@ -1960,7 +1960,7 @@ export const AccountantDashboardView: React.FC = () => {
                     onClick={() => { setIsStudentModalOpen(false); setSelectedStudent(null); setEditStudent(null); }}
                     style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
-                    ×
+                    Ã—
                   </button>
                 </div>
 
@@ -1968,7 +1968,7 @@ export const AccountantDashboardView: React.FC = () => {
                   {/* SECTION 1: BIO & ACADEMIC INFO */}
                   <div style={{ backgroundColor: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
                     <div style={{ fontSize: '12px', fontWeight: 900, color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                      📋 Section 1: Bio & Academic Profile
+                      ðŸ“‹ Section 1: Bio & Academic Profile
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -2090,76 +2090,7 @@ export const AccountantDashboardView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* SECTION 2: FEE STRUCTURE & WAIVERS */}
-                  <div style={{ backgroundColor: '#FFFDF5', padding: '14px', borderRadius: '12px', border: '1px solid #FCD34D' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 900, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                      💰 Section 2: Fee Structure & Waivers
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Tuition Fee (₹)</label>
-                          <input
-                            type="number"
-                            value={editStudent.tuitionFee ?? 120000}
-                            onChange={(e) => setEditStudent({ ...editStudent, tuitionFee: parseFloat(e.target.value) || 0 })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Hostel Fee (₹)</label>
-                          <input
-                            type="number"
-                            value={editStudent.hostelFee ?? 0}
-                            onChange={(e) => setEditStudent({ ...editStudent, hostelFee: parseFloat(e.target.value) || 0 })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Transport Fee (₹)</label>
-                          <input
-                            type="number"
-                            value={editStudent.transportFee ?? 0}
-                            onChange={(e) => setEditStudent({ ...editStudent, transportFee: parseFloat(e.target.value) || 0 })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Misc Fee (₹)</label>
-                          <input
-                            type="number"
-                            value={editStudent.miscellaneousFee ?? 5000}
-                            onChange={(e) => setEditStudent({ ...editStudent, miscellaneousFee: parseFloat(e.target.value) || 0 })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Previous Pending (₹)</label>
-                          <input
-                            type="number"
-                            value={editStudent.previousPending ?? 0}
-                            onChange={(e) => setEditStudent({ ...editStudent, previousPending: parseFloat(e.target.value) || 0 })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Total Fee Paid (₹)</label>
-                          <input
-                            type="number"
-                            value={editStudent.totalPaid ?? 0}
-                            onChange={(e) => setEditStudent({ ...editStudent, totalPaid: parseFloat(e.target.value) || 0 })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
-
                 {/* MODAL ACTION BUTTONS */}
                 <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                   <button
@@ -2170,7 +2101,7 @@ export const AccountantDashboardView: React.FC = () => {
                     style={{ ...styles.saveSubmitBtn, flex: 2 }}
                     className="press-interactive"
                   >
-                    💾 Save Changes to Database
+                    ðŸ’¾ Save Changes to Database
                   </button>
 
                   <button
@@ -2208,7 +2139,7 @@ export const AccountantDashboardView: React.FC = () => {
                     onClick={() => setIsAddStudentModalOpen(false)}
                     style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
-                    ×
+                    Ã—
                   </button>
                 </div>
 
@@ -2323,7 +2254,7 @@ export const AccountantDashboardView: React.FC = () => {
 
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Tuition Fee (₹)</label>
+                      <label style={styles.formLabel}>Tuition Fee (â‚¹)</label>
                       <input
                         type="number"
                         value={newStudentData.tuitionFee}
@@ -2332,7 +2263,7 @@ export const AccountantDashboardView: React.FC = () => {
                       />
                     </div>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Hostel Fee (₹)</label>
+                      <label style={styles.formLabel}>Hostel Fee (â‚¹)</label>
                       <input
                         type="number"
                         value={newStudentData.hostelFee}
@@ -2348,7 +2279,7 @@ export const AccountantDashboardView: React.FC = () => {
                   style={{ ...styles.saveSubmitBtn, marginTop: '20px', backgroundColor: '#10B981', color: '#FFFFFF' }}
                   className="press-interactive"
                 >
-                  ✓ Register Student in Database
+                  âœ“ Register Student in Database
                 </button>
               </div>
             </div>
@@ -2364,7 +2295,7 @@ export const AccountantDashboardView: React.FC = () => {
                     onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }}
                     style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
-                    ×
+                    Ã—
                   </button>
                 </div>
 
@@ -2425,7 +2356,7 @@ export const AccountantDashboardView: React.FC = () => {
                     onClick={() => setIsStuOtpModalOpen(false)}
                     style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
-                    ×
+                    Ã—
                   </button>
                 </div>
 
@@ -2471,14 +2402,14 @@ export const AccountantDashboardView: React.FC = () => {
     );
   }
 
-  // ─── SUBPAGE 6: LATE FEE SETTINGS (Sub-page) ───
+  // â”€â”€â”€ SUBPAGE 6: LATE FEE SETTINGS (Sub-page) â”€â”€â”€
   if (activeSubPage === 'late_fees') {
     return (
       <div style={styles.container} className="view-container anim-slide-up">
         {renderBackgroundDesign('rose')}
         <header style={styles.header}>
           <button onClick={() => setActiveSubPage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            â† Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Late Fee Rules</h1>
           <p style={styles.subtitle}>Configure overdue fines and penalties caps</p>
@@ -2502,14 +2433,14 @@ export const AccountantDashboardView: React.FC = () => {
     );
   }
 
-  // ─── SUBPAGE 7: SCHOLARSHIPS SETTINGS (Sub-page) ───
+  // â”€â”€â”€ SUBPAGE 7: SCHOLARSHIPS SETTINGS (Sub-page) â”€â”€â”€
   if (activeSubPage === 'scholarships') {
     return (
       <div style={styles.container} className="view-container anim-slide-up">
         {renderBackgroundDesign('teal')}
         <header style={styles.header}>
           <button onClick={() => setActiveSubPage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            â† Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Scholarships waivers</h1>
           <p style={styles.subtitle}>Configure student waiver criteria and grants</p>
@@ -2533,14 +2464,14 @@ export const AccountantDashboardView: React.FC = () => {
     );
   }
 
-  // ─── SUBPAGE 8: ACCOUNTANT PROFILE (Sub-page) ───
+  // â”€â”€â”€ SUBPAGE 8: ACCOUNTANT PROFILE (Sub-page) â”€â”€â”€
   if (activeSubPage === 'profile') {
     return (
       <div style={styles.container} className="view-container anim-slide-up">
         {renderBackgroundDesign('navy')}
         <header style={styles.header}>
           <button onClick={() => setActiveSubPage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            ← Back to Cockpit
+            â† Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Accountant Profile Details</h1>
           <p style={styles.subtitle}>Cashier credential profiles and academic year registers</p>
@@ -2565,7 +2496,7 @@ export const AccountantDashboardView: React.FC = () => {
     );
   }
 
-  // ─── DEFAULT VIEW: CONSOLIDATED COCKPIT MAIN MENU (No tabs) ───
+  // â”€â”€â”€ DEFAULT VIEW: CONSOLIDATED COCKPIT MAIN MENU (No tabs) â”€â”€â”€
   return (
     <div style={styles.container} className="view-container anim-slide-up">
       <PortalDataLoader visible={isPageLoading} colorAccent="#FBBF24" />
@@ -2596,7 +2527,7 @@ export const AccountantDashboardView: React.FC = () => {
             <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Fee Collected Today</span>
               <strong style={{ ...styles.metricValue, color: '#10B981' }}>
-                ₹{feeCollectedToday.toLocaleString('en-IN')}
+                â‚¹{feeCollectedToday.toLocaleString('en-IN')}
               </strong>
               <span style={styles.metricSub}>Real-time ledger sync</span>
               <span className="glass-status-pill status-paid">Collected</span>
@@ -2604,7 +2535,7 @@ export const AccountantDashboardView: React.FC = () => {
             <div style={styles.metricCard}>
               <span style={styles.metricLabel}>Pending Fees Total</span>
               <strong style={{ ...styles.metricValue, color: '#EF4444' }}>
-                ₹{pendingFeesTotal.toLocaleString('en-IN')}
+                â‚¹{pendingFeesTotal.toLocaleString('en-IN')}
               </strong>
               <span style={styles.metricSub}>Across all enrolled students</span>
               <span className="glass-status-pill status-unpaid">Pending</span>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
@@ -190,7 +190,7 @@ interface ExamItem {
 
 
 
-// ─── ADMIN DASHBOARD CONTROLLER ───
+// â”€â”€â”€ ADMIN DASHBOARD CONTROLLER â”€â”€â”€
 export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3' }> = ({ role = 'admin1' }) => {
   const { user } = useNavigation();
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
@@ -377,7 +377,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     }
   }, [user, loggedInCampus]);
 
-  // ── Admin2 Live Wiring State ──
+  // â”€â”€ Admin2 Live Wiring State â”€â”€
   const [feeBreakdownData, setFeeBreakdownData] = useState<any>(null);
   const [lateFeeRulesText, setLateFeeRulesText] = useState('Loading...');
   const [scholarshipRulesText, setScholarshipRulesText] = useState('Loading...');
@@ -387,7 +387,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [newWorkerPeriod, setNewWorkerPeriod] = useState('July 2026');
 
 
-  // ── Admin2 Fetch Helpers ──
+  // â”€â”€ Admin2 Fetch Helpers â”€â”€
   const fetchFeeSettings = async (branch?: string, forceRefresh = false) => {
     if (isEditingFees && !forceRefresh) return;
     try {
@@ -962,7 +962,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         setNewStuAdmissionNumber('');
         setNewStuFather('');
         setNewStuMobile('');
-        triggerToast(`✓ Student ${newStu.name} registered for ${newStuBranch}! ID: ${newAdm} (PIN: ${pin})`);
+        triggerToast(`âœ“ Student ${newStu.name} registered for ${newStuBranch}! ID: ${newAdm} (PIN: ${pin})`);
         await fetchStudents();
       } else {
         triggerToast(response?.message || 'Failed to register student.');
@@ -1021,7 +1021,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         setIsAddTeacherModalOpen(false);
         setIsFacOtpModalOpen(false);
         setFacOtpInput('');
-        triggerToast(`✓ Faculty member ${newFacName} registered successfully for ${newFacBranch}!`);
+        triggerToast(`âœ“ Faculty member ${newFacName} registered successfully for ${newFacBranch}!`);
         await fetchTeachers();
       } else if (facActionType === 'edit' && editTeacher) {
         const targetId = editTeacher.id || editTeacher._id || '';
@@ -1032,7 +1032,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         setEditTeacher(null);
         setIsFacOtpModalOpen(false);
         setFacOtpInput('');
-        triggerToast(`✓ Faculty credentials for ${editTeacher.name} saved successfully.`);
+        triggerToast(`âœ“ Faculty credentials for ${editTeacher.name} saved successfully.`);
         await fetchTeachers();
       } else if (facActionType === ('delete' as any) && pendingDeleteTeacherId) {
         await admin1Service.deleteTeacher(pendingDeleteTeacherId, facOtpInput.trim());
@@ -1042,7 +1042,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         setPendingDeleteTeacherId(null);
         setIsFacOtpModalOpen(false);
         setFacOtpInput('');
-        triggerToast('✓ Faculty record permanently deleted.');
+        triggerToast('âœ“ Faculty record permanently deleted.');
         await fetchTeachers();
       }
     } catch (err: any) {
@@ -1257,7 +1257,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 1: STUDENT REGISTRY ───
+  // â”€â”€â”€ SUBPAGE 1: STUDENT REGISTRY â”€â”€â”€
   if (activePage === 'students') {
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -1403,70 +1403,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   />
                 </div>
 
-                {/* FEE OVERRIDES & STRUCTURE EDITING FOR ADMIN 1 */}
-                <div style={{ borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '12px', marginTop: '6px' }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '12px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    Fee Structure & Waiver Overrides
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Tuition Fee (₹)</label>
-                      <input
-                        type="number"
-                        value={editStudent.tuitionFee !== undefined ? editStudent.tuitionFee : 120000}
-                        onChange={(e) => setEditStudent({ ...editStudent, tuitionFee: parseFloat(e.target.value) || 0 })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Hostel Fee (₹)</label>
-                      <input
-                        type="number"
-                        value={editStudent.hostelFee !== undefined ? editStudent.hostelFee : 0}
-                        onChange={(e) => setEditStudent({ ...editStudent, hostelFee: parseFloat(e.target.value) || 0 })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Transport Fee (₹)</label>
-                      <input
-                        type="number"
-                        value={editStudent.transportFee !== undefined ? editStudent.transportFee : 0}
-                        onChange={(e) => setEditStudent({ ...editStudent, transportFee: parseFloat(e.target.value) || 0 })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Misc Fee (₹)</label>
-                      <input
-                        type="number"
-                        value={editStudent.miscellaneousFee !== undefined ? editStudent.miscellaneousFee : 5000}
-                        onChange={(e) => setEditStudent({ ...editStudent, miscellaneousFee: parseFloat(e.target.value) || 0 })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Tuition Waiver (₹)</label>
-                      <input
-                        type="number"
-                        value={editStudent.tuitionWaiver !== undefined ? editStudent.tuitionWaiver : 0}
-                        onChange={(e) => setEditStudent({ ...editStudent, tuitionWaiver: parseFloat(e.target.value) || 0 })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Previous Pending (₹)</label>
-                      <input
-                        type="number"
-                        value={editStudent.previousPending !== undefined ? editStudent.previousPending : 0}
-                        onChange={(e) => setEditStudent({ ...editStudent, previousPending: parseFloat(e.target.value) || 0 })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                  </div>
                 </div>
-              </div>
-
               {/* SAVE AND SUBMIT PROFILE CHANGES & DELETE OPTION FOR ADMIN 1 */}
               <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
                 <button 
@@ -1548,7 +1485,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               <div style={{ ...styles.overlaySheet, maxWidth: '440px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                   <h3 style={{ ...styles.modalTitle, color: 'var(--royal-gold)', margin: 0 }}>Security Authorization OTP</h3>
-                  <button onClick={() => !isSubmittingStudent && setIsRegStuOtpModalOpen(false)} disabled={isSubmittingStudent} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: isSubmittingStudent ? 'not-allowed' : 'pointer', color: 'var(--muted-gray)' }}>×</button>
+                  <button onClick={() => !isSubmittingStudent && setIsRegStuOtpModalOpen(false)} disabled={isSubmittingStudent} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: isSubmittingStudent ? 'not-allowed' : 'pointer', color: 'var(--muted-gray)' }}>Ã—</button>
                 </div>
                 <p style={{ fontSize: '12px', color: 'var(--muted-gray)', marginBottom: '14px', lineHeight: 1.4 }}>
                   Enter your 6-digit Security Authorization Key / OTP to finalize student registration for <strong>{newStuName}</strong> (Adm No: {newStuAdmissionNumber || `ADM2400${students.length + 1}`}).
@@ -1632,7 +1569,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 2: TEACHERS MANAGEMENT ───
+  // â”€â”€â”€ SUBPAGE 2: TEACHERS MANAGEMENT â”€â”€â”€
   if (activePage === 'teachers') {
     const list = teachers
       .filter(t => {
@@ -1729,7 +1666,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       <span style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 600 }}>({t.subject})</span>
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>
-                      Salary: ₹{(t.salary || 0).toLocaleString('en-IN')} • Campus: {t.branch || 'Erragattugutta C1'}
+                      Salary: â‚¹{(t.salary || 0).toLocaleString('en-IN')} â€¢ Campus: {t.branch || 'Erragattugutta C1'}
                     </div>
                   </div>
                   <button
@@ -1762,7 +1699,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     onClick={() => { setSelectedTeacher(null); setEditTeacher(null); }}
                     style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
-                    ×
+                    Ã—
                   </button>
                 </div>
 
@@ -1810,7 +1747,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Monthly Salary (₹)</label>
+                      <label style={styles.formLabel}>Monthly Salary (â‚¹)</label>
                       <input
                         type="number"
                         value={editTeacher.salary || ''}
@@ -1870,7 +1807,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     onClick={() => setIsAddTeacherModalOpen(false)}
                     style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
-                    ×
+                    Ã—
                   </button>
                 </div>
 
@@ -1919,7 +1856,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Monthly Salary (₹)</label>
+                      <label style={styles.formLabel}>Monthly Salary (â‚¹)</label>
                       <input
                         type="number"
                         placeholder="e.g. 75000"
@@ -1982,7 +1919,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 3: PUBLISHING CENTER ───
+  // â”€â”€â”€ SUBPAGE 3: PUBLISHING CENTER â”€â”€â”€
   if (activePage === 'publishing') {
     const list = bulletins.filter(b => b.category === pubCat);
 
@@ -2086,7 +2023,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 4: TIMETABLES & CALENDAR ───
+  // â”€â”€â”€ SUBPAGE 4: TIMETABLES & CALENDAR â”€â”€â”€
   if (activePage === 'calendar') {
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -2138,7 +2075,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             </p>
             {timetableUploading ? (
               <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--royal-gold)', fontWeight: 700 }}>
-                ⏳ Uploading and parsing timetable on backend...
+                â³ Uploading and parsing timetable on backend...
               </div>
             ) : timetableFile && (
               <button
@@ -2299,7 +2236,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 5: CLASS SCHEDULING ───
+  // â”€â”€â”€ SUBPAGE 5: CLASS SCHEDULING â”€â”€â”€
   if (activePage === 'classes') {
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -2401,7 +2338,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 6: EXAMINATION DESK ───
+  // â”€â”€â”€ SUBPAGE 6: EXAMINATION DESK â”€â”€â”€
   if (activePage === 'exams') {
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -2453,7 +2390,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             </p>
             {examUploading ? (
               <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--royal-gold)', fontWeight: 700 }}>
-                ⏳ Uploading and parsing results on backend...
+                â³ Uploading and parsing results on backend...
               </div>
             ) : resultsFile && (
               <button
@@ -2515,7 +2452,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 <div key={e.id || e._id} style={styles.receiptRowItem}>
                 <div>
                   <strong>{e.name}</strong>
-                  <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{e.class} • {e.date} • {e.status}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{e.class} â€¢ {e.date} â€¢ {e.status}</div>
                 </div>
                 {!e.resultsPublished && (
                   <button onClick={() => handlePublishResults(e.id || e._id || '')} style={styles.actionItemBtn} className="press-interactive">Submit & Publish Results</button>
@@ -2545,7 +2482,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 7: ACADEMIC FEES ───
+  // â”€â”€â”€ SUBPAGE 7: ACADEMIC FEES â”€â”€â”€
   if (activePage === 'academic_fees') {
     if (role !== 'admin1' && role !== 'admin2') { setActivePage('menu'); return null; }
 
@@ -2636,7 +2573,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Rector Baseline: {selectedFeeBranch}</h4>
               <span style={{ fontSize: '10px', fontWeight: 800, color: locked ? '#EF4444' : 'var(--royal-gold)', backgroundColor: locked ? 'rgba(239,68,68,0.06)' : 'rgba(212,175,55,0.06)', border: `1.5px solid ${locked ? '#EF4444' : 'var(--royal-gold)'}`, padding: '4px 8px', borderRadius: '8px' }}>
-                {locked ? 'Locked — Rates Finalized' : 'Edit Mode Active'}
+                {locked ? 'Locked â€” Rates Finalized' : 'Edit Mode Active'}
               </span>
             </div>
 
@@ -2650,7 +2587,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   </div>
                   <div style={{ width: '140px', flexShrink: 0 }}>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                      <span style={{ position: 'absolute', left: '10px', fontSize: '13px', fontWeight: 900, color: locked ? 'var(--muted-gray)' : 'var(--royal-gold)' }}>₹</span>
+                      <span style={{ position: 'absolute', left: '10px', fontSize: '13px', fontWeight: 900, color: locked ? 'var(--muted-gray)' : 'var(--royal-gold)' }}>â‚¹</span>
                       <input
                         type="number"
                         min="0"
@@ -2671,7 +2608,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             {/* Total row */}
             <div style={{ borderTop: '2px solid var(--royal-gold)', marginTop: '10px', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 900, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Total Annual Fee</span>
-              <strong style={{ fontSize: '20px', fontWeight: 900, color: 'var(--royal-gold)' }}>₹{grandTotal.toLocaleString('en-IN')}</strong>
+              <strong style={{ fontSize: '20px', fontWeight: 900, color: 'var(--royal-gold)' }}>â‚¹{grandTotal.toLocaleString('en-IN')}</strong>
             </div>
 
             {/* Action buttons */}
@@ -2776,9 +2713,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── Reports Compiler removed per admin directive ───
+  // â”€â”€â”€ Reports Compiler removed per admin directive â”€â”€â”€
 
-  // ─── SUBPAGE 9: ATTENDANCE DASHBOARD & MARKING CONSOLE ───
+  // â”€â”€â”€ SUBPAGE 9: ATTENDANCE DASHBOARD & MARKING CONSOLE â”€â”€â”€
   if (activePage === 'attendance') {
     if (role === 'admin3') {
       const studentsList = attendanceRoster.filter(a => a.type === 'student' && a.section === selectedSection);
@@ -2855,7 +2792,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     <div key={stu.id} style={styles.receiptRowItem}>
                       <div>
                         <strong>{stu.name}</strong>
-                        <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>ID: {stu.id} • Roster Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{stu.status}</span></div>
+                        <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>ID: {stu.id} â€¢ Roster Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{stu.status}</span></div>
                       </div>
                       <div style={{ display: 'flex', gap: '4px' }}>
                         {(['present', 'absent', 'late'] as const).map((st) => (
@@ -2895,7 +2832,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     <div key={fac.id} style={styles.receiptRowItem}>
                       <div>
                         <strong>{fac.name}</strong>
-                        <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Code: {fac.id} • Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{fac.status}</span></div>
+                        <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Code: {fac.id} â€¢ Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{fac.status}</span></div>
                       </div>
                       <div style={{ display: 'flex', gap: '4px' }}>
                         {(['present', 'absent', 'leave'] as const).map((st) => (
@@ -3008,17 +2945,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
 
 
-  // ─── SUBPAGE 12: STUDENT FEE EDITOR (Admin 2) ───
+  // â”€â”€â”€ SUBPAGE 12: STUDENT FEE EDITOR (Admin 2) â”€â”€â”€
   if (activePage === 'fee_editor') {
 
-    const handleFeeSearch = async () => {
+        const handleFeeSearch = async () => {
       const match = students.find(s =>
         s.admissionNumber.toUpperCase().trim() === feeEditSearch.toUpperCase().trim() ||
         s.rollNumber.toUpperCase().trim() === feeEditSearch.toUpperCase().trim()
       );
       if (match) {
         try {
-          const breakdown = await admin2Service.getFeeBreakdown(match._id || 'fallback_id');
+          const targetBranch = match.branch || (role === 'admin1' ? selectedFeeBranch : loggedInCampus);
+          const breakdown = await admin2Service.getFeeBreakdown(match._id || 'fallback_id', targetBranch);
           setSelectedFeeStudent(match);
           setFeeBreakdownData(breakdown);
           setEditTuitionWaiver(String(breakdown.tuitionWaiver));
@@ -3036,18 +2974,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       }
     };
 
-    const handleApplyWaivers = async (keyToUse: string) => {
+        const handleApplyWaivers = async (keyToUse: string) => {
       if (!selectedFeeStudent) return;
       try {
         setGlobalSecurityKey(keyToUse);
+        const targetBranch = selectedFeeStudent.branch || (role === 'admin1' ? selectedFeeBranch : loggedInCampus);
         const res = await admin2Service.applyFeeOverride(selectedFeeStudent._id || 'fallback_id', {
           tuitionWaiver: Number(editTuitionWaiver) || 0,
           hostelWaiver: Number(editHostelWaiver) || 0,
           transportWaiver: Number(editTransportWaiver) || 0,
           miscWaiver: Number(editMiscWaiver) || 0,
-        });
+        }, targetBranch);
         if (res.status === 'success') {
-          const breakdown = await admin2Service.getFeeBreakdown(selectedFeeStudent._id || 'fallback_id');
+          const breakdown = await admin2Service.getFeeBreakdown(selectedFeeStudent._id || 'fallback_id', targetBranch);
           setFeeBreakdownData(breakdown);
           triggerToast(`Fee waivers applied for ${selectedFeeStudent.name}.`);
           setIsFeeOtpOpen(false);
@@ -3097,32 +3036,32 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               {feeBreakdownData ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <h5 style={{ margin: '0 0 8px', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Fee Transaction History</h5>
-                  <div style={styles.metaRow}><span>Base Tuition Fee</span><strong>₹{(feeBreakdownData.tuitionFee||0).toLocaleString('en-IN')}</strong></div>
-                  {feeBreakdownData.hostelFee > 0 && <div style={styles.metaRow}><span>Hostel Fee</span><strong>₹{feeBreakdownData.hostelFee.toLocaleString('en-IN')}</strong></div>}
-                  {feeBreakdownData.transportFee > 0 && <div style={styles.metaRow}><span>Transport Fee</span><strong>₹{feeBreakdownData.transportFee.toLocaleString('en-IN')}</strong></div>}
-                  {feeBreakdownData.miscFee > 0 && <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>₹{feeBreakdownData.miscFee.toLocaleString('en-IN')}</strong></div>}
-                  {feeBreakdownData.previousPending > 0 && <div style={styles.metaRow}><span>Previous Pending</span><strong>₹{feeBreakdownData.previousPending.toLocaleString('en-IN')}</strong></div>}
-                  <div style={{ ...styles.metaRow, borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span><strong>Total Base Fee</strong></span><strong>₹{(feeBreakdownData.baseFee||0).toLocaleString('en-IN')}</strong></div>
+                  <div style={styles.metaRow}><span>Base Tuition Fee</span><strong>â‚¹{(feeBreakdownData.tuitionFee||0).toLocaleString('en-IN')}</strong></div>
+                  {feeBreakdownData.hostelFee > 0 && <div style={styles.metaRow}><span>Hostel Fee</span><strong>â‚¹{feeBreakdownData.hostelFee.toLocaleString('en-IN')}</strong></div>}
+                  {feeBreakdownData.transportFee > 0 && <div style={styles.metaRow}><span>Transport Fee</span><strong>â‚¹{feeBreakdownData.transportFee.toLocaleString('en-IN')}</strong></div>}
+                  {feeBreakdownData.miscFee > 0 && <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>â‚¹{feeBreakdownData.miscFee.toLocaleString('en-IN')}</strong></div>}
+                  {feeBreakdownData.previousPending > 0 && <div style={styles.metaRow}><span>Previous Pending</span><strong>â‚¹{feeBreakdownData.previousPending.toLocaleString('en-IN')}</strong></div>}
+                  <div style={{ ...styles.metaRow, borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span><strong>Total Base Fee</strong></span><strong>â‚¹{(feeBreakdownData.baseFee||0).toLocaleString('en-IN')}</strong></div>
                   {feeBreakdownData.scholarshipDeduction > 0 && (
                     <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
                       <span>Scholarship ({feeBreakdownData.scholarshipCategory}: {feeBreakdownData.scholarshipPct}%)</span>
-                      <strong>- ₹{feeBreakdownData.scholarshipDeduction.toLocaleString('en-IN')}</strong>
+                      <strong>- â‚¹{feeBreakdownData.scholarshipDeduction.toLocaleString('en-IN')}</strong>
                     </div>
                   )}
                   {feeBreakdownData.individualOverrideDeduction > 0 && (
                     <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
                       <span>Fee Waivers Applied</span>
-                      <strong>- ₹{feeBreakdownData.individualOverrideDeduction.toLocaleString('en-IN')}</strong>
+                      <strong>- â‚¹{feeBreakdownData.individualOverrideDeduction.toLocaleString('en-IN')}</strong>
                     </div>
                   )}
-                  <div style={{ ...styles.metaRow, color: '#D32F2F', borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span>Total Paid by Student</span><strong>- ₹{(feeBreakdownData.totalPaid||0).toLocaleString('en-IN')}</strong></div>
+                  <div style={{ ...styles.metaRow, color: '#D32F2F', borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span>Total Paid by Student</span><strong>- â‚¹{(feeBreakdownData.totalPaid||0).toLocaleString('en-IN')}</strong></div>
                   <div style={{ ...styles.metaRow, backgroundColor: 'rgba(212,175,55,0.08)', padding: '12px', borderRadius: '12px', marginTop: '6px' }}>
                     <span style={{ fontWeight: 800, color: 'var(--royal-gold)' }}>Remaining Balance</span>
-                    <strong style={{ fontSize: '16px', color: 'var(--royal-gold)', fontWeight: 900 }}>₹{(feeBreakdownData.remainingBalance||0).toLocaleString('en-IN')}</strong>
+                    <strong style={{ fontSize: '16px', color: 'var(--royal-gold)', fontWeight: 900 }}>â‚¹{(feeBreakdownData.remainingBalance||0).toLocaleString('en-IN')}</strong>
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '12px' }}>Loading fee breakdown…</div>
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '12px' }}>Loading fee breakdownâ€¦</div>
               )}
             </GlassCard>
           )}
@@ -3133,7 +3072,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)' }}>Modify Fee Waivers & Custom Overrides</h4>
               <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: '14px' }}>Individual fee overrides & waivers are locked to the student profile upon verification.</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {[['Tuition Waiver (₹)', editTuitionWaiver, setEditTuitionWaiver], ['Hostel Waiver (₹)', editHostelWaiver, setEditHostelWaiver], ['Transport Waiver (₹)', editTransportWaiver, setEditTransportWaiver], ['Misc Waiver (₹)', editMiscWaiver, setEditMiscWaiver]].map(([label, val, setter]: any) => (
+                {[['Tuition Waiver (â‚¹)', editTuitionWaiver, setEditTuitionWaiver], ['Hostel Waiver (â‚¹)', editHostelWaiver, setEditHostelWaiver], ['Transport Waiver (â‚¹)', editTransportWaiver, setEditTransportWaiver], ['Misc Waiver (â‚¹)', editMiscWaiver, setEditMiscWaiver]].map(([label, val, setter]: any) => (
                   <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>{label}</label>
                     <input type="number" min="0" value={val} onChange={(e) => setter(e.target.value)} style={styles.textInputBox} />
@@ -3193,7 +3132,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 13: LATE FEES & SCHOLARSHIPS (Admin 2) ───
+  // â”€â”€â”€ SUBPAGE 13: LATE FEES & SCHOLARSHIPS (Admin 2) â”€â”€â”€
   if (activePage === 'late_scholarships') {
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -3209,32 +3148,33 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
               <div style={styles.metaRow}><span>Current Overdue Policy</span><strong>{lateFeeRulesText}</strong></div>
             </div>
-            <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '10px', fontStyle: 'italic' }}>ⓘ Late Fee policies are managed and updated by the Accountant Portal.</p>
+            <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '10px', fontStyle: 'italic' }}>â“˜ Late Fee policies are managed and updated by the Accountant Portal.</p>
           </GlassCard>
           <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>Scholarship Merit Policy</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
               <div style={styles.metaRow}><span>Active Rules</span><strong>{scholarshipRulesText}</strong></div>
             </div>
-            <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '10px', fontStyle: 'italic' }}>ⓘ Scholarship slabs are configured and maintained by the Accountant Portal.</p>
+            <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '10px', fontStyle: 'italic' }}>â“˜ Scholarship slabs are configured and maintained by the Accountant Portal.</p>
           </GlassCard>
         </main>
       </div>
     );
   }
 
-  // ─── SUBPAGE 14: EXPENDITURE TRACKER (Admin 2) ───
+  // â”€â”€â”€ SUBPAGE 14: EXPENDITURE TRACKER (Admin 2) â”€â”€â”€
   if (activePage === 'expenditure') {
-    const handleLogExpenditure = async (keyToUse: string) => {
+        const handleLogExpenditure = async (keyToUse: string) => {
       if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; }
       try {
         setGlobalSecurityKey(keyToUse);
+        const targetBranch = role === 'admin1' ? selectedExpBranch : loggedInCampus;
         await admin2Service.createExpenditure({
           category: newExpCat,
           amount: Number(newExpAmt),
           description: newExpDesc,
           date: newExpDate || new Date().toISOString().split('T')[0]
-        } as any);
+        } as any, targetBranch);
         setNewExpAmt(''); setNewExpDesc('');
         setIsExpOtpOpen(false); setExpOtpInput('');
         triggerToast('Expenditure logged successfully.');
@@ -3242,12 +3182,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       } catch (err: any) { triggerToast(err.message || 'Failed to log expenditure.'); }
     };
 
-    const handleDeleteExpenditure = async (exp: ExpenditureItem) => {
+        const handleDeleteExpenditure = async (exp: ExpenditureItem) => {
       if (role !== 'admin1') { triggerToast('Only the Rector (Admin 1) can delete expenditure entries.'); return; }
       const id = exp._id || exp.id;
       if (!id) return;
       try {
-        await admin2Service.deleteExpenditure(id);
+        await admin2Service.deleteExpenditure(id, exp.branch || selectedExpBranch);
         triggerToast('Expenditure entry deleted.');
         fetchExpenditures();
       } catch (err: any) { triggerToast(err.message || 'Failed to delete expenditure.'); }
@@ -3283,7 +3223,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           <text x="10" y="${y + 12}" font-size="9" font-weight="bold" fill="#475569">${cat}</text>
           <rect x="90" y="${y}" width="280" height="14" rx="4" fill="#cbd5e1" />
           <rect x="90" y="${y}" width="${width}" height="14" rx="4" fill="#0D9488" />
-          <text x="${95 + width}" y="${y + 11}" font-size="8.5" font-weight="bold" fill="#0D9488">₹${amt.toLocaleString('en-IN')}</text>
+          <text x="${95 + width}" y="${y + 11}" font-size="8.5" font-weight="bold" fill="#0D9488">â‚¹${amt.toLocaleString('en-IN')}</text>
         `;
       });
 
@@ -3298,7 +3238,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       const reportHtml = `
         <html>
         <head>
-          <title>Expenditure Report — ${campus}</title>
+          <title>Expenditure Report â€” ${campus}</title>
           <style>
             @page { size: A4; margin: 20mm; }
             body { font-family: Inter, ui-sans-serif, sans-serif; color: #1E293B; margin: 0; padding: 0; background: #ffffff; }
@@ -3327,7 +3267,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           <div class="header">
             <div>
               <div class="brand-name">Inspire Group of Colleges</div>
-              <div class="brand-sub">Campus: ${campus} • Expenditure Audit System</div>
+              <div class="brand-sub">Campus: ${campus} â€¢ Expenditure Audit System</div>
             </div>
             <div>
               <div class="report-title">Expenditure Summary Report</div>
@@ -3354,12 +3294,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <td>${typeof e.date === 'string' ? e.date.split('T')[0] : e.date}</td>
                   <td>${e.category}</td>
                   <td>${e.description}</td>
-                  <td style="text-align: right;">₹${e.amount.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right;">â‚¹${e.amount.toLocaleString('en-IN')}</td>
                 </tr>
               `).join('')}
               <tr class="total-row">
                 <td colspan="3">Grand Total</td>
-                <td style="text-align: right;">₹${total.toLocaleString('en-IN')}</td>
+                <td style="text-align: right;">â‚¹${total.toLocaleString('en-IN')}</td>
               </tr>
             </tbody>
           </table>
@@ -3385,7 +3325,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 <html>
 <head>
   <meta charset="UTF-8"/>
-  <title>Expenditure Bill — ${exp.category}</title>
+  <title>Expenditure Bill â€” ${exp.category}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     *{margin:0;padding:0;box-sizing:border-box;}
@@ -3428,17 +3368,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     <div class="row"><span>Description</span><strong>${exp.description}</strong></div>
     <div class="row"><span>Branch / Campus</span><strong>${exp.branch || 'N/A'}</strong></div>
     <div class="row"><span>Date of Expenditure</span><strong>${dateStr}</strong></div>
-    <div class="row"><span>Logged By</span><strong>Administrator — ${role === 'admin1' ? 'Rector' : 'Principal'}</strong></div>
+    <div class="row"><span>Logged By</span><strong>Administrator â€” ${role === 'admin1' ? 'Rector' : 'Principal'}</strong></div>
     <div class="total-row">
       <div class="total-label">Total Amount Spent</div>
-      <div class="total-amt">₹${exp.amount.toLocaleString('en-IN')}</div>
+      <div class="total-amt">â‚¹${exp.amount.toLocaleString('en-IN')}</div>
     </div>
     <div style="margin-top:20px;text-align:right;">
       <div class="stamp"> APPROVED</div>
     </div>
   </div>
   <div class="footer">
-    This document is system-generated by the Inspire ERP — Expenditure Tracker. For queries contact finance@inspirecolleges.edu
+    This document is system-generated by the Inspire ERP â€” Expenditure Tracker. For queries contact finance@inspirecolleges.edu
   </div>
 </div>
 </body>
@@ -3478,7 +3418,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 return (
                   <div key={b} onClick={() => setSelectedExpBranch(b as any)} style={{ padding: '12px 10px', borderRadius: '12px', border: isActive ? '2px solid var(--royal-gold)' : '1px solid rgba(255,255,255,0.1)', background: isActive ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }} className="press-interactive">
                     <div style={{ fontSize: '10px', color: isActive ? 'var(--royal-gold)' : 'var(--muted-gray)', fontWeight: 800 }}>{b}</div>
-                    <strong style={{ fontSize: '14px', color: '#EF4444', display: 'block', marginTop: '4px' }}>₹{total.toLocaleString('en-IN')}</strong>
+                    <strong style={{ fontSize: '14px', color: '#EF4444', display: 'block', marginTop: '4px' }}>â‚¹{total.toLocaleString('en-IN')}</strong>
                   </div>
                 );
               })}
@@ -3502,7 +3442,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={styles.formLabel}>Amount (₹)</label>
+                <label style={styles.formLabel}>Amount (â‚¹)</label>
                 <input type="number" min="0" value={newExpAmt} onChange={(e) => setNewExpAmt(e.target.value)} style={styles.textInputBox} placeholder="e.g. 12000" />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: '1 / -1' }}>
@@ -3519,7 +3459,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>
-                Recent Entries {role === 'admin1' ? `(${selectedExpBranch})` : `(${loggedInCampus})`} — Total: ₹{totalFiltered.toLocaleString('en-IN')}
+                Recent Entries {role === 'admin1' ? `(${selectedExpBranch})` : `(${loggedInCampus})`} â€” Total: â‚¹{totalFiltered.toLocaleString('en-IN')}
               </h4>
               <button 
                 onClick={handleDownloadExpenditureReport} 
@@ -3546,11 +3486,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 filteredExpenditures.map((exp, i) => (
                   <div key={exp._id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: '1.5px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--dark-charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exp.category} — {exp.description}</div>
+                      <div style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--dark-charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exp.category} â€” {exp.description}</div>
                       <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{typeof exp.date === 'string' ? exp.date.split('T')[0] : exp.date}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                      <strong style={{ fontSize: '14px', color: '#EF4444' }}>₹{exp.amount.toLocaleString('en-IN')}</strong>
+                      <strong style={{ fontSize: '14px', color: '#EF4444' }}>â‚¹{exp.amount.toLocaleString('en-IN')}</strong>
                       <button onClick={() => handleDownloadBill(exp)} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(212,175,55,0.4)', backgroundColor: 'rgba(212,175,55,0.06)', color: 'var(--royal-gold)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }} title="Download Bill">Bill</button>
                       {role === 'admin1' && (
                         <button onClick={() => handleDeleteExpenditure(exp)} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
@@ -3571,8 +3511,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <h3 style={{ margin: '0 0 4px', fontWeight: 900, fontSize: '1.15rem', color: 'var(--dark-charcoal)' }}>Expenditure Verification</h3>
                   <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Enter the <strong>Expenditure OTP</strong> from the Authenticator to log this entry.</p>
                   <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '10px', fontSize: '12px', textAlign: 'left' }}>
-                    <div style={{ fontWeight: 700 }}>{newExpCat} — {newExpDesc}</div>
-                    <div style={{ color: '#EF4444', fontWeight: 900, fontSize: '16px', marginTop: '4px' }}>₹{Number(newExpAmt).toLocaleString('en-IN')}</div>
+                    <div style={{ fontWeight: 700 }}>{newExpCat} â€” {newExpDesc}</div>
+                    <div style={{ color: '#EF4444', fontWeight: 900, fontSize: '16px', marginTop: '4px' }}>â‚¹{Number(newExpAmt).toLocaleString('en-IN')}</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -3588,7 +3528,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 15: STAFF SALARY STATUS (Admin 2) ───
+  // â”€â”€â”€ SUBPAGE 15: STAFF SALARY STATUS (Admin 2) â”€â”€â”€
   if (activePage === 'salary_status') {
     const teacherList: any[] = teachers;
     const handleToggleSalary = async (t: any) => {
@@ -3626,9 +3566,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           </div>
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Faculty Roster — {teacherList.length} Members</h4>
+              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Faculty Roster â€” {teacherList.length} Members</h4>
               <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981', backgroundColor: 'rgba(16,185,129,0.08)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)' }}>
-                Total: ₹{teacherList.reduce((s, t) => s + (t.salary||0), 0).toLocaleString('en-IN')} / mo
+                Total: â‚¹{teacherList.reduce((s, t) => s + (t.salary||0), 0).toLocaleString('en-IN')} / mo
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -3636,13 +3576,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 <div key={t.id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: '1.5px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{t.name}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{t.subject} • {t.assignedClasses?.[0] || 'Unassigned'}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{t.subject} â€¢ {t.assignedClasses?.[0] || 'Unassigned'}</div>
                   </div>
                   <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                    <strong style={{ fontSize: '14px', color: 'var(--royal-gold)' }}>₹{(t.salary||0).toLocaleString('en-IN')}</strong>
+                    <strong style={{ fontSize: '14px', color: 'var(--royal-gold)' }}>â‚¹{(t.salary||0).toLocaleString('en-IN')}</strong>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '10px', color: t.salaryStatus === 'paid' ? '#10B981' : '#EF4444', fontWeight: 700 }}>
-                        {t.salaryStatus === 'paid' ? ` Paid${t.salaryPaymentDate ? ` (${t.salaryPaymentDate})` : ''}` : '● Pending'}
+                        {t.salaryStatus === 'paid' ? ` Paid${t.salaryPaymentDate ? ` (${t.salaryPaymentDate})` : ''}` : 'â— Pending'}
                       </span>
                       <button onClick={() => handleToggleSalary(t)} style={{ fontSize: '9px', padding: '3px 8px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(0,0,0,0.06)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }} className="press-interactive">Toggle</button>
                     </div>
@@ -3656,7 +3596,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 16: WORKER PAYMENT DETAILS (Admin 2) ───
+  // â”€â”€â”€ SUBPAGE 16: WORKER PAYMENT DETAILS (Admin 2) â”€â”€â”€
   if (activePage === 'worker_payments') {
     const triggerWorkerAction = (actionType: 'add' | 'toggle' | 'delete', data: any) => {
       if (actionType === 'add' && (!newWorkerName || !newWorkerRole || !newWorkerWage)) {
@@ -3716,14 +3656,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Name</label><input type="text" value={newWorkerName} onChange={(e) => setNewWorkerName(e.target.value)} style={styles.textInputBox} placeholder="e.g. Ramesh Kumar" /></div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Role</label><input type="text" value={newWorkerRole} onChange={(e) => setNewWorkerRole(e.target.value)} style={styles.textInputBox} placeholder="e.g. Plumber" /></div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Monthly Wage (₹)</label><input type="number" min="0" value={newWorkerWage} onChange={(e) => setNewWorkerWage(e.target.value)} style={styles.textInputBox} placeholder="e.g. 15000" /></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Monthly Wage (â‚¹)</label><input type="number" min="0" value={newWorkerWage} onChange={(e) => setNewWorkerWage(e.target.value)} style={styles.textInputBox} placeholder="e.g. 15000" /></div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Period</label><input type="text" value={newWorkerPeriod} onChange={(e) => setNewWorkerPeriod(e.target.value)} style={styles.textInputBox} placeholder="e.g. July 2026" /></div>
             </div>
             <button onClick={() => triggerWorkerAction('add', { name: newWorkerName, role: newWorkerRole, wage: newWorkerWage, period: newWorkerPeriod })} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">Add Worker Entry</button>
           </GlassCard>
           <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Workers — {workers.length} Staff</h4>
+              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Workers â€” {workers.length} Staff</h4>
               <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--royal-gold)', backgroundColor: 'rgba(251,191,36,0.08)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(251,191,36,0.2)' }}>Pending: {workers.filter(w => !w.paid).length}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -3731,7 +3671,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 <div key={w._id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: `1.5px solid ${w.paid ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, backgroundColor: w.paid ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{w.workerName || w.name}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{w.role} • {w.monthPeriod} • ₹{(w.amount || w.salary || 0).toLocaleString('en-IN')}/mo</div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{w.role} â€¢ {w.monthPeriod} â€¢ â‚¹{(w.amount || w.salary || 0).toLocaleString('en-IN')}/mo</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button onClick={() => triggerWorkerAction('toggle', w)} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', backgroundColor: w.paid ? 'rgba(16,185,129,0.12)' : 'var(--royal-gold)', color: w.paid ? '#10B981' : '#000', fontWeight: 800, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }} className="press-interactive">{w.paid ? 'Paid' : 'Unpaid'}</button>
@@ -3772,7 +3712,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 17: CAMPUS MARKS REGISTRY (Admin 2) ───
+  // â”€â”€â”€ SUBPAGE 17: CAMPUS MARKS REGISTRY (Admin 2) â”€â”€â”€
   if (activePage === 'enrollment_stats') {
     const list = studentMarksList
       .filter((s: any) => s.name.toLowerCase().includes(searchFac.toLowerCase()) || s.studentId.toLowerCase().includes(searchFac.toLowerCase()));
@@ -3860,7 +3800,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     onClick={() => setEditingMark(null)}
                     style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
-                    ×
+                    Ã—
                   </button>
                 </div>
 
@@ -3915,7 +3855,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     );
   }
 
-  // ─── SUBPAGE 20: PROFILE CONSOLE ───
+  // â”€â”€â”€ SUBPAGE 20: PROFILE CONSOLE â”€â”€â”€
   if (activePage === 'profile') {
     const getProfileData = () => {
       if (role === 'admin1') {
@@ -4075,13 +4015,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <div style={styles.metricsGrid}>
                     <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
                       <span style={styles.metricLabel}>Monthly Fee Collected</span>
-                      <strong style={{ ...styles.metricValue, color: '#10B981' }}>₹{monthlyFeeCollectedVal.toLocaleString('en-IN')}</strong>
+                      <strong style={{ ...styles.metricValue, color: '#10B981' }}>â‚¹{monthlyFeeCollectedVal.toLocaleString('en-IN')}</strong>
                       <span style={styles.metricSub}>From {localStudents.length} campus profiles</span>
                       <span className="glass-status-pill status-paid">Collected</span>
                     </GlassCard>
                     <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
                       <span style={styles.metricLabel}>Monthly Expenditure</span>
-                      <strong style={{ ...styles.metricValue, color: '#EF4444' }}>₹{monthlyExpenditureVal.toLocaleString('en-IN')}</strong>
+                      <strong style={{ ...styles.metricValue, color: '#EF4444' }}>â‚¹{monthlyExpenditureVal.toLocaleString('en-IN')}</strong>
                       <span style={styles.metricSub}>Local campus ledger total</span>
                       <span className="glass-status-pill status-warning">Paid Out</span>
                     </GlassCard>
@@ -4331,7 +4271,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <input type="text" autoFocus placeholder="Enter Security OTP..." value={deleteStuOtpInput} onChange={(e) => setDeleteStuOtpInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter' && deleteStuOtpInput.trim()) handlePermanentDeleteStudent(deleteStuOtpInput.trim()); }} style={{ padding: '12px 16px', border: '2px solid #EF4444', borderRadius: '12px', fontSize: '15px', fontWeight: 800, letterSpacing: '0.15em', textAlign: 'center', backgroundColor: '#fff', outline: 'none', fontFamily: 'monospace', color: '#DC2626' }} />
               <button onClick={() => handlePermanentDeleteStudent(deleteStuOtpInput.trim())} disabled={!deleteStuOtpInput.trim()} style={{ ...styles.saveSubmitBtn, marginTop: 0, backgroundColor: '#DC2626', opacity: deleteStuOtpInput.trim() ? 1 : 0.4 }} className="press-interactive">PERMANENTLY PURGE STUDENT</button>
-              <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel — Keep Student Record</button>
+              <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel â€” Keep Student Record</button>
             </div>
           </div>
         </div>
@@ -4852,5 +4792,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: 'pointer'
   }
 };
+
 
 

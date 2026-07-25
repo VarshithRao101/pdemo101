@@ -78,34 +78,42 @@ export const admin2Service = {
   },
 
   // 2. Student Fee Overrides & Breakdown
-  async applyFeeOverride(studentId: string, waiverData: { tuitionWaiver: number; hostelWaiver: number; transportWaiver: number; miscWaiver: number }): Promise<any> {
-    const res = await apiClient.patch<any>(`/admin2/students/${studentId}/fee-override`, waiverData);
+  async applyFeeOverride(
+    studentId: string,
+    waiverData: { tuitionWaiver: number; hostelWaiver: number; transportWaiver: number; miscWaiver: number },
+    branch?: string
+  ): Promise<any> {
+    const res = await apiClient.patch<any>(`/admin2/students/${studentId}/fee-override`, branch ? { ...waiverData, branch } : waiverData);
     return res;
   },
 
-  async getFeeBreakdown(studentId: string): Promise<FeeBreakdown> {
-    const res = await apiClient.get<{ status: string; data: FeeBreakdown }>(`/admin2/students/${studentId}/fee-breakdown`);
+  async getFeeBreakdown(studentId: string, branch?: string): Promise<FeeBreakdown> {
+    const url = branch ? `/admin2/students/${studentId}/fee-breakdown?branch=${encodeURIComponent(branch)}` : `/admin2/students/${studentId}/fee-breakdown`;
+    const res = await apiClient.get<{ status: string; data: FeeBreakdown }>(url);
     return res.data;
   },
 
   // 3. Expenditure Tracker CRUD
-  async getExpenditures(): Promise<ExpenditureItem[]> {
-    const res = await apiClient.get<{ status: string; data: ExpenditureItem[] }>('/admin2/expenditure');
+  async getExpenditures(branch?: string): Promise<ExpenditureItem[]> {
+    const url = branch ? `/admin2/expenditure?branch=${encodeURIComponent(branch)}` : '/admin2/expenditure';
+    const res = await apiClient.get<{ status: string; data: ExpenditureItem[] }>(url);
     return res.data;
   },
 
-  async createExpenditure(expData: { category: string; amount: number; description: string; date?: string }): Promise<ExpenditureItem> {
-    const res = await apiClient.post<{ status: string; data: ExpenditureItem }>('/admin2/expenditure', expData);
+  async createExpenditure(expData: { category: string; amount: number; description: string; date?: string; branch?: string }, branch?: string): Promise<ExpenditureItem> {
+    const res = await apiClient.post<{ status: string; data: ExpenditureItem }>('/admin2/expenditure', branch ? { ...expData, branch } : expData);
     return res.data;
   },
 
-  async updateExpenditure(id: string, expData: Partial<ExpenditureItem>): Promise<ExpenditureItem> {
-    const res = await apiClient.patch<{ status: string; data: ExpenditureItem }>(`/admin2/expenditure/${id}`, expData);
+  async updateExpenditure(id: string, expData: Partial<ExpenditureItem>, branch?: string): Promise<ExpenditureItem> {
+    const url = branch ? `/admin2/expenditure/${id}?branch=${encodeURIComponent(branch)}` : `/admin2/expenditure/${id}`;
+    const res = await apiClient.patch<{ status: string; data: ExpenditureItem }>(url, branch ? { ...expData, branch } : expData);
     return res.data;
   },
 
-  async deleteExpenditure(id: string): Promise<any> {
-    const res = await apiClient.request<any>(`/admin2/expenditure/${id}`, { method: 'DELETE' });
+  async deleteExpenditure(id: string, branch?: string): Promise<any> {
+    const url = branch ? `/admin2/expenditure/${id}?branch=${encodeURIComponent(branch)}` : `/admin2/expenditure/${id}`;
+    const res = await apiClient.request<any>(url, { method: 'DELETE' });
     return res;
   },
 

@@ -286,6 +286,15 @@ export const apiClient = {
     const method = options.method?.toUpperCase() || 'GET';
     const token = sessionStorage.getItem('auth_token') || '';
     const username = (token.includes('-for-') ? (token.split('-for-')[1] || 'admin1') : 'admin1').toLowerCase();
+    const isAdmin1User = username === 'admin1';
+    const normalizeHostelStatus = (status: any) => {
+      const value = (status || '').toString().trim().toLowerCase();
+      return value === 'resident' || value === 'hostelite' || value === 'hostel';
+    };
+    const normalizeTransportStatus = (status: any) => {
+      const value = (status || '').toString().trim().toLowerCase();
+      return value === 'college bus' || value === 'college transport' || value === 'transport';
+    };
 
     if (cleanPath === '/auth/verify-credentials') {
       let bodyData: any = {};
@@ -577,7 +586,7 @@ export const apiClient = {
       return { status: 'success', data: { scholarshipRules: 'Merit: 50% waiver, Sports: 30% waiver' } } as any;
     }
 
-    if (cleanPath.includes('/fee-settings')) {
+        if (cleanPath.includes('/fee-settings')) {
       const allFeeSettings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
       if (method === 'PATCH') {
         const parsedBody = options.body ? JSON.parse(options.body as string) : {};
@@ -585,14 +594,82 @@ export const apiClient = {
         allFeeSettings[branch] = { ...allFeeSettings[branch], ...parsedBody };
         localStorage.setItem('jc_fee_settings', JSON.stringify(allFeeSettings));
         return { status: 'success', data: allFeeSettings[branch] } as any;
-      } else {
-        const urlParams = new URLSearchParams(cleanPath.split('?')[1] || '');
-        const branch = urlParams.get('branch') || 'Erragattugutta C1';
-        const feeData = allFeeSettings[branch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000, isLocked: true };
-        return { status: 'success', data: feeData } as any;
       }
+      const urlParams = new URLSearchParams(cleanPath.split('?')[1] || '');
+      const branch = urlParams.get('branch') || 'Erragattugutta C1';
+      const feeData = allFeeSettings[branch] || { tuition: 120000, hostel: 85000, transport: 15000, misc: 5000, isLocked: true };
+      return { status: 'success', data: feeData } as any;
     }
 
+    if (cleanPath.includes('/fee-override')) {
+      const parsedBody = options.body ? JSON.parse(options.body as string) : {};
+      const branch = parsedBody.branch || 'Erragattugutta C1';
+      const targetId = cleanPath.split('/students/')[1]?.split('/')[0]?.toLowerCase().trim() || '';
+      const allStudents = getOrInitStudents();
+      const stuIdx = allStudents.findIndex(s =>
+        (s._id || '').toLowerCase() === targetId ||
+        (s.studentId || '').toLowerCase() === targetId ||
+        (s.admissionNumber || '').toLowerCase() === targetId
+      );
+      if (stuIdx === -1) {
+        const err: ApiError = new Error('Student record not found.');
+        err.status = 404;
+        throw err;
+      }
+      const targetStudent = { ...allStudents[stuIdx] };
+      const tuitionWaiver = Number(parsedBody.tuitionWaiver || 0);
+      const hostelWaiver = Number(parsedBody.hostelWaiver || 0);
+      const transportWaiver = Number(parsedBody.transportWaiver || 0);
+      const miscWaiver = Number(parsedBody.miscWaiver || 0);
+      const totalWaivers = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
+      const totalFee = Number(targetStudent.tuitionFee || 0) + Number(targetStudent.hostelFee || 0) + Number(targetStudent.transportFee || 0) + Number(targetStudent.miscellaneousFee || 0) + Number(targetStudent.previousPending || 0);
+      const remainingBalance = Math.max(0, totalFee - totalWaivers - Number(targetStudent.totalPaid || 0));
+      const updatedStudent = {
+        ...targetStudent,
+        tuitionWaiver,
+        hostelWaiver,
+        transportWaiver,
+        miscWaiver,
+        remainingBalance,
+        isCustomFee: true,
+        branch
+      };
+      allStudents[stuIdx] = updatedStudent;
+      localStorage.setItem('jc_students', JSON.stringify(allStudents));
+      triggerPortalDataSync('students');
+      return { status: 'success', data: updatedStudent } as any;
+    }
+
+    if (cleanPath.includes('/fee-breakdown')) {
+      const urlParams = new URLSearchParams(cleanPath.split('?')[1] || '');
+      const branch = urlParams.get('branch') || 'Erragattugutta C1';
+      const targetId = cleanPath.split('/students/')[1]?.split('/')[0]?.toLowerCase().trim() || '';
+      const allStudents = getOrInitStudents();
+      const student = allStudents.find(s =>
+        (s._id || '').toLowerCase() === targetId ||
+        (s.studentId || '').toLowerCase() === targetId ||
+        (s.admissionNumber || '').toLowerCase() === targetId
+      );
+      if (!student) {
+        const err: ApiError = new Error('Student fee breakdown record not found.');
+        err.status = 404;
+        throw err;
+      }
+      const tuitionFee = Number(student.tuitionFee || 120000);
+      const hostelFee = Number(student.hostelFee || 0);
+      const transportFee = Number(student.transportFee || 0);
+      const miscFee = Number(student.miscellaneousFee || 5000);
+      const previousPending = Number(student.previousPending || 0);
+      const totalPaid = Number(student.totalPaid || 0);
+      const tuitionWaiver = Number(student.tuitionWaiver || 0);
+      const hostelWaiver = Number(student.hostelWaiver || 0);
+      const transportWaiver = Number(student.transportWaiver || 0);
+      const miscWaiver = Number(student.miscWaiver || 0);
+      const individualOverrideDeduction = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
+      const baseFee = tuitionFee + hostelFee + transportFee + miscFee + previousPending;
+      const remainingBalance = Math.max(0, baseFee - individualOverrideDeduction - totalPaid);
+      return { status: 'success', data: { baseFee, tuitionFee, hostelFee, transportFee, miscFee, previousPending, scholarshipCategory: individualOverrideDeduction > 0 ? 'Individual Fee Waiver' : 'None', scholarshipPct: 0, scholarshipDeduction: 0, individualOverrideDeduction, tuitionWaiver, hostelWaiver, transportWaiver, miscWaiver, totalPaid, remainingBalance, isCustomFee: Boolean(student.isCustomFee), branch } } as any;
+    }
     // Auto-purge old stored mock student data so user starts with a 100% empty database
     if (typeof window !== 'undefined' && !localStorage.getItem('jc_db_purged_v3')) {
       localStorage.removeItem('jc_students');
@@ -600,7 +677,7 @@ export const apiClient = {
       localStorage.setItem('jc_db_purged_v3', 'true');
     }
 
-    const getOrInitStudents = (): any[] => {
+    function getOrInitStudents(): any[] {
       const existing = localStorage.getItem('jc_students');
       if (existing) {
         try {
@@ -611,7 +688,7 @@ export const apiClient = {
       return [];
     };
 
-    const triggerPortalDataSync = (keyName: string) => {
+    function triggerPortalDataSync(keyName: string) {
       if (typeof window !== 'undefined') {
         try {
           window.dispatchEvent(new Event('storage'));
@@ -651,8 +728,8 @@ export const apiClient = {
 
       const tuitionFee = Number(parsedBody.tuitionFee !== undefined ? parsedBody.tuitionFee : campusFee.tuition);
       const miscellaneousFee = Number(parsedBody.miscellaneousFee !== undefined ? parsedBody.miscellaneousFee : campusFee.misc);
-      const hostelFee = Number(parsedBody.hostelFee !== undefined ? parsedBody.hostelFee : (parsedBody.hostelStatus === 'Hostelite' ? campusFee.hostel : 0));
-      const transportFee = Number(parsedBody.transportFee !== undefined ? parsedBody.transportFee : (parsedBody.transportStatus === 'College Transport' ? campusFee.transport : 0));
+      const hostelFee = Number(parsedBody.hostelFee !== undefined ? parsedBody.hostelFee : (normalizeHostelStatus(parsedBody.hostelStatus) ? campusFee.hostel : 0));
+      const transportFee = Number(parsedBody.transportFee !== undefined ? parsedBody.transportFee : (normalizeTransportStatus(parsedBody.transportStatus) ? campusFee.transport : 0));
 
       const totalFee = tuitionFee + hostelFee + transportFee + miscellaneousFee;
 
@@ -885,23 +962,48 @@ export const apiClient = {
       return { status: 'success', data: storedTeachers } as any;
     }
 
-    if (cleanPath.includes('/expenditures')) {
+        if (cleanPath.includes('/expenditure')) {
       const storedExp: any[] = JSON.parse(localStorage.getItem('jc_expenditures') || '[]');
+      const parsedBody = options.body ? JSON.parse(options.body as string) : {};
+      const urlParams = new URLSearchParams(cleanPath.split('?')[1] || '');
+      const requestedBranch = parsedBody.branch || urlParams.get('branch') || '';
       if (method === 'POST') {
-        const parsedBody = options.body ? JSON.parse(options.body as string) : {};
         const newExp = {
           ...parsedBody,
           _id: `exp_${Date.now()}`,
-          id: `exp_${Date.now()}`
+          id: `exp_${Date.now()}`,
+          branch: requestedBranch || parsedBody.branch || 'Erragattugutta C1'
         };
         storedExp.unshift(newExp);
         localStorage.setItem('jc_expenditures', JSON.stringify(storedExp));
         triggerPortalDataSync('expenditures');
         return { status: 'success', data: newExp } as any;
       }
-      return { status: 'success', data: storedExp } as any;
+      if (method === 'PATCH') {
+        const targetId = cleanPath.split('/expenditure/')[1]?.split('?')[0]?.toLowerCase().trim() || cleanPath.split('/expenditures/')[1]?.split('?')[0]?.toLowerCase().trim() || '';
+        const idx = storedExp.findIndex(e => (e._id || '').toLowerCase() === targetId || (e.id || '').toLowerCase() === targetId);
+        if (idx === -1) {
+          const err: ApiError = new Error('Expenditure record not found.');
+          err.status = 404;
+          throw err;
+        }
+        storedExp[idx] = { ...storedExp[idx], ...parsedBody, branch: requestedBranch || storedExp[idx].branch || 'Erragattugutta C1' };
+        localStorage.setItem('jc_expenditures', JSON.stringify(storedExp));
+        triggerPortalDataSync('expenditures');
+        return { status: 'success', data: storedExp[idx] } as any;
+      }
+      if (method === 'DELETE') {
+        const targetId = cleanPath.split('/expenditure/')[1]?.split('?')[0]?.toLowerCase().trim() || cleanPath.split('/expenditures/')[1]?.split('?')[0]?.toLowerCase().trim() || '';
+        const filtered = storedExp.filter(e => (e._id || '').toLowerCase() !== targetId && (e.id || '').toLowerCase() !== targetId);
+        localStorage.setItem('jc_expenditures', JSON.stringify(filtered));
+        triggerPortalDataSync('expenditures');
+        return { status: 'success', message: 'Expenditure deleted.' } as any;
+      }
+      if (isAdmin1User) {
+        return { status: 'success', data: storedExp } as any;
+      }
+      return { status: 'success', data: requestedBranch ? storedExp.filter((e: any) => (e.branch || '') === requestedBranch) : storedExp } as any;
     }
-
     if (cleanPath.includes('/attendance')) {
       const storedAtt: any[] = JSON.parse(localStorage.getItem('jc_attendance') || '[]');
       if (method === 'POST') {
@@ -917,3 +1019,6 @@ export const apiClient = {
     return { status: 'success', data: method === 'GET' ? [] : {} } as any;
   }
 };
+
+
+
