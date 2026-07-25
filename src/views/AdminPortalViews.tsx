@@ -8,6 +8,8 @@ import { admin1Service } from '../services/admin1Service';
 import { admin2Service } from '../services/admin2Service';
 import * as accountantService from '../services/accountantService';
 import { onSocketEvent } from '../services/socketClient';
+import { PortalDataLoader } from '../components/common/PortalDataLoader';
+
 
 // --- RENDER BACKGROUND DESIGN WITH CUSTOM ACCENT COLOR GLOWS ---
 const renderBackgroundDesign = (colorTheme: 'emerald' | 'gold' | 'sapphire' | 'ruby' | 'purple' | 'rose' | 'teal' | 'navy' | 'cyan' | 'orange' | 'indigo' | 'violet' = 'gold') => {
@@ -194,10 +196,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isPageLoading, setIsPageLoading] = useState(false);
   const [activePage, setActivePage] = useState<string>('menu');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [livePulseKey, setLivePulseKey] = useState<'students' | 'attendance' | 'bulletins' | 'fees' | 'finance' | null>(null);
   const [securityKey, setSecurityKey] = useState('');
+
 
   // States
   const [students, setStudents] = useState<Student[]>([]);
@@ -543,7 +547,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   const fetchStudents = async (query = '') => {
     try {
-      const data = await admin1Service.getStudents(query);
+      const branchParam = role === 'admin2' ? loggedInCampus : '';
+      const data = await admin1Service.getStudents(query, branchParam);
       setStudents(data);
     } catch (err: any) {
       triggerToast(err.message || 'Failed to load students.');
@@ -676,10 +681,29 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
 
 
+  // Initial data load on mount
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
+    const loadInitialData = async () => {
+      setIsLoading(true);
+      try {
+        const branchParam = role === 'admin2' ? loggedInCampus : undefined;
+        const tasks: Promise<any>[] = [
+          fetchStudents(''),
+          fetchBulletins(),
+          fetchFeeSettings(branchParam, true)
+        ];
+        if (role === 'admin2') {
+          tasks.push(fetchExpenditures(), fetchWorkerPayments());
+        }
+        await Promise.all(tasks);
+      } catch (err) {
+        console.error('Initial admin data load error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadInitialData();
+  }, [role, loggedInCampus]);
 
   useEffect(() => {
     const unsubscribers = [
@@ -696,43 +720,47 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     };
   }, [activePage, role, timetableSection, refreshCurrentPage]);
 
-  // Sync state variables with database records
+  // Sync state variables with database records on subpage change
   useEffect(() => {
-    if (activePage === 'students' || activePage === 'teachers') {
-      fetchStudents();
-      fetchSections(); // sets teachers list
-    } else if (activePage === 'publishing') {
-      fetchBulletins();
-    } else if (activePage === 'exams') {
-      fetchExams();
-      fetchStudents(); // used for results preview/allocations check
-    } else if (activePage === 'classes') {
-      fetchTimetable(timetableSection);
-      fetchSections(); // loads teachers
-    } else if (activePage === 'sections') {
-      fetchSections();
-      fetchStudents();
-    } else if (activePage === 'attendance') {
-      fetchAttendanceSummary();
-      fetchAttendanceRoster(attendanceDate);
-    } else if (activePage === 'reports') {
-      fetchReports();
-    } else if (activePage === 'academic_fees') {
-      fetchFeeSettings();
-    } else if (activePage === 'fee_editor') {
-      fetchStudents();
-    } else if (activePage === 'late_scholarships') {
-      fetchLateScholarships();
-    } else if (activePage === 'expenditure') {
-      fetchExpenditures();
-    } else if (activePage === 'salary_status') {
-      fetchStaffSalaries();
-    } else if (activePage === 'worker_payments') {
-      fetchWorkerPayments();
-    } else if (activePage === 'enrollment_stats') {
-      fetchStudentMarks();
-    }
-  }, [activePage, timetableSection, attendanceDate, fetchFeeSettings]);
+    const loadPageData = async () => {
+      if (activePage === 'menu') return;
+      setIsPageLoading(true);
+      try {
+        if (activePage === 'students' || activePage === 'teachers') {
+          await Promise.all([fetchStudents(''), fetchSections()]);
+        } else if (activePage === 'publishing') {
+          await fetchBulletins();
+        } else if (activePage === 'exams') {
+          await Promise.all([fetchExams(), fetchStudents('')]);
+        } else if (activePage === 'classes') {
+          await Promise.all([fetchTimetable(timetableSection), fetchSections()]);
+        } else if (activePage === 'sections') {
+          await Promise.all([fetchSections(), fetchStudents('')]);
+        } else if (activePage === 'attendance') {
+          await Promise.all([fetchAttendanceSummary(), fetchAttendanceRoster(attendanceDate)]);
+        } else if (activePage === 'reports') {
+          await fetchReports();
+        } else if (activePage === 'academic_fees') {
+          await fetchFeeSettings();
+        } else if (activePage === 'fee_editor') {
+          await fetchStudents('');
+        } else if (activePage === 'late_scholarships') {
+          await fetchLateScholarships();
+        } else if (activePage === 'expenditure') {
+          await fetchExpenditures();
+        } else if (activePage === 'salary_status') {
+          await fetchStaffSalaries();
+        } else if (activePage === 'worker_payments') {
+          await fetchWorkerPayments();
+        } else if (activePage === 'enrollment_stats') {
+          await fetchStudentMarks();
+        }
+      } finally {
+        setIsPageLoading(false);
+      }
+    };
+    loadPageData();
+  }, [activePage, timetableSection, attendanceDate]);
 
   const triggerToast = (msg: string) => {
     const isError = msg.toLowerCase().includes('rejected') || 
@@ -1224,21 +1252,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   if (isLoading) {
     return (
       <div style={styles.container}>
-        <div style={styles.header}>
-          <div style={{ width: 180, height: 22, borderRadius: 10, background: 'rgba(255,255,255,0.18)' }} />
-        </div>
-        <div style={{ ...styles.content, gap: '18px' }}>
-          <div style={{ ...styles.skeletonCard, padding: '22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ ...styles.skeletonLine, width: '55%' }} />
-            <div style={{ ...styles.skeletonLine, width: '80%' }} />
-            <div style={{ ...styles.skeletonLine, width: '40%' }} />
-          </div>
-          <div style={{ ...styles.skeletonCard, padding: '22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ ...styles.skeletonLine, width: '75%' }} />
-            <div style={{ ...styles.skeletonLine, width: '90%' }} />
-            <div style={{ ...styles.skeletonLine, width: '60%' }} />
-          </div>
-        </div>
+        <PortalDataLoader visible={true} message="Initializing Admin System Engine & Syncing Ledger..." colorAccent={role === 'admin2' ? '#3B82F6' : '#FBBF24'} />
       </div>
     );
   }
@@ -3964,6 +3978,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   return (
     <div style={styles.container} className="anim-slide-up">
+      <PortalDataLoader visible={isPageLoading} colorAccent={role === 'admin2' ? '#3B82F6' : '#FBBF24'} />
       {renderBackgroundDesign('gold')}
 
       {/* Top Welcome Title Bar */}

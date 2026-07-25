@@ -509,7 +509,28 @@ export const apiClient = {
         role = 'accountant';
       }
 
-      const campus = role === 'authenticator' || role === 'admin1' ? 'All' : (username.includes('c2') || username.includes('e2') ? 'Erragattugutta C2' : 'Erragattugutta C1');
+      // Accurate campus resolution — parse campus location and slot from username tokens
+      // Username patterns: admin2_erragattugutta_c1, accountant_beemaram_c2_1, etc.
+      const resolveCampusFromUsername = (uname: string): string => {
+        if (role === 'authenticator' || role === 'admin1') return 'All';
+        const u = uname.toLowerCase();
+        const isBeemaram = u.includes('beemaram') || u.includes('_b1') || u.includes('_b2');
+        const isErragattugutta = u.includes('erragattugutta') || u.includes('_e1') || u.includes('_e2');
+        // Determine slot (c1 vs c2) — look for trailing _c1, _c2, _e1, _e2, beemaram_c1, beemaram_c2
+        let isSlot2 = false;
+        if (isBeemaram) {
+          isSlot2 = u.includes('beemaram_c2') || u.includes('_b2') || u.endsWith('_c2') || (u.includes('_c2') && u.includes('beemaram'));
+        } else if (isErragattugutta) {
+          isSlot2 = u.includes('erragattugutta_c2') || u.includes('_e2') || (u.includes('_c2') && u.includes('erragattugutta'));
+        } else {
+          // fallback for short aliases like admin2_c2
+          isSlot2 = u.endsWith('_c2') || u.endsWith('c2_1') || u.endsWith('c2_2');
+        }
+        if (isBeemaram) return isSlot2 ? 'Beemaram C2' : 'Beemaram C1';
+        return isSlot2 ? 'Erragattugutta C2' : 'Erragattugutta C1';
+      };
+
+      const campus = resolveCampusFromUsername(username);
       const name = role === 'authenticator' ? 'Security Authenticator' : role === 'admin2' ? 'Admin 2 (Campus Principal)' : role === 'accountant' ? 'Senior Accountant' : 'Rector (Admin 1)';
 
       return {
@@ -822,15 +843,27 @@ export const apiClient = {
         }
       }
 
+      // Parse query params for search and campus branch filter
       const queryIdx = cleanPath.indexOf('?');
       let search = '';
+      let branchFilter = '';
       if (queryIdx !== -1) {
         const params = new URLSearchParams(cleanPath.slice(queryIdx));
         search = (params.get('search') || '').toLowerCase().trim();
+        branchFilter = (params.get('branch') || '').trim(); // campus isolation filter
+      }
+
+      let resultStudents = allStudents;
+
+      // Apply campus isolation — only return students belonging to the requesting campus
+      if (branchFilter) {
+        resultStudents = resultStudents.filter((s: any) =>
+          (s.branch || '').toLowerCase() === branchFilter.toLowerCase()
+        );
       }
 
       if (search) {
-        const filtered = allStudents.filter((s: any) =>
+        resultStudents = resultStudents.filter((s: any) =>
           (s.name || '').toLowerCase().includes(search) ||
           (s.admissionNumber || '').toLowerCase().includes(search) ||
           (s.studentId || '').toLowerCase().includes(search) ||
@@ -838,10 +871,9 @@ export const apiClient = {
           (s.course || '').toLowerCase().includes(search) ||
           (s.branch || '').toLowerCase().includes(search)
         );
-        return { status: 'success', data: filtered } as any;
       }
 
-      return { status: 'success', data: allStudents } as any;
+      return { status: 'success', data: resultStudents } as any;
     }
 
     if (cleanPath.includes('/bulletins')) {

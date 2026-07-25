@@ -35,9 +35,13 @@ export interface DashboardSummary {
 
 // ─── Service Functions ────────────────────────────────────────────────────────
 
-export const searchStudents = async (search: string): Promise<StudentProfile[]> => {
+export const searchStudents = async (search: string, campus?: string): Promise<StudentProfile[]> => {
+  const params: string[] = [];
+  if (search) params.push(`search=${encodeURIComponent(search)}`);
+  if (campus && campus !== 'All') params.push(`branch=${encodeURIComponent(campus)}`);
+  const query = params.length > 0 ? `?${params.join('&')}` : '';
   const res = await apiClient.get<{ status: string; data: StudentProfile[] }>(
-    `/accountant/students${search ? `?search=${encodeURIComponent(search)}` : ''}`
+    `/accountant/students${query}`
   );
   return res.data;
 };

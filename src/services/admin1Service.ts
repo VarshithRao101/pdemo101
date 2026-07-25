@@ -31,8 +31,12 @@ export interface ExamInfo {
 
 export const admin1Service = {
   // Students Registry
-  async getStudents(search = ''): Promise<StudentProfile[]> {
-    const res = await apiClient.get<{ status: string; data: StudentProfile[] }>(`/admin1/students?search=${encodeURIComponent(search)}`);
+  async getStudents(search = '', branch = ''): Promise<StudentProfile[]> {
+    const params: string[] = [];
+    if (search) params.push(`search=${encodeURIComponent(search)}`);
+    if (branch && branch !== 'All') params.push(`branch=${encodeURIComponent(branch)}`);
+    const query = params.length > 0 ? `?${params.join('&')}` : '';
+    const res = await apiClient.get<{ status: string; data: StudentProfile[] }>(`/admin1/students${query}`);
     return res.data;
   },
 

@@ -3,6 +3,7 @@ import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
+import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import collegeLogo from '../assets/college logo.png';
 import * as accountantService from '../services/accountantService';
 import { onSocketEvent } from '../services/socketClient';
@@ -254,6 +255,7 @@ export const AccountantDashboardView: React.FC = () => {
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isPageLoading, setIsPageLoading] = useState(false);
   const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'attendance' | 'reports' | 'late_fees' | 'scholarships' | 'profile' | 'hostel'>('menu');
   const [students, setStudents] = useState<Student[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -359,12 +361,13 @@ export const AccountantDashboardView: React.FC = () => {
 
   const fetchAllStudents = React.useCallback(async () => {
     try {
-      const list = await accountantService.searchStudents('');
+      // Pass campus so only this campus's students are returned
+      const list = await accountantService.searchStudents('', loggedInCampus);
       setStudents(list as any);
     } catch (err) {
       console.error('Failed to load students:', err);
     }
-  }, []);
+  }, [loggedInCampus]);
 
   const fetchAttendanceRoster = React.useCallback(async (dateStr: string) => {
     try {
@@ -471,16 +474,25 @@ export const AccountantDashboardView: React.FC = () => {
 
   // On subpage navigation load page specific data
   useEffect(() => {
-    if (activeSubPage === 'menu') {
-      fetchDashboardSummary();
-      fetchAllStudents();
-    } else if (activeSubPage === 'hostel') {
-      fetchHostelData();
-    } else if (activeSubPage === 'attendance') {
-      fetchAttendanceRoster(attendanceDate);
-    } else if (activeSubPage === 'late_fees' || activeSubPage === 'scholarships' || activeSubPage === 'profile') {
-      fetchSettings();
-    }
+    const loadSubPage = async () => {
+      setIsPageLoading(true);
+      try {
+        if (activeSubPage === 'menu') {
+          await Promise.all([fetchDashboardSummary(), fetchAllStudents()]);
+        } else if (activeSubPage === 'student_search' || activeSubPage === 'fee_collection' || activeSubPage === 'reports') {
+          await fetchAllStudents();
+        } else if (activeSubPage === 'hostel') {
+          await fetchHostelData();
+        } else if (activeSubPage === 'attendance') {
+          await fetchAttendanceRoster(attendanceDate);
+        } else if (activeSubPage === 'late_fees' || activeSubPage === 'scholarships' || activeSubPage === 'profile') {
+          await fetchSettings();
+        }
+      } finally {
+        setIsPageLoading(false);
+      }
+    };
+    loadSubPage();
   }, [activeSubPage, fetchDashboardSummary, fetchAllStudents, fetchHostelData, fetchAttendanceRoster, fetchSettings, attendanceDate]);
 
   // Refetch attendance when date changes
@@ -2556,6 +2568,7 @@ export const AccountantDashboardView: React.FC = () => {
   // ─── DEFAULT VIEW: CONSOLIDATED COCKPIT MAIN MENU (No tabs) ───
   return (
     <div style={styles.container} className="view-container anim-slide-up">
+      <PortalDataLoader visible={isPageLoading} colorAccent="#FBBF24" />
       {renderBackgroundDesign('gold')}
 
       {/* Top Welcome Title Bar */}
