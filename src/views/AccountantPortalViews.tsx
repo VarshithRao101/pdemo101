@@ -348,39 +348,38 @@ export const AccountantDashboardView: React.FC = () => {
   });
 
 
-  const fetchDashboardSummary = async () => {
+  const fetchDashboardSummary = React.useCallback(async () => {
     try {
       const summary = await accountantService.getDashboardSummary();
       setDashboardSummary(summary);
     } catch (err) {
       console.error('Failed to load dashboard summary:', err);
     }
-  };
+  }, []);
 
-  const fetchAllStudents = async () => {
+  const fetchAllStudents = React.useCallback(async () => {
     try {
       const list = await accountantService.searchStudents('');
       setStudents(list as any);
     } catch (err) {
       console.error('Failed to load students:', err);
     }
-  };
+  }, []);
 
-  const fetchAttendanceRoster = async (dateStr: string) => {
+  const fetchAttendanceRoster = React.useCallback(async (dateStr: string) => {
     try {
       const roster = await accountantService.getAttendance(dateStr);
       setAttendanceRoster(roster);
     } catch (err) {
       console.error('Failed to load attendance roster:', err);
     }
-  };
+  }, []);
 
-  const fetchHostelData = async () => {
+  const fetchHostelData = React.useCallback(async () => {
     try {
       const hostelData = await accountantService.getHostelAdmissions();
       setHostelBlocks(hostelData.blocks);
       setRoomsList(hostelData.rooms);
-      // Select first room of the selected block by default if available
       const blockRooms = hostelData.rooms.filter(r => r.block === allocateBlock);
       if (blockRooms.length > 0) {
         setAllocateRoom(blockRooms[0]._id);
@@ -390,9 +389,9 @@ export const AccountantDashboardView: React.FC = () => {
     } catch (err) {
       console.error('Failed to load hostel data:', err);
     }
-  };
+  }, [allocateBlock]);
 
-  const fetchSettings = async () => {
+  const fetchSettings = React.useCallback(async () => {
     try {
       const lateData = await accountantService.getLateFees();
       const schData = await accountantService.getScholarships();
@@ -408,9 +407,9 @@ export const AccountantDashboardView: React.FC = () => {
     } catch (err) {
       console.error('Failed to load settings:', err);
     }
-  };
+  }, []);
 
-  const refreshWithPulse = async (pulseKey: typeof livePulseKey) => {
+  const refreshWithPulse = React.useCallback(async (pulseKey: typeof livePulseKey) => {
     setLivePulseKey(pulseKey);
     try {
       const tasks: Promise<void>[] = [];
@@ -435,7 +434,7 @@ export const AccountantDashboardView: React.FC = () => {
     } finally {
       window.setTimeout(() => setLivePulseKey(null), 1400);
     }
-  };
+  }, [attendanceDate, fetchAllStudents, fetchAttendanceRoster, fetchDashboardSummary, fetchHostelData, fetchSettings]);
 
   // On mount load dashboard metrics & student list
   useEffect(() => {
@@ -448,7 +447,7 @@ export const AccountantDashboardView: React.FC = () => {
       setIsLoading(false);
     };
     loadInitialData();
-  }, []);
+  }, [fetchDashboardSummary, fetchAllStudents]);
 
   useEffect(() => {
     const unsubscribers = [
@@ -462,7 +461,7 @@ export const AccountantDashboardView: React.FC = () => {
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
-  }, [attendanceDate, refreshWithPulse]);
+  }, [refreshWithPulse]);
 
   // On subpage navigation load page specific data
   useEffect(() => {
@@ -476,7 +475,7 @@ export const AccountantDashboardView: React.FC = () => {
     } else if (activeSubPage === 'late_fees' || activeSubPage === 'scholarships' || activeSubPage === 'profile') {
       fetchSettings();
     }
-  }, [activeSubPage, fetchHostelData, attendanceDate]);
+  }, [activeSubPage, fetchDashboardSummary, fetchAllStudents, fetchHostelData, fetchAttendanceRoster, fetchSettings, attendanceDate]);
 
   // Refetch attendance when date changes
   useEffect(() => {

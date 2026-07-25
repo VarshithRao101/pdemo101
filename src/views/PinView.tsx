@@ -55,8 +55,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const handleConfirm = async () => {
-    if (pin.length !== 6) {
+  const handleConfirm = async (customPin?: string) => {
+    const pinToSubmit = customPin || pin;
+    if (pinToSubmit.length !== 6) {
       triggerError('Please enter your 6-digit Security PIN');
       return;
     }
@@ -79,7 +80,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     setIsChecking(true);
 
     try {
-      await login(identifier, pin, currentMode, passwordInput.trim());
+      await login(identifier, pinToSubmit, currentMode, passwordInput.trim());
       // On success: trigger success animation then enter portal
       setIsSuccess(true);
       setTimeout(() => {
@@ -97,12 +98,19 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     }
   };
 
-  // Listen for physical keyboard input when entering the PIN
+  // Auto-submit when 6-digit PIN is entered
+  useEffect(() => {
+    if (step === 'pin' && pin.length === 6 && !isChecking && !isSuccess) {
+      handleConfirm(pin);
+    }
+  }, [pin, step, isChecking, isSuccess]);
+
+  // Listen for physical keyboard input when entering the PIN (main number row & Numpad)
   useEffect(() => {
     if (step !== 'pin' || isChecking || isSuccess) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' || e.code === 'NumpadEnter') {
         e.preventDefault();
         handleConfirm();
       } else if (e.key === 'Backspace') {
@@ -110,7 +118,15 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         handleDelete();
       } else if (/^[0-9]$/.test(e.key)) {
         e.preventDefault();
-        handleKeyPress(parseInt(e.key));
+        handleKeyPress(parseInt(e.key, 10));
+      } else if (/^Numpad[0-9]$/.test(e.code)) {
+        e.preventDefault();
+        const num = parseInt(e.code.replace('Numpad', ''), 10);
+        handleKeyPress(num);
+      } else if (/^Digit[0-9]$/.test(e.code)) {
+        e.preventDefault();
+        const num = parseInt(e.code.replace('Digit', ''), 10);
+        handleKeyPress(num);
       }
     };
 
@@ -118,7 +134,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [step, pin, isChecking, isSuccess, handleConfirm, handleDelete, handleKeyPress]);
+  }, [step, pin, isChecking, isSuccess]);
 
   const handleResetPin = () => {
     setPin('');
