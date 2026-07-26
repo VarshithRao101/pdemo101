@@ -121,6 +121,15 @@ export const authenticatorService = {
   async createBackup(): Promise<BackupResponse> {
     const res = await apiClient.post<{ status: string; message: string; data: BackupResponse }>('/authenticator/backup', {});
     return res.data;
+  },
+
+  // Purge all student and faculty data
+  async purgeStudentFacultyData(confirmationPass: string): Promise<{ students: number; teachers: number; payments: number }> {
+    const res = await apiClient.request<{ status: string; message: string; data: { students: number; teachers: number; payments: number } }>('/authenticator/purge-student-faculty-data', {
+      method: 'DELETE',
+      body: JSON.stringify({ confirmationPass })
+    });
+    return res.data;
   }
 };
 

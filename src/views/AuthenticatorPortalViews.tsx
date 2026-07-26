@@ -65,6 +65,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
   const [accountAddress, setAccountAddress] = useState<string>('');
   const [accountCampus, setAccountCampus] = useState<string>('');
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [purgeConfirmationPass, setPurgeConfirmationPass] = useState<string>('');
+  const [isPurging, setIsPurging] = useState<boolean>(false);
 
   // Trigger Toast Notification
   const triggerToast = (msg: string) => {
@@ -232,6 +234,25 @@ export const AuthenticatorDashboardView: React.FC = () => {
     triggerToast('Copied verification key to clipboard!');
   };
 
+  const handlePurgeAllData = async () => {
+    if (purgeConfirmationPass.trim() !== '9059068384') {
+      triggerToast('Enter confirmation pass 9059068384 to continue.');
+      return;
+    }
+    if (!confirm('This will permanently delete all student and faculty records. Continue?')) return;
+    setIsPurging(true);
+    try {
+      const result = await authenticatorService.purgeStudentFacultyData(purgeConfirmationPass.trim());
+      triggerToast(`Purged ${result.students} students, ${result.teachers} faculty, ${result.payments} payments.`);
+      setPurgeConfirmationPass('');
+      loadData();
+    } catch (err: any) {
+      triggerToast(err.message || 'Failed to purge data.');
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
   const formatDateTime = (value?: string | null) => {
     if (!value) return 'Not available';
     try {
@@ -279,8 +300,15 @@ export const AuthenticatorDashboardView: React.FC = () => {
     popup.document.close();
   };
 
-  const downloadSectionPdf = (section: 'admin2' | 'accountant') => {
+  const downloadSectionPdf = (section: 'admin1' | 'admin2' | 'accountant') => {
     if (!keysData) return;
+    if (section === 'admin1') {
+      openPrintableKeySheet('Section 1 - Core System Logins', [
+        { label: 'Rector (Admin 1)', username: 'admin1', password: keysData.dailyPins?.admin1 || '' },
+        { label: 'Security Admin (Authenticator)', username: 'authenticator', password: keysData.dailyPins?.authenticator || '' }
+      ]);
+      return;
+    }
     if (section === 'admin2') {
       openPrintableKeySheet('Section 2 - Admin 2 Credentials', [
         { label: 'Erragattugutta C1', username: 'admin2_erragattugutta_c1', password: keysData.dailyPins?.admin2_erragattugutta_c1 || '' },
@@ -414,13 +442,45 @@ export const AuthenticatorDashboardView: React.FC = () => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-              <GlassCard hoverable={false} style={{ padding: '20px', backgroundColor: 'rgba(255,255,255,0.7)' }}>
-                <h4 style={{ margin: '0 0 16px 0', fontSize: '12.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--card-border)', paddingBottom: '8px', color: 'var(--dark-charcoal)' }}>Institution Snapshot</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={styles.profileStatItem}><span>Students:</span><strong>{stats.totalStudents}</strong></div>
-                  <div style={styles.profileStatItem}><span>Faculty:</span><strong>{stats.totalTeachers}</strong></div>
-                  <div style={styles.profileStatItem}><span>Admins & Staff:</span><strong>{stats.totalStaff}</strong></div>
-                  <div style={styles.profileStatItem}><span>Total Portal Slots:</span><strong>{stats.portalSlotTotal ?? 14}</strong></div>
+                            <GlassCard hoverable={false} style={{ padding: '20px', backgroundColor: 'rgba(255,245,245,0.95)', border: '1px solid rgba(185,28,28,0.2)' }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '12.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid rgba(185,28,28,0.2)', paddingBottom: '8px', color: '#991b1b' }}>Critical Data Wipe</h4>
+                <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#7f1d1d', lineHeight: '1.5' }}>
+                  Permanently deletes all student and faculty records from the database. Confirmation pass: <strong>9059068384</strong>.
+                </p>
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  <label style={{ display: 'grid', gap: '6px', fontSize: '11px', fontWeight: 700, color: '#7f1d1d', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Confirmation Pass
+                    <input
+                      value={purgeConfirmationPass}
+                      onChange={(e) => setPurgeConfirmationPass(e.target.value)}
+                      placeholder="Enter 9059068384"
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(185,28,28,0.25)',
+                        background: '#fff',
+                        color: '#111827',
+                        fontSize: '14px',
+                        outline: 'none'
+                      }}
+                    />
+                  </label>
+                  <button
+                    onClick={handlePurgeAllData}
+                    disabled={isPurging}
+                    style={{
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      border: 'none',
+                      background: isPurging ? '#9ca3af' : '#991b1b',
+                      color: '#fff',
+                      fontWeight: 800,
+                      cursor: isPurging ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {isPurging ? 'Deleting All Data...' : 'Delete Students & Faculty'}
+                  </button>
                 </div>
               </GlassCard>
 
@@ -433,7 +493,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
                           <div>
                             <div style={{ fontWeight: 800, color: 'var(--dark-charcoal)' }}>{session.name}</div>
-                            <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '4px' }}>{session.role} • {session.campus}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '4px' }}>{session.role} - {session.campus}</div>
                             <div style={{ fontSize: '10.5px', color: 'var(--muted-gray)', marginTop: '4px' }}>{session.username}</div>
                           </div>
                           <div style={{ textAlign: 'right', fontSize: '10.5px', color: 'var(--muted-gray)' }}>
@@ -468,7 +528,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
             {/* Core Administrative Credentials */}
             <div>
-              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 1: Core System Logins</h4>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
+                <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: 0 }}>Section 1: Core System Logins</h4>
+                <button onClick={() => downloadSectionPdf('admin1')} style={{ ...styles.copyBtn, width: 'auto', minWidth: '160px' }} className="press-interactive">Download PDF</button>
+              </div>
               <div style={styles.keysGrid}>
                 <GlassCard hoverable={false} style={styles.keyCard}>
                   <span style={styles.keyRoleLabel}>Rector (Admin 1) Login PIN</span>
@@ -497,7 +560,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
             {/* Admin 2 Principal Deans Accounts */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '8px' }}>
-                <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: 'none', paddingBottom: 0, marginBottom: 0 }}>Section 2: Admin 2 (Principal Deans) – 4 Campuses</h4>
+                <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: 'none', paddingBottom: 0, marginBottom: 0 }}>Section 2: Admin 2 (Principal Deans) - 4 Campuses</h4>
                 <button onClick={() => downloadSectionPdf('admin2')} style={{ ...styles.copyBtn, width: 'auto', minWidth: '160px' }} className="press-interactive">Download PDF</button>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
@@ -533,7 +596,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
             {/* Accountant Campus Security OTPs */}
             <div>
-              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 3: Accountant Portals – 8 Accounts</h4>
+              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 3: Accountant Portals - 8 Accounts</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                 {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(campusName => {
                   const campusKeyMap: Record<string, string> = {
@@ -1638,3 +1701,8 @@ const styles = {
     boxShadow: '0 24px 48px rgba(0,0,0,0.16)'
   }
 };
+
+
+
+
+

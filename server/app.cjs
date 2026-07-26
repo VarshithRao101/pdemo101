@@ -1266,15 +1266,37 @@ app.get('/api/authenticator/sync-journal', authenticateToken, (req, res) => {
   return res.json({ status: 'success', data: inMemoryStore.journal });
 });
 
-app.get('/api/authenticator/stats', authenticateToken, (req, res) => {
+app.get('/api/authenticator/stats', authenticateToken, async (req, res) => {
   const activeSessions = getActiveSessionSnapshot();
   const activeSessionCount = activeSessions.length;
+  let totalStudents = 0;
+  let totalTeachers = 0;
+  let totalStaff = 0;
+
+  if (isMongoConnected) {
+    try {
+      [totalStudents, totalTeachers, totalStaff] = await Promise.all([
+        Student.countDocuments({}),
+        Teacher.countDocuments({}),
+        User.countDocuments({ role: { $in: ['admin1', 'admin2', 'accountant', 'authenticator'] } })
+      ]);
+    } catch {
+      totalStudents = Object.values(inMemoryStore.students).flat().length;
+      totalTeachers = Object.values(inMemoryStore.teachers).flat().length;
+      totalStaff = inMemoryStore.users.filter(user => ['admin1', 'admin2', 'accountant', 'authenticator'].includes(user.role)).length;
+    }
+  } else {
+    totalStudents = Object.values(inMemoryStore.students).flat().length;
+    totalTeachers = Object.values(inMemoryStore.teachers).flat().length;
+    totalStaff = inMemoryStore.users.filter(user => ['admin1', 'admin2', 'accountant', 'authenticator'].includes(user.role)).length;
+  }
+
   return res.json({
     status: 'success',
     data: {
-      totalStudents: 480,
-      totalTeachers: 16,
-      totalStaff: 8,
+      totalStudents,
+      totalTeachers,
+      totalStaff,
       activeDevices: activeSessionCount,
       activeSessions,
       activeSessionCount,
@@ -1297,6 +1319,46 @@ app.post('/api/authenticator/backup', authenticateToken, (req, res) => {
     message: 'System database backup archive generated.',
     data: { archiveName: `inspire_backup_${Date.now()}.zip`, sizeBytes: 2485120, checksum: 'sha256-a8f192b3c4d5e6f7', lastBackupAt: lastSystemBackupAt }
   });
+});
+
+
+async function purgeStudentAndFacultyData() {
+  const purgeSummary = { students: 0, teachers: 0, payments: 0 };
+
+  if (isMongoConnected) {
+    try {
+      const [studentsResult, teachersResult, paymentsResult] = await Promise.all([
+        Student.deleteMany({}),
+        Teacher.deleteMany({}),
+        Payment.deleteMany({})
+      ]);
+      purgeSummary.students = studentsResult.deletedCount || 0;
+      purgeSummary.teachers = teachersResult.deletedCount || 0;
+      purgeSummary.payments = paymentsResult.deletedCount || 0;
+    } catch (err) {
+      console.error('CRITICAL [Purge]: Failed to delete student/faculty data from MongoDB:', err.message);
+      throw err;
+    }
+  }
+
+  inMemoryStore.students = {};
+  inMemoryStore.teachers = {};
+  inMemoryStore.payments = {};
+  return purgeSummary;
+}
+
+app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, requireRole('admin1', 'authenticator'), async (req, res) => {
+  const confirmationPass = (req.body?.confirmationPass || req.body?.passphrase || req.headers['x-confirmation-pass'] || '').toString().trim();
+  if (confirmationPass !== '9059068384') {
+    return res.status(403).json({ status: 'error', message: 'Confirmation pass is required to purge all student and faculty data.' });
+  }
+
+  try {
+    const purgeSummary = await purgeStudentAndFacultyData();
+    return res.json({ status: 'success', message: 'Student and faculty records purged.', data: purgeSummary });
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: 'Failed to purge student and faculty data.' });
+  }
 });
 
 // --- ADMIN 1 ROUTES ---
@@ -2338,6 +2400,7 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
 
 
 
