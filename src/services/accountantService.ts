@@ -33,7 +33,7 @@ export interface DashboardSummary {
   absentCount: number;
 }
 
-// ─── Service Functions ────────────────────────────────────────────────────────
+// Service Functions
 
 export const searchStudents = async (search: string, campus?: string): Promise<StudentProfile[]> => {
   const params: string[] = [];
