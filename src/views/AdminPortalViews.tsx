@@ -169,6 +169,23 @@ interface Teacher {
   branch?: string;
 }
 
+const matchesStudentQuery = (student: Student, query: string) => {
+  const normalizedQuery = query.toLowerCase().trim();
+  if (!normalizedQuery) return true;
+
+  return [
+    student.name,
+    student.admissionNumber,
+    student.registrationNumber,
+    student.studentId,
+    student.rollNumber,
+    student.mobile,
+    student.parentMobile,
+    student.course,
+    student.branch
+  ].some((field) => String(field || '').toLowerCase().includes(normalizedQuery));
+};
+
 interface Bulletin {
   _id?: string;
   id?: string;
@@ -1258,6 +1275,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   //  SUBPAGE 1: STUDENT REGISTRY
   if (activePage === 'students') {
+    const filteredRegistryStudents = students.filter((student) => matchesStudentQuery(student, searchAdm));
+
     return (
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('emerald')}
@@ -1274,12 +1293,103 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <div style={{ display: 'flex', gap: '10px' }}>
               <input
                 type="text"
-                placeholder="Enter Registration No / Admission No e.g. ADM24001"
+                placeholder="Search student by Name or Admission Number..."
                 value={searchAdm}
                 onChange={(e) => setSearchAdm(e.target.value)}
                 style={styles.textInputBox}
               />
               <button onClick={handleSearchStudent} style={{ ...styles.saveSubmitBtn, marginTop: 0 }} className="press-interactive">Load</button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1, marginTop: '4px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Student Cards</h4>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
+                Showing <strong>{filteredRegistryStudents.length}</strong> of <strong>{students.length}</strong>
+              </span>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: '12px'
+            }}>
+              {filteredRegistryStudents.map((student) => (
+                <GlassCard
+                  key={student._id || student.admissionNumber || student.studentId}
+                  hoverable={true}
+                  onClick={() => {
+                    setSelectedStudent(student);
+                    setEditStudent({ ...student });
+                  }}
+                  style={{
+                    padding: '14px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    cursor: 'pointer',
+                    backgroundColor: 'rgba(255,255,255,0.75)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', minWidth: 0 }}>
+                      <div style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '12px',
+                        backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                        color: '#059669',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '15px',
+                        fontWeight: 900,
+                        flexShrink: 0
+                      }}>
+                        {(student.name || 'S').charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--dark-charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {student.name}
+                        </strong>
+                        <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                          Adm: {student.admissionNumber}  |  Reg: {student.registrationNumber || student.studentId}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
+                          {student.branch} ({student.course})
+                        </div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: student.status === 'Active' ? '#10B981' : '#EF4444' }}>
+                      {student.status}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedStudent(student);
+                        setEditStudent({ ...student });
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        border: '1.5px solid var(--royal-gold)',
+                        color: '#8A6500',
+                        backgroundColor: '#FFFDF5',
+                        borderRadius: '10px',
+                        fontWeight: 800,
+                        fontSize: '11px',
+                        cursor: 'pointer'
+                      }}
+                      className="press-interactive"
+                    >
+                      Open Profile
+                    </button>
+                  </div>
+                </GlassCard>
+              ))}
             </div>
           </div>
 
@@ -2938,25 +3048,31 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   //  SUBPAGE 12: STUDENT FEE EDITOR (Admin 2)
   if (activePage === 'fee_editor') {
+    const filteredFeeStudents = students.filter((student) => matchesStudentQuery(student, feeEditSearch));
+
+    const openFeeStudent = async (student: Student) => {
+      try {
+        const targetBranch = student.branch || (role === 'admin1' ? selectedFeeBranch : loggedInCampus);
+        const breakdown = await admin2Service.getFeeBreakdown(student._id || 'fallback_id', targetBranch);
+        setSelectedFeeStudent(student);
+        setFeeBreakdownData(breakdown);
+        setEditTuitionWaiver(String(breakdown.tuitionWaiver));
+        setEditHostelWaiver(String(breakdown.hostelWaiver));
+        setEditMiscWaiver(String(breakdown.miscWaiver));
+        triggerToast(`Loaded fee record for ${student.name}`);
+      } catch (err: any) {
+        triggerToast(err.message || 'Failed to load fee breakdown.');
+      }
+    };
 
         const handleFeeSearch = async () => {
-      const match = students.find(s =>
-        s.admissionNumber.toUpperCase().trim() === feeEditSearch.toUpperCase().trim() ||
-        s.rollNumber.toUpperCase().trim() === feeEditSearch.toUpperCase().trim()
-      );
+      if (!feeEditSearch.trim()) {
+        triggerToast('Please type a student name or admission number.');
+        return;
+      }
+      const match = filteredFeeStudents[0];
       if (match) {
-        try {
-          const targetBranch = match.branch || (role === 'admin1' ? selectedFeeBranch : loggedInCampus);
-          const breakdown = await admin2Service.getFeeBreakdown(match._id || 'fallback_id', targetBranch);
-          setSelectedFeeStudent(match);
-          setFeeBreakdownData(breakdown);
-          setEditTuitionWaiver(String(breakdown.tuitionWaiver));
-          setEditHostelWaiver(String(breakdown.hostelWaiver));
-          setEditMiscWaiver(String(breakdown.miscWaiver));
-          triggerToast(`Loaded fee record for ${match.name}`);
-        } catch (err: any) {
-          triggerToast(err.message || 'Failed to load fee breakdown.');
-        }
+        await openFeeStudent(match);
       } else {
         setSelectedFeeStudent(null);
         setFeeBreakdownData(null);
@@ -3002,10 +3118,97 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>Search Student</h4>
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-              <input type="text" placeholder="Enter Admission No or Roll No..." value={feeEditSearch} onChange={(e) => setFeeEditSearch(e.target.value)} style={{ ...styles.textInputBox, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && handleFeeSearch()} />
+              <input type="text" placeholder="Search student by Name or Admission Number..." value={feeEditSearch} onChange={(e) => setFeeEditSearch(e.target.value)} style={{ ...styles.textInputBox, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && handleFeeSearch()} />
               <button onClick={handleFeeSearch} style={{ ...styles.saveSubmitBtn, marginTop: 0, padding: '12px 24px' }} className="press-interactive">Load</button>
             </div>
           </GlassCard>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1, marginTop: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Student Grid</h4>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
+                Showing <strong>{filteredFeeStudents.length}</strong> of <strong>{students.length}</strong>
+              </span>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: '12px'
+            }}>
+              {filteredFeeStudents.map((student) => (
+                <GlassCard
+                  key={student._id || student.admissionNumber || student.studentId}
+                  hoverable={true}
+                  onClick={() => void openFeeStudent(student)}
+                  style={{
+                    padding: '14px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    cursor: 'pointer',
+                    backgroundColor: 'rgba(255,255,255,0.75)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', minWidth: 0 }}>
+                      <div style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '12px',
+                        backgroundColor: 'rgba(212,175,55,0.14)',
+                        color: '#8A6500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '15px',
+                        fontWeight: 900,
+                        flexShrink: 0
+                      }}>
+                        {(student.name || 'S').charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--dark-charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {student.name}
+                        </strong>
+                        <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                          Adm: {student.admissionNumber}  |  Roll: {student.rollNumber || 'N/A'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
+                          {student.branch} ({student.course})
+                        </div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: Number(student.remainingBalance || 0) > 0 ? '#EF4444' : '#10B981', whiteSpace: 'nowrap' }}>
+                      {Number(student.remainingBalance || 0) > 0 ? `Due: Rs.${Number(student.remainingBalance || 0).toLocaleString('en-IN')}` : 'Settled'}
+                    </span>
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void openFeeStudent(student);
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        border: '1.5px solid var(--royal-gold)',
+                        color: '#8A6500',
+                        backgroundColor: '#FFFDF5',
+                        borderRadius: '10px',
+                        fontWeight: 800,
+                        fontSize: '11px',
+                        cursor: 'pointer'
+                      }}
+                      className="press-interactive"
+                    >
+                      Open Fee Breakdown
+                    </button>
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+          </div>
 
           {/* Student header card once loaded */}
           {selectedFeeStudent && (
