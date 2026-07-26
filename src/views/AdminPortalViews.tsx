@@ -159,6 +159,7 @@ interface Teacher {
   id: string;
   name: string;
   subject: string;
+  email?: string;
   mobile: string;
   salary: number;
   assignedClasses: string[];
@@ -246,9 +247,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [searchFac, setSearchFac] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [editTeacher, setEditTeacher] = useState<Teacher | null>(null);
+  const [facultyPage, setFacultyPage] = useState(1);
 
   const [newFacName, setNewFacName] = useState('');
-  const [newFacSub, setNewFacSub] = useState('Physics');
+  const [newFacSub, setNewFacSub] = useState('');
+  const [newFacEmail, setNewFacEmail] = useState('');
   const [newFacSal, setNewFacSal] = useState('');
   const [newFacBranch, setNewFacBranch] = useState(loggedInCampus);
   const [newFacMobile, setNewFacMobile] = useState('');
@@ -332,6 +335,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [newExpAmt, setNewExpAmt] = useState('');
   const [newExpDesc, setNewExpDesc] = useState('');
   const [newExpDate, setNewExpDate] = useState(new Date().toISOString().split('T')[0]);
+  const [pendingExpDelete, setPendingExpDelete] = useState<ExpenditureItem | null>(null);
+  const [isExpDeleteOtpOpen, setIsExpDeleteOtpOpen] = useState(false);
+  const [expDeleteOtpInput, setExpDeleteOtpInput] = useState('');
 
   const [editTuitionRate, setEditTuitionRate] = useState('120000');
   const [editHostelRate, setEditHostelRate] = useState('85000');
@@ -994,8 +1000,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   };
 
   const handleAddTeacher = async () => {
-    if (!newFacName || !newFacSal || !newFacMobile) {
-      triggerToast('Please complete all basic fields.');
+    if (!newFacName.trim() || !newFacSub.trim() || !newFacSal || !newFacMobile.trim() || !newFacBranch.trim()) {
+      triggerToast('Please complete name, role, salary, mobile, and branch.');
       return;
     }
     setFacActionType('add');
@@ -1017,6 +1023,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           id: newId,
           name: newFacName,
           subject: newFacSub,
+          email: newFacEmail,
           salary: parseFloat(newFacSal) || 50000,
           mobile: newFacMobile,
           branch: newFacBranch
@@ -1027,6 +1034,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           id: newId,
           name: newFacName,
           subject: newFacSub,
+          email: newFacEmail,
           salary: parseFloat(newFacSal) || 50000,
           mobile: newFacMobile,
           branch: newFacBranch,
@@ -1036,8 +1044,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         };
         setTeachers(prev => [...prev, newTeacherObj]);
         setNewFacName('');
+        setNewFacEmail('');
         setNewFacSal('');
         setNewFacMobile('');
+        setNewFacSub('');
         setIsAddTeacherModalOpen(false);
         setIsFacOtpModalOpen(false);
         setFacOtpInput('');
@@ -1561,7 +1571,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               <div style={{ ...styles.overlaySheet, maxWidth: '440px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                   <h3 style={{ ...styles.modalTitle, color: 'var(--royal-gold)', margin: 0 }}>Security Authorization OTP</h3>
-                  <button onClick={() => !isSubmittingStudent && setIsRegStuOtpModalOpen(false)} disabled={isSubmittingStudent} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: isSubmittingStudent ? 'not-allowed' : 'pointer', color: 'var(--muted-gray)' }}>-</button>
+                  <button onClick={() => !isSubmittingStudent && setIsRegStuOtpModalOpen(false)} disabled={isSubmittingStudent} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: isSubmittingStudent ? 'not-allowed' : 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}>×</button>
                 </div>
                 <p style={{ fontSize: '12px', color: 'var(--muted-gray)', marginBottom: '14px', lineHeight: 1.4 }}>
                   Enter your 6-digit Security Authorization Key / OTP to finalize student registration for <strong>{newStuName}</strong> (Adm No: {newStuAdmissionNumber || `ADM2400${students.length + 1}`}).
@@ -1653,7 +1663,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         // Role filters
         if (role === 'admin2' && t.branch !== loggedInCampus) return false;
         // Search filter
-        const matchSearch = t.name.toLowerCase().includes(searchFac.toLowerCase()) || t.subject.toLowerCase().includes(searchFac.toLowerCase());
+        const matchSearch = t.name.toLowerCase().includes(searchFac.toLowerCase()) || t.subject.toLowerCase().includes(searchFac.toLowerCase()) || (t.email || '').toLowerCase().includes(searchFac.toLowerCase());
         if (!matchSearch) return false;
         // Campus filter
         if (filterFacCampus !== 'All' && t.branch !== filterFacCampus) return false;
@@ -1661,6 +1671,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         if (filterFacSubject !== 'All' && t.subject !== filterFacSubject) return false;
         return true;
       });
+    const facultyPageSize = 20;
+    const facultyTotalPages = Math.max(1, Math.ceil(list.length / facultyPageSize));
+    const facultyCurrentPage = Math.min(facultyPage, facultyTotalPages);
+    const facultyPageItems = list.slice((facultyCurrentPage - 1) * facultyPageSize, facultyCurrentPage * facultyPageSize);
 
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -1678,9 +1692,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             {/* Search Bar at the top */}
             <input
               type="text"
-              placeholder="Search faculty name or subject..."
+              placeholder="Search faculty name, role, or email..."
               value={searchFac}
-              onChange={(e) => setSearchFac(e.target.value)}
+              onChange={(e) => { setSearchFac(e.target.value); setFacultyPage(1); }}
               style={styles.textInputBox}
             />
 
@@ -1691,7 +1705,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 setNewFacSal('');
                 setNewFacMobile('');
                 setNewFacBranch(loggedInCampus);
-                setNewFacSub('Physics');
+                setNewFacSub('');
+                setNewFacEmail('');
                 setIsAddTeacherModalOpen(true);
               }}
               style={{ ...styles.saveSubmitBtn, marginTop: '4px', marginBottom: '4px' }}
@@ -1718,32 +1733,33 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 </select>
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                <label style={styles.formLabel}>Subject Filter</label>
+                <label style={styles.formLabel}>Role Filter</label>
                 <select
                   value={filterFacSubject}
                   onChange={(e) => setFilterFacSubject(e.target.value)}
                   style={styles.selectInput}
                 >
-                  <option value="All">All Subjects</option>
-                  <option value="Physics">Physics</option>
-                  <option value="Chemistry">Chemistry</option>
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="English">English</option>
+                  <option value="All">All Roles</option>
+                  <option value="Professor">Professor</option>
+                  <option value="Lecturer">Lecturer</option>
+                  <option value="Assistant">Assistant</option>
+                  <option value="Coordinator">Coordinator</option>
                 </select>
               </div>
             </div>
 
             {/* Faculty List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {list.map(t => (
+              {facultyPageItems.map(t => (
                 <div key={t.id || t._id} style={styles.receiptRowItem}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                       <strong style={{ fontSize: '13px' }}>{t.name}</strong>
-                      <span style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 600 }}>({t.subject})</span>
+                      <span style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 600 }}>({t.subject || 'Role'})</span>
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>
                       Salary: Rs.{(t.salary || 0).toLocaleString('en-IN')}  Campus: {t.branch || 'Erragattugutta C1'}
+                      {t.email ? `  Email: ${t.email}` : ''}
                     </div>
                   </div>
                   <button
@@ -1764,6 +1780,27 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 </div>
               )}
             </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
+              <button
+                onClick={() => setFacultyPage(prev => Math.max(1, prev - 1))}
+                disabled={facultyCurrentPage <= 1}
+                style={{ ...styles.actionItemBtn, border: '1.5px solid var(--card-border)', opacity: facultyCurrentPage <= 1 ? 0.45 : 1 }}
+                className="press-interactive"
+              >
+                Previous Page
+              </button>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
+                Page <strong>{facultyCurrentPage}</strong> of <strong>{facultyTotalPages}</strong>
+              </div>
+              <button
+                onClick={() => setFacultyPage(prev => Math.min(facultyTotalPages, prev + 1))}
+                disabled={facultyCurrentPage >= facultyTotalPages}
+                style={{ ...styles.actionItemBtn, border: '1.5px solid var(--card-border)', opacity: facultyCurrentPage >= facultyTotalPages ? 0.45 : 1 }}
+                className="press-interactive"
+              >
+                Next Page
+              </button>
+            </div>
           </div>
 
           {/* EDIT HOVER DETAILS MODAL */}
@@ -1774,9 +1811,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <h3 style={styles.modalTitle}>Edit Faculty Details</h3>
                   <button
                     onClick={() => { setSelectedTeacher(null); setEditTeacher(null); }}
-                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
                   >
-                    -
+                    ×
                   </button>
                 </div>
 
@@ -1808,17 +1845,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     </div>
 
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Subject Head</label>
-                      <select
-                        value={editTeacher.subject}
+                      <label style={styles.formLabel}>Role / Designation</label>
+                      <input
+                        type="text"
+                        value={editTeacher.subject || ''}
                         onChange={(e) => setEditTeacher({ ...editTeacher, subject: e.target.value })}
-                        style={styles.selectInput}
-                      >
-                        <option value="Physics">Physics</option>
-                        <option value="Chemistry">Chemistry</option>
-                        <option value="Mathematics">Mathematics</option>
-                        <option value="English">English</option>
-                      </select>
+                        style={styles.textInputBox}
+                        placeholder="e.g. Lecturer"
+                      />
                     </div>
                   </div>
 
@@ -1843,6 +1877,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                         style={styles.textInputBox}
                       />
                     </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Email (Optional)</label>
+                    <input
+                      type="email"
+                      value={editTeacher.email || ''}
+                      onChange={(e) => setEditTeacher({ ...editTeacher, email: e.target.value })}
+                      style={styles.textInputBox}
+                      placeholder="faculty@inspire.edu"
+                    />
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
@@ -1882,9 +1927,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   <h3 style={styles.modalTitle}>Add New Faculty</h3>
                   <button
                     onClick={() => setIsAddTeacherModalOpen(false)}
-                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
                   >
-                    -
+                    ×
                   </button>
                 </div>
 
@@ -1917,17 +1962,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     </div>
 
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Subject Head</label>
-                      <select
+                      <label style={styles.formLabel}>Role / Designation</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Lecturer"
                         value={newFacSub}
                         onChange={(e) => setNewFacSub(e.target.value)}
-                        style={styles.selectInput}
-                      >
-                        <option value="Physics">Physics</option>
-                        <option value="Chemistry">Chemistry</option>
-                        <option value="Mathematics">Mathematics</option>
-                        <option value="English">English</option>
-                      </select>
+                        style={styles.textInputBox}
+                      />
                     </div>
                   </div>
 
@@ -1953,6 +1995,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                         style={styles.textInputBox}
                       />
                     </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Email (Optional)</label>
+                    <input
+                      type="email"
+                      placeholder="faculty@inspire.edu"
+                      value={newFacEmail}
+                      onChange={(e) => setNewFacEmail(e.target.value)}
+                      style={styles.textInputBox}
+                    />
                   </div>
 
                   <button
@@ -3212,75 +3265,81 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             </div>
           </div>
 
-          {/* Student header card once loaded */}
           {selectedFeeStudent && (
-            <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1, border: '1.5px solid rgba(212,175,55,0.25)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
-                <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.1)', border: '2px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 900, color: 'var(--royal-gold)' }}>
-                  {selectedFeeStudent.name.charAt(0)}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--dark-charcoal)' }}>{selectedFeeStudent.name}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--muted-gray)', marginTop: '2px' }}>
-                    <strong>ID:</strong> {selectedFeeStudent.admissionNumber} &nbsp;|&nbsp; <strong>Course:</strong> {selectedFeeStudent.course} &nbsp;|&nbsp; <strong>Branch:</strong> {selectedFeeStudent.branch}
-                  </div>
-                </div>
-              </div>
+            <div style={styles.overlayOverlay} className="anim-fade-in">
+              <div style={{ ...styles.overlaySheet, maxWidth: '820px', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+                <button
+                  onClick={() => { setSelectedFeeStudent(null); setFeeBreakdownData(null); setFeeOtpInput(''); setIsFeeOtpOpen(false); }}
+                  style={{ position: 'absolute', top: '14px', right: '14px', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
+                >
+                  ×
+                </button>
 
-              {/* Fee ledger breakdown */}
-              {feeBreakdownData ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <h5 style={{ margin: '0 0 8px', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Fee Transaction History</h5>
-                  <div style={styles.metaRow}><span>Base Tuition Fee</span><strong>Rs.{(feeBreakdownData.tuitionFee||0).toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Hostel Fee</span><strong>Rs.{feeBreakdownData.hostelFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>Rs.{feeBreakdownData.miscFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Previous Pending</span><strong>Rs.{feeBreakdownData.previousPending.toLocaleString('en-IN')}</strong></div>
-                  <div style={{ ...styles.metaRow, borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span><strong>Total Base Fee</strong></span><strong>Rs.{(feeBreakdownData.baseFee||0).toLocaleString('en-IN')}</strong></div>
-                  {feeBreakdownData.scholarshipDeduction > 0 && (
-                    <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
-                      <span>Scholarship ({feeBreakdownData.scholarshipCategory}: {feeBreakdownData.scholarshipPct}%)</span>
-                      <strong>- Rs.{feeBreakdownData.scholarshipDeduction.toLocaleString('en-IN')}</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+                  <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.1)', border: '2px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 900, color: 'var(--royal-gold)' }}>
+                    {selectedFeeStudent.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--dark-charcoal)' }}>{selectedFeeStudent.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                      <strong>ID:</strong> {selectedFeeStudent.admissionNumber} &nbsp;|&nbsp; <strong>Course:</strong> {selectedFeeStudent.course} &nbsp;|&nbsp; <strong>Branch:</strong> {selectedFeeStudent.branch}
                     </div>
-                  )}
-                  {feeBreakdownData.individualOverrideDeduction > 0 && (
-                    <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
-                      <span>Fee Waivers Applied</span>
-                      <strong>- Rs.{feeBreakdownData.individualOverrideDeduction.toLocaleString('en-IN')}</strong>
-                    </div>
-                  )}
-                  <div style={{ ...styles.metaRow, color: '#D32F2F', borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span>Total Paid by Student</span><strong>- Rs.{(feeBreakdownData.totalPaid||0).toLocaleString('en-IN')}</strong></div>
-                  <div style={{ ...styles.metaRow, backgroundColor: 'rgba(212,175,55,0.08)', padding: '12px', borderRadius: '12px', marginTop: '6px' }}>
-                    <span style={{ fontWeight: 800, color: 'var(--royal-gold)' }}>Remaining Balance</span>
-                    <strong style={{ fontSize: '16px', color: 'var(--royal-gold)', fontWeight: 900 }}>Rs.{(feeBreakdownData.remainingBalance||0).toLocaleString('en-IN')}</strong>
                   </div>
                 </div>
-              ) : (
-                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '12px' }}>Loading fee breakdown</div>
-              )}
-            </GlassCard>
-          )}
 
-          {/* Modified fees section */}
-          {selectedFeeStudent && (
-            <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
-              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)' }}>Modify Fee Waivers & Custom Overrides</h4>
-              <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: '14px' }}>Individual fee overrides & waivers are locked to the student profile upon verification.</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {[
-                  ['Tuition Waiver (Rs.)', editTuitionWaiver, setEditTuitionWaiver],
-                  ['Hostel Waiver (Rs.)', editHostelWaiver, setEditHostelWaiver],
-                  ['Misc Waiver (Rs.)', editMiscWaiver, setEditMiscWaiver]
-                ].map(([label, val, setter]: any) => (
-                  <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={styles.formLabel}>{label}</label>
-                    <input type="number" min="0" value={val} onChange={(e) => setter(e.target.value)} style={styles.textInputBox} />
+                {feeBreakdownData ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <h5 style={{ margin: '0 0 8px', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Fee Transaction History</h5>
+                      <div style={styles.metaRow}><span>Base Tuition Fee</span><strong>Rs.{(feeBreakdownData.tuitionFee||0).toLocaleString('en-IN')}</strong></div>
+                      <div style={styles.metaRow}><span>Hostel Fee</span><strong>Rs.{feeBreakdownData.hostelFee.toLocaleString('en-IN')}</strong></div>
+                      <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>Rs.{feeBreakdownData.miscFee.toLocaleString('en-IN')}</strong></div>
+                      <div style={styles.metaRow}><span>Previous Pending</span><strong>Rs.{feeBreakdownData.previousPending.toLocaleString('en-IN')}</strong></div>
+                      <div style={{ ...styles.metaRow, borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span><strong>Total Base Fee</strong></span><strong>Rs.{(feeBreakdownData.baseFee||0).toLocaleString('en-IN')}</strong></div>
+                      {feeBreakdownData.scholarshipDeduction > 0 && (
+                        <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
+                          <span>Scholarship ({feeBreakdownData.scholarshipCategory}: {feeBreakdownData.scholarshipPct}%)</span>
+                          <strong>- Rs.{feeBreakdownData.scholarshipDeduction.toLocaleString('en-IN')}</strong>
+                        </div>
+                      )}
+                      {feeBreakdownData.individualOverrideDeduction > 0 && (
+                        <div style={{ ...styles.metaRow, color: '#2E7D32' }}>
+                          <span>Fee Waivers Applied</span>
+                          <strong>- Rs.{feeBreakdownData.individualOverrideDeduction.toLocaleString('en-IN')}</strong>
+                        </div>
+                      )}
+                      <div style={{ ...styles.metaRow, color: '#D32F2F', borderTop: '1px solid rgba(0,0,0,0.07)', paddingTop: '8px', marginTop: '4px' }}><span>Total Paid by Student</span><strong>- Rs.{(feeBreakdownData.totalPaid||0).toLocaleString('en-IN')}</strong></div>
+                      <div style={{ ...styles.metaRow, backgroundColor: 'rgba(212,175,55,0.08)', padding: '12px', borderRadius: '12px', marginTop: '6px' }}>
+                        <span style={{ fontWeight: 800, color: 'var(--royal-gold)' }}>Remaining Balance</span>
+                        <strong style={{ fontSize: '16px', color: 'var(--royal-gold)', fontWeight: 900 }}>Rs.{(feeBreakdownData.remainingBalance||0).toLocaleString('en-IN')}</strong>
+                      </div>
+                    </div>
+
+                    <div style={styles.readOnlyBlock}>
+                      <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '6px' }}>Modify Fee Waivers & Custom Overrides</h4>
+                      <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: '14px' }}>Individual fee overrides & waivers are locked to the student profile upon verification.</p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        {[
+                          ['Tuition Waiver (Rs.)', editTuitionWaiver, setEditTuitionWaiver],
+                          ['Hostel Waiver (Rs.)', editHostelWaiver, setEditHostelWaiver],
+                          ['Misc Waiver (Rs.)', editMiscWaiver, setEditMiscWaiver]
+                        ].map(([label, val, setter]: any) => (
+                          <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={styles.formLabel}>{label}</label>
+                            <input type="number" min="0" value={val} onChange={(e) => setter(e.target.value)} style={styles.textInputBox} />
+                          </div>
+                        ))}
+                      </div>
+                      <button onClick={() => { setFeeOtpInput(''); setIsFeeOtpOpen(true); }} style={{ ...styles.saveSubmitBtn, marginTop: '16px' }} className="press-interactive">
+                        Submit Fee Override Changes
+                      </button>
+                    </div>
                   </div>
-                ))}
+                ) : (
+                  <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '12px' }}>Loading fee breakdown</div>
+                )}
               </div>
-              <button onClick={() => { setFeeOtpInput(''); setIsFeeOtpOpen(true); }} style={{ ...styles.saveSubmitBtn, marginTop: '16px' }} className="press-interactive">
-                Submit Fee Override Changes
-              </button>
-            </GlassCard>
+            </div>
           )}
 
           {/* OTP modal for fee override */}
@@ -3380,13 +3439,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       } catch (err: any) { triggerToast(err.message || 'Failed to log expenditure.'); }
     };
 
-        const handleDeleteExpenditure = async (exp: ExpenditureItem) => {
+        const handleDeleteExpenditure = async (exp: ExpenditureItem, otpKey: string) => {
       if (role !== 'admin1') { triggerToast('Only the Rector (Admin 1) can delete expenditure entries.'); return; }
       const id = exp._id || exp.id;
       if (!id) return;
       try {
-        await admin2Service.deleteExpenditure(id, exp.branch || selectedExpBranch);
+        await admin2Service.deleteExpenditure(id, exp.branch || selectedExpBranch, otpKey);
         triggerToast('Expenditure entry deleted.');
+        setPendingExpDelete(null);
+        setIsExpDeleteOtpOpen(false);
+        setExpDeleteOtpInput('');
         fetchExpenditures();
       } catch (err: any) { triggerToast(err.message || 'Failed to delete expenditure.'); }
     };
@@ -3691,7 +3753,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       <strong style={{ fontSize: '14px', color: '#EF4444' }}>Rs.{exp.amount.toLocaleString('en-IN')}</strong>
                       <button onClick={() => handleDownloadBill(exp)} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(212,175,55,0.4)', backgroundColor: 'rgba(212,175,55,0.06)', color: 'var(--royal-gold)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }} title="Download Bill">Bill</button>
                       {role === 'admin1' && (
-                        <button onClick={() => handleDeleteExpenditure(exp)} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
+                        <button onClick={() => { setPendingExpDelete(exp); setExpDeleteOtpInput(''); setIsExpDeleteOtpOpen(true); }} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
                       )}
                     </div>
                   </div>
@@ -3699,6 +3761,50 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               )}
             </div>
           </GlassCard>
+
+          {/* Expenditure Delete OTP modal */}
+          {isExpDeleteOtpOpen && pendingExpDelete && (
+            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '400px', padding: '28px', borderRadius: '20px', margin: '0 16px' }} className="anim-slide-up glass-gold-ring">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.1rem', color: 'var(--dark-charcoal)' }}>Delete Expenditure</h3>
+                    <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--muted-gray)' }}>Enter the Authenticator OTP to remove this entry.</p>
+                  </div>
+                  <button onClick={() => { setIsExpDeleteOtpOpen(false); setPendingExpDelete(null); setExpDeleteOtpInput(''); }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}>×</button>
+                </div>
+                <div style={{ padding: '12px', borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.6)', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{pendingExpDelete.category}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '3px' }}>{pendingExpDelete.description}</div>
+                  <div style={{ fontSize: '14px', fontWeight: 900, color: '#EF4444', marginTop: '4px' }}>Rs.{pendingExpDelete.amount.toLocaleString('en-IN')}</div>
+                </div>
+                <input
+                  type="password"
+                  placeholder="Enter 6-digit OTP"
+                  value={expDeleteOtpInput}
+                  onChange={(e) => setExpDeleteOtpInput(e.target.value)}
+                  style={{ ...styles.textInputBox, textAlign: 'center', letterSpacing: '0.2em', fontWeight: 800, marginBottom: '12px' }}
+                />
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => handleDeleteExpenditure(pendingExpDelete, expDeleteOtpInput.trim())}
+                    disabled={!expDeleteOtpInput.trim()}
+                    style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: '#DC2626', color: '#fff', opacity: expDeleteOtpInput.trim() ? 1 : 0.5 }}
+                    className="press-interactive"
+                  >
+                    Confirm Delete
+                  </button>
+                  <button
+                    onClick={() => { setIsExpDeleteOtpOpen(false); setPendingExpDelete(null); setExpDeleteOtpInput(''); }}
+                    style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
+                    className="press-interactive"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </GlassCard>
+            </div>
+          )}
 
           {/* Expenditure OTP modal */}
           {isExpOtpOpen && (

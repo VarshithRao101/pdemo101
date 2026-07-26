@@ -126,9 +126,12 @@ export const admin2Service = {
     return res.data;
   },
 
-  async deleteExpenditure(id: string, branch?: string): Promise<any> {
+  async deleteExpenditure(id: string, branch?: string, securityKey?: string): Promise<any> {
     const url = branch ? `/admin2/expenditure/${id}?branch=${encodeURIComponent(branch)}` : `/admin2/expenditure/${id}`;
-    const res = await apiClient.request<any>(url, { method: 'DELETE' });
+    const res = await apiClient.request<any>(url, {
+      method: 'DELETE',
+      ...(securityKey ? { headers: { 'x-security-key': securityKey, 'X-Security-OTP': securityKey } } : {})
+    });
     return res;
   },
 

@@ -1756,7 +1756,7 @@ app.patch(['/api/admin2/expenditure/:id', '/api/admin2/expenditures/:id'], authe
   return res.json({ status: 'success', data: updated || updates });
 });
 
-app.delete(['/api/admin2/expenditure/:id', '/api/admin2/expenditures/:id'], authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.delete(['/api/admin2/expenditure/:id', '/api/admin2/expenditures/:id'], authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
   if (isMongoConnected) {
