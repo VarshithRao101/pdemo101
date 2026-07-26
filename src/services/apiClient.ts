@@ -741,7 +741,7 @@ export const apiClient = {
       return { status: 'success', data: { collectionToday, pendingCount, pendingAmount, absentCount } } as any;
     }
 
-    if ((cleanPath.includes('/admin/students') || cleanPath.includes('/accountant/students')) && method === 'POST') {
+    if ((cleanPath.includes('/admin/students') || cleanPath.includes('/accountant/students')) && method === 'POST' && !cleanPath.includes('/payments')) {
       const parsedBody = options.body ? JSON.parse(options.body as string) : {};
       const admNo = (parsedBody.admissionNumber || parsedBody.studentId || `2400${Math.floor(100 + Math.random() * 900)}`).toString().trim();
       const branch = parsedBody.branch || 'Erragattugutta C1';
