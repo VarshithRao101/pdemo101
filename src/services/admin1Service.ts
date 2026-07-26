@@ -53,8 +53,17 @@ export const admin1Service = {
 
   async deleteStudent(id: string, otpKey?: string): Promise<{ status: string, message: string }> {
     const headers: Record<string, string> = {};
-    if (otpKey) headers['X-Security-OTP'] = otpKey;
-    const res = await apiClient.request<{ status: string; message: string }>(`/admin1/students/${id}`, { method: 'DELETE', headers });
+    const body: Record<string, string> = {};
+    if (otpKey) {
+      headers['X-Security-OTP'] = otpKey;
+      headers['x-security-key'] = otpKey;
+      body.otp = otpKey;
+    }
+    const res = await apiClient.request<{ status: string; message: string }>(`/admin1/students/${id}`, {
+      method: 'DELETE',
+      headers,
+      ...(otpKey ? { body: JSON.stringify(body) } : {})
+    });
     return res;
   },
 

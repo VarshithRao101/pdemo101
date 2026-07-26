@@ -582,6 +582,7 @@ export const AccountantDashboardView: React.FC = () => {
         setSelectedStudent(null);
         setEditStudent(null);
       }
+      await fetchAllStudents();
       fetchDashboardSummary();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to delete student.');

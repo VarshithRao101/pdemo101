@@ -825,7 +825,21 @@ export const apiClient = {
         (s.admissionNumber || '').toLowerCase() !== targetId
       );
       localStorage.setItem('jc_students', JSON.stringify(filtered));
+      const payments = JSON.parse(localStorage.getItem('jc_payments') || '[]');
+      const filteredPayments = payments.filter((payment: any) => {
+        const paymentStudentId = (payment.studentId || payment.admissionNumber || payment.student || '').toString().toLowerCase();
+        return paymentStudentId !== targetId;
+      });
+      localStorage.setItem('jc_payments', JSON.stringify(filteredPayments));
+      const attendance = JSON.parse(localStorage.getItem('jc_attendance') || '[]');
+      const filteredAttendance = attendance.map((entry: any) => {
+        if (!Array.isArray(entry.records)) return entry;
+        return { ...entry, records: entry.records.filter((record: any) => (record.id || record.studentId || record.admissionNumber || '').toString().toLowerCase() !== targetId) };
+      }).filter((entry: any) => !Array.isArray(entry.records) || entry.records.length > 0);
+      localStorage.setItem('jc_attendance', JSON.stringify(filteredAttendance));
       triggerPortalDataSync('students');
+      triggerPortalDataSync('payments');
+      triggerPortalDataSync('attendance');
       return { status: 'success', message: 'Student record permanently deleted.' } as any;
     }
 
