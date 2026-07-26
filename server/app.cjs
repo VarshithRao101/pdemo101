@@ -2072,7 +2072,7 @@ app.post('/api/accountant/students/:id/payments', authenticateToken, enforceCamp
     receiptNumber: receiptNo,
     studentId: stuObj.studentId || stuObj.admissionNumber || id,
     student: stuObj._id || id,
-    date: new Date(),
+    date: req.body.date ? new Date(req.body.date) : new Date(),
     category: req.body.category || 'Academic Fee',
     installment: req.body.installment || 'Installment',
     amount: amountPaid,

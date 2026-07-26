@@ -261,6 +261,25 @@ const escapeHtml = (value: string | number | null | undefined) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+const normalizeStudentSearch = (value: string) => value.toLowerCase().trim();
+
+const matchesStudentSearch = (student: Student, query: string) => {
+  const normalizedQuery = normalizeStudentSearch(query);
+  if (!normalizedQuery) return true;
+
+  return [
+    student.name,
+    student.admissionNumber,
+    student.studentId,
+    student.rollNumber,
+    student.registrationNumber,
+    student.mobile,
+    student.parentMobile,
+    student.course,
+    student.branch
+  ].some((field) => String(field || '').toLowerCase().includes(normalizedQuery));
+};
+
 export const AccountantDashboardView: React.FC = () => {
   const { user } = useNavigation();
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
@@ -316,6 +335,7 @@ export const AccountantDashboardView: React.FC = () => {
   const [collectInstallment, setCollectInstallment] = useState('Installment 1');
   const [collectCategory, setCollectCategory] = useState('Tuition Fee');
   const [collectMode, setCollectMode] = useState('UPI / NetBanking');
+  const [collectDate, setCollectDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [activeOverlay, setActiveOverlay] = useState<string | null>(null);
   const [isPayOtpModalOpen, setIsPayOtpModalOpen] = useState(false);
@@ -610,6 +630,27 @@ export const AccountantDashboardView: React.FC = () => {
     }
   };
 
+  const openStudentEditor = async (student: Student) => {
+    const identifier = student._id || student.studentId || student.admissionNumber;
+    setIsLoading(true);
+    try {
+      const fullProfile = await accountantService.getStudentProfile(identifier);
+      setSelectedStudent(fullProfile as any);
+      setEditStudent({ ...fullProfile } as any);
+      setIsStuOtpModalOpen(false);
+      setIsStudentModalOpen(true);
+      setActiveOverlay(null);
+    } catch {
+      setSelectedStudent(student);
+      setEditStudent({ ...student } as any);
+      setIsStuOtpModalOpen(false);
+      setIsStudentModalOpen(true);
+      setActiveOverlay(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleToggleAttendance = (id: string, newStatus: 'present' | 'absent' | 'late' | 'leave') => {
     const next = attendanceRoster.map(a => a.id === id ? { ...a, status: newStatus } : a);
     setAttendanceRoster(next);
@@ -679,7 +720,8 @@ export const AccountantDashboardView: React.FC = () => {
         amount: paymentAmount,
         installment: collectInstallment,
         mode: collectMode,
-        category: collectCategory
+        category: collectCategory,
+        date: collectDate
       }, otp || securityKey);
 
       const updatedStudent = res.student && res.student.remainingBalance !== undefined
@@ -1113,19 +1155,7 @@ export const AccountantDashboardView: React.FC = () => {
   }
 
   if (activeSubPage === 'student_search') {
-    const filteredSearchList = students.filter(s => {
-      const q = searchAdmNo.toLowerCase().trim();
-      if (!q) return true;
-      return (s.name || '').toLowerCase().includes(q) ||
-             (s.admissionNumber || '').toLowerCase().includes(q) ||
-             (s.studentId || '').toLowerCase().includes(q) ||
-             (s.rollNumber || '').toLowerCase().includes(q) ||
-             (s.registrationNumber || '').toLowerCase().includes(q) ||
-             (s.mobile || '').includes(q) ||
-             (s.parentMobile || '').includes(q) ||
-             (s.course || '').toLowerCase().includes(q) ||
-             (s.branch || '').toLowerCase().includes(q);
-    });
+    const filteredSearchList = students.filter((student) => matchesStudentSearch(student, searchAdmNo));
 
     return (
       <div style={styles.container} className="view-container anim-slide-up">
@@ -1277,16 +1307,6 @@ export const AccountantDashboardView: React.FC = () => {
                           fontWeight: 800,
                           padding: '2px 8px',
                           borderRadius: '999px',
-                          backgroundColor: isResident ? 'rgba(245, 158, 11, 0.15)' : 'rgba(148, 163, 184, 0.15)',
-                          color: isResident ? '#B45309' : '#475569'
-                        }}>
-                          {s.hostelStatus || 'Day Scholar'}
-                        </span>
-                        <span style={{
-                          fontSize: '10px',
-                          fontWeight: 800,
-                          padding: '2px 8px',
-                          borderRadius: '999px',
                           backgroundColor: 'rgba(59, 130, 246, 0.12)',
                           color: '#1D4ED8'
                         }}>
@@ -1311,21 +1331,7 @@ export const AccountantDashboardView: React.FC = () => {
                     {/* Card Action Buttons */}
                     <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                       <button
-                        onClick={async () => {
-                          setIsLoading(true);
-                          try {
-                            const fullProfile = await accountantService.getStudentProfile(s._id || s.studentId || s.admissionNumber);
-                            setSelectedStudent(fullProfile as any);
-                            setEditStudent({ ...fullProfile } as any);
-                            setIsStudentModalOpen(true);
-                          } catch {
-                            setSelectedStudent(s);
-                            setEditStudent({ ...s });
-                            setIsStudentModalOpen(true);
-                          } finally {
-                            setIsLoading(false);
-                          }
-                        }}
+                        onClick={() => void openStudentEditor(s as any)}
                         style={{
                           flex: 1,
                           padding: '8px 12px',
@@ -1380,17 +1386,7 @@ export const AccountantDashboardView: React.FC = () => {
 
   //  SUBPAGE 2: FEE COLLECTION DESK (Sub-page)
   if (activeSubPage === 'fee_collection') {
-    const filteredCollectList = students.filter(s => {
-      const q = feeCollectAdm.toLowerCase().trim();
-      if (!q) return true;
-      return (s.name || '').toLowerCase().includes(q) ||
-             (s.admissionNumber || '').toLowerCase().includes(q) ||
-             (s.studentId || '').toLowerCase().includes(q) ||
-             (s.rollNumber || '').toLowerCase().includes(q) ||
-             (s.registrationNumber || '').toLowerCase().includes(q) ||
-             (s.mobile || '').includes(q) ||
-             (s.parentMobile || '').includes(q);
-    });
+    const filteredCollectList = students.filter((student) => matchesStudentSearch(student, feeCollectAdm));
 
     return (
       <div style={styles.container} className="view-container anim-slide-up">
@@ -1408,7 +1404,7 @@ export const AccountantDashboardView: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
               <input
                 type="text"
-                placeholder="Search Student to Load Fees by Name, ID, or Adm No..."
+                placeholder="Search student by Name or Admission Number..."
                 value={feeCollectAdm}
                 onChange={(e) => setFeeCollectAdm(e.target.value)}
                 style={styles.textInputBox}
@@ -1417,14 +1413,15 @@ export const AccountantDashboardView: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
                 {filteredCollectList.map(s => (
                   <GlassCard
-                    key={s.studentId}
+                    key={s._id || s.studentId || s.admissionNumber}
                     hoverable={true}
                     onClick={async () => {
                       setIsLoading(true);
                       try {
-                        const fullProfile = await accountantService.getStudentProfile(s._id || s.studentId);
+                        const fullProfile = await accountantService.getStudentProfile(s._id || s.studentId || s.admissionNumber);
                         setSelectedStudent(fullProfile as any);
                         setEditStudent({ ...fullProfile } as any);
+                        setCollectDate(new Date().toISOString().split('T')[0]);
                         triggerToast(`Loaded fee details for ${fullProfile.name}`);
                       } catch {
                         triggerToast('Failed to load profile.');
@@ -1432,17 +1429,68 @@ export const AccountantDashboardView: React.FC = () => {
                         setIsLoading(false);
                       }
                     }}
-                    style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}
+                    style={{
+                      padding: '16px 18px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px',
+                      backgroundColor: 'rgba(255,255,255,0.75)',
+                      cursor: 'pointer'
+                    }}
                   >
-                    <div>
-                      <strong style={{ fontSize: '14px', color: 'var(--dark-charcoal)' }}>{s.name}</strong>
-                      <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '3px' }}>
-                        ID: {s.studentId}  Adm: {s.admissionNumber}  Branch: {s.branch}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', minWidth: 0 }}>
+                        <div style={{
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '14px',
+                          backgroundColor: 'rgba(212,175,55,0.16)',
+                          color: '#8A6500',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '16px',
+                          fontWeight: 900,
+                          flexShrink: 0
+                        }}>
+                          {(s.name || 'S').charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <strong style={{ fontSize: '14px', color: 'var(--dark-charcoal)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</strong>
+                          <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '3px' }}>
+                            Adm: {s.admissionNumber || s.studentId}  •  ID: {s.studentId || s.admissionNumber}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
+                            {s.branch || loggedInCampus} ({s.course || 'MPC'}{s.section ? ` - ${s.section}` : ''})
+                          </div>
+                        </div>
                       </div>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: s.remainingBalance > 0 ? '#EF4444' : '#10B981', whiteSpace: 'nowrap' }}>
+                        {s.remainingBalance > 0 ? `Pending: Rs.${Number(s.remainingBalance || 0).toLocaleString('en-IN')}` : 'Settled'}
+                      </span>
                     </div>
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: s.remainingBalance > 0 ? '#EF4444' : '#10B981' }}>
-                      {s.remainingBalance > 0 ? `Pending: Rs.${s.remainingBalance.toLocaleString('en-IN')}` : 'Sattled'}
-                    </span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void openStudentEditor(s as any);
+                        }}
+                        style={{
+                          padding: '8px 12px',
+                          border: '1.5px solid var(--royal-gold)',
+                          color: '#7C5A00',
+                          backgroundColor: '#FFFDF5',
+                          borderRadius: '10px',
+                          fontWeight: 800,
+                          fontSize: '11px',
+                          cursor: 'pointer'
+                        }}
+                        className="press-interactive"
+                      >
+                        Edit Student
+                      </button>
+                    </div>
                   </GlassCard>
                 ))}
                 {filteredCollectList.length === 0 && (
@@ -1462,13 +1510,22 @@ export const AccountantDashboardView: React.FC = () => {
                     Adm No: {selectedStudent.admissionNumber}  Roll: {selectedStudent.rollNumber || 'N/A'}  Branch: {selectedStudent.branch}
                   </div>
                 </div>
-                <button
-                  onClick={() => { setSelectedStudent(null); setEditStudent(null); }}
-                  style={{ ...styles.actionItemBtn, border: '1px solid rgba(0,0,0,0.1)', color: 'var(--muted-gray)' }}
-                  className="press-interactive"
-                >
-                  Change Student
-                </button>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => void openStudentEditor(selectedStudent)}
+                    style={{ ...styles.actionItemBtn, border: '1.5px solid var(--royal-gold)', color: '#8A6500', backgroundColor: '#FFFDF5' }}
+                    className="press-interactive"
+                  >
+                    Edit Student
+                  </button>
+                  <button
+                    onClick={() => { setSelectedStudent(null); setEditStudent(null); setCollectDate(new Date().toISOString().split('T')[0]); }}
+                    style={{ ...styles.actionItemBtn, border: '1px solid rgba(0,0,0,0.1)', color: 'var(--muted-gray)' }}
+                    className="press-interactive"
+                  >
+                    Change Student
+                  </button>
+                </div>
               </GlassCard>
 
               {/* Double Column Grid */}
@@ -1513,6 +1570,16 @@ export const AccountantDashboardView: React.FC = () => {
                             <option value="Installment 3">Installment 3</option>
                           </select>
                         </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Payment Date</label>
+                        <input
+                          type="date"
+                          value={collectDate}
+                          onChange={(e) => setCollectDate(e.target.value)}
+                          style={styles.textInputBox}
+                        />
                       </div>
 
                       <div style={{ display: 'flex', gap: '10px' }}>
