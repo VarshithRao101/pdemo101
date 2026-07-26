@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+﻿import { apiClient } from './apiClient';
 
 export interface FeeSettings {
   _id?: string;
@@ -33,6 +33,7 @@ export interface WorkerItem {
   salary?: number; // alias for mock compatibility
   monthPeriod: string;
   paid: boolean;
+  amountPaid?: number;
 }
 
 export interface StaffSalaryItem {

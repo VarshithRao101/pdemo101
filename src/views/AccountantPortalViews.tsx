@@ -5,6 +5,7 @@ import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndi
 import { InspireLogo } from '../components/common/InspireLogo';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import collegeLogo from '../assets/college logo.png';
+import { setGlobalSecurityKey } from '../services/apiClient';
 import * as accountantService from '../services/accountantService';
 import { onSocketEvent } from '../services/socketClient';
 
@@ -286,16 +287,22 @@ export const AccountantDashboardView: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
-  const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'attendance' | 'reports' | 'late_fees' | 'scholarships' | 'profile' | 'hostel'>('menu');
+  const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'attendance' | 'reports' | 'late_fees' | 'scholarships' | 'profile'>('menu');
   const [students, setStudents] = useState<Student[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [livePulseKey, setLivePulseKey] = useState<'students' | 'fees' | 'attendance' | 'hostel' | 'settings' | null>(null);
-  const [securityKey, setSecurityKey] = useState('');
+  const [livePulseKey, setLivePulseKey] = useState<'students' | 'fees' | 'attendance' | 'settings' | null>(null);
+  const [securityKey] = useState('');
 
   // New Student & Delete Student Modals
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
   const [isDeleteConfirmModalOpen, setIsDeleteConfirmModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [registryPage, setRegistryPage] = useState(1);
+  const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
+  const [regStuOtpInput, setRegStuOtpInput] = useState('');
+  const [regStuError, setRegStuError] = useState('');
+  const [isSubmittingStudent, setIsSubmittingStudent] = useState(false);
+  const [auditPage, setAuditPage] = useState(1);
 
   const initialNewStudent = {
     admissionNumber: '',
@@ -348,15 +355,6 @@ export const AccountantDashboardView: React.FC = () => {
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendanceRoster, setAttendanceRoster] = useState<Attendee[]>([]);
 
-  // Hostel blocks parameters (Moved from admin)
-  const [hostelBlocks, setHostelBlocks] = useState<any>({
-    BlockA: { name: 'Block A (Boys)', capacity: 0, occupied: 0 },
-    BlockB: { name: 'Block B (Girls)', capacity: 0, occupied: 0 },
-    BlockC: { name: 'Block C (Girls)', capacity: 0, occupied: 0 }
-  });
-  const [roomsList, setRoomsList] = useState<any[]>([]);
-  const [allocateBlock, setAllocateBlock] = useState('Block A');
-  const [allocateRoom, setAllocateRoom] = useState('');
 
   // Settings & Rules parameters
   const [settings, setSettings] = useState({
@@ -410,21 +408,6 @@ export const AccountantDashboardView: React.FC = () => {
     }
   }, []);
 
-  const fetchHostelData = React.useCallback(async () => {
-    try {
-      const hostelData = await accountantService.getHostelAdmissions();
-      setHostelBlocks(hostelData.blocks);
-      setRoomsList(hostelData.rooms);
-      const blockRooms = hostelData.rooms.filter(r => r.block === allocateBlock);
-      if (blockRooms.length > 0) {
-        setAllocateRoom(blockRooms[0]._id);
-      } else {
-        setAllocateRoom('');
-      }
-    } catch (err) {
-      console.error('Failed to load hostel data:', err);
-    }
-  }, [allocateBlock]);
 
   const fetchSettings = React.useCallback(async () => {
     try {
@@ -454,9 +437,6 @@ export const AccountantDashboardView: React.FC = () => {
       if (pulseKey === 'attendance') {
         tasks.push(fetchDashboardSummary(), fetchAttendanceRoster(attendanceDate));
       }
-      if (pulseKey === 'hostel') {
-        tasks.push(fetchHostelData());
-      }
       if (pulseKey === 'settings') {
         tasks.push(fetchSettings(), fetchDashboardSummary());
       }
@@ -469,7 +449,7 @@ export const AccountantDashboardView: React.FC = () => {
     } finally {
       window.setTimeout(() => setLivePulseKey(null), 1400);
     }
-  }, [attendanceDate, fetchAllStudents, fetchAttendanceRoster, fetchDashboardSummary, fetchHostelData, fetchSettings]);
+  }, [attendanceDate, fetchAllStudents, fetchAttendanceRoster, fetchDashboardSummary, fetchSettings]);
 
   // On mount load dashboard metrics & student list
   useEffect(() => {
@@ -493,7 +473,7 @@ export const AccountantDashboardView: React.FC = () => {
       onSocketEvent('student:created', () => refreshWithPulse('students')),
       onSocketEvent('fee:updated', () => refreshWithPulse('fees')),
       onSocketEvent('attendance:updated', () => refreshWithPulse('attendance')),
-      onSocketEvent('hostel:updated', () => refreshWithPulse('hostel')),
+
       onSocketEvent('fee-settings:updated', () => refreshWithPulse('settings')),
     ];
 
@@ -513,8 +493,6 @@ export const AccountantDashboardView: React.FC = () => {
           await Promise.all([fetchDashboardSummary(), fetchAllStudents()]);
         } else if (activeSubPage === 'student_search' || activeSubPage === 'fee_collection' || activeSubPage === 'reports') {
           await fetchAllStudents();
-        } else if (activeSubPage === 'hostel') {
-          await fetchHostelData();
         } else if (activeSubPage === 'attendance') {
           await fetchAttendanceRoster(attendanceDate);
         } else if (activeSubPage === 'late_fees' || activeSubPage === 'scholarships' || activeSubPage === 'profile') {
@@ -525,7 +503,7 @@ export const AccountantDashboardView: React.FC = () => {
       }
     };
     loadSubPage();
-  }, [activeSubPage, fetchDashboardSummary, fetchAllStudents, fetchHostelData, fetchAttendanceRoster, fetchSettings, attendanceDate]);
+  }, [activeSubPage, fetchDashboardSummary, fetchAllStudents, fetchAttendanceRoster, fetchSettings, attendanceDate]);
 
   // Refetch attendance when date changes
   useEffect(() => {
@@ -534,17 +512,7 @@ export const AccountantDashboardView: React.FC = () => {
     }
   }, [attendanceDate, activeSubPage]);
 
-  // Sync allocateRoom selection when block changes
-  useEffect(() => {
-    if (roomsList.length > 0) {
-      const blockRooms = roomsList.filter(r => r.block === allocateBlock);
-      if (blockRooms.length > 0) {
-        setAllocateRoom(blockRooms[0]._id);
-      } else {
-        setAllocateRoom('');
-      }
-    }
-  }, [allocateBlock, roomsList]);
+
 
   const triggerToast = (msg: string) => {
     const isError = msg.toLowerCase().includes('rejected') ||
@@ -560,11 +528,30 @@ export const AccountantDashboardView: React.FC = () => {
   };
 
 
-  const handleCreateStudent = async () => {
+  const openStudentRegOtpModal = () => {
     if (!newStudentData.name.trim() || !newStudentData.admissionNumber.trim()) {
       triggerToast('Student Name and Admission Number are required.');
       return;
     }
+    setRegStuOtpInput('');
+    setRegStuError('');
+    setIsRegStuOtpModalOpen(true);
+  };
+
+  const submitStudentRegistrationWithOtp = async () => {
+    if (!regStuOtpInput || !regStuOtpInput.trim()) {
+      triggerToast('Please enter a valid 6-digit security key.');
+      return;
+    }
+    setIsSubmittingStudent(true);
+    setGlobalSecurityKey(regStuOtpInput.trim());
+    await handleCreateStudent();
+    setIsRegStuOtpModalOpen(false);
+    setRegStuOtpInput('');
+    setIsSubmittingStudent(false);
+  };
+
+  const handleCreateStudent = async () => {
     setIsLoading(true);
     try {
       const created = await accountantService.createStudent({
@@ -742,52 +729,7 @@ export const AccountantDashboardView: React.FC = () => {
     }
   };
 
-  // Hostel assignment logic
-  const handleAllocateRoom = async () => {
-    if (!selectedStudent || !selectedStudent._id || !allocateRoom) {
-      triggerToast('Select a student and room first.');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const res = await accountantService.allocateRoom(allocateRoom, selectedStudent._id, securityKey);
-      triggerToast('Hostel room allocation changes saved successfully!');
-      fetchHostelData();
-      setSelectedStudent(res.student as any);
-      setEditStudent({ ...res.student } as any);
-      setStudents(prev => prev.map(s => s._id === res.student._id ? (res.student as any) : s));
-      setSecurityKey('');
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to allocate room.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const handleCheckoutRoom = async () => {
-    if (!selectedStudent || !selectedStudent._id) {
-      triggerToast('Select a student first.');
-      return;
-    }
-    if (!securityKey) {
-      triggerToast('Authenticator security key is required.');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const res = await accountantService.checkoutStudent(selectedStudent._id, securityKey);
-      triggerToast('Student checked out from hostel room successfully!');
-      fetchHostelData();
-      setSelectedStudent(res.student as any);
-      setEditStudent({ ...res.student } as any);
-      setStudents(prev => prev.map(s => s._id === res.student._id ? (res.student as any) : s));
-      setSecurityKey('');
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to check out student.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleDownloadPDF = (receipt: Receipt, student: Student) => {
     const printWindow = window.open('', '_blank');
@@ -1029,6 +971,7 @@ export const AccountantDashboardView: React.FC = () => {
               </div>
             </div>
           </div>
+          <div class="cut-line"></div>
         </div>
         <script>
           window.addEventListener('load', function () {
@@ -1065,75 +1008,57 @@ export const AccountantDashboardView: React.FC = () => {
       ['Miscellaneous Waiver', Number((student as any).miscWaiver || 0)]
     ];
     const waiverRows = allWaiverRows.filter(([, amount]) => amount > 0);
-    const receipts = [...(student.receipts || [])].sort((first, second) => new Date(second.date).getTime() - new Date(first.date).getTime());
-    const adjustments = [...(student.feeAdjustments || [])].sort((first, second) => new Date(second.createdAt || 0).getTime() - new Date(first.createdAt || 0).getTime());
+    const totalWaiver = waiverRows.reduce((sum, [, amount]) => sum + amount, 0);
+    const receipts = [...(student.receipts || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const lastReceipt = receipts.length > 0 ? receipts[0] : null;
     const totalBaseFee = feeRows.reduce((total, [, amount]) => total + amount, 0);
     const totalPaid = Number(student.totalPaid || 0);
-    const statementHtml = `
-      <html>
-        <head>
-          <title>Fee Statement - ${escapeHtml(student.admissionNumber)}</title>
-          <style>
-            @page { size: A4; margin: 12mm; }
-            * { box-sizing: border-box; }
-            body { margin: 0; color: #172033; background: #F8FAFC; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .page { max-width: 186mm; margin: 0 auto; padding: 18px 0; }
-            .sheet { background: #fff; border: 1px solid #E5E7EB; border-radius: 18px; overflow: hidden; box-shadow: 0 12px 34px rgba(15,23,42,.08); }
-            .header { padding: 24px 28px 20px; color: #fff; background: linear-gradient(135deg, #101827, #26364B); display: flex; justify-content: space-between; gap: 20px; align-items: center; }
-            .brand { display: flex; align-items: center; gap: 13px; }
-            .logo { width: 46px; height: 46px; object-fit: contain; background: #fff; border-radius: 12px; padding: 4px; }
-            .institution { font-size: 16px; font-weight: 900; letter-spacing: .03em; text-transform: uppercase; }
-            .address { margin-top: 3px; max-width: 390px; color: #CBD5E1; font-size: 10px; line-height: 1.4; }
-            .statement-title { text-align: right; }
-            .statement-title strong { display: block; font-size: 18px; letter-spacing: .08em; text-transform: uppercase; }
-            .statement-title span { color: #F4D66C; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-            .content { padding: 24px 28px 28px; }
-            .student { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 12px; padding: 15px; border: 1px solid #E2E8F0; border-radius: 12px; background: #F8FAFC; }
-            .label { display: block; color: #64748B; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-            .value { display: block; margin-top: 4px; color: #172033; font-size: 13px; font-weight: 800; }
-            .section { margin-top: 23px; }
-            .section-title { margin: 0 0 9px; color: #334155; font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
-            table { width: 100%; border-collapse: collapse; overflow: hidden; border: 1px solid #E2E8F0; border-radius: 10px; font-size: 11px; }
-            th { padding: 10px 12px; color: #64748B; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; font-size: 9px; letter-spacing: .08em; text-align: left; text-transform: uppercase; }
-            td { padding: 10px 12px; border-bottom: 1px solid #EEF2F7; vertical-align: top; }
-            tr:last-child td { border-bottom: none; }
-            .amount { text-align: right; font-weight: 800; white-space: nowrap; }
-            .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
-            .summary-card { padding: 14px; border-radius: 11px; border: 1px solid #E2E8F0; background: #fff; }
-            .summary-card.balance { border-color: #E9CF72; background: #FFFDF4; }
-            .summary-card .amount { display: block; margin-top: 5px; color: #172033; font-size: 18px; text-align: left; }
-            .balance .amount { color: #B88708; }
-            .empty { padding: 14px; color: #64748B; border: 1px dashed #CBD5E1; border-radius: 10px; font-size: 11px; text-align: center; }
-            .footer { margin-top: 22px; padding-top: 14px; color: #94A3B8; border-top: 1px solid #E2E8F0; display: flex; justify-content: space-between; gap: 12px; font-size: 9px; }
-            .print { display: block; margin: 0 auto 14px; padding: 10px 18px; color: #172033; background: #E8C34A; border: 0; border-radius: 9px; font-weight: 900; cursor: pointer; }
-            @media print { body { background: #fff; } .page { padding: 0; } .sheet { border: 0; border-radius: 0; box-shadow: none; } .print { display: none; } }
-          </style>
-        </head>
-        <body>
-          <main class="page">
-            <button class="print" onclick="window.print()">Download PDF / Print Statement</button>
-            <article class="sheet">
-              <header class="header">
-                <div class="brand"><img class="logo" src="${collegeLogo}" alt="Inspire logo" /><div><div class="institution">${RECEIPT_INSTITUTION_NAME}</div><div class="address">${RECEIPT_INSTITUTION_ADDRESS}</div></div></div>
-                <div class="statement-title"><strong>Fee Statement</strong><span>Complete transaction history</span></div>
-              </header>
-              <div class="content">
-                <section class="student"><div><span class="label">Student</span><span class="value">${escapeHtml(student.name)}</span></div><div><span class="label">Admission Number</span><span class="value">${escapeHtml(student.admissionNumber)}</span></div><div><span class="label">Course / Campus</span><span class="value">${escapeHtml(student.course || 'N/A')} | ${escapeHtml(student.branch || 'N/A')}</span></div></section>
-                <section class="section"><h2 class="section-title">Fee Structure & Waivers</h2><table><thead><tr><th>Component</th><th class="amount">Base Fee</th><th class="amount">Waiver</th><th class="amount">Net Fee</th></tr></thead><tbody>${feeRows.map(([label, amount]) => { const waiver = waiverRows.find(([waiverLabel]) => waiverLabel.startsWith(label.replace(' Fee', '')))?.[1] || 0; return `<tr><td>${escapeHtml(label)}</td><td class="amount">Rs.${amount.toLocaleString('en-IN')}</td><td class="amount">${waiver ? ` Rs.${waiver.toLocaleString('en-IN')}` : '-'}</td><td class="amount">Rs.${Math.max(0, amount - waiver).toLocaleString('en-IN')}</td></tr>`; }).join('')}</tbody></table></section>
-                <section class="summary"><div class="summary-card"><span class="label">Total Base Fee</span><span class="amount">Rs.${totalBaseFee.toLocaleString('en-IN')}</span></div><div class="summary-card"><span class="label">Total Paid</span><span class="amount">Rs.${totalPaid.toLocaleString('en-IN')}</span></div><div class="summary-card balance"><span class="label">Outstanding Balance</span><span class="amount">Rs.${Number(student.remainingBalance || 0).toLocaleString('en-IN')}</span></div></section>
-                <section class="section"><h2 class="section-title">Payment History</h2>${receipts.length ? `<table><thead><tr><th>Date</th><th>Receipt / Slot</th><th>Category</th><th>Mode</th><th class="amount">Amount</th></tr></thead><tbody>${receipts.map(receipt => `<tr><td>${escapeHtml(new Date(receipt.date).toLocaleDateString('en-GB'))}</td><td>${escapeHtml(receipt.receiptNumber)}<br /><span style="color:#64748B;font-size:9px">${escapeHtml(receipt.installment)}</span></td><td>${escapeHtml(receipt.category)}</td><td>${escapeHtml(receipt.mode)}</td><td class="amount">Rs.${Number(receipt.amount || 0).toLocaleString('en-IN')}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">No payments have been recorded for this student.</div>'}</section>
-                <section class="section"><h2 class="section-title">Fee Revision History</h2>${adjustments.length ? `<table><thead><tr><th>Date</th><th>Description</th><th class="amount">Balance Change</th><th class="amount">Updated Balance</th></tr></thead><tbody>${adjustments.map(adjustment => `<tr><td>${escapeHtml(adjustment.createdAt ? new Date(adjustment.createdAt).toLocaleDateString('en-GB') : '-')}</td><td>${escapeHtml(adjustment.note || 'Fee structure updated')}</td><td class="amount">${adjustment.amount >= 0 ? '+' : ''} Rs.${Math.abs(adjustment.amount).toLocaleString('en-IN')}</td><td class="amount">Rs.${Number(adjustment.updatedBalance || 0).toLocaleString('en-IN')}</td></tr>`).join('')}</tbody></table>` : '<div class="empty">No fee structure revisions have been recorded.</div>'}</section>
-                <footer class="footer"><span>Generated on ${escapeHtml(new Date().toLocaleString('en-IN'))}</span><span>System-generated statement  No signature required</span></footer>
-              </div>
-            </article>
-          </main>
-          <script>window.addEventListener('load', () => setTimeout(() => window.print(), 250));</script>
-        </body>
-      </html>`;
+    const generatedDate = new Date().toLocaleString('en-IN');
+    const extraWaiverHeader = waiverRows.length > 0 ? '<th class="tr">Waiver</th><th class="tr">Net Payable</th>' : '';
+    const feeTableRows = feeRows.map(([label, amount]) => {
+      const wv = allWaiverRows.find(([wl]) => wl.startsWith(label.replace(' Fee', '')))?.[1] || 0;
+      const waiverCol = waiverRows.length > 0
+        ? '<td class="tr" style="color:#16A34A;font-weight:800;">' + (wv ? '&minus; Rs.' + wv.toLocaleString('en-IN') : '&mdash;') + '</td><td class="tr">Rs.' + Math.max(0, amount - wv).toLocaleString('en-IN') + '</td>'
+        : '';
+      return '<tr><td>' + escapeHtml(label) + '</td><td class="tr">Rs.' + amount.toLocaleString('en-IN') + '</td>' + waiverCol + '</tr>';
+    }).join('');
+    const waiverTotalRow = waiverRows.length > 0
+      ? '<tr class="wr"><td style="font-weight:900;">Total Waiver Applied</td><td></td><td class="tr" style="font-weight:900;">&minus; Rs.' + totalWaiver.toLocaleString('en-IN') + '</td><td></td></tr>'
+      : '';
+    const lastReceiptHtml = lastReceipt
+      ? '<div class="ltx"><div class="txl"><div class="tl">Receipt / Payment Record</div><span class="tr2">' + escapeHtml(lastReceipt.receiptNumber) + '</span><div class="tm">' + escapeHtml(lastReceipt.category) + ' &middot; ' + escapeHtml(lastReceipt.installment) + ' &middot; ' + escapeHtml(lastReceipt.mode) + '</div></div><div class="txr"><span class="ta">Rs.' + Number(lastReceipt.amount || 0).toLocaleString('en-IN') + '</span><span class="td2">' + new Date(lastReceipt.date).toLocaleDateString('en-GB') + '</span></div></div>'
+      : '<div class="ntx">No payments recorded yet for this student account.</div>';
+
+    const css = '@page{size:A4;margin:14mm}*{box-sizing:border-box}body{margin:0;color:#1E293B;background:#fff;font-family:\'Segoe UI\',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:12px}.page{max-width:182mm;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:14px;margin-bottom:18px}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;object-fit:contain;background:#fff;border-radius:10px;padding:4px}.iname{color:#fff;font-size:13px;font-weight:900;text-transform:uppercase}.iaddr{color:#94A3B8;font-size:9px;line-height:1.4;margin-top:2px}.slbl strong{display:block;color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;text-align:right}.slbl span{color:#FBBF24;font-size:9px;font-weight:800;text-transform:uppercase}.scard{background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.fl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase;display:block}.fv{font-size:13px;font-weight:800;color:#1E293B;display:block;margin-top:3px}.stit{font-size:9px;font-weight:900;color:#64748B;text-transform:uppercase;letter-spacing:.1em;margin:14px 0 8px}.ftbl{width:100%;border-collapse:collapse;border:1.5px solid #E2E8F0;border-radius:10px;overflow:hidden;font-size:11px}.ftbl th{padding:9px 12px;background:#F8FAFC;color:#64748B;font-size:8.5px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid #E2E8F0;font-weight:800}.ftbl td{padding:9px 12px;border-bottom:1px solid #F1F5F9}.ftbl tr:last-child td{border-bottom:none}.tr{text-align:right;font-weight:800}.wr td{background:#F0FFF4;color:#166534}.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.sc{border:1.5px solid #E2E8F0;border-radius:10px;padding:12px 14px}.sc.hi{border-color:#D4AF37;background:#FFFDF4}.sc .sl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase}.sc .sv{font-size:17px;font-weight:900;color:#1E293B;display:block;margin-top:5px}.sc.pd .sv{color:#059669}.sc.hi .sv{color:#B88708}.ltx{border:1.5px solid #E2E8F0;border-radius:10px;padding:13px 16px;background:#F8FAFC;display:flex;justify-content:space-between;align-items:center}.txl .tl{font-size:8px;font-weight:800;color:#64748B;text-transform:uppercase}.txl .tr2{font-size:12px;font-weight:800;color:#1E293B;margin-top:3px;display:block}.txl .tm{font-size:10px;color:#64748B;margin-top:2px}.txr .ta{font-size:18px;font-weight:900;color:#059669;text-align:right;display:block}.txr .td2{font-size:10px;color:#64748B;text-align:right;margin-top:2px;display:block}.ntx{text-align:center;padding:14px;color:#94A3B8;border:1.5px dashed #E2E8F0;border-radius:10px;font-size:11px}.ftr{margin-top:18px;padding-top:12px;border-top:1.5px solid #E2E8F0;display:flex;justify-content:space-between;align-items:flex-end;font-size:8.5px;color:#94A3B8}.sig{border-top:1.5px solid #1E293B;padding-top:4px;font-size:8px;font-weight:800;color:#1E293B;text-transform:uppercase;margin-top:24px;text-align:center;width:120px}.pbtn{display:block;margin:0 auto 16px;padding:10px 20px;background:linear-gradient(135deg,#1E293B,#334155);color:#fff;border:none;border-radius:10px;font-weight:900;font-size:12px;cursor:pointer}@media print{.pbtn{display:none}}';
+
+    const statementHtml = '<html><head><title>Fee Statement - ' + escapeHtml(student.admissionNumber) + '</title>'
+      + '<style>' + css + '</style></head><body><div class="page">'
+      + '<button class="pbtn" onclick="window.print()">&#8595; Download / Print Statement</button>'
+      + '<div class="hdr"><div class="brand"><img class="logo" src="' + collegeLogo + '" alt="Logo"/><div><div class="iname">' + RECEIPT_INSTITUTION_NAME + '</div><div class="iaddr">' + RECEIPT_INSTITUTION_ADDRESS + '</div></div></div>'
+      + '<div class="slbl"><strong>Fee Statement</strong><span>Campus: ' + escapeHtml(student.branch || loggedInCampus) + '</span></div></div>'
+      + '<div class="scard">'
+      + '<div><span class="fl">Student Name</span><span class="fv">' + escapeHtml(student.name) + '</span></div>'
+      + '<div><span class="fl">Admission No.</span><span class="fv">' + escapeHtml(student.admissionNumber) + '</span></div>'
+      + '<div><span class="fl">Course / Section</span><span class="fv">' + escapeHtml(student.course || 'N/A') + ' &mdash; ' + escapeHtml(student.section || 'N/A') + '</span></div>'
+      + '<div><span class="fl">Father\'s Name</span><span class="fv">' + escapeHtml(student.fatherName || 'N/A') + '</span></div>'
+      + '<div><span class="fl">Mobile</span><span class="fv">' + escapeHtml(student.mobile || 'N/A') + '</span></div>'
+      + '<div><span class="fl">Hostel Status</span><span class="fv">' + escapeHtml(student.hostelStatus || 'Day Scholar') + '</span></div>'
+      + '</div>'
+      + '<div class="stit">Fee Structure</div>'
+      + '<table class="ftbl"><thead><tr><th>Fee Component</th><th class="tr">Base Amount</th>' + extraWaiverHeader + '</tr></thead><tbody>' + feeTableRows + waiverTotalRow + '</tbody></table>'
+      + '<div class="sgrid">'
+      + '<div class="sc"><span class="sl">Total Base Fee</span><span class="sv">Rs.' + totalBaseFee.toLocaleString('en-IN') + '</span></div>'
+      + '<div class="sc pd"><span class="sl">Total Paid</span><span class="sv">Rs.' + totalPaid.toLocaleString('en-IN') + '</span></div>'
+      + '<div class="sc hi"><span class="sl">Outstanding Balance</span><span class="sv">Rs.' + Number(student.remainingBalance || 0).toLocaleString('en-IN') + '</span></div>'
+      + '</div>'
+      + '<div class="stit" style="margin-top:18px">Last Transaction</div>'
+      + lastReceiptHtml
+      + '<div class="ftr"><div><div>Generated: ' + escapeHtml(generatedDate) + '</div><div style="margin-top:2px">Computer-generated statement. No physical signature required.</div></div><div class="sig">Authorized Signatory</div></div>'
+      + '</div><script>window.addEventListener(\'load\',function(){setTimeout(function(){window.print();},300);});<\/script></body></html>';
     printWindow.document.write(statementHtml);
     printWindow.document.close();
     printWindow.focus();
-    triggerToast('Complete fee statement opened in a new print-ready tab.');
+    triggerToast('Fee statement opened for printing/download.');
   };
 
   // Stats calculations
@@ -1154,6 +1079,337 @@ export const AccountantDashboardView: React.FC = () => {
     );
   }
 
+  const renderModals = () => (
+    <>
+      {/* STUDENT PROFILE & FEE EDITOR MODAL */}
+      {isStudentModalOpen && selectedStudent && editStudent && (
+        <div style={styles.overlayOverlay} className="anim-fade-in">
+          <div style={{ ...styles.overlaySheet, maxWidth: '780px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '12px' }}>
+              <div>
+                <h3 style={styles.modalTitle}>Student Profile & Fee Structure Editor</h3>
+                <p style={{ fontSize: '11px', color: '#64748B', margin: 0 }}>
+                  Campus: <strong>{loggedInCampus}</strong> (Locked)
+                </p>
+              </div>
+              <button
+                onClick={() => { setIsStudentModalOpen(false); setSelectedStudent(null); setEditStudent(null); }}
+                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+              >
+                âœ•
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={styles.readOnlyBlock}>
+                <div style={styles.metaRow}><span>Admission Number</span><strong>{selectedStudent.admissionNumber || 'N/A'}</strong></div>
+                <div style={styles.metaRow}><span>Name</span><strong>{selectedStudent.name || 'N/A'}</strong></div>
+                <div style={styles.metaRow}><span>Campus</span><strong style={{ color: '#059669' }}>{loggedInCampus}</strong></div>
+                <div style={styles.metaRow}><span>Total Fee</span><strong>Rs.{((selectedStudent.tuitionFee || 0) + (selectedStudent.hostelFee || 0) + (selectedStudent.miscellaneousFee || 0) + (selectedStudent.previousPending || 0)).toLocaleString('en-IN')}</strong></div>
+                <div style={styles.metaRow}><span>Total Paid</span><strong style={{ color: '#059669' }}>Rs.{(selectedStudent.totalPaid || 0).toLocaleString('en-IN')}</strong></div>
+                <div style={styles.metaRow}><span>Remaining Due</span><strong style={{ color: selectedStudent.remainingBalance > 0 ? '#DC2626' : '#059669' }}>Rs.{(selectedStudent.remainingBalance || 0).toLocaleString('en-IN')}</strong></div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Student Name</label>
+                    <input type="text" value={editStudent.name || ''} onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })} style={styles.textInputBox} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Admission Number</label>
+                    <input type="text" value={editStudent.admissionNumber || ''} onChange={(e) => setEditStudent({ ...editStudent, admissionNumber: e.target.value })} style={styles.textInputBox} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Campus (Locked)</label>
+                    <input type="text" value={loggedInCampus} disabled style={{ ...styles.textInputBox, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed' }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Mobile</label>
+                    <input type="text" value={editStudent.mobile || ''} onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })} style={styles.textInputBox} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Course</label>
+                    <input type="text" value={editStudent.course || ''} onChange={(e) => setEditStudent({ ...editStudent, course: e.target.value })} style={styles.textInputBox} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Section</label>
+                    <input type="text" value={editStudent.section || ''} onChange={(e) => setEditStudent({ ...editStudent, section: e.target.value })} style={styles.textInputBox} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Father Name</label>
+                    <input type="text" value={editStudent.fatherName || ''} onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })} style={styles.textInputBox} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Mother Name</label>
+                    <input type="text" value={editStudent.motherName || ''} onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })} style={styles.textInputBox} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Parent Contact</label>
+                    <input type="text" value={editStudent.parentMobile || ''} onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })} style={styles.textInputBox} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Hostel Status</label>
+                    <select value={editStudent.hostelStatus || 'Day Scholar'} onChange={(e) => setEditStudent({ ...editStudent, hostelStatus: e.target.value as any })} style={styles.selectInput}>
+                      <option value="Day Scholar">Day Scholar</option>
+                      <option value="Resident">Resident</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* FEE WAIVERS SECTION */}
+                <div style={{ background: '#F0FDF4', border: '1.5px solid #BBF7D0', borderRadius: '12px', padding: '12px', marginTop: '4px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#166534', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    ðŸŽ Fee Concession / Waivers
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ ...styles.formLabel, color: '#166534' }}>Tuition Waiver (Rs)</label>
+                      <input type="number" value={(editStudent as any).tuitionWaiver || 0} onChange={(e) => setEditStudent({ ...editStudent, tuitionWaiver: Number(e.target.value) } as any)} style={{ ...styles.textInputBox, borderColor: '#86EFAC' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ ...styles.formLabel, color: '#166534' }}>Hostel Waiver (Rs)</label>
+                      <input type="number" value={(editStudent as any).hostelWaiver || 0} onChange={(e) => setEditStudent({ ...editStudent, hostelWaiver: Number(e.target.value) } as any)} style={{ ...styles.textInputBox, borderColor: '#86EFAC' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ ...styles.formLabel, color: '#166534' }}>Misc Waiver (Rs)</label>
+                      <input type="number" value={(editStudent as any).miscWaiver || 0} onChange={(e) => setEditStudent({ ...editStudent, miscWaiver: Number(e.target.value) } as any)} style={{ ...styles.textInputBox, borderColor: '#86EFAC' }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                  <button onClick={() => { setStuOtpInput(''); setIsStuOtpModalOpen(true); }} style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }} className="press-interactive">
+                    ðŸ” Save & Update Profile (OTP Required)
+                  </button>
+                  <button onClick={() => { setStudentToDelete(editStudent); setIsDeleteConfirmModalOpen(true); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#DC2626', color: '#fff', border: 'none' }} className="press-interactive">
+                    Delete Record
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STUDENT EDIT OTP MODAL */}
+      {isStuOtpModalOpen && editStudent && (
+        <div style={{ ...styles.overlayOverlay, zIndex: 1400 }} className="anim-fade-in">
+          <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--royal-gold)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ ...styles.modalTitle, color: '#7C5A00' }}>ðŸ” OTP Security Verification</h3>
+              <button onClick={() => setIsStuOtpModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>âœ•</button>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
+              You are updating details for student <strong>{editStudent.name}</strong>. Enter your 6-digit Authenticator Security Key to confirm.
+            </p>
+            <input
+              type="text"
+              placeholder="Enter 6-digit Security Key (OTP)"
+              value={stuOtpInput}
+              onChange={(e) => setStuOtpInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && stuOtpInput.trim()) handleStudentSave(editStudent, stuOtpInput.trim()); }}
+              style={{ ...styles.textInputBox, width: '100%', marginBottom: '14px', letterSpacing: '0.1em', fontFamily: 'monospace' }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => {
+                  if (stuOtpInput && stuOtpInput.trim()) {
+                    handleStudentSave(editStudent, stuOtpInput.trim());
+                  } else {
+                    triggerToast('Please enter a valid security OTP key.');
+                  }
+                }}
+                style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }}
+                className="press-interactive"
+              >
+                Authorize & Save
+              </button>
+              <button onClick={() => setIsStuOtpModalOpen(false)} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REGISTER NEW STUDENT MODAL OVERLAY */}
+      {isAddStudentModalOpen && (
+        <div style={{ ...styles.overlayOverlay, zIndex: 1200 }}>
+          <div style={{ ...styles.overlaySheet, maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '10px' }}>
+              <div>
+                <h3 style={styles.modalTitle}>Register New Student</h3>
+                <p style={{ fontSize: '11px', color: '#64748B', margin: 0 }}>Campus: <strong>{loggedInCampus}</strong></p>
+              </div>
+              <button onClick={() => { setIsAddStudentModalOpen(false); setNewStudentAdmissionError(''); }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}>âœ•</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Admission Number *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 2400101"
+                    value={newStudentData.admissionNumber}
+                    onChange={(e) => { setNewStudentData({ ...newStudentData, admissionNumber: e.target.value }); setNewStudentAdmissionError(''); }}
+                    style={{ ...styles.textInputBox, borderColor: newStudentAdmissionError ? '#EF4444' : undefined }}
+                  />
+                  {newStudentAdmissionError && <span style={{ color: '#DC2626', fontSize: '11px', fontWeight: 700 }}>{newStudentAdmissionError}</span>}
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Student Full Name *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Rahul Sharma"
+                    value={newStudentData.name}
+                    onChange={(e) => setNewStudentData({ ...newStudentData, name: e.target.value })}
+                    style={styles.textInputBox}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Father Name</label>
+                  <input type="text" value={newStudentData.fatherName} onChange={(e) => setNewStudentData({ ...newStudentData, fatherName: e.target.value })} style={styles.textInputBox} />
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Mother Name</label>
+                  <input type="text" value={newStudentData.motherName} onChange={(e) => setNewStudentData({ ...newStudentData, motherName: e.target.value })} style={styles.textInputBox} />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Mobile Number</label>
+                  <input type="text" value={newStudentData.mobile} onChange={(e) => setNewStudentData({ ...newStudentData, mobile: e.target.value })} style={styles.textInputBox} />
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Parent Contact</label>
+                  <input type="text" value={newStudentData.parentMobile} onChange={(e) => setNewStudentData({ ...newStudentData, parentMobile: e.target.value })} style={styles.textInputBox} />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Course</label>
+                  <input type="text" value={newStudentData.course} onChange={(e) => setNewStudentData({ ...newStudentData, course: e.target.value })} style={styles.textInputBox} />
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Section</label>
+                  <input type="text" value={newStudentData.section} onChange={(e) => setNewStudentData({ ...newStudentData, section: e.target.value })} style={styles.textInputBox} />
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Hostel</label>
+                  <select value={newStudentData.hostelStatus} onChange={(e) => setNewStudentData({ ...newStudentData, hostelStatus: e.target.value as any })} style={styles.selectInput}>
+                    <option value="Day Scholar">Day Scholar</option>
+                    <option value="Resident">Resident</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Transport</label>
+                  <select value={newStudentData.transportStatus} onChange={(e) => setNewStudentData({ ...newStudentData, transportStatus: e.target.value as any })} style={styles.selectInput}>
+                    <option value="Self Transport">Self Transport</option>
+                    <option value="College Bus">College Bus</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Tuition Fee (Rs)</label>
+                  <input type="number" value={newStudentData.tuitionFee} onChange={(e) => setNewStudentData({ ...newStudentData, tuitionFee: Number(e.target.value) })} style={styles.textInputBox} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Hostel Fee (Rs)</label>
+                  <input type="number" value={newStudentData.hostelFee} onChange={(e) => setNewStudentData({ ...newStudentData, hostelFee: Number(e.target.value) })} style={styles.textInputBox} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Misc Fee (Rs)</label>
+                  <input type="number" value={newStudentData.miscellaneousFee} onChange={(e) => setNewStudentData({ ...newStudentData, miscellaneousFee: Number(e.target.value) })} style={styles.textInputBox} />
+                </div>
+              </div>
+
+              <button
+                onClick={openStudentRegOtpModal}
+                style={{ ...styles.saveSubmitBtn, marginTop: '14px', backgroundColor: '#10B981', color: '#FFFFFF', fontWeight: 800 }}
+                className="press-interactive"
+              >
+                ðŸ” Register Student in Database (OTP Required)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REGISTER NEW STUDENT â€” OTP AUTHORIZATION MODAL */}
+      {isRegStuOtpModalOpen && (
+        <div style={{ ...styles.overlayOverlay, zIndex: 1300 }} className="anim-fade-in">
+          <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid #10B981' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ ...styles.modalTitle, color: '#059669' }}>ðŸ” Security Authorization</h3>
+              <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>âœ•</button>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.6, marginBottom: '14px' }}>
+              Registering new student: <strong>{newStudentData.name || 'â€”'}</strong> (Adm: <strong>{newStudentData.admissionNumber || 'â€”'}</strong>).<br/>
+              Enter your 6-digit Authenticator OTP key to authorize.
+            </p>
+            {regStuError && <div style={{ color: '#DC2626', fontSize: '11px', fontWeight: 700, marginBottom: '8px', padding: '8px 12px', background: 'rgba(220,38,38,0.05)', borderRadius: '8px', border: '1px solid rgba(220,38,38,0.2)' }}>{regStuError}</div>}
+            <input
+              type="text"
+              placeholder="Enter 6-digit OTP (e.g. 111111)"
+              value={regStuOtpInput}
+              onChange={(e) => setRegStuOtpInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') submitStudentRegistrationWithOtp(); }}
+              style={{ ...styles.textInputBox, width: '100%', marginBottom: '14px', letterSpacing: '0.1em', fontFamily: 'monospace' }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={submitStudentRegistrationWithOtp} disabled={isSubmittingStudent} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#10B981', color: '#fff', opacity: isSubmittingStudent ? 0.7 : 1 }} className="press-interactive">
+                {isSubmittingStudent ? 'Registering...' : 'Authorize & Register'}
+              </button>
+              <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL OVERLAY */}
+      {isDeleteConfirmModalOpen && studentToDelete && (
+        <div style={{ ...styles.overlayOverlay, zIndex: 1300 }}>
+          <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid #DC2626' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ ...styles.modalTitle, color: '#DC2626' }}>Delete Student Permanently</h3>
+              <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>âœ•</button>
+            </div>
+            <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5, marginBottom: '16px' }}>
+              Permanently delete student <strong>{studentToDelete.name}</strong> (Adm No: <strong>{studentToDelete.admissionNumber || studentToDelete.studentId}</strong>)?
+              <br /><br />
+              <span style={{ color: '#DC2626', fontWeight: 700 }}>
+                Purges all receipts, attendance, and login credentials. Cannot be undone.
+              </span>
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }} style={{ flex: 1, padding: '10px', border: '1px solid #CBD5E1', backgroundColor: '#F8FAFC', color: '#475569', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleDeleteStudentConfirm} style={{ flex: 1.5, padding: '10px', border: 'none', backgroundColor: '#DC2626', color: '#FFFFFF', borderRadius: '10px', fontWeight: 900, cursor: 'pointer' }} className="press-interactive">Permanently Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   if (activeSubPage === 'student_search') {
     const filteredSearchList = students.filter((student) => matchesStudentSearch(student, searchAdmNo));
 
@@ -1173,7 +1429,7 @@ export const AccountantDashboardView: React.FC = () => {
               onClick={() => {
                 setNewStudentData({ ...initialNewStudent, branch: loggedInCampus });
                 setNewStudentAdmissionError('');
-                setIsAddStudentModalOpen(true);
+                openStudentRegOtpModal();
               }}
               style={{
                 ...styles.actionItemBtn,
@@ -1233,13 +1489,32 @@ export const AccountantDashboardView: React.FC = () => {
             </div>
 
             {/* STUDENT BOXES GRID */}
+            {(() => {
+              const REGISTRY_PER_PAGE = 30;
+              const totalPages = Math.max(1, Math.ceil(filteredSearchList.length / REGISTRY_PER_PAGE));
+              const currentPage = Math.min(registryPage, totalPages);
+              const paginated = filteredSearchList.slice((currentPage - 1) * REGISTRY_PER_PAGE, currentPage * REGISTRY_PER_PAGE);
+              return (<>
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '4px' }}>
+                  <button onClick={() => setRegistryPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                    style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: currentPage === 1 ? '#F8FAFC' : '#fff', color: currentPage === 1 ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: currentPage === 1 ? 'default' : 'pointer' }}>
+                    â† Prev
+                  </button>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>Page {currentPage} / {totalPages}</span>
+                  <button onClick={() => setRegistryPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                    style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: currentPage === totalPages ? '#F8FAFC' : '#fff', color: currentPage === totalPages ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: currentPage === totalPages ? 'default' : 'pointer' }}>
+                    Next â†’
+                  </button>
+                </div>
+              )}
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
               gap: '16px',
               marginTop: '8px'
             }}>
-              {filteredSearchList.map(s => {
+              {paginated.map(s => {
                 const totalPaid = Number(s.totalPaid || 0);
                 const remaining = Number(s.remainingBalance || 0);
                 const totalFee = totalPaid + remaining;
@@ -1371,13 +1646,18 @@ export const AccountantDashboardView: React.FC = () => {
                   </GlassCard>
                 );
               })}
-              {filteredSearchList.length === 0 && (
+              {paginated.length === 0 && (
                 <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px 20px', color: 'var(--muted-gray)', fontSize: '13px', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: '16px' }}>
                   No student records match your search criteria. Try searching by Name, Admission Number, or Phone.
                 </div>
               )}
             </div>
+            </>);
+            })()}
           </div>
+
+          {renderModals()}
+
 
         </main>
       </div>
@@ -1803,6 +2083,8 @@ export const AccountantDashboardView: React.FC = () => {
             </div>
           </div>
         )}
+          {renderModals()}
+
         </main>
       </div>
     );
@@ -1966,6 +2248,8 @@ export const AccountantDashboardView: React.FC = () => {
               </div>
             </div>
           )}
+          {renderModals()}
+
         </main>
       </div>
     );
@@ -1973,7 +2257,13 @@ export const AccountantDashboardView: React.FC = () => {
 
   //  SUBPAGE 4: COLLECTION REPORTS (Sub-page)
   if (activeSubPage === 'reports') {
-    const allTransactions = students.flatMap(s => s.receipts.map(r => ({ student: s, receipt: r })));
+    const allTransactions = students
+      .flatMap(s => s.receipts.map(r => ({ student: s, receipt: r })))
+      .sort((a, b) => new Date(b.receipt.date).getTime() - new Date(a.receipt.date).getTime());
+    const AUDIT_PER_PAGE = 50;
+    const auditTotalPages = Math.max(1, Math.ceil(allTransactions.length / AUDIT_PER_PAGE));
+    const auditCurrentPage = Math.min(auditPage, auditTotalPages);
+    const auditPagedTx = allTransactions.slice((auditCurrentPage - 1) * AUDIT_PER_PAGE, auditCurrentPage * AUDIT_PER_PAGE);
 
     return (
       <div style={styles.container} className="view-container anim-slide-up">
@@ -1982,585 +2272,76 @@ export const AccountantDashboardView: React.FC = () => {
           <button onClick={() => { setActiveSubPage('menu'); }} style={styles.backArrowBtn} className="press-interactive">
              Back to Cockpit
           </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Auditing Reports compiler</h1>
-          <p style={styles.subtitle}>Audit transaction streams, check category totals and export ledgers</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', marginTop: '8px' }}>
+            <div>
+              <h1 style={styles.title}>Audit Report Compiler</h1>
+              <p style={styles.subtitle}>Transaction audit stream â€” {allTransactions.length} records total</p>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => triggerToast('Exported collections ledger as Excel.')} style={{ ...styles.sheetBtn, backgroundColor: '#E2E8F0', color: 'var(--dark-charcoal)', padding: '10px 18px', borderRadius: '10px' }} className="press-interactive">Export Excel</button>
+              <button onClick={() => triggerToast('Downloaded audit report as PDF.')} style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)', fontWeight: 800, padding: '10px 18px', borderRadius: '10px' }} className="press-interactive">Download PDF</button>
+            </div>
+          </div>
         </header>
 
         <main style={{ ...styles.content, gap: '16px' }}>
-          <div style={styles.readOnlyBlock}>
-            <div style={styles.metaRow}><span>Total Monthly Collection Target</span><strong>Rs.68,50,000</strong></div>
-            <div style={styles.metaRow}><span>Total Realized Income</span><strong style={{ color: '#10B981' }}>Rs.{allTransactions.reduce((a, t) => a + t.receipt.amount, 0).toLocaleString('en-IN')}</strong></div>
-            <div style={styles.metaRow}><span>Pending Arrears Balance</span><strong style={{ color: '#EF4444' }}>Rs.{students.reduce((sum, s) => sum + s.remainingBalance, 0).toLocaleString('en-IN')}</strong></div>
-          </div>
-
-          <h4 style={styles.sectionSubtitle}>Collection Audit Logs</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
-            {allTransactions.map((tx, idx) => (
-              <div key={idx} style={styles.receiptRowItem}>
-                <div>
-                  <strong>{tx.receipt.receiptNumber}  {tx.student.name}</strong>
-                  <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{tx.receipt.category}  {tx.receipt.installment}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontWeight: 850, color: '#10B981' }}>+ Rs.{tx.receipt.amount.toLocaleString('en-IN')}</span>
-                  <div style={{ fontSize: '8px', color: 'var(--muted-gray)' }}>{tx.receipt.date}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', zIndex: 1 }}>
-            <button onClick={() => triggerToast('Downloaded collection audit reports as PDF.')} style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)', fontWeight: 800 }} className="press-interactive">Download PDF</button>
-            <button onClick={() => triggerToast('Exported collections ledger sheet as Excel.')} style={{ ...styles.sheetBtn, backgroundColor: '#E2E8F0', color: 'var(--dark-charcoal)' }} className="press-interactive">Export Excel</button>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  //  SUBPAGE 5: HOSTEL ADMISSIONS (Moved from Admin Dashboard)
-  if (activeSubPage === 'hostel') {
-    return (
-      <div style={styles.container} className="view-container anim-slide-up">
-        {renderBackgroundDesign('orange')}
-        <header style={styles.header}>
-          <button onClick={() => { setActiveSubPage('menu'); setSelectedStudent(null); setEditStudent(null); }} style={styles.backArrowBtn} className="press-interactive">
-             Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Hostel Room Admissions</h1>
-          <p style={styles.subtitle}>Allocate campus block occupancies, assign dorm rooms and submit transfers</p>
-        </header>
-
-        <main style={styles.content}>
-          <div style={{ ...styles.metricsGrid, zIndex: 1 }}>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Block A (Boys Block)</span>
-              <strong style={styles.metricValue}>{hostelBlocks.BlockA.occupied} / {hostelBlocks.BlockA.capacity}</strong>
-              <span style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Occupancy Rate: {hostelBlocks.BlockA.capacity > 0 ? ((hostelBlocks.BlockA.occupied / hostelBlocks.BlockA.capacity) * 100).toFixed(1) : 0}%</span>
-            </div>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Block B (Girls Block)</span>
-              <strong style={styles.metricValue}>{hostelBlocks.BlockB.occupied} / {hostelBlocks.BlockB.capacity}</strong>
-              <span style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Occupancy Rate: {hostelBlocks.BlockB.capacity > 0 ? ((hostelBlocks.BlockB.occupied / hostelBlocks.BlockB.capacity) * 100).toFixed(1) : 0}%</span>
-            </div>
-          </div>
-
-          {/* Allocation Room Form */}
-          <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
-            <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Allocate Room to Student</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={styles.formLabel}>Select Student</label>
-                <select
-                  onChange={(e) => {
-                    const match = students.find(s => s.admissionNumber === e.target.value) || null;
-                    setSelectedStudent(match);
-                    setEditStudent(match ? { ...match } : null);
-                  }}
-                  style={styles.selectInput}
-                >
-                  <option value="">-- Choose Student Roster --</option>
-                  {students.map(s => (
-                    <option key={s.admissionNumber} value={s.admissionNumber}>{s.name} ({s.hostelStatus === 'Resident' ? `Resident Room: ${s.hostelRoom}` : 'Day Scholar'})</option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedStudent && editStudent && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }} className="anim-fade-in">
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={styles.formLabel}>Select Block</label>
-                      <select value={allocateBlock} onChange={(e) => setAllocateBlock(e.target.value)} style={styles.selectInput}>
-                        <option value="Block A">Block A (Boys)</option>
-                        <option value="Block B">Block B (Girls)</option>
-                        <option value="Block C">Block C (Girls)</option>
-                      </select>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={styles.formLabel}>Select Room</label>
-                      <select value={allocateRoom} onChange={(e) => setAllocateRoom(e.target.value)} style={styles.selectInput}>
-                        <option value="">-- Select Room --</option>
-                        {roomsList.filter(r => r.block === allocateBlock).map(r => (
-                          <option key={r._id} value={r._id}>{r.roomNumber} ({r.occupants.length}/{r.capacity} occupied)</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px' }}>
-                    <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
-                    <input
-                      type="text"
-                      placeholder="Enter Accountant Key (OTP) e.g. ACC-1234"
-                      value={securityKey}
-                      onChange={(e) => setSecurityKey(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAllocateRoom()}
-                      style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
-                    />
-                  </div>
-
-                  {/* EXPLICIT SUBMIT CHANGES BUTTON */}
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
-                    <button onClick={handleAllocateRoom} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1 }} className="press-interactive">
-                      {selectedStudent.hostelStatus === 'Resident' ? 'Transfer / Update Room' : 'Allocate Room'}
-                    </button>
-                    {selectedStudent.hostelStatus === 'Resident' && (
-                      <button
-                        onClick={handleCheckoutRoom}
-                        style={{
-                          ...styles.saveSubmitBtn,
-                          marginTop: 0,
-                          flex: 1,
-                          backgroundColor: 'rgba(239,68,68,0.06)',
-                          border: '2px solid rgba(239,68,68,0.4)',
-                          color: '#EF4444'
-                        }}
-                        className="press-interactive"
-                      >
-                        Check-out Student
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-            </div>
-          </div>
-
-          {/* DETAILED STUDENT EDIT MODAL (ADMIN 1 STYLE - BIO + FEE BREAKDOWN + DELETE) */}
-          {isStudentModalOpen && selectedStudent && editStudent && !isStuOtpModalOpen && (
-            <div style={styles.overlayOverlay}>
-              <div style={{ ...styles.overlaySheet, maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '12px' }}>
-                  <div>
-                    <h3 style={styles.modalTitle}>Detailed Student Editor</h3>
-                    <p style={{ fontSize: '11px', color: '#64748B', margin: 0 }}>
-                      Edit profile bio details and custom fee structure breakdown for <strong>{editStudent.name}</strong>
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => { setIsStudentModalOpen(false); setSelectedStudent(null); setEditStudent(null); }}
-                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}
-                  >
-                    -
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* SECTION 1: BIO & ACADEMIC INFO */}
-                  <div style={{ backgroundColor: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 900, color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                       Section 1: Bio & Academic Profile
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Admission Number</label>
-                          <input
-                            type="text"
-                            value={editStudent.admissionNumber || ''}
-                            onChange={(e) => setEditStudent({ ...editStudent, admissionNumber: e.target.value })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Student Name</label>
-                          <input
-                            type="text"
-                            value={editStudent.name || ''}
-                            onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Father Name</label>
-                          <input
-                            type="text"
-                            value={editStudent.fatherName || ''}
-                            onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Mother Name</label>
-                          <input
-                            type="text"
-                            value={editStudent.motherName || ''}
-                            onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Mobile Number</label>
-                          <input
-                            type="text"
-                            value={editStudent.mobile || ''}
-                            onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Parent Contact</label>
-                          <input
-                            type="text"
-                            value={editStudent.parentMobile || ''}
-                            onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Course</label>
-                          <input
-                            type="text"
-                            value={editStudent.course || 'MPC'}
-                            onChange={(e) => setEditStudent({ ...editStudent, course: e.target.value })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Section</label>
-                          <input
-                            type="text"
-                            value={editStudent.section || 'Section A'}
-                            onChange={(e) => setEditStudent({ ...editStudent, section: e.target.value })}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Hostel Status</label>
-                          <select
-                            value={editStudent.hostelStatus}
-                            onChange={(e) => setEditStudent({ ...editStudent, hostelStatus: e.target.value as any })}
-                            style={styles.selectInput}
-                          >
-                            <option value="Resident">Resident</option>
-                            <option value="Day Scholar">Day Scholar</option>
-                          </select>
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <label style={styles.formLabel}>Transport Status</label>
-                          <select
-                            value={editStudent.transportStatus}
-                            onChange={(e) => setEditStudent({ ...editStudent, transportStatus: e.target.value as any })}
-                            style={styles.selectInput}
-                          >
-                            <option value="College Bus">College Bus</option>
-                            <option value="Self Transport">Self Transport</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={styles.formLabel}>Correspondence Address</label>
-                        <input
-                          type="text"
-                          value={editStudent.address || ''}
-                          onChange={(e) => setEditStudent({ ...editStudent, address: e.target.value })}
-                          style={styles.textInputBox}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-                {/* MODAL ACTION BUTTONS */}
-                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                  <button
-                    onClick={() => {
-                      setStuOtpInput('');
-                      setIsStuOtpModalOpen(true);
-                    }}
-                    style={{ ...styles.saveSubmitBtn, flex: 2 }}
-                    className="press-interactive"
-                  >
-                     Save Changes to Database
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setStudentToDelete(editStudent);
-                      setIsDeleteConfirmModalOpen(true);
-                    }}
-                    style={{
-                      flex: 1,
-                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                      color: '#DC2626',
-                      border: '1.5px solid rgba(239, 68, 68, 0.3)',
-                      borderRadius: '12px',
-                      fontWeight: 800,
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      padding: '12px'
-                    }}
-                    className="press-interactive"
-                  >
-                    Delete Student
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* REGISTER NEW STUDENT MODAL OVERLAY */}
-          {isAddStudentModalOpen && (
-            <div style={styles.overlayOverlay}>
-              <div style={{ ...styles.overlaySheet, maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '10px' }}>
-                  <h3 style={styles.modalTitle}>Register New Student</h3>
-                  <button
-                    onClick={() => { setIsAddStudentModalOpen(false); setNewStudentAdmissionError(''); }}
-                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}
-                  >
-                    -
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Admission Number *</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 2400101"
-                        value={newStudentData.admissionNumber}
-                        onChange={(e) => { setNewStudentData({ ...newStudentData, admissionNumber: e.target.value }); setNewStudentAdmissionError(''); }}
-                        style={{ ...styles.textInputBox, borderColor: newStudentAdmissionError ? '#EF4444' : undefined }}
-                      />
-                      {newStudentAdmissionError && <span style={{ color: '#DC2626', fontSize: '11px', fontWeight: 700 }}>{newStudentAdmissionError}</span>}
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Student Full Name *</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Rahul Sharma"
-                        value={newStudentData.name}
-                        onChange={(e) => setNewStudentData({ ...newStudentData, name: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Father Name</label>
-                      <input
-                        type="text"
-                        value={newStudentData.fatherName}
-                        onChange={(e) => setNewStudentData({ ...newStudentData, fatherName: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Mother Name</label>
-                      <input
-                        type="text"
-                        value={newStudentData.motherName}
-                        onChange={(e) => setNewStudentData({ ...newStudentData, motherName: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Mobile Number</label>
-                      <input
-                        type="text"
-                        value={newStudentData.mobile}
-                        onChange={(e) => setNewStudentData({ ...newStudentData, mobile: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Parent Contact</label>
-                      <input
-                        type="text"
-                        value={newStudentData.parentMobile}
-                        onChange={(e) => setNewStudentData({ ...newStudentData, parentMobile: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Course</label>
-                      <input
-                        type="text"
-                        value={newStudentData.course}
-                        onChange={(e) => setNewStudentData({ ...newStudentData, course: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Section</label>
-                      <input
-                        type="text"
-                        value={newStudentData.section}
-                        onChange={(e) => setNewStudentData({ ...newStudentData, section: e.target.value })}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Hostel</label>
-                      <select
-                        value={newStudentData.hostelStatus}
-                        onChange={(e) => setNewStudentData({ ...newStudentData, hostelStatus: e.target.value as any })}
-                        style={styles.selectInput}
-                      >
-                        <option value="Resident">Resident</option>
-                        <option value="Day Scholar">Day Scholar</option>
-                      </select>
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Transport</label>
-                      <select
-                        value={newStudentData.transportStatus}
-                        onChange={(e) => setNewStudentData({ ...newStudentData, transportStatus: e.target.value as any })}
-                        style={styles.selectInput}
-                      >
-                        <option value="College Bus">College Bus</option>
-                        <option value="Self Transport">Self Transport</option>
-                      </select>
-                    </div>
-                  </div>
-
-                </div>
-
-                <button
-                  onClick={handleCreateStudent}
-                  style={{ ...styles.saveSubmitBtn, marginTop: '20px', backgroundColor: '#10B981', color: '#FFFFFF' }}
-                  className="press-interactive"
-                >
-                   Register Student in Database
+          {/* Pagination Controls â€” top */}
+          {auditTotalPages > 1 && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>
+                Showing {((auditCurrentPage - 1) * AUDIT_PER_PAGE) + 1}â€“{Math.min(auditCurrentPage * AUDIT_PER_PAGE, allTransactions.length)} of {allTransactions.length}
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => setAuditPage(p => Math.max(1, p - 1))} disabled={auditCurrentPage === 1}
+                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: auditCurrentPage === 1 ? '#F8FAFC' : '#fff', color: auditCurrentPage === 1 ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: auditCurrentPage === 1 ? 'default' : 'pointer' }}>
+                  â† Prev
+                </button>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', display: 'flex', alignItems: 'center' }}>Page {auditCurrentPage} / {auditTotalPages}</span>
+                <button onClick={() => setAuditPage(p => Math.min(auditTotalPages, p + 1))} disabled={auditCurrentPage === auditTotalPages}
+                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: auditCurrentPage === auditTotalPages ? '#F8FAFC' : '#fff', color: auditCurrentPage === auditTotalPages ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: auditCurrentPage === auditTotalPages ? 'default' : 'pointer' }}>
+                  Next â†’
                 </button>
               </div>
             </div>
           )}
 
-          {/* DELETE CONFIRMATION MODAL OVERLAY */}
-          {isDeleteConfirmModalOpen && studentToDelete && (
-            <div style={{ ...styles.overlayOverlay, zIndex: 1200 }}>
-              <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid #DC2626' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <h3 style={{ ...styles.modalTitle, color: '#DC2626' }}>Delete Student Permanently</h3>
-                  <button
-                    onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }}
-                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
-                  >
-                    -
-                  </button>
+          <h4 style={styles.sectionSubtitle}>Collection Audit Logs</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
+            {auditPagedTx.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted-gray)', fontSize: '13px', backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: '16px' }}>
+                No transactions recorded yet.
+              </div>
+            )}
+            {auditPagedTx.map((tx, idx) => (
+              <div key={idx} style={styles.receiptRowItem}>
+                <div>
+                  <strong>{tx.receipt.receiptNumber} â€” {tx.student.name}</strong>
+                  <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{tx.receipt.category} Â· {tx.receipt.installment} Â· Adm: {tx.student.admissionNumber}</div>
                 </div>
-
-                <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5, marginBottom: '16px' }}>
-                  Are you sure you want to permanently delete student <strong>{studentToDelete.name}</strong> (ID / Adm No: <strong>{studentToDelete.admissionNumber || studentToDelete.studentId}</strong>) from the database?
-                  <br /><br />
-                  <span style={{ color: '#DC2626', fontWeight: 700 }}>
-                    This will purge all receipts, attendance records, and user login credentials for this student. This operation cannot be undone.
-                  </span>
-                </p>
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }}
-                    style={{
-                      flex: 1,
-                      padding: '10px',
-                      border: '1px solid #CBD5E1',
-                      backgroundColor: '#F8FAFC',
-                      color: '#475569',
-                      borderRadius: '10px',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    onClick={handleDeleteStudentConfirm}
-                    style={{
-                      flex: 1.5,
-                      padding: '10px',
-                      border: 'none',
-                      backgroundColor: '#DC2626',
-                      color: '#FFFFFF',
-                      borderRadius: '10px',
-                      fontWeight: 900,
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)'
-                    }}
-                    className="press-interactive"
-                  >
-                    Permanently Delete
-                  </button>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontWeight: 850, color: '#10B981' }}>+ Rs.{tx.receipt.amount.toLocaleString('en-IN')}</span>
+                  <div style={{ fontSize: '8px', color: 'var(--muted-gray)' }}>{tx.receipt.date} Â· {tx.receipt.mode}</div>
                 </div>
               </div>
+            ))}
+          </div>
+
+          {/* Bottom Pagination Controls */}
+          {auditTotalPages > 1 && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center', zIndex: 1, marginTop: '8px' }}>
+              <button onClick={() => setAuditPage(p => Math.max(1, p - 1))} disabled={auditCurrentPage === 1}
+                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid #E2E8F0', background: auditCurrentPage === 1 ? '#F8FAFC' : '#fff', color: auditCurrentPage === 1 ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: auditCurrentPage === 1 ? 'default' : 'pointer' }}>
+                â† Previous
+              </button>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>Page {auditCurrentPage} of {auditTotalPages}</span>
+              <button onClick={() => setAuditPage(p => Math.min(auditTotalPages, p + 1))} disabled={auditCurrentPage === auditTotalPages}
+                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid #E2E8F0', background: auditCurrentPage === auditTotalPages ? '#F8FAFC' : '#fff', color: auditCurrentPage === auditTotalPages ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: auditCurrentPage === auditTotalPages ? 'default' : 'pointer' }}>
+                Next â†’
+              </button>
             </div>
           )}
+          {renderModals()}
 
-          {/* STUDENT EDIT OTP VERIFICATION HOVER OVERLAY */}
-          {isStuOtpModalOpen && selectedStudent && editStudent && (
-            <div style={{ ...styles.overlayOverlay, zIndex: 1100 }}>
-              <div style={{ ...styles.overlaySheet, maxWidth: '380px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <h3 style={styles.modalTitle}>Security Verification Required</h3>
-                  <button
-                    onClick={() => setIsStuOtpModalOpen(false)}
-                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
-                  >
-                    -
-                  </button>
-                </div>
-
-                <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
-                  Please enter your security authentication key to authorize student profile updates for <strong>{editStudent.name}</strong>.
-                </p>
-
-                <input
-                  type="text"
-                  placeholder="Enter 6-digit OTP code (e.g. 111111)"
-                  value={stuOtpInput}
-                  onChange={(e) => setStuOtpInput(e.target.value)}
-                  style={{ ...styles.textInputBox, width: '100%', marginBottom: '12px' }}
-                />
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    onClick={() => {
-                      if (stuOtpInput && stuOtpInput.trim()) {
-                        handleStudentSave(editStudent, stuOtpInput);
-                      } else {
-                        triggerToast('Invalid security authentication key.');
-                      }
-                    }}
-                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0 }}
-                    className="press-interactive"
-                  >
-                    Confirm Update
-                  </button>
-                  <button
-                    onClick={() => setIsStuOtpModalOpen(false)}
-                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
-                    className="press-interactive"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </main>
       </div>
     );
@@ -2592,6 +2373,8 @@ export const AccountantDashboardView: React.FC = () => {
             {/* EXPLICIT SUBMIT CHANGES BUTTON */}
             <button onClick={handleSettingsSave} style={styles.saveSubmitBtn} className="press-interactive">Submit Late Fee Changes</button>
           </div>
+          {renderModals()}
+
         </main>
       </div>
     );
@@ -2623,6 +2406,8 @@ export const AccountantDashboardView: React.FC = () => {
             {/* EXPLICIT SUBMIT CHANGES BUTTON */}
             <button onClick={handleSettingsSave} style={styles.saveSubmitBtn} className="press-interactive">Submit Scholarships waivers Changes</button>
           </div>
+          {renderModals()}
+
         </main>
       </div>
     );
@@ -2655,6 +2440,8 @@ export const AccountantDashboardView: React.FC = () => {
               </div>
             </GlassCard>
           </div>
+          {renderModals()}
+
         </main>
       </div>
     );
@@ -2754,12 +2541,12 @@ export const AccountantDashboardView: React.FC = () => {
               <p style={styles.moduleDesc}>Compile collection audit logs and spreadsheets.</p>
             </div>
 
-            <div onClick={() => setActiveSubPage('hostel')} style={styles.moduleCardNew} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(249,115,22,0.07)', border: '1px solid rgba(249,115,22,0.18)' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <div onClick={() => setActiveSubPage('attendance')} style={styles.moduleCardNew} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.18)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               </div>
-              <h4 style={styles.moduleTitle}>Hostel Registry</h4>
-              <p style={styles.moduleDesc}>Allocate campus blocks, rooms and assign residents.</p>
+              <h4 style={styles.moduleTitle}>Attendance Console</h4>
+              <p style={styles.moduleDesc}>Mark daily student and faculty attendance records.</p>
             </div>
 
             <div onClick={() => setActiveSubPage('profile')} style={styles.moduleCardNew} className="press-interactive">

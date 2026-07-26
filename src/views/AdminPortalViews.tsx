@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
@@ -9,6 +9,7 @@ import { admin2Service } from '../services/admin2Service';
 import * as accountantService from '../services/accountantService';
 import { onSocketEvent } from '../services/socketClient';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
+import collegeLogo from '../assets/college logo.png';
 
 
 // --- RENDER BACKGROUND DESIGN WITH CUSTOM ACCENT COLOR GLOWS ---
@@ -105,13 +106,26 @@ interface ExpenditureItem {
   branch?: string;
 }
 
+const escapeHtml = (str: any): string => {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
 interface WorkerItem {
   _id?: string;
   id?: string;
+  workerName?: string;
   name: string;
   role: string;
   salary: number;
+  amount?: number;
+  monthPeriod?: string;
   paid: boolean;
+  amountPaid?: number;
   branch?: string;
 }
 
@@ -412,11 +426,114 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [feeBreakdownData, setFeeBreakdownData] = useState<any>(null);
   const [lateFeeRulesText, setLateFeeRulesText] = useState('Loading...');
   const [scholarshipRulesText, setScholarshipRulesText] = useState('Loading...');
-  const [newWorkerName, setNewWorkerName] = useState('');
-  const [newWorkerRole, setNewWorkerRole] = useState('');
-  const [newWorkerWage, setNewWorkerWage] = useState('');
-  const [newWorkerPeriod, setNewWorkerPeriod] = useState('July 2026');
 
+  const [workerSearch, setWorkerSearch] = useState('');
+  const [workerPage, setWorkerPage] = useState(1);
+  const [selectedWorkerForPayment, setSelectedWorkerForPayment] = useState<any>(null);
+  const [paymentAmountInput, setPaymentAmountInput] = useState('');
+  const [isPaymentAmountModalOpen, setIsPaymentAmountModalOpen] = useState(false);
+
+
+  //  Worker PDF Generator Helpers
+  const handleDownloadWorkerBill = (w: any) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      triggerToast('Popup blocked by browser. Please allow popups to download bill.');
+      return;
+    }
+
+    const workerName = w.workerName || w.name || 'Worker';
+    const role = w.role || 'Staff';
+    const month = w.monthPeriod || 'Current Month';
+    const wage = Number(w.amount || w.salary || 0);
+    const paidAmt = Number(w.amountPaid !== undefined ? w.amountPaid : (w.paid ? wage : 0));
+    const balance = Math.max(0, wage - paidAmt);
+    const statusText = w.paid ? 'PAID' : 'UNPAID';
+    const generatedDate = new Date().toLocaleString('en-IN');
+
+    const html = '<html><head><title>Worker Payslip - ' + escapeHtml(workerName) + '</title>'
+      + '<style>@page{size:A4;margin:14mm}*{box-sizing:border-box}body{margin:0;color:#1E293B;background:#fff;font-family:\'Segoe UI\',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:12px}.page{max-width:182mm;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:14px;margin-bottom:18px}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;object-fit:contain;background:#fff;border-radius:10px;padding:4px}.iname{color:#fff;font-size:13px;font-weight:900;text-transform:uppercase}.iaddr{color:#94A3B8;font-size:9px;line-height:1.4;margin-top:2px}.slbl strong{display:block;color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;text-align:right}.slbl span{color:#FBBF24;font-size:9px;font-weight:800;text-transform:uppercase}.scard{background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.fl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase;display:block}.fv{font-size:13px;font-weight:800;color:#1E293B;display:block;margin-top:3px}.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.sc{border:1.5px solid #E2E8F0;border-radius:10px;padding:12px 14px}.sc.hi{border-color:#D4AF37;background:#FFFDF4}.sc .sl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase}.sc .sv{font-size:17px;font-weight:900;color:#1E293B;display:block;margin-top:5px}.sc.pd .sv{color:#059669}.sc.hi .sv{color:#B88708}.ftr{margin-top:24px;padding-top:12px;border-top:1.5px solid #E2E8F0;display:flex;justify-content:space-between;align-items:flex-end;font-size:8.5px;color:#94A3B8}.sig{border-top:1.5px solid #1E293B;padding-top:4px;font-size:8px;font-weight:800;color:#1E293B;text-transform:uppercase;margin-top:28px;text-align:center;width:130px}.pbtn{display:block;margin:0 auto 16px;padding:10px 20px;background:linear-gradient(135deg,#1E293B,#334155);color:#fff;border:none;border-radius:10px;font-weight:900;font-size:12px;cursor:pointer}@media print{.pbtn{display:none}}</style>'
+      + '</head><body><div class="page">'
+      + '<button class="pbtn" onclick="window.print()">â¬‡ Print Worker Payslip</button>'
+      + '<div class="hdr"><div class="brand"><img class="logo" src="' + collegeLogo + '" alt="Logo"/><div><div class="iname">INSPIRE JUNIOR COLLEGE</div><div class="iaddr">Campus: ' + escapeHtml(loggedInCampus) + '</div></div></div>'
+      + '<div class="slbl"><strong>Worker Payslip</strong><span>Period: ' + escapeHtml(month) + '</span></div></div>'
+      + '<div class="scard">'
+      + '<div><span class="fl">Worker Name</span><span class="fv">' + escapeHtml(workerName) + '</span></div>'
+      + '<div><span class="fl">Role / Designation</span><span class="fv">' + escapeHtml(role) + '</span></div>'
+      + '<div><span class="fl">Payroll Period</span><span class="fv">' + escapeHtml(month) + '</span></div>'
+      + '<div><span class="fl">Campus</span><span class="fv">' + escapeHtml(loggedInCampus) + '</span></div>'
+      + '<div><span class="fl">Status</span><span class="fv" style="color:' + (w.paid ? '#059669' : '#DC2626') + '">' + statusText + '</span></div>'
+      + '<div><span class="fl">Reference ID</span><span class="fv">' + escapeHtml(w._id || w.id || 'WRK-REC') + '</span></div>'
+      + '</div>'
+      + '<div class="sgrid">'
+      + '<div class="sc"><span class="sl">Monthly Wage</span><span class="sv">Rs.' + wage.toLocaleString('en-IN') + '</span></div>'
+      + '<div class="sc pd"><span class="sl">Amount Paid</span><span class="sv">Rs.' + paidAmt.toLocaleString('en-IN') + '</span></div>'
+      + '<div class="sc hi"><span class="sl">Remaining Due</span><span class="sv">Rs.' + balance.toLocaleString('en-IN') + '</span></div>'
+      + '</div>'
+      + '<div class="ftr"><div><div>Generated: ' + escapeHtml(generatedDate) + '</div><div style="margin-top:2px">Computer-generated payroll slip. No physical signature required.</div></div><div class="sig">Authorized Signatory</div></div>'
+      + '</div><script>window.addEventListener(\'load\',function(){setTimeout(function(){window.print();},300);});<\/script></body></html>';
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    triggerToast('Worker payslip opened for ' + workerName);
+  };
+
+  const handleDownloadAllWorkerRecords = (workerList: any[]) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      triggerToast('Popup blocked by browser. Please allow popups to download report.');
+      return;
+    }
+
+    const totalStaff = workerList.length;
+    const totalSalary = workerList.reduce((sum, w) => sum + Number(w.amount || w.salary || 0), 0);
+    const totalPaid = workerList.reduce((sum, w) => sum + Number(w.amountPaid !== undefined ? w.amountPaid : (w.paid ? (w.amount || w.salary || 0) : 0)), 0);
+    const totalPending = Math.max(0, totalSalary - totalPaid);
+    const generatedDate = new Date().toLocaleString('en-IN');
+
+    const tableRows = workerList.map((w, idx) => {
+      const wName = w.workerName || w.name || 'Worker';
+      const wRole = w.role || 'Staff';
+      const wMonth = w.monthPeriod || 'Current Month';
+      const wSal = Number(w.amount || w.salary || 0);
+      const wPaid = Number(w.amountPaid !== undefined ? w.amountPaid : (w.paid ? wSal : 0));
+      const wBal = Math.max(0, wSal - wPaid);
+      const stColor = w.paid ? '#059669' : '#DC2626';
+
+      return '<tr>'
+        + '<td>' + (idx + 1) + '</td>'
+        + '<td style="font-weight:800;">' + escapeHtml(wName) + '</td>'
+        + '<td>' + escapeHtml(wRole) + '</td>'
+        + '<td>' + escapeHtml(wMonth) + '</td>'
+        + '<td class="tr">Rs.' + wSal.toLocaleString('en-IN') + '</td>'
+        + '<td class="tr" style="color:#059669;font-weight:800;">Rs.' + wPaid.toLocaleString('en-IN') + '</td>'
+        + '<td class="tr" style="color:' + (wBal > 0 ? '#DC2626' : '#059669') + ';font-weight:800;">Rs.' + wBal.toLocaleString('en-IN') + '</td>'
+        + '<td style="text-align:center;"><span style="color:' + stColor + ';font-weight:900;padding:2px 6px;border-radius:4px;background:' + (w.paid ? '#ECFDF5' : '#FEF2F2') + ';">' + (w.paid ? 'PAID' : 'UNPAID') + '</span></td>'
+        + '</tr>';
+    }).join('');
+
+    const html = '<html><head><title>Master Worker Payroll Ledger Report</title>'
+      + '<style>@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#1E293B;background:#fff;font-family:\'Segoe UI\',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:11px}.page{max-width:270mm;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:12px;margin-bottom:16px}.brand{display:flex;align-items:center;gap:12px}.logo{width:40px;height:40px;object-fit:contain;background:#fff;border-radius:10px;padding:3px}.iname{color:#fff;font-size:13px;font-weight:900;text-transform:uppercase}.iaddr{color:#94A3B8;font-size:9px;margin-top:2px}.slbl strong{display:block;color:#fff;font-size:14px;font-weight:900;text-transform:uppercase;text-align:right}.slbl span{color:#FBBF24;font-size:9px;font-weight:800;text-transform:uppercase}.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}.sc{border:1.5px solid #E2E8F0;border-radius:10px;padding:10px 12px;background:#F8FAFC}.sc.hi{border-color:#D4AF37;background:#FFFDF4}.sc .sl{font-size:8px;font-weight:800;color:#64748B;text-transform:uppercase}.sc .sv{font-size:16px;font-weight:900;color:#1E293B;display:block;margin-top:3px}.sc.pd .sv{color:#059669}.sc.hi .sv{color:#B88708}.tbl{width:100%;border-collapse:collapse;border:1.5px solid #E2E8F0;border-radius:10px;overflow:hidden;font-size:10.5px}.tbl th{padding:8px 10px;background:#F8FAFC;color:#64748B;font-size:8px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid #E2E8F0;font-weight:800}.tbl td{padding:8px 10px;border-bottom:1px solid #F1F5F9}.tbl tr:last-child td{border-bottom:none}.tr{text-align:right}.ftr{margin-top:18px;padding-top:10px;border-top:1.5px solid #E2E8F0;display:flex;justify-content:space-between;align-items:flex-end;font-size:8px;color:#94A3B8}.sig{border-top:1.5px solid #1E293B;padding-top:4px;font-size:8px;font-weight:800;color:#1E293B;text-transform:uppercase;margin-top:20px;text-align:center;width:130px}.pbtn{display:block;margin:0 auto 14px;padding:8px 18px;background:linear-gradient(135deg,#1E293B,#334155);color:#fff;border:none;border-radius:8px;font-weight:900;font-size:11px;cursor:pointer}@media print{.pbtn{display:none}}</style>'
+      + '</head><body><div class="page">'
+      + '<button class="pbtn" onclick="window.print()">â¬‡ Download Master Worker Payroll PDF</button>'
+      + '<div class="hdr"><div class="brand"><img class="logo" src="' + collegeLogo + '" alt="Logo"/><div><div class="iname">INSPIRE JUNIOR COLLEGE</div><div class="iaddr">Master Worker Payroll Ledger &middot; Campus: ' + escapeHtml(loggedInCampus) + '</div></div></div>'
+      + '<div class="slbl"><strong>Payroll Master Report</strong><span>Total Records: ' + totalStaff + '</span></div></div>'
+      + '<div class="sgrid">'
+      + '<div class="sc"><span class="sl">Total Workers</span><span class="sv">' + totalStaff + '</span></div>'
+      + '<div class="sc"><span class="sl">Total Monthly Payroll</span><span class="sv">Rs.' + totalSalary.toLocaleString('en-IN') + '</span></div>'
+      + '<div class="sc pd"><span class="sl">Total Realized Paid</span><span class="sv">Rs.' + totalPaid.toLocaleString('en-IN') + '</span></div>'
+      + '<div class="sc hi"><span class="sl">Total Outstanding Due</span><span class="sv">Rs.' + totalPending.toLocaleString('en-IN') + '</span></div>'
+      + '</div>'
+      + '<table class="tbl"><thead><tr><th>#</th><th>Worker Name</th><th>Role</th><th>Period</th><th class="tr">Wage</th><th class="tr">Paid</th><th class="tr">Pending</th><th style="text-align:center;">Status</th></tr></thead><tbody>' + tableRows + '</tbody></table>'
+      + '<div class="ftr"><div><div>Generated: ' + escapeHtml(generatedDate) + '</div><div style="margin-top:2px">Computer-generated master payroll summary. No physical signature required.</div></div><div class="sig">Authorized Signatory</div></div>'
+      + '</div><script>window.addEventListener(\'load\',function(){setTimeout(function(){window.print();},300);});<\/script></body></html>';
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    triggerToast('Master worker payroll report downloaded (' + totalStaff + ' records).');
+  };
 
   //  Admin2 Fetch Helpers
   const fetchFeeSettings = async (branch?: string, forceRefresh = false) => {
@@ -4087,11 +4204,22 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   //  SUBPAGE 16: WORKER PAYMENT DETAILS (Admin 2)
   if (activePage === 'worker_payments') {
-    const triggerWorkerAction = (actionType: 'add' | 'toggle' | 'delete', data: any) => {
-      if (actionType === 'add' && (!newWorkerName || !newWorkerRole || !newWorkerWage)) {
-        triggerToast('Please fill in name, role and wage.');
-        return;
-      }
+    const filteredWorkers = workers.filter((w: any) => {
+      const q = workerSearch.toLowerCase().trim();
+      if (!q) return true;
+      const wName = String(w.workerName || w.name || '').toLowerCase();
+      const wRole = String(w.role || '').toLowerCase();
+      const wMonth = String(w.monthPeriod || '').toLowerCase();
+      const wId = String(w._id || w.id || '').toLowerCase();
+      return wName.includes(q) || wRole.includes(q) || wMonth.includes(q) || wId.includes(q);
+    });
+
+    const WORKER_PER_PAGE = 50;
+    const workerTotalPages = Math.max(1, Math.ceil(filteredWorkers.length / WORKER_PER_PAGE));
+    const workerCurrentPage = Math.min(workerPage, workerTotalPages);
+    const workerPaginatedList = filteredWorkers.slice((workerCurrentPage - 1) * WORKER_PER_PAGE, workerCurrentPage * WORKER_PER_PAGE);
+
+    const triggerWorkerAction = (actionType: 'toggle' | 'delete', data: any) => {
       setWorkerPendingAction({ type: actionType, data });
       setWorkerOtpInput('');
       setIsWorkerOtpOpen(true);
@@ -4102,25 +4230,21 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       const { type, data } = workerPendingAction;
       try {
         setGlobalSecurityKey(workerOtpInput);
-        if (type === 'add') {
-          const saved = await admin2Service.createWorkerPayment({
-            workerName: data.name,
-            role: data.role,
-            amount: Number(data.wage),
-            monthPeriod: data.period,
-            paid: false
+        if (type === 'toggle') {
+          const targetId = data._id || data.id;
+          const updated = await admin2Service.updateWorkerPayment(targetId, {
+            paid: data.paid,
+            amountPaid: data.amountPaid
           });
-          const mapped = { ...saved, name: saved.workerName, salary: saved.amount, id: saved._id };
-          setWorkers([mapped, ...workers]);
-          setNewWorkerName(''); setNewWorkerRole(''); setNewWorkerWage('');
-          triggerToast('Worker entry added.');
-        } else if (type === 'toggle') {
-          const updated = await admin2Service.updateWorkerPayment(data._id, { paid: !data.paid });
-          setWorkers(workers.map(ww => ww._id === data._id ? { ...updated, name: updated.workerName, salary: updated.amount, id: updated._id } : ww));
-          triggerToast(`${data.workerName || data.name} marked ${!data.paid ? 'Paid' : 'Unpaid'}.`);
+          setWorkers(prev => prev.map(ww => (ww._id === targetId || ww.id === targetId)
+            ? { ...ww, ...updated, name: updated.workerName || updated.name || ww.name, salary: updated.amount || updated.salary || ww.salary, paid: data.paid, amountPaid: data.amountPaid }
+            : ww
+          ));
+          triggerToast(`${data.workerName || data.name} marked ${data.paid ? 'Paid' : 'Unpaid'}.`);
         } else if (type === 'delete') {
-          await admin2Service.deleteWorkerPayment(data._id);
-          setWorkers(workers.filter(ww => ww._id !== data._id));
+          const targetId = data._id || data.id;
+          await admin2Service.deleteWorkerPayment(targetId);
+          setWorkers(prev => prev.filter(ww => (ww._id || ww.id) !== targetId));
           triggerToast('Worker entry deleted.');
         }
         setIsWorkerOtpOpen(false);
@@ -4135,45 +4259,312 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('emerald')}
         <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">Back to Finance Cockpit</button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Worker Payment Details</h1>
-          <p style={styles.subtitle}>Manage and record non-teaching staff payroll for the month</p>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">Back to Cockpit</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', marginTop: '8px' }}>
+            <div>
+              <h1 style={styles.title}>Worker Payment Details</h1>
+              <p style={styles.subtitle}>Audit non-teaching staff payroll, log term payments and export statements</p>
+            </div>
+            <button
+              onClick={() => handleDownloadAllWorkerRecords(workers)}
+              style={{
+                ...styles.actionItemBtn,
+                backgroundColor: 'var(--royal-gold)',
+                color: '#000',
+                border: 'none',
+                fontWeight: 900,
+                fontSize: '12px',
+                padding: '10px 18px',
+                borderRadius: '10px',
+                boxShadow: '0 4px 12px rgba(251, 191, 36, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              className="press-interactive"
+            >
+              ðŸ“¥ Download All Records (PDF)
+            </button>
+          </div>
         </header>
-        <main style={styles.content}>
-          <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
-            <h4 style={styles.sectionSubtitle}>Add Worker Entry</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Name</label><input type="text" value={newWorkerName} onChange={(e) => setNewWorkerName(e.target.value)} style={styles.textInputBox} placeholder="e.g. Ramesh Kumar" /></div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Role</label><input type="text" value={newWorkerRole} onChange={(e) => setNewWorkerRole(e.target.value)} style={styles.textInputBox} placeholder="e.g. Plumber" /></div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Monthly Wage (Rs.)</label><input type="number" min="0" value={newWorkerWage} onChange={(e) => setNewWorkerWage(e.target.value)} style={styles.textInputBox} placeholder="e.g. 15000" /></div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><label style={styles.formLabel}>Period</label><input type="text" value={newWorkerPeriod} onChange={(e) => setNewWorkerPeriod(e.target.value)} style={styles.textInputBox} placeholder="e.g. July 2026" /></div>
+
+        <main style={{ ...styles.content, gap: '16px' }}>
+          {/* Search & Filter Bar */}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', zIndex: 1 }}>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <input
+                type="text"
+                placeholder="Search Worker by Name, Role, Month Period, ID..."
+                value={workerSearch}
+                onChange={(e) => { setWorkerSearch(e.target.value); setWorkerPage(1); }}
+                style={{ ...styles.textInputBox, fontSize: '13px', padding: '12px 14px' }}
+              />
             </div>
-            <button onClick={() => triggerWorkerAction('add', { name: newWorkerName, role: newWorkerRole, wage: newWorkerWage, period: newWorkerPeriod })} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">Add Worker Entry</button>
-          </GlassCard>
-          <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Workers  {workers.length} Staff</h4>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--royal-gold)', backgroundColor: 'rgba(251,191,36,0.08)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(251,191,36,0.2)' }}>Pending: {workers.filter(w => !w.paid).length}</span>
+            {workerSearch && (
+              <button
+                onClick={() => { setWorkerSearch(''); setWorkerPage(1); }}
+                style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase' }}
+              >
+                Clear Search
+              </button>
+            )}
+            <div style={{ fontSize: '12px', color: 'var(--muted-gray)', fontWeight: 700, padding: '0 8px' }}>
+              Showing <strong>{filteredWorkers.length}</strong> Workers
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {workers.map((w: any, i) => (
-                <div key={w._id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: `1.5px solid ${w.paid ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, backgroundColor: w.paid ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{w.workerName || w.name}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{w.role}  {w.monthPeriod}  Rs.{(w.amount || w.salary || 0).toLocaleString('en-IN')}/mo</div>
+          </div>
+
+          {/* Top Pagination Controls */}
+          {workerTotalPages > 1 && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>
+                Showing {((workerCurrentPage - 1) * WORKER_PER_PAGE) + 1}â€“{Math.min(workerCurrentPage * WORKER_PER_PAGE, filteredWorkers.length)} of {filteredWorkers.length}
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={() => setWorkerPage(p => Math.max(1, p - 1))} disabled={workerCurrentPage === 1}
+                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: workerCurrentPage === 1 ? '#F8FAFC' : '#fff', color: workerCurrentPage === 1 ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === 1 ? 'default' : 'pointer' }}>
+                  â† Prev
+                </button>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', display: 'flex', alignItems: 'center' }}>Page {workerCurrentPage} / {workerTotalPages}</span>
+                <button onClick={() => setWorkerPage(p => Math.min(workerTotalPages, p + 1))} disabled={workerCurrentPage === workerTotalPages}
+                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: workerCurrentPage === workerTotalPages ? '#F8FAFC' : '#fff', color: workerCurrentPage === workerTotalPages ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === workerTotalPages ? 'default' : 'pointer' }}>
+                  Next â†’
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* WORKERS GRID */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: '16px',
+            marginTop: '4px',
+            zIndex: 1
+          }}>
+            {workerPaginatedList.map((w: any) => {
+              const wName = w.workerName || w.name || 'Worker';
+              const wWage = Number(w.amount || w.salary || 0);
+              const wPaid = Number(w.amountPaid !== undefined ? w.amountPaid : (w.paid ? wWage : 0));
+              const wDue = Math.max(0, wWage - wPaid);
+
+              return (
+                <GlassCard
+                  key={w._id || w.id}
+                  hoverable={true}
+                  style={{
+                    padding: '18px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: '14px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+                    border: `1.5px solid ${w.paid ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.4)'}`,
+                    borderRadius: '16px',
+                    boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)'
+                  }}
+                >
+                  {/* Top Row: Avatar + Name + Status */}
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <div style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '12px',
+                      backgroundColor: w.paid ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      color: w.paid ? '#059669' : '#DC2626',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '15px',
+                      fontWeight: 900,
+                      flexShrink: 0
+                    }}>
+                      {wName.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <strong style={{ fontSize: '15px', color: 'var(--dark-charcoal)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {wName}
+                        </strong>
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: 900,
+                          padding: '3px 8px',
+                          borderRadius: '999px',
+                          backgroundColor: w.paid ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+                          color: w.paid ? '#059669' : '#DC2626',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.06em'
+                        }}>
+                          {w.paid ? 'PAID' : 'UNPAID'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', fontWeight: 600 }}>
+                        Role: <span style={{ color: '#1E293B', fontWeight: 800 }}>{w.role || 'Staff'}</span> Â· Period: <span style={{ color: '#1E293B', fontWeight: 800 }}>{w.monthPeriod || 'July 2026'}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button onClick={() => triggerWorkerAction('toggle', w)} style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', backgroundColor: w.paid ? 'rgba(16,185,129,0.12)' : 'var(--royal-gold)', color: w.paid ? '#10B981' : '#000', fontWeight: 800, fontSize: '11px', cursor: 'pointer', fontFamily: 'var(--font-family)' }} className="press-interactive">{w.paid ? 'Paid' : 'Unpaid'}</button>
-                    <button onClick={() => triggerWorkerAction('delete', w)} style={{ fontSize: '10px', padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
+
+                  {/* Financial Details Row */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: '#F8FAFC', padding: '10px 12px', borderRadius: '10px', fontSize: '11.5px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                      <span>Monthly Wage:</span>
+                      <strong>Rs.{wWage.toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
+                      <span>Amount Paid:</span>
+                      <strong>Rs.{wPaid.toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: wDue > 0 ? '#DC2626' : '#059669' }}>
+                      <span>Balance Due:</span>
+                      <strong>Rs.{wDue.toLocaleString('en-IN')}</strong>
+                    </div>
                   </div>
+
+                  {/* Card Action Buttons */}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {!w.paid ? (
+                      <button
+                        onClick={() => {
+                          setSelectedWorkerForPayment(w);
+                          setPaymentAmountInput(String(wWage));
+                          setIsPaymentAmountModalOpen(true);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '9px 12px',
+                          border: 'none',
+                          color: '#000',
+                          backgroundColor: 'var(--royal-gold)',
+                          borderRadius: '8px',
+                          fontWeight: 900,
+                          fontSize: '11.5px',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 8px rgba(251, 191, 36, 0.25)'
+                        }}
+                        className="press-interactive"
+                      >
+                        Mark Paid
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => triggerWorkerAction('toggle', { ...w, paid: false, amountPaid: 0 })}
+                        style={{
+                          flex: 1,
+                          padding: '9px 12px',
+                          border: '1.5px solid rgba(239, 68, 68, 0.3)',
+                          color: '#DC2626',
+                          backgroundColor: 'rgba(254, 242, 242, 0.8)',
+                          borderRadius: '8px',
+                          fontWeight: 800,
+                          fontSize: '11.5px',
+                          cursor: 'pointer'
+                        }}
+                        className="press-interactive"
+                      >
+                        Mark Unpaid
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => handleDownloadWorkerBill(w)}
+                      style={{
+                        padding: '9px 12px',
+                        border: '1.5px solid #CBD5E1',
+                        color: '#334155',
+                        backgroundColor: '#F8FAFC',
+                        borderRadius: '8px',
+                        fontWeight: 800,
+                        fontSize: '11px',
+                        cursor: 'pointer'
+                      }}
+                      className="press-interactive"
+                    >
+                      Download Bill
+                    </button>
+                  </div>
+                </GlassCard>
+              );
+            })}
+
+            {workerPaginatedList.length === 0 && (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px 20px', color: 'var(--muted-gray)', fontSize: '13px', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: '16px' }}>
+                No worker payroll records found matching your search.
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Pagination Controls */}
+          {workerTotalPages > 1 && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center', zIndex: 1, marginTop: '8px' }}>
+              <button onClick={() => setWorkerPage(p => Math.max(1, p - 1))} disabled={workerCurrentPage === 1}
+                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid #E2E8F0', background: workerCurrentPage === 1 ? '#F8FAFC' : '#fff', color: workerCurrentPage === 1 ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === 1 ? 'default' : 'pointer' }}>
+                â† Previous
+              </button>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>Page {workerCurrentPage} of {workerTotalPages}</span>
+              <button onClick={() => setWorkerPage(p => Math.min(workerTotalPages, p + 1))} disabled={workerCurrentPage === workerTotalPages}
+                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid #E2E8F0', background: workerCurrentPage === workerTotalPages ? '#F8FAFC' : '#fff', color: workerCurrentPage === workerTotalPages ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === workerTotalPages ? 'default' : 'pointer' }}>
+                Next â†’
+              </button>
+            </div>
+          )}
+
+          {/* ENTER PAYMENT AMOUNT MODAL */}
+          {isPaymentAmountModalOpen && selectedWorkerForPayment && (
+            <div style={{ ...styles.overlayOverlay, zIndex: 1300 }} className="anim-fade-in">
+              <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--royal-gold)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ ...styles.modalTitle, color: '#7C5A00' }}>Record Worker Payment</h3>
+                  <button onClick={() => { setIsPaymentAmountModalOpen(false); setSelectedWorkerForPayment(null); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>âœ•</button>
                 </div>
-              ))}
+                <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '14px' }}>
+                  Worker: <strong>{selectedWorkerForPayment.workerName || selectedWorkerForPayment.name}</strong> ({selectedWorkerForPayment.role})<br/>
+                  Monthly Wage: <strong>Rs.{(selectedWorkerForPayment.amount || selectedWorkerForPayment.salary || 0).toLocaleString('en-IN')}</strong>
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+                  <label style={styles.formLabel}>Amount Paid (Rs.) *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Enter paid amount"
+                    value={paymentAmountInput}
+                    onChange={(e) => setPaymentAmountInput(e.target.value)}
+                    style={{ ...styles.textInputBox, fontSize: '16px', fontWeight: 800, color: '#059669' }}
+                    autoFocus
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => {
+                      const amt = Number(paymentAmountInput);
+                      if (isNaN(amt) || amt <= 0) {
+                        triggerToast('Please enter a valid payment amount.');
+                        return;
+                      }
+                      setIsPaymentAmountModalOpen(false);
+                      triggerWorkerAction('toggle', {
+                        ...selectedWorkerForPayment,
+                        paid: true,
+                        amountPaid: amt
+                      });
+                    }}
+                    style={{ ...styles.saveSubmitBtn, flex: 1.5, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }}
+                    className="press-interactive"
+                  >
+                    Proceed to OTP Verification ðŸ”
+                  </button>
+                  <button onClick={() => { setIsPaymentAmountModalOpen(false); setSelectedWorkerForPayment(null); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
+                    Cancel
+                  </button>
+                </div>
+              </div>
             </div>
-          </GlassCard>
+          )}
 
           {/* Worker OTP verification modal overlay */}
           {isWorkerOtpOpen && (
-            <div style={styles.overlayOverlay}>
+            <div style={{ ...styles.overlayOverlay, zIndex: 1400 }} className="anim-fade-in">
               <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '16px', border: '1px solid var(--card-border)' }} className="anim-slide-up glass-gold-ring">
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                   <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Finance OTP Authorization</h3>
@@ -4187,9 +4578,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     onChange={(e) => setWorkerOtpInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && confirmWorkerAction()}
                     style={{ ...styles.textInputBox, textAlign: 'center', letterSpacing: '0.2em', fontSize: '15px', fontWeight: 800 }}
+                    autoFocus
                   />
                   <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-                    <button onClick={confirmWorkerAction} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1 }} className="press-interactive">Confirm</button>
+                    <button onClick={confirmWorkerAction} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Confirm & Save</button>
                     <button onClick={() => { setIsWorkerOtpOpen(false); setWorkerPendingAction(null); setWorkerOtpInput(''); }} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">Cancel</button>
                   </div>
                 </div>
