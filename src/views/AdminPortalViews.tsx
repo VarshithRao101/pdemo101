@@ -166,6 +166,9 @@ interface Teacher {
   assignedSections: string[];
   assignedSubjects: string[];
   status: 'Active' | 'Inactive';
+  salaryStatus?: 'paid' | 'pending';
+  salaryPaidAmount?: number;
+  salaryPaymentDate?: string;
   tempPassword?: string;
   branch?: string;
 }
@@ -347,6 +350,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [deleteStuOtpInput, setDeleteStuOtpInput] = useState('');
 
   const [workers, setWorkers] = useState<WorkerItem[]>([]);
+  const [salaryPage, setSalaryPage] = useState(1);
+  const [selectedSalaryTeacher, setSelectedSalaryTeacher] = useState<Teacher | null>(null);
+  const [salaryActionType, setSalaryActionType] = useState<'paid' | 'pending'>('paid');
+  const [salaryAmountInput, setSalaryAmountInput] = useState('');
+  const [isSalaryActionOpen, setIsSalaryActionOpen] = useState(false);
 
   const [feeEditSearch, setFeeEditSearch] = useState('');
   const [selectedFeeStudent, setSelectedFeeStudent] = useState<Student | null>(null);
@@ -715,7 +723,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           fetchFeeSettings(branchParam, true)
         ];
         if (role === 'admin2') {
-          tasks.push(fetchExpenditures(), fetchWorkerPayments());
+          tasks.push(fetchExpenditures(), fetchWorkerPayments(), fetchStaffSalaries());
         }
         await Promise.all(tasks);
       } catch (err) {
@@ -1663,7 +1671,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         // Role filters
         if (role === 'admin2' && t.branch !== loggedInCampus) return false;
         // Search filter
-        const matchSearch = t.name.toLowerCase().includes(searchFac.toLowerCase()) || t.subject.toLowerCase().includes(searchFac.toLowerCase()) || (t.email || '').toLowerCase().includes(searchFac.toLowerCase());
+        const matchSearch =
+          t.name.toLowerCase().includes(searchFac.toLowerCase()) ||
+          t.subject.toLowerCase().includes(searchFac.toLowerCase()) ||
+          (t.email || '').toLowerCase().includes(searchFac.toLowerCase()) ||
+          (t.mobile || '').toLowerCase().includes(searchFac.toLowerCase());
         if (!matchSearch) return false;
         // Campus filter
         if (filterFacCampus !== 'All' && t.branch !== filterFacCampus) return false;
@@ -1675,6 +1687,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     const facultyTotalPages = Math.max(1, Math.ceil(list.length / facultyPageSize));
     const facultyCurrentPage = Math.min(facultyPage, facultyTotalPages);
     const facultyPageItems = list.slice((facultyCurrentPage - 1) * facultyPageSize, facultyCurrentPage * facultyPageSize);
+    const canEditFaculty = role !== 'admin2';
 
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -1692,28 +1705,29 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             {/* Search Bar at the top */}
             <input
               type="text"
-              placeholder="Search faculty name, role, or email..."
+              placeholder="Search faculty name, role, mobile, or email..."
               value={searchFac}
               onChange={(e) => { setSearchFac(e.target.value); setFacultyPage(1); }}
               style={styles.textInputBox}
             />
 
-            {/* Add Faculty button below search bar */}
-            <button
-              onClick={() => {
-                setNewFacName('');
-                setNewFacSal('');
-                setNewFacMobile('');
-                setNewFacBranch(loggedInCampus);
-                setNewFacSub('');
-                setNewFacEmail('');
-                setIsAddTeacherModalOpen(true);
-              }}
-              style={{ ...styles.saveSubmitBtn, marginTop: '4px', marginBottom: '4px' }}
-              className="press-interactive"
-            >
-              + Add Faculty Member
-            </button>
+            {role !== 'admin2' && (
+              <button
+                onClick={() => {
+                  setNewFacName('');
+                  setNewFacSal('');
+                  setNewFacMobile('');
+                  setNewFacBranch(loggedInCampus);
+                  setNewFacSub('');
+                  setNewFacEmail('');
+                  setIsAddTeacherModalOpen(true);
+                }}
+                style={{ ...styles.saveSubmitBtn, marginTop: '4px', marginBottom: '4px' }}
+                className="press-interactive"
+              >
+                + Add Faculty Member
+              </button>
+            )}
 
             {/* Filters below Add Faculty button */}
             <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
@@ -1749,29 +1763,53 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             </div>
 
             {/* Faculty List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
               {facultyPageItems.map(t => (
-                <div key={t.id || t._id} style={styles.receiptRowItem}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <strong style={{ fontSize: '13px' }}>{t.name}</strong>
-                      <span style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 600 }}>({t.subject || 'Role'})</span>
+                <div
+                  key={t.id || t._id}
+                  onClick={() => {
+                    setSelectedTeacher(t);
+                    setEditTeacher({ ...t });
+                  }}
+                  style={{
+                    padding: '14px',
+                    borderRadius: '16px',
+                    border: '1.5px solid var(--card-border)',
+                    backgroundColor: 'rgba(255,255,255,0.45)',
+                    cursor: 'pointer',
+                    boxShadow: '0 8px 24px rgba(15,23,42,0.05)'
+                  }}
+                  className="press-interactive"
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'start' }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 900, color: 'var(--dark-charcoal)', lineHeight: 1.25 }}>{t.name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '4px' }}>{t.subject || 'Role'}</div>
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>
-                      Salary: Rs.{(t.salary || 0).toLocaleString('en-IN')}  Campus: {t.branch || 'Erragattugutta C1'}
-                      {t.email ? `  Email: ${t.email}` : ''}
-                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: t.status === 'Active' ? '#10B981' : '#EF4444', backgroundColor: 'rgba(255,255,255,0.7)', padding: '4px 8px', borderRadius: '999px' }}>
+                      {t.status || 'Active'}
+                    </span>
                   </div>
-                  <button
-                    onClick={() => {
-                      setSelectedTeacher(t);
-                      setEditTeacher({ ...t });
-                    }}
-                    style={styles.actionItemBtn}
-                    className="press-interactive"
-                  >
-                    Select
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px', fontSize: '11px', color: 'var(--muted-gray)', lineHeight: 1.5 }}>
+                    <span>Campus: {t.branch || 'Erragattugutta C1'}</span>
+                    <span>Salary: ₹{(t.salary || 0).toLocaleString('en-IN')}</span>
+                    <span>Mobile: {t.mobile || '—'}</span>
+                    {t.email && <span>Email: {t.email}</span>}
+                  </div>
+                  <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted-gray)' }}>{role === 'admin2' ? 'View only' : 'Edit enabled'}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedTeacher(t);
+                        setEditTeacher({ ...t });
+                      }}
+                      style={{ ...styles.actionItemBtn, padding: '6px 10px', fontSize: '10px' }}
+                      className="press-interactive"
+                    >
+                      {role === 'admin2' ? 'View' : 'Open'}
+                    </button>
+                  </div>
                 </div>
               ))}
               {list.length === 0 && (
@@ -1808,7 +1846,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <div style={styles.overlayOverlay}>
               <div style={styles.overlaySheet}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                  <h3 style={styles.modalTitle}>Edit Faculty Details</h3>
+                  <h3 style={styles.modalTitle}>{canEditFaculty ? 'Edit Faculty Details' : 'Faculty Details'}</h3>
                   <button
                     onClick={() => { setSelectedTeacher(null); setEditTeacher(null); }}
                     style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
@@ -1823,7 +1861,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     <input
                       type="text"
                       value={editTeacher.name}
-                      onChange={(e) => setEditTeacher({ ...editTeacher, name: e.target.value })}
+                      onChange={(e) => canEditFaculty && setEditTeacher({ ...editTeacher, name: e.target.value })}
+                      readOnly={!canEditFaculty}
                       style={styles.textInputBox}
                     />
                   </div>
@@ -1833,8 +1872,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       <label style={styles.formLabel}>Campus Branch</label>
                       <select
                         value={editTeacher.branch || 'Erragattugutta C1'}
-                        disabled={role === 'admin2'}
-                        onChange={(e) => setEditTeacher({ ...editTeacher, branch: e.target.value })}
+                        disabled={!canEditFaculty}
+                        onChange={(e) => canEditFaculty && setEditTeacher({ ...editTeacher, branch: e.target.value })}
                         style={styles.selectInput}
                       >
                         <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
@@ -1849,7 +1888,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       <input
                         type="text"
                         value={editTeacher.subject || ''}
-                        onChange={(e) => setEditTeacher({ ...editTeacher, subject: e.target.value })}
+                        onChange={(e) => canEditFaculty && setEditTeacher({ ...editTeacher, subject: e.target.value })}
+                        readOnly={!canEditFaculty}
                         style={styles.textInputBox}
                         placeholder="e.g. Lecturer"
                       />
@@ -1862,8 +1902,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       <input
                         type="number"
                         value={editTeacher.salary || ''}
-                        disabled={role === 'admin2'}
-                        onChange={(e) => setEditTeacher({ ...editTeacher, salary: parseFloat(e.target.value) || 0 })}
+                        disabled={!canEditFaculty}
+                        onChange={(e) => canEditFaculty && setEditTeacher({ ...editTeacher, salary: parseFloat(e.target.value) || 0 })}
                         style={styles.textInputBox}
                       />
                     </div>
@@ -1873,7 +1913,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       <input
                         type="text"
                         value={editTeacher.mobile || ''}
-                        onChange={(e) => setEditTeacher({ ...editTeacher, mobile: e.target.value })}
+                        onChange={(e) => canEditFaculty && setEditTeacher({ ...editTeacher, mobile: e.target.value })}
+                        readOnly={!canEditFaculty}
                         style={styles.textInputBox}
                       />
                     </div>
@@ -1884,20 +1925,31 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     <input
                       type="email"
                       value={editTeacher.email || ''}
-                      onChange={(e) => setEditTeacher({ ...editTeacher, email: e.target.value })}
+                      onChange={(e) => canEditFaculty && setEditTeacher({ ...editTeacher, email: e.target.value })}
+                      readOnly={!canEditFaculty}
                       style={styles.textInputBox}
                       placeholder="faculty@inspire.edu"
                     />
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                    <button
-                      onClick={() => handleTeacherSave(editTeacher)}
-                      style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0 }}
-                      className="press-interactive"
-                    >
-                      Save Changes
-                    </button>
+                    {canEditFaculty ? (
+                      <button
+                        onClick={() => handleTeacherSave(editTeacher)}
+                        style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0 }}
+                        className="press-interactive"
+                      >
+                        Save Changes
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setActivePage('salary_status')}
+                        style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }}
+                        className="press-interactive"
+                      >
+                        Open Salary Ledger
+                      </button>
+                    )}
                     {role === 'admin1' && (
                       <button
                         onClick={() => {
@@ -1920,7 +1972,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           )}
 
           {/* ADD FACULTY HOVER MODAL */}
-          {isAddTeacherModalOpen && (
+          {isAddTeacherModalOpen && role !== 'admin2' && (
             <div style={styles.overlayOverlay}>
               <div style={styles.overlaySheet}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
@@ -1950,7 +2002,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                       <label style={styles.formLabel}>Campus Branch</label>
                       <select
                         value={newFacBranch}
-                        disabled={role === 'admin2'}
+                        disabled={!canEditFaculty}
                         onChange={(e) => setNewFacBranch(e.target.value)}
                         style={styles.selectInput}
                       >
@@ -3834,18 +3886,46 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   //  SUBPAGE 15: STAFF SALARY STATUS (Admin 2)
   if (activePage === 'salary_status') {
-    const teacherList: any[] = teachers;
-    const handleToggleSalary = async (t: any) => {
-      const teacherId = t.id || t._id;
+    const teacherList: any[] = teachers.filter(t => role === 'admin2' ? t.branch === loggedInCampus : true);
+    const salaryPageSize = 20;
+    const salaryTotalPages = Math.max(1, Math.ceil(teacherList.length / salaryPageSize));
+    const salaryCurrentPage = Math.min(salaryPage, salaryTotalPages);
+    const salaryPageItems = teacherList.slice((salaryCurrentPage - 1) * salaryPageSize, salaryCurrentPage * salaryPageSize);
+    const totalPaidAmount = teacherList
+      .filter(t => t.salaryStatus === 'paid')
+      .reduce((sum, t) => sum + Number(t.salaryPaidAmount || t.salary || 0), 0);
+    const totalUnpaidAmount = teacherList
+      .filter(t => t.salaryStatus !== 'paid')
+      .reduce((sum, t) => sum + Number(t.salary || 0), 0);
+
+    const openSalaryAction = (teacher: any, nextStatus: 'paid' | 'pending') => {
+      setSelectedSalaryTeacher(teacher);
+      setSalaryActionType(nextStatus);
+      setSalaryAmountInput(String(teacher.salaryPaidAmount || teacher.salary || 0));
+      setIsSalaryActionOpen(true);
+    };
+
+    const confirmSalaryAction = async () => {
+      if (!selectedSalaryTeacher) return;
+      const teacherId = selectedSalaryTeacher.id || selectedSalaryTeacher._id;
       if (!teacherId) return;
       try {
         setGlobalSecurityKey(securityKey);
-        await admin2Service.toggleStaffSalary(teacherId);
+        await admin2Service.toggleStaffSalary(teacherId, {
+          salaryStatus: salaryActionType,
+          paidAmount: salaryActionType === 'paid' ? Number(salaryAmountInput || selectedSalaryTeacher.salary || 0) : 0
+        });
         setSecurityKey('');
+        setIsSalaryActionOpen(false);
+        setSelectedSalaryTeacher(null);
+        setSalaryAmountInput('');
         await fetchStaffSalaries();
-        triggerToast('Salary status toggled.');
-      } catch (err: any) { triggerToast(err.message || 'Failed to toggle.'); }
+        triggerToast(salaryActionType === 'paid' ? 'Salary marked as paid.' : 'Salary marked as unpaid.');
+      } catch (err: any) {
+        triggerToast(err.message || 'Failed to update salary status.');
+      }
     };
+
     return (
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('sapphire')}
@@ -3855,6 +3935,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           <p style={styles.subtitle}>View teacher roster and toggle salary disbursement status</p>
         </header>
         <main style={styles.content}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px', marginBottom: '12px', zIndex: 1, width: '100%' }}>
+            <GlassCard hoverable={false} style={{ padding: '16px', border: '1px solid rgba(16,185,129,0.18)' }}>
+              <div style={styles.metricLabel}>Total Paid Amount</div>
+              <strong style={{ ...styles.metricValue, color: '#10B981', fontSize: '22px' }}>₹{totalPaidAmount.toLocaleString('en-IN')}</strong>
+            </GlassCard>
+            <GlassCard hoverable={false} style={{ padding: '16px', border: '1px solid rgba(239,68,68,0.18)' }}>
+              <div style={styles.metricLabel}>Total Unpaid Amount</div>
+              <strong style={{ ...styles.metricValue, color: '#EF4444', fontSize: '22px' }}>₹{totalUnpaidAmount.toLocaleString('en-IN')}</strong>
+            </GlassCard>
+          </div>
+
           <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
@@ -3872,29 +3963,123 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Faculty Roster  {teacherList.length} Members</h4>
               <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981', backgroundColor: 'rgba(16,185,129,0.08)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)' }}>
-                Total: Rs.{teacherList.reduce((s, t) => s + (t.salary||0), 0).toLocaleString('en-IN')} / mo
+                Total: ₹{teacherList.reduce((s, t) => s + (t.salary||0), 0).toLocaleString('en-IN')} / mo
               </span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {teacherList.map((t, i) => (
-                <div key={t.id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: '1.5px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{t.name}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{t.subject}  {t.assignedClasses?.[0] || 'Unassigned'}</div>
-                  </div>
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                    <strong style={{ fontSize: '14px', color: 'var(--royal-gold)' }}>Rs.{(t.salary||0).toLocaleString('en-IN')}</strong>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '10px', color: t.salaryStatus === 'paid' ? '#10B981' : '#EF4444', fontWeight: 700 }}>
-                        {t.salaryStatus === 'paid' ? ` Paid${t.salaryPaymentDate ? ` (${t.salaryPaymentDate})` : ''}` : '- Pending'}
-                      </span>
-                      <button onClick={() => handleToggleSalary(t)} style={{ fontSize: '9px', padding: '3px 8px', borderRadius: '6px', border: 'none', backgroundColor: 'rgba(0,0,0,0.06)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }} className="press-interactive">Toggle</button>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+              {salaryPageItems.map((t, i) => (
+                <div key={t.id || i} style={{ padding: '14px', borderRadius: '16px', border: `1.5px solid ${t.salaryStatus === 'paid' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, backgroundColor: t.salaryStatus === 'paid' ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)', boxShadow: '0 8px 24px rgba(15,23,42,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'start' }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 900, color: 'var(--dark-charcoal)', lineHeight: 1.25 }}>{t.name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '4px' }}>{t.subject || 'Role'}</div>
                     </div>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: t.salaryStatus === 'paid' ? '#10B981' : '#EF4444', backgroundColor: 'rgba(255,255,255,0.75)', padding: '4px 8px', borderRadius: '999px' }}>
+                      {t.salaryStatus === 'paid' ? 'Paid' : 'Pending'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px', fontSize: '11px', color: 'var(--muted-gray)', lineHeight: 1.5 }}>
+                    <span>Campus: {t.branch || loggedInCampus}</span>
+                    <span>Salary: ₹{Number(t.salary || 0).toLocaleString('en-IN')}</span>
+                    <span>Paid: ₹{Number(t.salaryPaidAmount || 0).toLocaleString('en-IN')}</span>
+                    <span>Balance: ₹{Math.max(0, Number(t.salary || 0) - Number(t.salaryPaidAmount || 0)).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                    <button
+                      onClick={() => openSalaryAction(t, 'paid')}
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}
+                      className="press-interactive"
+                    >
+                      Mark Given
+                    </button>
+                    <button
+                      onClick={() => openSalaryAction(t, 'pending')}
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}
+                      className="press-interactive"
+                    >
+                      Unmark
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
+              <button
+                onClick={() => setSalaryPage(prev => Math.max(1, prev - 1))}
+                disabled={salaryCurrentPage <= 1}
+                style={{ ...styles.actionItemBtn, border: '1.5px solid var(--card-border)', opacity: salaryCurrentPage <= 1 ? 0.45 : 1 }}
+                className="press-interactive"
+              >
+                Previous Page
+              </button>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
+                Page <strong>{salaryCurrentPage}</strong> of <strong>{salaryTotalPages}</strong>
+              </div>
+              <button
+                onClick={() => setSalaryPage(prev => Math.min(salaryTotalPages, prev + 1))}
+                disabled={salaryCurrentPage >= salaryTotalPages}
+                style={{ ...styles.actionItemBtn, border: '1.5px solid var(--card-border)', opacity: salaryCurrentPage >= salaryTotalPages ? 0.45 : 1 }}
+                className="press-interactive"
+              >
+                Next Page
+              </button>
+            </div>
           </GlassCard>
+
+          {isSalaryActionOpen && selectedSalaryTeacher && (
+            <div style={styles.overlayOverlay}>
+              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '420px', padding: '28px', borderRadius: '18px', border: '1px solid var(--card-border)' }} className="anim-slide-up glass-gold-ring">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.1rem', color: 'var(--dark-charcoal)' }}>
+                      {salaryActionType === 'paid' ? 'Mark Salary as Paid' : 'Mark Salary as Unpaid'}
+                    </h3>
+                    <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--muted-gray)' }}>
+                      {selectedSalaryTeacher.name} • {selectedSalaryTeacher.subject || 'Role'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setIsSalaryActionOpen(false); setSelectedSalaryTeacher(null); setSalaryAmountInput(''); }}
+                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ padding: '12px', borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.6)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>Salary Due</div>
+                    <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--dark-charcoal)' }}>₹{Number(selectedSalaryTeacher.salary || 0).toLocaleString('en-IN')}</div>
+                  </div>
+                  {salaryActionType === 'paid' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Exact Amount Paid</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={salaryAmountInput}
+                        onChange={(e) => setSalaryAmountInput(e.target.value)}
+                        style={styles.textInputBox}
+                        placeholder="Enter paid amount"
+                      />
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                    <button onClick={confirmSalaryAction} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0 }} className="press-interactive">
+                      Confirm
+                    </button>
+                    <button
+                      onClick={() => { setIsSalaryActionOpen(false); setSelectedSalaryTeacher(null); setSalaryAmountInput(''); }}
+                      style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
+                      className="press-interactive"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </GlassCard>
+            </div>
+          )}
         </main>
       </div>
     );
@@ -4309,39 +4494,46 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           ) : role === 'admin2' ? (
             (() => {
               const localStudents = students.filter(s => s.branch === loggedInCampus);
-              const monthlyFeeCollectedVal = localStudents.reduce((sum, s) => sum + (s.totalPaid || 0), 0);
               const localExpenditures = expenditures.filter(e => e.branch === loggedInCampus);
-              const monthlyExpenditureVal = localExpenditures.reduce((sum, e) => sum + (e.amount || 0), 0);
-              const defaultersCount = localStudents.filter(s => (s.remainingBalance || 0) > 0).length;
+              const localTeachers = teachers.filter(t => t.branch === loggedInCampus);
+              const totalStudents = localStudents.length;
+              const totalEmployees = localTeachers.length;
+              const totalExpenses = localExpenditures.reduce((sum, e) => sum + (e.amount || 0), 0);
+              const totalSalariesPaid = localTeachers
+                .filter(t => t.salaryStatus === 'paid')
+                .reduce((sum, t) => sum + Number(t.salaryPaidAmount || t.salary || 0), 0);
+              const totalSalariesUnpaid = localTeachers
+                .filter(t => t.salaryStatus !== 'paid')
+                .reduce((sum, t) => sum + Number(t.salary || 0), 0);
 
               return (
                 <>
                   <div style={styles.metricsGrid}>
                     <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
-                      <span style={styles.metricLabel}>Monthly Fee Collected</span>
-                      <strong style={{ ...styles.metricValue, color: '#10B981' }}>Rs.{monthlyFeeCollectedVal.toLocaleString('en-IN')}</strong>
-                      <span style={styles.metricSub}>From {localStudents.length} campus profiles</span>
-                      <span className="glass-status-pill status-paid">Collected</span>
+                      <span style={styles.metricLabel}>Total Students</span>
+                      <strong style={{ ...styles.metricValue, color: '#10B981' }}>{totalStudents}</strong>
+                      <span style={styles.metricSub}>{loggedInCampus} branch students</span>
+                      <span className="glass-status-pill status-paid">Active</span>
                     </GlassCard>
                     <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-                      <span style={styles.metricLabel}>Monthly Expenditure</span>
-                      <strong style={{ ...styles.metricValue, color: '#EF4444' }}>Rs.{monthlyExpenditureVal.toLocaleString('en-IN')}</strong>
-                      <span style={styles.metricSub}>Local campus ledger total</span>
-                      <span className="glass-status-pill status-warning">Paid Out</span>
+                      <span style={styles.metricLabel}>Total Employees</span>
+                      <strong style={{ ...styles.metricValue, color: '#3B82F6' }}>{totalEmployees}</strong>
+                      <span style={styles.metricSub}>Faculty & staff on campus</span>
+                      <span className="glass-status-pill status-warning">Working</span>
                     </GlassCard>
                   </div>
                   <div style={styles.metricsGrid}>
                     <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
-                      <span style={styles.metricLabel}>Fee Defaulters</span>
-                      <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>{defaultersCount}</strong>
-                      <span style={styles.metricSub}>Pending term payments</span>
-                      <span className="glass-status-pill status-pending">Pending</span>
+                      <span style={styles.metricLabel}>Total Expenses</span>
+                      <strong style={{ ...styles.metricValue, color: '#EF4444' }}>₹{totalExpenses.toLocaleString('en-IN')}</strong>
+                      <span style={styles.metricSub}>Branch expenses logged</span>
+                      <span className="glass-status-pill status-pending">Ledger</span>
                     </GlassCard>
                     <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-                      <span style={styles.metricLabel}>Worker Payments Pending</span>
-                      <strong style={styles.metricValue}>{workers.filter(w => !w.paid && w.branch === loggedInCampus).length}</strong>
-                      <span style={styles.metricSub}>Awaiting Dean authorization</span>
-                      <span className="glass-status-pill status-pending">Payroll</span>
+                      <span style={styles.metricLabel}>Salaries Given</span>
+                      <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>₹{totalSalariesPaid.toLocaleString('en-IN')}</strong>
+                      <span style={styles.metricSub}>Unpaid: ₹{totalSalariesUnpaid.toLocaleString('en-IN')}</span>
+                      <span className="glass-status-pill status-info">Payroll</span>
                     </GlassCard>
                   </div>
                 </>

@@ -191,9 +191,12 @@ const teacherSchema = new mongoose.Schema({
   subject: { type: String, required: true },
   salary: { type: Number, default: 50000 },
   mobile: { type: String },
+  email: { type: String },
   branch: { type: String, required: true },
   status: { type: String, default: 'Active' },
   salaryStatus: { type: String, default: 'pending' },
+  salaryPaidAmount: { type: Number, default: 0 },
+  salaryPaymentDate: { type: String, default: '' },
   assignedSections: [{ type: String }]
 }, { timestamps: true });
 
@@ -1836,10 +1839,97 @@ app.get('/api/admin2/staff-salaries', authenticateToken, enforceCampusIsolation,
 
 app.patch('/api/admin2/staff-salaries/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
   const { id } = req.params;
-  let teachersList = inMemoryStore.teachers[req.targetCampus] || [];
-  const idx = teachersList.findIndex(t => t._id === id || t.id === id);
-  if (idx !== -1) teachersList[idx].salaryStatus = teachersList[idx].salaryStatus === 'paid' ? 'pending' : 'paid';
-  return res.json({ status: 'success', message: 'Salary status updated.' });
+  const branch = req.targetCampus;
+  const requestedStatus = req.body?.salaryStatus;
+  const parsedAmount = req.body?.paidAmount !== undefined ? Number(req.body.paidAmount) : undefined;
+  const nextStatus = requestedStatus === 'paid' || requestedStatus === 'pending'
+    ? requestedStatus
+    : undefined;
+
+  let updatedTeacher = null;
+  if (isMongoConnected) {
+    try {
+      const currentTeacher = await Teacher.findOne({ $or: [{ _id: id }, { id }] });
+      if (currentTeacher) {
+        const toggledStatus = currentTeacher.salaryStatus === 'paid' ? 'pending' : 'paid';
+        const salaryStatus = nextStatus || toggledStatus;
+        const salaryPaidAmount = salaryStatus === 'paid'
+          ? Number.isFinite(parsedAmount) && Number(parsedAmount) > 0
+            ? Number(parsedAmount)
+            : Number(currentTeacher.salary || 0)
+          : 0;
+        const updateData = {
+          salaryStatus,
+          salaryPaidAmount,
+          salaryPaymentDate: salaryStatus === 'paid' ? new Date().toISOString().split('T')[0] : ''
+        };
+        updatedTeacher = await Teacher.findOneAndUpdate({ $or: [{ _id: id }, { id }] }, updateData, { new: true });
+      }
+    } catch { /* fallback */ }
+  }
+
+  const buckets = branch ? [branch] : Object.keys(inMemoryStore.teachers);
+  for (const bucket of buckets) {
+    const list = inMemoryStore.teachers[bucket] || [];
+    const idx = list.findIndex(t => t._id === id || t.id === id);
+    if (idx !== -1) {
+      const currentTeacher = list[idx];
+      const toggledStatus = currentTeacher.salaryStatus === 'paid' ? 'pending' : 'paid';
+      const salaryStatus = nextStatus || toggledStatus;
+      const salaryPaidAmount = salaryStatus === 'paid'
+        ? Number.isFinite(parsedAmount) && Number(parsedAmount) > 0
+          ? Number(parsedAmount)
+          : Number(currentTeacher.salary || 0)
+        : 0;
+      list[idx] = {
+        ...currentTeacher,
+        salaryStatus,
+        salaryPaidAmount,
+        salaryPaymentDate: salaryStatus === 'paid' ? new Date().toISOString().split('T')[0] : ''
+      };
+      updatedTeacher = list[idx];
+      break;
+    }
+  }
+
+  return res.json({ status: 'success', data: updatedTeacher || { id, salaryStatus: nextStatus || 'pending' }, message: 'Salary status updated.' });
+});
+
+app.get('/api/admin2/dashboard-summary', authenticateToken, enforceCampusIsolation, async (req, res) => {
+  const branch = req.targetCampus;
+  let studentsList = inMemoryStore.students[branch] || [];
+  let teachersList = inMemoryStore.teachers[branch] || [];
+  let expendituresList = inMemoryStore.expenditures[branch] || [];
+
+  if (isMongoConnected) {
+    try {
+      studentsList = await Student.find({ branch });
+      teachersList = await Teacher.find({ branch });
+      expendituresList = await Expenditure.find({ branch });
+    } catch { /* fallback */ }
+  }
+
+  const totalStudents = studentsList.length;
+  const totalEmployees = teachersList.length;
+  const totalExpenses = expendituresList.reduce((sum, exp) => sum + Number(exp.amount || 0), 0);
+  const totalSalariesPaid = teachersList
+    .filter(t => t.salaryStatus === 'paid')
+    .reduce((sum, teacher) => sum + Number(teacher.salaryPaidAmount || teacher.salary || 0), 0);
+  const totalSalariesUnpaid = teachersList
+    .filter(t => t.salaryStatus !== 'paid')
+    .reduce((sum, teacher) => sum + Number(teacher.salary || 0), 0);
+
+  return res.json({
+    status: 'success',
+    data: {
+      branch,
+      totalStudents,
+      totalEmployees,
+      totalExpenses,
+      totalSalariesPaid,
+      totalSalariesUnpaid
+    }
+  });
 });
 
 app.get('/api/admin2/student-marks', authenticateToken, (req, res) => res.json({ status: 'success', data: [] }));

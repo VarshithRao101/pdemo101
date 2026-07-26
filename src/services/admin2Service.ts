@@ -162,8 +162,11 @@ export const admin2Service = {
     return res.data;
   },
 
-  async toggleStaffSalary(teacherId: string): Promise<any> {
-    const res = await apiClient.patch<any>(`/admin2/staff-salaries/${teacherId}`);
+  async toggleStaffSalary(
+    teacherId: string,
+    payload?: { salaryStatus?: 'paid' | 'pending'; paidAmount?: number }
+  ): Promise<any> {
+    const res = await apiClient.patch<any>(`/admin2/staff-salaries/${teacherId}`, payload || {});
     return res;
   },
 
