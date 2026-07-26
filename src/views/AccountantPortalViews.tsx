@@ -1486,12 +1486,12 @@ export const AccountantDashboardView: React.FC = () => {
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '4px' }}>
                   <button onClick={() => setRegistryPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
                     style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: currentPage === 1 ? '#F8FAFC' : '#fff', color: currentPage === 1 ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: currentPage === 1 ? 'default' : 'pointer' }}>
-                    â† Prev
+                    ←  Prev
                   </button>
                   <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>Page {currentPage} / {totalPages}</span>
                   <button onClick={() => setRegistryPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
                     style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: currentPage === totalPages ? '#F8FAFC' : '#fff', color: currentPage === totalPages ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: currentPage === totalPages ? 'default' : 'pointer' }}>
-                    Next â†’
+                    Next ← ’
                   </button>
                 </div>
               )}
@@ -2265,8 +2265,114 @@ export const AccountantDashboardView: React.FC = () => {
               <p style={styles.subtitle}>Transaction audit stream — {allTransactions.length} records total</p>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => triggerToast('Exported collections ledger as Excel.')} style={{ ...styles.sheetBtn, backgroundColor: '#E2E8F0', color: 'var(--dark-charcoal)', padding: '10px 18px', borderRadius: '10px' }} className="press-interactive">Export Excel</button>
-              <button onClick={() => triggerToast('Downloaded audit report as PDF.')} style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)', fontWeight: 800, padding: '10px 18px', borderRadius: '10px' }} className="press-interactive">Download PDF</button>
+              <button
+                onClick={() => {
+                  if (allTransactions.length === 0) { triggerToast('No transactions to export.'); return; }
+                  const csvRows = [
+                    ['Receipt No.', 'Student Name', 'Admission No.', 'Category', 'Installment', 'Mode', 'Date', 'Amount (Rs.)'].join(','),
+                    ...allTransactions.map(tx => [
+                      '"' + (tx.receipt.receiptNumber || '') + '"',
+                      '"' + (tx.student.name || '').replace(/"/g, '""') + '"',
+                      '"' + (tx.student.admissionNumber || '') + '"',
+                      '"' + (tx.receipt.category || '') + '"',
+                      '"' + (tx.receipt.installment || '') + '"',
+                      '"' + (tx.receipt.mode || '') + '"',
+                      '"' + (tx.receipt.date || '') + '"',
+                      tx.receipt.amount || 0
+                    ].join(','))
+                  ];
+                  const csvContent = csvRows.join('\n');
+                  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'Audit_Report_' + loggedInCampus.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                  triggerToast('Exported ' + allTransactions.length + ' transactions as Excel/CSV.');
+                }}
+                style={{ ...styles.sheetBtn, backgroundColor: '#E2E8F0', color: 'var(--dark-charcoal)', padding: '10px 18px', borderRadius: '10px', fontWeight: 700 }}
+                className="press-interactive"
+              >
+                📊 Export Excel
+              </button>
+              <button
+                onClick={() => {
+                  if (allTransactions.length === 0) { triggerToast('No transactions to export.'); return; }
+                  const printWindow = window.open('', '_blank');
+                  if (!printWindow) { triggerToast('Popup blocked — please allow popups and try again.'); return; }
+                  const totalAmount = allTransactions.reduce((sum, tx) => sum + Number(tx.receipt.amount || 0), 0);
+                  const generatedDate = new Date().toLocaleString('en-IN');
+                  const tableRows = allTransactions.map((tx, idx) =>
+                    '<tr>' +
+                    '<td>' + (idx + 1) + '</td>' +
+                    '<td style="font-weight:800">' + escapeHtml(tx.receipt.receiptNumber) + '</td>' +
+                    '<td>' + escapeHtml(tx.student.name) + '</td>' +
+                    '<td>' + escapeHtml(tx.student.admissionNumber) + '</td>' +
+                    '<td>' + escapeHtml(tx.receipt.category) + '</td>' +
+                    '<td>' + escapeHtml(tx.receipt.installment) + '</td>' +
+                    '<td>' + escapeHtml(tx.receipt.mode) + '</td>' +
+                    '<td>' + escapeHtml(tx.receipt.date) + '</td>' +
+                    '<td class="tr" style="font-weight:900;color:#059669">Rs.' + Number(tx.receipt.amount || 0).toLocaleString('en-IN') + '</td>' +
+                    '</tr>'
+                  ).join('');
+                  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Audit Report</title><style>
+                    @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#1E293B;background:#fff;font-family:'Segoe UI',sans-serif;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+                    .page{max-width:270mm;margin:0 auto;padding:0 4mm}
+                    .hdr{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:12px;margin-bottom:14px}
+                    .iname{color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em}
+                    .iaddr{color:#94A3B8;font-size:9px;margin-top:3px}
+                    .slbl strong{display:block;color:#fff;font-size:13px;font-weight:900;text-align:right}
+                    .slbl span{color:#FBBF24;font-size:9px;font-weight:800;text-transform:uppercase}
+                    .sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+                    .sc{border:1.5px solid #E2E8F0;border-radius:10px;padding:10px 14px;background:#F8FAFC}
+                    .sc .sl{font-size:8px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:0.06em}
+                    .sc .sv{font-size:18px;font-weight:900;color:#1E293B;display:block;margin-top:4px}
+                    table{width:100%;border-collapse:collapse;border:1.5px solid #E2E8F0;border-radius:10px;overflow:hidden;font-size:10px}
+                    th{padding:8px 10px;background:#F8FAFC;color:#64748B;font-size:8px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid #E2E8F0;font-weight:800;letter-spacing:0.05em}
+                    td{padding:7px 10px;border-bottom:1px solid #F1F5F9}
+                    tr:last-child td{border-bottom:none}
+                    tr:nth-child(even) td{background:#FAFBFC}
+                    .tr{text-align:right}
+                    .ftr{margin-top:14px;padding-top:10px;border-top:1.5px solid #E2E8F0;display:flex;justify-content:space-between;align-items:flex-end;font-size:8px;color:#94A3B8}
+                    .sig{border-top:1.5px solid #1E293B;padding-top:4px;font-size:8px;font-weight:800;color:#1E293B;text-transform:uppercase;margin-top:24px;text-align:center;width:140px}
+                    .pbtn{display:block;margin:0 auto 16px;padding:9px 22px;background:linear-gradient(135deg,#1E293B,#334155);color:#fff;border:none;border-radius:8px;font-weight:900;font-size:12px;cursor:pointer;letter-spacing:0.04em}
+                    @media print{.pbtn{display:none}}
+                  </style></head><body>
+                  <div class="page">
+                    <button class="pbtn" onclick="window.print()">&#11015; Download Audit Report PDF</button>
+                    <div class="hdr">
+                      <div><div class="iname">Inspire Junior College</div><div class="iaddr">Collection Audit Report &middot; Campus: ${escapeHtml(loggedInCampus)}</div></div>
+                      <div class="slbl"><strong>Audit Log</strong><span>Generated: ${escapeHtml(generatedDate)}</span></div>
+                    </div>
+                    <div class="sgrid">
+                      <div class="sc"><span class="sl">Total Transactions</span><span class="sv">${allTransactions.length}</span></div>
+                      <div class="sc"><span class="sl">Total Collected</span><span class="sv" style="color:#059669">Rs.${totalAmount.toLocaleString('en-IN')}</span></div>
+                      <div class="sc"><span class="sl">Campus</span><span class="sv" style="font-size:13px">${escapeHtml(loggedInCampus)}</span></div>
+                    </div>
+                    <table>
+                      <thead><tr><th>#</th><th>Receipt No.</th><th>Student Name</th><th>Admission No.</th><th>Category</th><th>Installment</th><th>Mode</th><th>Date</th><th class="tr">Amount</th></tr></thead>
+                      <tbody>${tableRows}</tbody>
+                    </table>
+                    <div class="ftr">
+                      <div><div>Generated: ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Computer-generated audit report. No physical signature required.</div></div>
+                      <div class="sig">Authorised Signatory</div>
+                    </div>
+                  </div>
+                  <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},400);});<\/script>
+                  </body></html>`;
+                  printWindow.document.write(html);
+                  printWindow.document.close();
+                  printWindow.focus();
+                  triggerToast('PDF opened — ' + allTransactions.length + ' records.');
+                }}
+                style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)', fontWeight: 800, padding: '10px 18px', borderRadius: '10px' }}
+                className="press-interactive"
+              >
+                📄 Download PDF
+              </button>
             </div>
           </div>
         </header>
@@ -2276,17 +2382,17 @@ export const AccountantDashboardView: React.FC = () => {
           {auditTotalPages > 1 && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
               <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>
-                Showing {((auditCurrentPage - 1) * AUDIT_PER_PAGE) + 1}â€“{Math.min(auditCurrentPage * AUDIT_PER_PAGE, allTransactions.length)} of {allTransactions.length}
+                Showing {((auditCurrentPage - 1) * AUDIT_PER_PAGE) + 1}–{Math.min(auditCurrentPage * AUDIT_PER_PAGE, allTransactions.length)} of {allTransactions.length}
               </span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => setAuditPage(p => Math.max(1, p - 1))} disabled={auditCurrentPage === 1}
                   style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: auditCurrentPage === 1 ? '#F8FAFC' : '#fff', color: auditCurrentPage === 1 ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: auditCurrentPage === 1 ? 'default' : 'pointer' }}>
-                  â† Prev
+                  ← Prev
                 </button>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', display: 'flex', alignItems: 'center' }}>Page {auditCurrentPage} / {auditTotalPages}</span>
                 <button onClick={() => setAuditPage(p => Math.min(auditTotalPages, p + 1))} disabled={auditCurrentPage === auditTotalPages}
                   style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: auditCurrentPage === auditTotalPages ? '#F8FAFC' : '#fff', color: auditCurrentPage === auditTotalPages ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: auditCurrentPage === auditTotalPages ? 'default' : 'pointer' }}>
-                  Next â†’
+                  Next →
                 </button>
               </div>
             </div>
@@ -2303,11 +2409,11 @@ export const AccountantDashboardView: React.FC = () => {
               <div key={idx} style={styles.receiptRowItem}>
                 <div>
                   <strong>{tx.receipt.receiptNumber} — {tx.student.name}</strong>
-                  <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{tx.receipt.category} Â· {tx.receipt.installment} Â· Adm: {tx.student.admissionNumber}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{tx.receipt.category} · {tx.receipt.installment} · Adm: {tx.student.admissionNumber}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ fontWeight: 850, color: '#10B981' }}>+ Rs.{tx.receipt.amount.toLocaleString('en-IN')}</span>
-                  <div style={{ fontSize: '8px', color: 'var(--muted-gray)' }}>{tx.receipt.date} Â· {tx.receipt.mode}</div>
+                  <div style={{ fontSize: '8px', color: 'var(--muted-gray)' }}>{tx.receipt.date} · {tx.receipt.mode}</div>
                 </div>
               </div>
             ))}
@@ -2318,12 +2424,12 @@ export const AccountantDashboardView: React.FC = () => {
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center', zIndex: 1, marginTop: '8px' }}>
               <button onClick={() => setAuditPage(p => Math.max(1, p - 1))} disabled={auditCurrentPage === 1}
                 style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid #E2E8F0', background: auditCurrentPage === 1 ? '#F8FAFC' : '#fff', color: auditCurrentPage === 1 ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: auditCurrentPage === 1 ? 'default' : 'pointer' }}>
-                â† Previous
+                ← Previous
               </button>
               <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>Page {auditCurrentPage} of {auditTotalPages}</span>
               <button onClick={() => setAuditPage(p => Math.min(auditTotalPages, p + 1))} disabled={auditCurrentPage === auditTotalPages}
                 style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid #E2E8F0', background: auditCurrentPage === auditTotalPages ? '#F8FAFC' : '#fff', color: auditCurrentPage === auditTotalPages ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: auditCurrentPage === auditTotalPages ? 'default' : 'pointer' }}>
-                Next â†’
+                Next →
               </button>
             </div>
           )}
