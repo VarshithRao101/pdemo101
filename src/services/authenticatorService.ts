@@ -30,11 +30,29 @@ export interface AccountInfo {
   password?: string;
 }
 
+export interface ActiveSessionInfo {
+  username: string;
+  role: string;
+  campus: string;
+  name: string;
+  sessionGuid: string;
+  loggedInAt: string;
+  lastSeenAt: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
 export interface AuthenticatorStats {
   totalStudents: number;
   totalTeachers: number;
   totalStaff: number;
   activeDevices: number;
+  activeSessions?: ActiveSessionInfo[];
+  activeSessionCount?: number;
+  systemsActive?: number;
+  systemsInactive?: number;
+  portalSlotTotal?: number;
+  lastBackupAt?: string | null;
 }
 
 export const authenticatorService = {
@@ -127,4 +145,5 @@ export interface BackupResponse {
   archiveName: string;
   sizeBytes: number;
   checksum: string;
+  lastBackupAt?: string | null;
 }

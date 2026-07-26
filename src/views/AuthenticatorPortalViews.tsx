@@ -7,6 +7,7 @@ import { onSocketEvent } from '../services/socketClient';
 import { authenticatorService } from '../services/authenticatorService';
 import type { 
   AccountInfo, 
+  ActiveSessionInfo,
   AuthenticatorStats,
   SyncJournalEntry
 } from '../services/authenticatorService';
@@ -31,7 +32,13 @@ export const AuthenticatorDashboardView: React.FC = () => {
     totalStudents: 0,
     totalTeachers: 0,
     totalStaff: 0,
-    activeDevices: 0
+    activeDevices: 0,
+    activeSessions: [],
+    activeSessionCount: 0,
+    systemsActive: 0,
+    systemsInactive: 14,
+    portalSlotTotal: 14,
+    lastBackupAt: null
   });
 
   // Sync integrity & database management state
@@ -225,6 +232,78 @@ export const AuthenticatorDashboardView: React.FC = () => {
     triggerToast('Copied verification key to clipboard!');
   };
 
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return 'Not available';
+    try {
+      return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+    } catch {
+      return value;
+    }
+  };
+
+  const openPrintableKeySheet = (title: string, rows: Array<{ label: string; username: string; password: string }>) => {
+    const popup = window.open('', '_blank', 'width=1000,height=1200');
+    if (!popup) {
+      triggerToast('Popup blocked. Please allow popups to download the PDF.');
+      return;
+    }
+    const rowMarkup = rows.map((row) => '<tr><td>' + row.label + '</td><td>' + row.username + '</td><td>' + row.password + '</td></tr>').join('');
+    const html = '<!doctype html>' +
+      '<html>' +
+      '<head>' +
+      '<meta charset="utf-8" />' +
+      '<title>' + title + '</title>' +
+      '<style>' +
+      '@page { size: A4; margin: 18mm; }' +
+      'body { font-family: Inter, Arial, sans-serif; margin: 0; color: #0f172a; background: #fff; }' +
+      '.sheet { padding: 0; }' +
+      '.brand { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom: 20px; }' +
+      '.logo { width: 44px; height: 44px; border-radius: 999px; background: linear-gradient(135deg, #0f172a, #d4af37); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; }' +
+      'h1 { margin: 0; text-align:center; font-size: 22px; letter-spacing: 0.04em; }' +
+      'p { margin: 6px 0 0; text-align:center; color:#475569; }' +
+      'table { width:100%; border-collapse: collapse; margin-top: 18px; }' +
+      'th, td { border-bottom: 1px solid #e2e8f0; padding: 12px 10px; text-align: left; font-size: 12px; }' +
+      'th { background: #f8fafc; text-transform: uppercase; letter-spacing: .06em; font-size: 10px; color:#475569; }' +
+      '.foot { margin-top: 18px; text-align:center; font-size: 10px; color:#94a3b8; }' +
+      '</style>' +
+      '</head>' +
+      '<body>' +
+      '<div class="sheet">' +
+      '<div class="brand"><div class="logo">I</div><div><h1>Inspire Educational Institutions</h1><p>' + title + '</p></div></div>' +
+      '<table><thead><tr><th>Label</th><th>Username / ID</th><th>6-Digit Key</th></tr></thead><tbody>' + rowMarkup + '</tbody></table>' +
+      '<div class="foot">Print this sheet to save it as PDF.</div>' +
+      '</div>' +
+      '<script>window.onload = function(){ window.focus(); window.print(); };<\/script>' +
+      '</body></html>';
+    popup.document.write(html);
+    popup.document.close();
+  };
+
+  const downloadSectionPdf = (section: 'admin2' | 'accountant') => {
+    if (!keysData) return;
+    if (section === 'admin2') {
+      openPrintableKeySheet('Section 2 - Admin 2 Credentials', [
+        { label: 'Erragattugutta C1', username: 'admin2_erragattugutta_c1', password: keysData.dailyPins?.admin2_erragattugutta_c1 || '' },
+        { label: 'Erragattugutta C2', username: 'admin2_erragattugutta_c2', password: keysData.dailyPins?.admin2_erragattugutta_c2 || '' },
+        { label: 'Beemaram C1', username: 'admin2_beemaram_c1', password: keysData.dailyPins?.admin2_beemaram_c1 || '' },
+        { label: 'Beemaram C2', username: 'admin2_beemaram_c2', password: keysData.dailyPins?.admin2_beemaram_c2 || '' },
+      ]);
+      return;
+    }
+    openPrintableKeySheet('Section 3 - Accountant Credentials', [
+      { label: 'Erragattugutta C1 - Accountant 1', username: 'accountant_erragattugutta_c1_1', password: keysData.dailyPins?.accountant_erragattugutta_c1_1 || '' },
+      { label: 'Erragattugutta C1 - Accountant 2', username: 'accountant_erragattugutta_c1_2', password: keysData.dailyPins?.accountant_erragattugutta_c1_2 || '' },
+      { label: 'Erragattugutta C2 - Accountant 1', username: 'accountant_erragattugutta_c2_1', password: keysData.dailyPins?.accountant_erragattugutta_c2_1 || '' },
+      { label: 'Erragattugutta C2 - Accountant 2', username: 'accountant_erragattugutta_c2_2', password: keysData.dailyPins?.accountant_erragattugutta_c2_2 || '' },
+      { label: 'Beemaram C1 - Accountant 1', username: 'accountant_beemaram_c1_1', password: keysData.dailyPins?.accountant_beemaram_c1_1 || '' },
+      { label: 'Beemaram C1 - Accountant 2', username: 'accountant_beemaram_c1_2', password: keysData.dailyPins?.accountant_beemaram_c1_2 || '' },
+      { label: 'Beemaram C2 - Accountant 1', username: 'accountant_beemaram_c2_1', password: keysData.dailyPins?.accountant_beemaram_c2_1 || '' },
+      { label: 'Beemaram C2 - Accountant 2', username: 'accountant_beemaram_c2_2', password: keysData.dailyPins?.accountant_beemaram_c2_2 || '' },
+    ]);
+  }; 
+
+  const activeSessions = (stats.activeSessions || []) as ActiveSessionInfo[];
+
   return (
     <div style={styles.container} className="anim-slide-up neo-2d light-theme">
       {/* Toast Notification */}
@@ -313,65 +392,67 @@ export const AuthenticatorDashboardView: React.FC = () => {
           </div>
         </header>
 
-        {/* ─── TAB 1: DASHBOARD OVERVIEW ─── */}
+        {/* TAB 1: DASHBOARD OVERVIEW */}
         {activeTab === 'dashboard' && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Security Metrics Grid */}
             <div style={styles.metricsGrid}>
-              <GlassCard hoverable={false} style={{ ...styles.metricCard, borderLeft: '5px solid #10B981' }}>
-                <span style={styles.metricLabel}>Security Shield Status</span>
-                <strong style={{ ...styles.metricValue, color: '#10B981' }}>ACTIVE</strong>
-                <span style={styles.metricSub}>256-bit encryption verified</span>
-              </GlassCard>
               <GlassCard hoverable={false} style={{ ...styles.metricCard, borderLeft: '5px solid var(--royal-gold)' }}>
-                <span style={styles.metricLabel}>Active Web Sessions</span>
-                <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>
-                  {stats.activeDevices}
-                </strong>
-                <span style={styles.metricSub}>Live console connection count</span>
+                <span style={styles.metricLabel}>Active Sessions</span>
+                <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>{stats.activeSessionCount ?? stats.activeDevices}</strong>
+                <span style={styles.metricSub}>Currently authenticated sessions</span>
+              </GlassCard>
+              <GlassCard hoverable={false} style={{ ...styles.metricCard, borderLeft: '5px solid #0EA5E9' }}>
+                <span style={styles.metricLabel}>Systems Active / Inactive</span>
+                <strong style={{ ...styles.metricValue, color: '#0EA5E9' }}>{stats.systemsActive ?? 0} / {stats.systemsInactive ?? 0}</strong>
+                <span style={styles.metricSub}>Portal slots across admin and accountant logins</span>
               </GlassCard>
               <GlassCard hoverable={false} style={{ ...styles.metricCard, borderLeft: '5px solid #10B981' }}>
-                <span style={styles.metricLabel}>System Threat Index</span>
-                <strong style={{ ...styles.metricValue, color: '#10B981' }}>0.0%</strong>
-                <span style={styles.metricSub}>No security violations logged</span>
+                <span style={styles.metricLabel}>Last Backup Date & Time</span>
+                <strong style={{ ...styles.metricValue, color: '#10B981', fontSize: '1.1rem' }}>{formatDateTime(stats.lastBackupAt)}</strong>
+                <span style={styles.metricSub}>Drive sync placeholder ready for the next integration</span>
               </GlassCard>
             </div>
 
-            {/* Split row details */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
               <GlassCard hoverable={false} style={{ padding: '20px', backgroundColor: 'rgba(255,255,255,0.7)' }}>
-                <h4 style={{ margin: '0 0 16px 0', fontSize: '12.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--card-border)', paddingBottom: '8px', color: 'var(--dark-charcoal)' }}>Active System Profiles</h4>
+                <h4 style={{ margin: '0 0 16px 0', fontSize: '12.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--card-border)', paddingBottom: '8px', color: 'var(--dark-charcoal)' }}>Institution Snapshot</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={styles.profileStatItem}>
-                    <span>Active Student Profiles:</span>
-                    <strong>{stats.totalStudents}</strong>
-                  </div>
-                  <div style={styles.profileStatItem}>
-                    <span>Active Faculty Profiles:</span>
-                    <strong>{stats.totalTeachers}</strong>
-                  </div>
-                  <div style={styles.profileStatItem}>
-                    <span>Authorized Admins & Staff:</span>
-                    <strong>{stats.totalStaff}</strong>
-                  </div>
+                  <div style={styles.profileStatItem}><span>Students:</span><strong>{stats.totalStudents}</strong></div>
+                  <div style={styles.profileStatItem}><span>Faculty:</span><strong>{stats.totalTeachers}</strong></div>
+                  <div style={styles.profileStatItem}><span>Admins & Staff:</span><strong>{stats.totalStaff}</strong></div>
+                  <div style={styles.profileStatItem}><span>Total Portal Slots:</span><strong>{stats.portalSlotTotal ?? 14}</strong></div>
                 </div>
               </GlassCard>
 
               <GlassCard hoverable={false} style={{ padding: '20px', backgroundColor: 'rgba(255,255,255,0.7)' }}>
-                <h4 style={{ margin: '0 0 16px 0', fontSize: '12.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--card-border)', paddingBottom: '8px', color: 'var(--dark-charcoal)' }}>Active Security Shield System</h4>
-                <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: '1.6', margin: 0 }}>
-                  This dashboard enforces dynamic OTP access control across the institution. The keys shown in the "Security Keys" tab refresh automatically every day.
-                </p>
-                <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10B981' }} />
-                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#10B981' }}>Daily Rotation Synchronization Active</span>
-                </div>
+                <h4 style={{ margin: '0 0 16px 0', fontSize: '12.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--card-border)', paddingBottom: '8px', color: 'var(--dark-charcoal)' }}>Active Session Details</h4>
+                {activeSessions.length > 0 ? (
+                  <div style={{ display: 'grid', gap: '10px' }}>
+                    {activeSessions.map((session) => (
+                      <div key={session.sessionGuid} style={{ padding: '12px 14px', borderRadius: '14px', border: '1px solid var(--card-border)', backgroundColor: '#fff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start' }}>
+                          <div>
+                            <div style={{ fontWeight: 800, color: 'var(--dark-charcoal)' }}>{session.name}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '4px' }}>{session.role} • {session.campus}</div>
+                            <div style={{ fontSize: '10.5px', color: 'var(--muted-gray)', marginTop: '4px' }}>{session.username}</div>
+                          </div>
+                          <div style={{ textAlign: 'right', fontSize: '10.5px', color: 'var(--muted-gray)' }}>
+                            <div>Logged in {formatDateTime(session.loggedInAt)}</div>
+                            <div>Seen {formatDateTime(session.lastSeenAt)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: '1.6', margin: 0 }}>No active sessions are online right now.</p>
+                )}
               </GlassCard>
             </div>
           </section>
         )}
 
-        {/* ─── TAB 2: SECURITY KEYS (OTP) ─── */}
+        {/* TAB 2: SECURITY KEYS (OTP) */}
         {activeTab === 'keys' && keysData && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <GlassCard hoverable={false} style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', backgroundColor: 'rgba(255,255,255,0.7)' }}>
@@ -415,7 +496,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
             {/* Admin 2 Principal Deans Accounts */}
             <div>
-              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Section 2: Admin 2 (Principal Deans) – 4 Campuses</h4>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '8px' }}>
+                <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: 'none', paddingBottom: 0, marginBottom: 0 }}>Section 2: Admin 2 (Principal Deans) – 4 Campuses</h4>
+                <button onClick={() => downloadSectionPdf('admin2')} style={{ ...styles.copyBtn, width: 'auto', minWidth: '160px' }} className="press-interactive">Download PDF</button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                 {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(campusName => {
                   const campusKeyMap: Record<string, string> = {
@@ -576,7 +660,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
             {/* Accountant Section */}
             <div>
-              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Accountant Passwords</h4>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '8px' }}>
+                <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: 'none', paddingBottom: 0, marginBottom: 0 }}>Accountant Passwords</h4>
+                <button onClick={() => downloadSectionPdf('accountant')} style={{ ...styles.copyBtn, width: 'auto', minWidth: '160px' }} className="press-interactive">Download PDF</button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
                 <GlassCard hoverable={false} style={styles.keyCard}>
                   <span style={styles.keyRoleLabel}>Update Student Details</span>

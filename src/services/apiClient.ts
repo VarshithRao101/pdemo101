@@ -1,4 +1,4 @@
-// apiClient.ts
+﻿// apiClient.ts
 // Real Production HTTP Client connecting to Express/MongoDB backend API
 // Manages real JWT auth tokens, refreshToken auto-renewal, headers, rate limit handling, and campus isolation errors.
 
@@ -441,44 +441,17 @@ export const apiClient = {
 
       // 6-Digit PIN check
       const inputPin = (bodyData.pin || '').toString().trim();
-      const activeKeys = getOrGenerateSecurityKeys();
-      const rawId = (bodyData.identifier || '').toString().trim().toLowerCase();
-      
-      const validPins = new Set([
-        ...Object.values(activeKeys.dailyPins || {}),
-        generate24HourDeterministicCode(`pin_${matchedUser.username}`),
-        generate24HourDeterministicCode(`pin_${rawId}`),
-        generate24HourDeterministicCode(`pin_${cleanIdentifier}`),
-        generate24HourDeterministicCode('pin_admin1'),
-        generate24HourDeterministicCode('pin_accountant'),
-        generate24HourDeterministicCode('pin_acc'),
-        generate24HourDeterministicCode('pin_admin2_erragattugutta_c1'),
-        generate24HourDeterministicCode('pin_admin2_erragattugutta_c2'),
-        generate24HourDeterministicCode('pin_admin2_beemaram_c1'),
-        generate24HourDeterministicCode('pin_admin2_beemaram_c2'),
-        generate24HourDeterministicCode('pin_accountant_erragattugutta_c1_1'),
-        generate24HourDeterministicCode('pin_accountant_erragattugutta_c1_2'),
-        generate24HourDeterministicCode('pin_accountant_erragattugutta_c2_1'),
-        generate24HourDeterministicCode('pin_accountant_erragattugutta_c2_2'),
-        generate24HourDeterministicCode('pin_accountant_beemaram_c1_1'),
-        generate24HourDeterministicCode('pin_accountant_beemaram_c1_2'),
-        generate24HourDeterministicCode('pin_accountant_beemaram_c2_1'),
-        generate24HourDeterministicCode('pin_accountant_beemaram_c2_2'),
-        '784920',
-        '319482',
-        '789456',
-        '123456'
-      ]);
+      const expectedPin = generate24HourDeterministicCode('pin_' + matchedUser.username);
+      const authenticatorPin = (matchedUser as any).pin6 || '789456';
 
       if (matchedUser.role === 'authenticator') {
-        const expectedPin = (matchedUser as any).pin6 || '789456';
-        if (inputPin !== expectedPin && !validPins.has(inputPin)) {
+        if (inputPin !== authenticatorPin) {
           const err: ApiError = new Error('Incorrect 6-digit Security PIN.');
           err.status = 401;
           throw err;
         }
-      } else if (!validPins.has(inputPin)) {
-        const err: ApiError = new Error(`Incorrect 6-digit Security PIN for ${matchedUser.username}. Check Security Authenticator Portal.`);
+      } else if (inputPin !== expectedPin) {
+        const err: ApiError = new Error('Incorrect 6-digit Security PIN for ' + matchedUser.username + '. Check Security Authenticator Portal.');
         err.status = 401;
         throw err;
       }
@@ -562,11 +535,19 @@ export const apiClient = {
         { _id: 'acc_authenticator', username: '9059068384', password: 'SecAuth#9059', role: 'authenticator', campus: 'All', name: 'Security Authenticator', email: 'sec9059@inspire.edu', mobile: '9059068384', department: 'Security Console', address: 'Central Security' }
       ];
       return { status: 'success', data: accountsList } as any;
-    }
-
-    if (cleanPath === '/authenticator/sync-journal') {
+    }    if (cleanPath === '/authenticator/sync-journal') {
       const list = JSON.parse(localStorage.getItem('jc_sync_journal') || '[]');
       return { status: 'success', data: list } as any;
+    }
+
+    if (cleanPath === '/authenticator/stats') {
+      return { status: 'success', data: { totalStudents: 480, totalTeachers: 16, totalStaff: 8, activeDevices: 0, activeSessions: [], activeSessionCount: 0, systemsActive: 0, systemsInactive: 14, portalSlotTotal: 14, lastBackupAt: localStorage.getItem('jc_last_backup_at') || null } } as any;
+    }
+
+    if (cleanPath === '/authenticator/backup') {
+      const now = new Date().toISOString();
+      localStorage.setItem('jc_last_backup_at', now);
+      return { status: 'success', message: 'System database backup archive generated.', data: { archiveName: 'inspire_backup_' + Date.now() + '.zip', sizeBytes: 2485120, checksum: 'sha256-a8f192b3c4d5e6f7', lastBackupAt: now } } as any;
     }
 
     if (cleanPath.includes('/late-fees-settings')) {
@@ -1063,6 +1044,8 @@ export const apiClient = {
     return { status: 'success', data: method === 'GET' ? [] : {} } as any;
   }
 };
+
+
 
 
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ERP System - Express / MongoDB Production App
  * Serverless-compatible Mongoose Connection Caching, Persistent Rate Limiting,
  * Server-side JWT Access + Refresh Tokens (HTTP-Only Cookie / Bearer),
@@ -474,6 +474,9 @@ async function seedInitialData() {
 }
 
 const activeSessionGuidMap = {};
+const activeSessionMetaMap = {};
+let lastSystemBackupAt = null;
+const PORTAL_SLOT_TOTAL = 14;
 
 function getLocalDateSeedServer() {
   const d = new Date();
@@ -496,6 +499,39 @@ function generate24HourDeterministicCodeServer(identifier, dateSeed = getLocalDa
 
 function get12HourAccountPin(username) {
   return generate24HourDeterministicCodeServer(`pin_${username}`);
+}
+
+function upsertActiveSessionMeta(user, sessionGuid, req) {
+  if (!user || !user.username) return;
+  activeSessionMetaMap[user.username] = {
+    username: user.username,
+    role: user.role || 'unknown',
+    campus: user.campus || 'All',
+    name: user.name || user.username,
+    sessionGuid,
+    loggedInAt: new Date().toISOString(),
+    lastSeenAt: new Date().toISOString(),
+    ipAddress: req?.headers['x-forwarded-for'] || req?.socket?.remoteAddress || 'unknown',
+    userAgent: req?.headers['user-agent'] || 'unknown'
+  };
+}
+
+function refreshActiveSessionMeta(username) {
+  if (!username || !activeSessionMetaMap[username]) return;
+  activeSessionMetaMap[username].lastSeenAt = new Date().toISOString();
+}
+
+function getActiveSessionSnapshot() {
+  return Object.values(activeSessionMetaMap).sort((a, b) => {
+    const aTime = new Date(a.lastSeenAt || a.loggedInAt || 0).getTime();
+    const bTime = new Date(b.lastSeenAt || b.loggedInAt || 0).getTime();
+    return bTime - aTime;
+  });
+}
+
+function resolveSecurityOtp(scope) {
+  const keys = generateSecurityKeys();
+  return keys.sectionOtps?.[scope?.group]?.[scope?.key] || null;
 }
 
 // Security Keys Generator (Constant for 24 hours until 00:00:00)
@@ -615,6 +651,7 @@ function authenticateToken(req, res, next) {
     if (decoded && decoded.sessionGuid && activeSessionGuidMap[decoded.username] && activeSessionGuidMap[decoded.username] !== decoded.sessionGuid) {
       return res.status(401).json({ status: 'error', message: 'Session terminated: Logged in from another device or location.' });
     }
+    refreshActiveSessionMeta(decoded?.username);
     req.user = decoded;
     next();
   });
@@ -651,45 +688,19 @@ function enforceCampusIsolation(req, res, next) {
   next();
 }
 
-function requireSecurityOtp(req, res, next) {
-  const otp = (req.headers['x-security-otp'] || req.headers['x-security-key'] || req.body?.otp || '').toString().trim();
-  if (!otp) {
-    return res.status(400).json({ status: 'error', message: 'Security authentication OTP/PIN is required for this action.' });
-  }
+function requireSecurityOtp(scope) {
+  return (req, res, next) => {
+    const otp = (req.headers['x-security-otp'] || req.headers['x-security-key'] || req.body?.otp || '').toString().trim();
+    if (!otp) {
+      return res.status(400).json({ status: 'error', message: 'Security authentication OTP/PIN is required for this action.' });
+    }
 
-  const usernameAliasMap = {
-    admin2_eragattur1: 'admin2_erragattugutta_c1',
-    admin2_eragattur2: 'admin2_erragattugutta_c2',
-    admin2_indbimar1: 'admin2_beemaram_c1',
-    admin2_bhimaram2: 'admin2_beemaram_c2',
-    accountant_eragattur1_1: 'accountant_erragattugutta_c1_1',
-    accountant_eragattur1_2: 'accountant_erragattugutta_c1_2',
-    accountant_eragattur2_1: 'accountant_erragattugutta_c2_1',
-    accountant_indbimar1_1: 'accountant_beemaram_c1_1',
-    accountant_bhimaram2_1: 'accountant_beemaram_c2_1'
+    const expectedOtp = resolveSecurityOtp(scope);
+    if (!expectedOtp || otp !== expectedOtp) {
+      return res.status(403).json({ status: 'error', message: 'Invalid security authentication OTP/PIN for this portal action.' });
+    }
+    next();
   };
-
-  const rawUsername = (req.user?.username || 'admin1').toLowerCase();
-  const cleanUsername = usernameAliasMap[rawUsername] || rawUsername;
-
-  const currentDailyPin = get12HourAccountPin(cleanUsername);
-  const admin1Pin = get12HourAccountPin('admin1');
-  const validKeys = generateSecurityKeys();
-
-  // Collect all active 24h section OTPs and PINs
-  const activeKeysSet = new Set([
-    currentDailyPin,
-    admin1Pin,
-    ...Object.values(validKeys.dailyPins),
-    ...Object.values(validKeys.sectionOtps.admin1),
-    ...Object.values(validKeys.sectionOtps.admin2),
-    ...Object.values(validKeys.sectionOtps.accountant)
-  ]);
-
-  if (!activeKeysSet.has(otp)) {
-    return res.status(403).json({ status: 'error', message: 'Invalid security authentication OTP/PIN for today\'s 24-hour slot.' });
-  }
-  next();
 }
 
 function hashToken(token) {
@@ -1032,19 +1043,10 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
 
   // 2. 6-Digit Security Key / PIN Verification
   const rawId = (identifier || '').toString().trim().toLowerCase();
-  const validKeys = generateSecurityKeys();
-  const allowedPinsSet = new Set([
-    get12HourAccountPin(matchedUser.username),
-    get12HourAccountPin(rawId),
-    get12HourAccountPin('accountant_erragattugutta_c1_1'),
-    get12HourAccountPin('admin1'),
-    get12HourAccountPin('admin2_erragattugutta_c1'),
-    ...Object.values(validKeys.dailyPins)
-  ]);
-
   const pinInput = (req.body.pin || '').toString().trim();
-  const isPinValid = (matchedUser.role === 'authenticator' && pinInput === matchedUser.passwordRaw) ||
-    allowedPinsSet.has(pinInput);
+  const expectedPin = get12HourAccountPin(matchedUser.username);
+  const authenticatorPin = matchedUser.role === 'authenticator' ? matchedUser.passwordRaw : null;
+  const isPinValid = pinInput === expectedPin || (authenticatorPin && pinInput === authenticatorPin);
 
   if (!isPinValid) {
     return res.status(401).json({ status: 'error', message: `Incorrect 6-digit Security PIN for ${matchedUser.username}. Check Security Authenticator Portal.` });
@@ -1052,6 +1054,7 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
 
   const sessionGuid = crypto.randomUUID ? crypto.randomUUID() : `sess_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
   activeSessionGuidMap[matchedUser.username] = sessionGuid;
+  upsertActiveSessionMeta(matchedUser, sessionGuid, req);
 
   const payload = {
     id: matchedUser._id,
@@ -1160,6 +1163,12 @@ app.post('/api/auth/logout', async (req, res) => {
     inMemoryStore.refreshTokens.delete(tokenHash);
   }
 
+  const username = req.user?.username;
+  if (username) {
+    delete activeSessionGuidMap[username];
+    delete activeSessionMetaMap[username];
+  }
+
   res.setHeader('Set-Cookie', 'refresh_token=; Path=/api/auth; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly');
   return res.json({ status: 'success', message: 'Logged out successfully.' });
 });
@@ -1258,7 +1267,23 @@ app.get('/api/authenticator/sync-journal', authenticateToken, (req, res) => {
 });
 
 app.get('/api/authenticator/stats', authenticateToken, (req, res) => {
-  return res.json({ status: 'success', data: { totalStudents: 480, totalTeachers: 16, totalStaff: 8, activeDevices: 12 } });
+  const activeSessions = getActiveSessionSnapshot();
+  const activeSessionCount = activeSessions.length;
+  return res.json({
+    status: 'success',
+    data: {
+      totalStudents: 480,
+      totalTeachers: 16,
+      totalStaff: 8,
+      activeDevices: activeSessionCount,
+      activeSessions,
+      activeSessionCount,
+      systemsActive: activeSessionCount,
+      systemsInactive: Math.max(0, PORTAL_SLOT_TOTAL - activeSessionCount),
+      portalSlotTotal: PORTAL_SLOT_TOTAL,
+      lastBackupAt: lastSystemBackupAt
+    }
+  });
 });
 
 app.post('/api/authenticator/reconcile', authenticateToken, (req, res) => {
@@ -1266,10 +1291,11 @@ app.post('/api/authenticator/reconcile', authenticateToken, (req, res) => {
 });
 
 app.post('/api/authenticator/backup', authenticateToken, (req, res) => {
+  lastSystemBackupAt = new Date().toISOString();
   return res.json({
     status: 'success',
     message: 'System database backup archive generated.',
-    data: { archiveName: `inspire_backup_${Date.now()}.zip`, sizeBytes: 2485120, checksum: 'sha256-a8f192b3c4d5e6f7' }
+    data: { archiveName: `inspire_backup_${Date.now()}.zip`, sizeBytes: 2485120, checksum: 'sha256-a8f192b3c4d5e6f7', lastBackupAt: lastSystemBackupAt }
   });
 });
 
@@ -1378,6 +1404,7 @@ app.patch(['/api/admin1/students/:id', '/api/admin/students/:id', '/api/accounta
   }
 
   const updateBody = { ...req.body };
+  updateBody.branch = branch;
   if (existingStudent || updateBody.tuitionFee !== undefined || updateBody.tuitionWaiver !== undefined) {
     const tuitionFee = Number(updateBody.tuitionFee !== undefined ? updateBody.tuitionFee : (existingStudent?.tuitionFee || 120000));
     const hostelFee = Number(updateBody.hostelFee !== undefined ? updateBody.hostelFee : (existingStudent?.hostelFee || 0));
@@ -1520,7 +1547,7 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin/teachers/:id'], authenticateT
   return res.json({ status: 'success', data: { id, ...updateData } });
 });
 
-app.delete(['/api/admin1/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+app.delete(['/api/admin1/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, enforceCampusIsolation, requireSecurityOtp({ group: 'admin1', key: 'management' }), async (req, res) => {
   const { id } = req.params;
   if (isMongoConnected) {
     try { await Teacher.deleteMany({ $or: [{ _id: id }, { id }] }); } catch { /* fallback */ }
@@ -1587,7 +1614,7 @@ app.get('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation, a
   return res.json({ status: 'success', data: settings });
 });
 
-app.patch('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+app.patch('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation, requireSecurityOtp({ group: 'admin2', key: 'feeStructure' }), async (req, res) => {
   const branch = normalizeCampusName(req.body.branch || req.targetCampus);
   const updated = { ...req.body, branch };
   if (isMongoConnected) {
@@ -1656,7 +1683,7 @@ app.patch('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation,
 });
 
 // Student Individual Fee Override & Waiver Endpoint
-app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, enforceCampusIsolation, requireSecurityOtp({ group: 'admin2', key: 'feeOverride' }), async (req, res) => {
   const { studentId } = req.params;
   const branch = req.targetCampus;
   const { tuitionWaiver, hostelWaiver, transportWaiver, miscWaiver } = req.body;
@@ -1724,7 +1751,7 @@ app.get(['/api/admin2/expenditure', '/api/admin2/expenditures'], authenticateTok
   return res.json({ status: 'success', data: list });
 });
 
-app.post(['/api/admin2/expenditure', '/api/admin2/expenditures'], authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+app.post(['/api/admin2/expenditure', '/api/admin2/expenditures'], authenticateToken, enforceCampusIsolation, requireSecurityOtp({ group: 'admin2', key: 'expenditure' }), async (req, res) => {
   const branch = req.targetCampus;
   const newExp = { ...req.body, _id: `EXP-${Date.now()}`, id: `EXP-${Date.now()}`, branch };
   if (isMongoConnected) {
@@ -1736,7 +1763,7 @@ app.post(['/api/admin2/expenditure', '/api/admin2/expenditures'], authenticateTo
   return res.json({ status: 'success', data: newExp });
 });
 
-app.patch(['/api/admin2/expenditure/:id', '/api/admin2/expenditures/:id'], authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+app.patch(['/api/admin2/expenditure/:id', '/api/admin2/expenditures/:id'], authenticateToken, enforceCampusIsolation, requireSecurityOtp({ group: 'admin2', key: 'expenditure' }), async (req, res) => {
   const { id } = req.params;
   const branch = normalizeCampusName(req.query.branch || req.body.branch || req.targetCampus);
   const updates = { ...req.body, branch };
@@ -1759,7 +1786,7 @@ app.patch(['/api/admin2/expenditure/:id', '/api/admin2/expenditures/:id'], authe
   return res.json({ status: 'success', data: updated || updates });
 });
 
-app.delete(['/api/admin2/expenditure/:id', '/api/admin2/expenditures/:id'], authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+app.delete(['/api/admin2/expenditure/:id', '/api/admin2/expenditures/:id'], authenticateToken, enforceCampusIsolation, requireSecurityOtp({ group: 'admin2', key: 'expenditure' }), async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
   if (isMongoConnected) {
@@ -1794,7 +1821,7 @@ app.post('/api/admin2/worker-payments', authenticateToken, enforceCampusIsolatio
   return res.json({ status: 'success', data: newWp });
 });
 
-app.patch('/api/admin2/worker-payments/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+app.patch('/api/admin2/worker-payments/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp({ group: 'admin2', key: 'workerPayments' }), async (req, res) => {
   const { id } = req.params;
   const branch = normalizeCampusName(req.query.branch || req.body.branch || req.targetCampus);
   const updates = { ...req.body, branch };
@@ -1814,7 +1841,7 @@ app.patch('/api/admin2/worker-payments/:id', authenticateToken, enforceCampusIso
   return res.json({ status: 'success', data: updated || updates });
 });
 
-app.delete('/api/admin2/worker-payments/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+app.delete('/api/admin2/worker-payments/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp({ group: 'admin2', key: 'workerPayments' }), async (req, res) => {
   const { id } = req.params;
   const branch = normalizeCampusName(req.query.branch || req.body.branch || req.targetCampus);
   if (isMongoConnected) {
@@ -1837,7 +1864,7 @@ app.get('/api/admin2/staff-salaries', authenticateToken, enforceCampusIsolation,
   return res.json({ status: 'success', data: teachersList });
 });
 
-app.patch('/api/admin2/staff-salaries/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp, async (req, res) => {
+app.patch('/api/admin2/staff-salaries/:id', authenticateToken, enforceCampusIsolation, requireSecurityOtp({ group: 'admin2', key: 'workerPayments' }), async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
   const requestedStatus = req.body?.salaryStatus;
@@ -2311,5 +2338,6 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
 
 
