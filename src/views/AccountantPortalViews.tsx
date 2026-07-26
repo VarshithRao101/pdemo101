@@ -1096,7 +1096,7 @@ export const AccountantDashboardView: React.FC = () => {
                 onClick={() => { setIsStudentModalOpen(false); setSelectedStudent(null); setEditStudent(null); }}
                 style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}
               >
-                âœ•
+                ✕
               </button>
             </div>
 
@@ -1163,33 +1163,12 @@ export const AccountantDashboardView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* FEE WAIVERS SECTION */}
-                <div style={{ background: '#F0FDF4', border: '1.5px solid #BBF7D0', borderRadius: '12px', padding: '12px', marginTop: '4px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#166534', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                     Fee Concession / Waivers
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ ...styles.formLabel, color: '#166534' }}>Tuition Waiver (Rs)</label>
-                      <input type="number" value={(editStudent as any).tuitionWaiver || 0} onChange={(e) => setEditStudent({ ...editStudent, tuitionWaiver: Number(e.target.value) } as any)} style={{ ...styles.textInputBox, borderColor: '#86EFAC' }} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ ...styles.formLabel, color: '#166534' }}>Hostel Waiver (Rs)</label>
-                      <input type="number" value={(editStudent as any).hostelWaiver || 0} onChange={(e) => setEditStudent({ ...editStudent, hostelWaiver: Number(e.target.value) } as any)} style={{ ...styles.textInputBox, borderColor: '#86EFAC' }} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={{ ...styles.formLabel, color: '#166534' }}>Misc Waiver (Rs)</label>
-                      <input type="number" value={(editStudent as any).miscWaiver || 0} onChange={(e) => setEditStudent({ ...editStudent, miscWaiver: Number(e.target.value) } as any)} style={{ ...styles.textInputBox, borderColor: '#86EFAC' }} />
-                    </div>
-                  </div>
-                </div>
-
                 <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                   <button onClick={() => { setStuOtpInput(''); setIsStuOtpModalOpen(true); }} style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }} className="press-interactive">
-                     Save & Update Profile (OTP Required)
+                     🔒 Save & Update Profile (OTP Required)
                   </button>
                   <button onClick={() => { setStudentToDelete(editStudent); setIsDeleteConfirmModalOpen(true); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#DC2626', color: '#fff', border: 'none' }} className="press-interactive">
-                    Delete Record
+                    🗑️ Delete Record
                   </button>
                 </div>
               </div>
@@ -1203,8 +1182,8 @@ export const AccountantDashboardView: React.FC = () => {
         <div style={{ ...styles.overlayOverlay, zIndex: 1400 }} className="anim-fade-in">
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--royal-gold)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ ...styles.modalTitle, color: '#7C5A00' }}> OTP Security Verification</h3>
-              <button onClick={() => setIsStuOtpModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>âœ•</button>
+              <h3 style={{ ...styles.modalTitle, color: '#7C5A00' }}>🔐 OTP Security Verification</h3>
+              <button onClick={() => setIsStuOtpModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
               You are updating details for student <strong>{editStudent.name}</strong>. Enter your 6-digit Authenticator Security Key to confirm.
@@ -1249,7 +1228,7 @@ export const AccountantDashboardView: React.FC = () => {
                 <h3 style={styles.modalTitle}>Register New Student</h3>
                 <p style={{ fontSize: '11px', color: '#64748B', margin: 0 }}>Campus: <strong>{loggedInCampus}</strong></p>
               </div>
-              <button onClick={() => { setIsAddStudentModalOpen(false); setNewStudentAdmissionError(''); }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}>âœ•</button>
+              <button onClick={() => { setIsAddStudentModalOpen(false); setNewStudentAdmissionError(''); }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1340,27 +1319,35 @@ export const AccountantDashboardView: React.FC = () => {
               </div>
 
               <button
-                onClick={openStudentRegOtpModal}
+                onClick={() => {
+                  if (!newStudentData.admissionNumber || !newStudentData.name) {
+                    setNewStudentAdmissionError('Admission Number and Full Name are required.');
+                    triggerToast('Please fill in Admission Number and Full Name.');
+                    return;
+                  }
+                  setIsAddStudentModalOpen(false);
+                  setIsRegStuOtpModalOpen(true);
+                }}
                 style={{ ...styles.saveSubmitBtn, marginTop: '14px', backgroundColor: '#10B981', color: '#FFFFFF', fontWeight: 800 }}
                 className="press-interactive"
               >
-                 Register Student in Database (OTP Required)
+                🔐 Proceed to Security OTP & Register Student
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* REGISTER NEW STUDENT â€” OTP AUTHORIZATION MODAL */}
+      {/* REGISTER NEW STUDENT — OTP AUTHORIZATION MODAL */}
       {isRegStuOtpModalOpen && (
         <div style={{ ...styles.overlayOverlay, zIndex: 1300 }} className="anim-fade-in">
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid #10B981' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ ...styles.modalTitle, color: '#059669' }}> Security Authorization</h3>
-              <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>âœ•</button>
+              <h3 style={{ ...styles.modalTitle, color: '#059669' }}>🔐 Security Authorization</h3>
+              <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.6, marginBottom: '14px' }}>
-              Registering new student: <strong>{newStudentData.name || 'â€”'}</strong> (Adm: <strong>{newStudentData.admissionNumber || 'â€”'}</strong>).<br/>
+              Registering new student: <strong>{newStudentData.name || '—'}</strong> (Adm: <strong>{newStudentData.admissionNumber || '—'}</strong>).<br/>
               Enter your 6-digit Authenticator OTP key to authorize.
             </p>
             {regStuError && <div style={{ color: '#DC2626', fontSize: '11px', fontWeight: 700, marginBottom: '8px', padding: '8px 12px', background: 'rgba(220,38,38,0.05)', borderRadius: '8px', border: '1px solid rgba(220,38,38,0.2)' }}>{regStuError}</div>}
@@ -1375,7 +1362,7 @@ export const AccountantDashboardView: React.FC = () => {
             />
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={submitStudentRegistrationWithOtp} disabled={isSubmittingStudent} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#10B981', color: '#fff', opacity: isSubmittingStudent ? 0.7 : 1 }} className="press-interactive">
-                {isSubmittingStudent ? 'Registering...' : 'Authorize & Register'}
+                {isSubmittingStudent ? 'Registering...' : '🔐 Authorize & Register'}
               </button>
               <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
                 Cancel
@@ -1390,8 +1377,8 @@ export const AccountantDashboardView: React.FC = () => {
         <div style={{ ...styles.overlayOverlay, zIndex: 1300 }}>
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid #DC2626' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ ...styles.modalTitle, color: '#DC2626' }}>Delete Student Permanently</h3>
-              <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>âœ•</button>
+              <h3 style={{ ...styles.modalTitle, color: '#DC2626' }}>🗑️ Delete Student Permanently</h3>
+              <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
             <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5, marginBottom: '16px' }}>
               Permanently delete student <strong>{studentToDelete.name}</strong> (Adm No: <strong>{studentToDelete.admissionNumber || studentToDelete.studentId}</strong>)?
@@ -1402,7 +1389,7 @@ export const AccountantDashboardView: React.FC = () => {
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }} style={{ flex: 1, padding: '10px', border: '1px solid #CBD5E1', backgroundColor: '#F8FAFC', color: '#475569', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleDeleteStudentConfirm} style={{ flex: 1.5, padding: '10px', border: 'none', backgroundColor: '#DC2626', color: '#FFFFFF', borderRadius: '10px', fontWeight: 900, cursor: 'pointer' }} className="press-interactive">Permanently Delete</button>
+              <button onClick={handleDeleteStudentConfirm} style={{ flex: 1.5, padding: '10px', border: 'none', backgroundColor: '#DC2626', color: '#FFFFFF', borderRadius: '10px', fontWeight: 900, cursor: 'pointer' }} className="press-interactive">🗑️ Permanently Delete</button>
             </div>
           </div>
         </div>
@@ -2275,7 +2262,7 @@ export const AccountantDashboardView: React.FC = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', marginTop: '8px' }}>
             <div>
               <h1 style={styles.title}>Audit Report Compiler</h1>
-              <p style={styles.subtitle}>Transaction audit stream â€” {allTransactions.length} records total</p>
+              <p style={styles.subtitle}>Transaction audit stream — {allTransactions.length} records total</p>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => triggerToast('Exported collections ledger as Excel.')} style={{ ...styles.sheetBtn, backgroundColor: '#E2E8F0', color: 'var(--dark-charcoal)', padding: '10px 18px', borderRadius: '10px' }} className="press-interactive">Export Excel</button>
@@ -2285,7 +2272,7 @@ export const AccountantDashboardView: React.FC = () => {
         </header>
 
         <main style={{ ...styles.content, gap: '16px' }}>
-          {/* Pagination Controls â€” top */}
+          {/* Pagination Controls — top */}
           {auditTotalPages > 1 && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
               <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>
@@ -2315,7 +2302,7 @@ export const AccountantDashboardView: React.FC = () => {
             {auditPagedTx.map((tx, idx) => (
               <div key={idx} style={styles.receiptRowItem}>
                 <div>
-                  <strong>{tx.receipt.receiptNumber} â€” {tx.student.name}</strong>
+                  <strong>{tx.receipt.receiptNumber} — {tx.student.name}</strong>
                   <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{tx.receipt.category} Â· {tx.receipt.installment} Â· Adm: {tx.student.admissionNumber}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
