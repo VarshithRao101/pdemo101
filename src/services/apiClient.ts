@@ -178,7 +178,7 @@ export const apiClient = {
   async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
-    // Static-only deploy (Vercel frontend, no backend) — skip network entirely
+    // Static-only deploy (Vercel frontend, no backend) - skip network entirely
     if (isStaticOnlyDeploy()) {
       return this.fallbackRequest<T>(cleanPath, options);
     }
@@ -260,7 +260,7 @@ export const apiClient = {
 
       return data as T;
     } catch (err: any) {
-      // Backend unreachable — fallback to client mock handler for seamless offline preview
+      // Backend unreachable - fallback to client mock handler for seamless offline preview
       if (
         err.name === 'TypeError' ||
         err.message?.includes('Failed to fetch') ||
@@ -287,10 +287,6 @@ export const apiClient = {
     const token = sessionStorage.getItem('auth_token') || '';
     const username = (token.includes('-for-') ? (token.split('-for-')[1] || 'admin1') : 'admin1').toLowerCase();
     const isAdmin1User = username === 'admin1';
-    const normalizeHostelStatus = (status: any) => {
-      const value = (status || '').toString().trim().toLowerCase();
-      return value === 'resident' || value === 'hostelite' || value === 'hostel';
-    };
     if (cleanPath === '/auth/verify-credentials') {
       let bodyData: any = {};
       try { bodyData = JSON.parse(options.body as string); } catch { /* ignore */ }
@@ -513,14 +509,14 @@ export const apiClient = {
         role = 'accountant';
       }
 
-      // Accurate campus resolution — parse campus location and slot from username tokens
+      // Accurate campus resolution - parse campus location and slot from username tokens
       // Username patterns: admin2_erragattugutta_c1, accountant_beemaram_c2_1, etc.
       const resolveCampusFromUsername = (uname: string): string => {
         if (role === 'authenticator' || role === 'admin1') return 'All';
         const u = uname.toLowerCase();
         const isBeemaram = u.includes('beemaram') || u.includes('_b1') || u.includes('_b2');
         const isErragattugutta = u.includes('erragattugutta') || u.includes('_e1') || u.includes('_e2');
-        // Determine slot (c1 vs c2) — look for trailing _c1, _c2, _e1, _e2, beemaram_c1, beemaram_c2
+        // Determine slot (c1 vs c2) - look for trailing _c1, _c2, _e1, _e2, beemaram_c1, beemaram_c2
         let isSlot2 = false;
         if (isBeemaram) {
           isSlot2 = u.includes('beemaram_c2') || u.includes('_b2') || u.endsWith('_c2') || (u.includes('_c2') && u.includes('beemaram'));
@@ -574,7 +570,7 @@ export const apiClient = {
     }
 
     if (cleanPath.includes('/late-fees-settings')) {
-      return { status: 'success', data: { lateFeeRules: '₹100 per day after due date' } } as any;
+      return { status: 'success', data: { lateFeeRules: 'Rs.100 per day after due date' } } as any;
     }
 
     if (cleanPath.includes('/scholarships')) {
@@ -594,12 +590,12 @@ export const apiClient = {
           const totalWaivers = Number(student.tuitionWaiver || 0) + Number(student.hostelWaiver || 0) + Number(student.transportWaiver || 0) + Number(student.miscWaiver || 0);
           if (student.isCustomFee || totalWaivers > 0) return student;
 
-          const previousFeeTotal = Number(student.tuitionFee || 0) + Number(student.hostelFee || 0) + Number(student.transportFee || 0) + Number(student.miscellaneousFee || 0) + Number(student.previousPending || 0);
+          const previousFeeTotal = Number(student.tuitionFee || 0) + Number(student.hostelFee || 0) + Number(student.miscellaneousFee || 0) + Number(student.previousPending || 0);
           const tuitionFee = Number(parsedBody.tuition !== undefined ? parsedBody.tuition : student.tuitionFee || 120000);
           const miscellaneousFee = Number(parsedBody.misc !== undefined ? parsedBody.misc : student.miscellaneousFee || 5000);
-          const hostelFee = normalizeHostelStatus(student.hostelStatus) ? Number(parsedBody.hostel !== undefined ? parsedBody.hostel : student.hostelFee || 85000) : 0;
+          const hostelFee = Number(parsedBody.hostel !== undefined ? parsedBody.hostel : student.hostelFee || 85000);
           const transportFee = 0;
-          const updatedFeeTotal = tuitionFee + hostelFee + transportFee + miscellaneousFee + Number(student.previousPending || 0);
+          const updatedFeeTotal = tuitionFee + hostelFee + miscellaneousFee + Number(student.previousPending || 0);
           const amount = updatedFeeTotal - previousFeeTotal;
           const previousBalance = Number(student.remainingBalance || 0);
           const remainingBalance = Math.max(0, previousBalance + amount);
@@ -612,7 +608,7 @@ export const apiClient = {
             previousFeeTotal,
             updatedFeeTotal,
             branch,
-            note: amount > 0 ? `Fee structure updated: additional ₹${amount.toLocaleString('en-IN')} applied.` : `Fee structure updated: ₹${Math.abs(amount).toLocaleString('en-IN')} reduced from balance.`,
+            note: amount > 0 ? `Fee structure updated: additional Rs.${amount.toLocaleString('en-IN')} applied.` : `Fee structure updated: Rs.${Math.abs(amount).toLocaleString('en-IN')} reduced from balance.`,
             createdAt: new Date().toISOString()
           }, ...(Array.isArray(student.feeAdjustments) ? student.feeAdjustments : [])];
           return { ...student, tuitionFee, hostelFee, transportFee, miscellaneousFee, remainingBalance, feeAdjustments };
@@ -623,7 +619,7 @@ export const apiClient = {
       }
       const urlParams = new URLSearchParams(cleanPath.split('?')[1] || '');
       const branch = urlParams.get('branch') || 'Erragattugutta C1';
-      const feeData = allFeeSettings[branch] || { tuition: 120000, hostel: 85000, transport: 0, misc: 5000, isLocked: true };
+      const feeData = allFeeSettings[branch] ?? { tuition: 120000, hostel: 85000, misc: 5000, isLocked: true };
       return { status: 'success', data: feeData } as any;
     }
 
@@ -648,7 +644,7 @@ export const apiClient = {
       const transportWaiver = 0;
       const miscWaiver = Number(parsedBody.miscWaiver || 0);
       const totalWaivers = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
-      const totalFee = Number(targetStudent.tuitionFee || 0) + Number(targetStudent.hostelFee || 0) + Number(targetStudent.transportFee || 0) + Number(targetStudent.miscellaneousFee || 0) + Number(targetStudent.previousPending || 0);
+      const totalFee = Number(targetStudent.tuitionFee || 0) + Number(targetStudent.hostelFee || 0) + Number(targetStudent.miscellaneousFee || 0) + Number(targetStudent.previousPending || 0);
       const remainingBalance = Math.max(0, totalFee - totalWaivers - Number(targetStudent.totalPaid || 0));
       const updatedStudent = {
         ...targetStudent,
@@ -683,7 +679,7 @@ export const apiClient = {
       }
       const tuitionFee = Number(student.tuitionFee || 120000);
       const hostelFee = Number(student.hostelFee || 0);
-      const transportFee = Number(student.transportFee || 0);
+      const transportFee = 0;
       const miscFee = Number(student.miscellaneousFee || 5000);
       const previousPending = Number(student.previousPending || 0);
       const totalPaid = Number(student.totalPaid || 0);
@@ -692,7 +688,7 @@ export const apiClient = {
       const transportWaiver = Number(student.transportWaiver || 0);
       const miscWaiver = Number(student.miscWaiver || 0);
       const individualOverrideDeduction = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
-      const baseFee = tuitionFee + hostelFee + transportFee + miscFee + previousPending;
+      const baseFee = tuitionFee + hostelFee + miscFee + previousPending;
       const remainingBalance = Math.max(0, baseFee - individualOverrideDeduction - totalPaid);
       return { status: 'success', data: { baseFee, tuitionFee, hostelFee, transportFee, miscFee, previousPending, scholarshipCategory: individualOverrideDeduction > 0 ? 'Individual Fee Waiver' : 'None', scholarshipPct: 0, scholarshipDeduction: 0, individualOverrideDeduction, tuitionWaiver, hostelWaiver, transportWaiver, miscWaiver, totalPaid, remainingBalance, isCustomFee: Boolean(student.isCustomFee), feeAdjustments: student.feeAdjustments || [], branch } } as any;
     }
@@ -700,6 +696,7 @@ export const apiClient = {
     if (typeof window !== 'undefined' && !localStorage.getItem('jc_db_purged_v3')) {
       localStorage.removeItem('jc_students');
       localStorage.removeItem('jc_payments');
+      localStorage.removeItem('jc_expenditures');
       localStorage.setItem('jc_db_purged_v3', 'true');
     }
 
@@ -757,14 +754,14 @@ export const apiClient = {
       }
 
       const allFeeSettings = JSON.parse(localStorage.getItem('jc_fee_settings') || '{}');
-      const campusFee = allFeeSettings[branch] || { tuition: 120000, hostel: 85000, transport: 0, misc: 5000 };
+      const campusFee = allFeeSettings[branch] ?? { tuition: 120000, hostel: 85000, misc: 5000 };
 
       const tuitionFee = Number(parsedBody.tuitionFee !== undefined ? parsedBody.tuitionFee : campusFee.tuition);
       const miscellaneousFee = Number(parsedBody.miscellaneousFee !== undefined ? parsedBody.miscellaneousFee : campusFee.misc);
-      const hostelFee = Number(parsedBody.hostelFee !== undefined ? parsedBody.hostelFee : (normalizeHostelStatus(parsedBody.hostelStatus) ? campusFee.hostel : 0));
+      const hostelFee = Number(parsedBody.hostelFee !== undefined ? parsedBody.hostelFee : campusFee.hostel);
       const transportFee = 0;
 
-      const totalFee = tuitionFee + hostelFee + transportFee + miscellaneousFee;
+      const totalFee = tuitionFee + hostelFee + miscellaneousFee;
 
       const newStu = {
         ...parsedBody,
@@ -898,7 +895,7 @@ export const apiClient = {
       allPayments.unshift({ ...newReceipt, studentId: stu.studentId || targetId, studentName: stu.name });
       localStorage.setItem('jc_payments', JSON.stringify(allPayments));
 
-      logTransactionInJournal(`Record Payment (₹${amountPaid}) for ${stu.name || targetId}`, stu.branch || 'Erragattugutta C1', 'success');
+      logTransactionInJournal(`Record Payment (Rs.${amountPaid}) for ${stu.name || targetId}`, stu.branch || 'Erragattugutta C1', 'success');
       triggerPortalDataSync('payments');
 
       return { status: 'success', data: { payment: newReceipt, student: updatedStu } } as any;
@@ -938,7 +935,7 @@ export const apiClient = {
 
       let resultStudents = allStudents;
 
-      // Apply campus isolation — only return students belonging to the requesting campus
+      // Apply campus isolation - only return students belonging to the requesting campus
       if (branchFilter) {
         resultStudents = resultStudents.filter((s: any) =>
           (s.branch || '').toLowerCase() === branchFilter.toLowerCase()

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ERP System - Express / MongoDB Production App
  * Serverless-compatible Mongoose Connection Caching, Persistent Rate Limiting,
  * Server-side JWT Access + Refresh Tokens (HTTP-Only Cookie / Bearer),
@@ -221,7 +221,7 @@ const feeSettingsSchema = new mongoose.Schema({
   isLocked: { type: Boolean, default: true },
   academicYear: { type: String, default: '2026-2027' },
   installments: { type: String, default: '3 Installments' },
-  lateFeeRules: { type: String, default: '₹100 per day after due date' },
+  lateFeeRules: { type: String, default: 'Rs.100 per day after due date' },
   scholarshipRules: { type: String, default: 'Merit: 50% waiver, Sports: 30% waiver' }
 }, { timestamps: true });
 
@@ -334,7 +334,6 @@ function normalizeAdmissionNumber(value) {
 function getStudentFeeTotal(student) {
   return Number(student?.tuitionFee || 0) +
     Number(student?.hostelFee || 0) +
-    Number(student?.transportFee || 0) +
     Number(student?.miscellaneousFee || 0) +
     Number(student?.previousPending || 0);
 }
@@ -354,8 +353,8 @@ function createFeeAdjustmentRecord(student, branch, previousBalance, updatedBala
     updatedFeeTotal,
     branch,
     note: adjustmentAmount > 0
-      ? `Fee structure updated: additional ₹${adjustmentAmount.toLocaleString('en-IN')} applied.`
-      : `Fee structure updated: ₹${Math.abs(adjustmentAmount).toLocaleString('en-IN')} reduced from balance.`,
+      ? `Fee structure updated: additional Rs.${adjustmentAmount.toLocaleString('en-IN')} applied.`
+      : `Fee structure updated: Rs.${Math.abs(adjustmentAmount).toLocaleString('en-IN')} reduced from balance.`,
     createdAt: new Date().toISOString()
   };
 }
@@ -1314,7 +1313,7 @@ app.post(['/api/admin1/students', '/api/admin/students', '/api/accountant/studen
 
   const tuitionFee = Number(req.body.tuitionFee !== undefined ? req.body.tuitionFee : campusFeeSettings.tuition);
   const miscellaneousFee = Number(req.body.miscellaneousFee !== undefined ? req.body.miscellaneousFee : campusFeeSettings.misc);
-  const hostelFee = Number(req.body.hostelFee !== undefined ? req.body.hostelFee : (normalizeHostelStatus(req.body.hostelStatus) ? campusFeeSettings.hostel : 0));
+  const hostelFee = Number(req.body.hostelFee !== undefined ? req.body.hostelFee : campusFeeSettings.hostel);
   const transportFee = 0;
   
   const previousPending = Number(req.body.previousPending || 0);
@@ -1379,7 +1378,7 @@ app.patch(['/api/admin1/students/:id', '/api/admin/students/:id', '/api/accounta
   if (existingStudent || updateBody.tuitionFee !== undefined || updateBody.tuitionWaiver !== undefined) {
     const tuitionFee = Number(updateBody.tuitionFee !== undefined ? updateBody.tuitionFee : (existingStudent?.tuitionFee || 120000));
     const hostelFee = Number(updateBody.hostelFee !== undefined ? updateBody.hostelFee : (existingStudent?.hostelFee || 0));
-    const transportFee = Number(updateBody.transportFee !== undefined ? updateBody.transportFee : (existingStudent?.transportFee || 0));
+    const transportFee = 0;
     const miscellaneousFee = Number(updateBody.miscellaneousFee !== undefined ? updateBody.miscellaneousFee : (existingStudent?.miscellaneousFee || 5000));
     const previousPending = Number(updateBody.previousPending !== undefined ? updateBody.previousPending : (existingStudent?.previousPending || 0));
 
@@ -1612,12 +1611,12 @@ app.patch('/api/admin2/fee-settings', authenticateToken, enforceCampusIsolation,
       const previousBalance = Number(stu.remainingBalance || 0);
       const tuitionFee = Number(updated.tuition !== undefined ? updated.tuition : (stu.tuitionFee || 120000));
       const miscellaneousFee = Number(updated.misc !== undefined ? updated.misc : (stu.miscellaneousFee || 5000));
-      const hostelFee = normalizeHostelStatus(stu.hostelStatus) ? Number(updated.hostel !== undefined ? updated.hostel : (stu.hostelFee || 85000)) : 0;
+      const hostelFee = Number(updated.hostel !== undefined ? updated.hostel : (stu.hostelFee || 85000));
       const transportFee = 0;
       
       const previousPending = Number(stu.previousPending || 0);
       const totalPaid = Number(stu.totalPaid || 0);
-      const updatedFeeTotal = tuitionFee + hostelFee + transportFee + miscellaneousFee + previousPending;
+      const updatedFeeTotal = tuitionFee + hostelFee + miscellaneousFee + previousPending;
       const feeDifference = updatedFeeTotal - previousFeeTotal;
       const remainingBalance = Math.max(0, previousBalance + feeDifference);
       const feeAdjustment = feeDifference === 0
@@ -1678,7 +1677,7 @@ app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, enf
   const mWaiver = Number(miscWaiver !== undefined ? miscWaiver : (targetStudent.miscWaiver || 0));
   const totalWaivers = tWaiver + hWaiver + trWaiver + mWaiver;
 
-  const totalFee = (targetStudent.tuitionFee || 0) + (targetStudent.hostelFee || 0) + (targetStudent.transportFee || 0) + (targetStudent.miscellaneousFee || 0) + (targetStudent.previousPending || 0);
+  const totalFee = (targetStudent.tuitionFee || 0) + (targetStudent.hostelFee || 0) + (targetStudent.miscellaneousFee || 0) + (targetStudent.previousPending || 0);
   const remainingBalance = Math.max(0, totalFee - totalWaivers - (targetStudent.totalPaid || 0));
 
   const overrideUpdate = {
@@ -1859,7 +1858,7 @@ app.get('/api/admin2/enrollment-stats', authenticateToken, (req, res) => {
 });
 
 app.get(['/api/accountant/late-fees-settings', '/api/admin2/late-fees-settings'], authenticateToken, (req, res) => {
-  return res.json({ status: 'success', data: { lateFeeRules: '₹100 per day after due date' } });
+  return res.json({ status: 'success', data: { lateFeeRules: 'Rs.100 per day after due date' } });
 });
 
 app.get(['/api/accountant/scholarships', '/api/admin2/scholarships'], authenticateToken, (req, res) => {
@@ -1886,7 +1885,7 @@ app.get('/api/admin2/students/:id/fee-breakdown', authenticateToken, async (req,
   const transportFee = targetStudent.transportFee || 0;
   const miscFee = targetStudent.miscellaneousFee || 5000;
   const previousPending = targetStudent.previousPending || 0;
-  const baseFee = tuitionFee + hostelFee + transportFee + miscFee + previousPending;
+  const baseFee = tuitionFee + hostelFee + miscFee + previousPending;
 
   const tuitionWaiver = targetStudent.tuitionWaiver || 0;
   const hostelWaiver = targetStudent.hostelWaiver || 0;
@@ -2130,7 +2129,7 @@ app.post('/api/accountant/students/:id/payments', authenticateToken, enforceCamp
     receipts: allReceipts.map(p => p.toObject ? p.toObject() : p)
   };
 
-  await logSyncJournal(`POST /api/accountant/students/${id}/payments`, branch, 'success', `Payment of ₹${amountPaid} recorded for ${stuObj.name || id}`, req.user);
+  await logSyncJournal(`POST /api/accountant/students/${id}/payments`, branch, 'success', `Payment of Rs.${amountPaid} recorded for ${stuObj.name || id}`, req.user);
   return res.json({ status: 'success', data: { payment: newPayment, student: updatedStudent } });
 });
 
