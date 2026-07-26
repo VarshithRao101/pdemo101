@@ -229,13 +229,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   const [searchAdm, setSearchAdm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [editStudent, setEditStudent] = useState<Student | null>(null);
+  const [registryPage, setRegistryPage] = useState(1);
 
   // Students Registry States
   const [newStuName, setNewStuName] = useState('');
   const [newStuAdmissionNumber, setNewStuAdmissionNumber] = useState('');
   const [newStuCourse, setNewStuCourse] = useState('MPC');
   const [newStuBranch, setNewStuBranch] = useState(loggedInCampus);
-  const [newStuFather, setNewStuFather] = useState('');
   const [newStuMobile, setNewStuMobile] = useState('');
   const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
   const [regStuOtpInput, setRegStuOtpInput] = useState('');
@@ -344,6 +344,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   const [feeEditSearch, setFeeEditSearch] = useState('');
   const [selectedFeeStudent, setSelectedFeeStudent] = useState<Student | null>(null);
+  const [feeEditorPage, setFeeEditorPage] = useState(1);
   const [editTuitionWaiver, setEditTuitionWaiver] = useState('0');
   const [editHostelWaiver, setEditHostelWaiver] = useState('0');
   const [editMiscWaiver, setEditMiscWaiver] = useState('0');
@@ -882,8 +883,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   };
 
   const openStudentRegOtpModal = () => {
-    if (!newStuName || !newStuFather || !newStuMobile) {
-      triggerToast('Please complete all basic fields.');
+    if (!newStuName.trim() || !newStuAdmissionNumber.trim() || !newStuMobile.trim() || !newStuCourse.trim() || !newStuBranch.trim()) {
+      triggerToast('Please complete Name, Admission Number, Mobile, Course, and Campus.');
       return;
     }
     setRegStuOtpInput('');
@@ -911,8 +912,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   };
 
   const handleRegisterStudent = async () => {
-    if (!newStuName || !newStuFather || !newStuMobile) {
-      triggerToast('Please complete all basic fields.');
+    if (!newStuName.trim() || !newStuAdmissionNumber.trim() || !newStuMobile.trim() || !newStuCourse.trim() || !newStuBranch.trim()) {
+      triggerToast('Please complete Name, Admission Number, Mobile, Course, and Campus.');
       return;
     }
     const newAdm = newStuAdmissionNumber.trim() || `ADM2400${students.length + 1}`;
@@ -943,21 +944,21 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       qrId: `QR-8${Math.floor(Math.random() * 9000 + 1000)}`,
       registrationNumber: newAdm,
       name: newStuName,
-      fatherName: newStuFather,
-      motherName: 'Mrs. Devika Rao',
+      fatherName: '',
+      motherName: '',
       mobile: newStuMobile,
-      parentMobile: newStuMobile,
-      email: `${newStuName.toLowerCase().replace(/ /g, '')}@inspire.edu`,
-      address: `${newStuBranch} Campus, Telangana`,
-      residentialAddress: 'Day Scholar',
+      parentMobile: '',
+      email: '',
+      address: '',
+      residentialAddress: '',
       hostelStatus: 'Day Scholar',
       transportStatus: 'Self Transport',
       course: newStuCourse,
-      section: 'Section A',
+      section: '',
       branch: newStuBranch,
-      rollNumber: newAdm,
+      rollNumber: '',
       status: 'Active',
-      documents: ['10th Marksheet.pdf', 'Aadhaar Card.pdf'],
+      documents: [],
       tuitionFee: resolvedTuition,
       hostelFee: resolvedHostel,
       transportFee: resolvedTransport,
@@ -977,8 +978,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         setEditStudent({ ...newStu });
         setNewStuName('');
         setNewStuAdmissionNumber('');
-        setNewStuFather('');
         setNewStuMobile('');
+        setNewStuCourse('MPC');
+        setNewStuBranch(loggedInCampus);
+        setRegistryPage(1);
         triggerToast(` Student ${newStu.name} registered for ${newStuBranch}! ID: ${newAdm} (PIN: ${pin})`);
         await fetchStudents();
       } else {
@@ -1276,6 +1279,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   //  SUBPAGE 1: STUDENT REGISTRY
   if (activePage === 'students') {
     const filteredRegistryStudents = students.filter((student) => matchesStudentQuery(student, searchAdm));
+    const registryPageSize = 20;
+    const registryTotalPages = Math.max(1, Math.ceil(filteredRegistryStudents.length / registryPageSize));
+    const registryCurrentPage = Math.min(registryPage, registryTotalPages);
+    const registryPageStudents = filteredRegistryStudents.slice((registryCurrentPage - 1) * registryPageSize, registryCurrentPage * registryPageSize);
 
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -1289,13 +1296,56 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         </header>
 
         <main style={styles.content}>
+          <div style={{ ...styles.readOnlyBlock, zIndex: 1, marginBottom: '14px' }}>
+            <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Register New Admission Student</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px', marginTop: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={styles.formLabel}>Admission Number</label>
+                <input
+                  type="text"
+                  placeholder={`e.g. ADM2400${students.length + 1}`}
+                  value={newStuAdmissionNumber}
+                  onChange={(e) => { setNewStuAdmissionNumber(e.target.value); setRegStuError(''); }}
+                  style={{ ...styles.textInputBox, borderColor: regStuError ? '#EF4444' : undefined }}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={styles.formLabel}>Full Student Name</label>
+                <input type="text" placeholder="e.g. Rahul Sharma" value={newStuName} onChange={(e) => setNewStuName(e.target.value)} style={styles.textInputBox} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={styles.formLabel}>Mobile Number</label>
+                <input type="text" placeholder="e.g. 9900000000" value={newStuMobile} onChange={(e) => setNewStuMobile(e.target.value)} style={styles.textInputBox} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={styles.formLabel}>Select Course</label>
+                <select value={newStuCourse} onChange={(e) => setNewStuCourse(e.target.value)} style={styles.selectInput}>
+                  <option value="MPC">MPC</option>
+                  <option value="BiPC">BiPC</option>
+                  <option value="CEC">CEC</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={styles.formLabel}>Select Campus</label>
+                <select value={newStuBranch} onChange={(e) => setNewStuBranch(e.target.value)} style={styles.selectInput}>
+                  <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
+                  <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
+                  <option value="Beemaram C1">Beemaram Campus C1</option>
+                  <option value="Beemaram C2">Beemaram Campus C2</option>
+                </select>
+              </div>
+            </div>
+            {regStuError && <div style={{ marginTop: '10px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', fontSize: '12px', fontWeight: 700 }}>{regStuError}</div>}
+            <button onClick={openStudentRegOtpModal} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">Submit & Create Student Profile</button>
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
             <div style={{ display: 'flex', gap: '10px' }}>
               <input
                 type="text"
                 placeholder="Search student by Name or Admission Number..."
                 value={searchAdm}
-                onChange={(e) => setSearchAdm(e.target.value)}
+                onChange={(e) => { setSearchAdm(e.target.value); setRegistryPage(1); }}
                 style={styles.textInputBox}
               />
               <button onClick={handleSearchStudent} style={{ ...styles.saveSubmitBtn, marginTop: 0 }} className="press-interactive">Load</button>
@@ -1306,7 +1356,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Student Cards</h4>
               <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
-                Showing <strong>{filteredRegistryStudents.length}</strong> of <strong>{students.length}</strong>
+                Showing <strong>{registryPageStudents.length}</strong> of <strong>{filteredRegistryStudents.length}</strong>
               </span>
             </div>
 
@@ -1315,7 +1365,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
               gap: '12px'
             }}>
-              {filteredRegistryStudents.map((student) => (
+              {registryPageStudents.map((student) => (
                 <GlassCard
                   key={student._id || student.admissionNumber || student.studentId}
                   hoverable={true}
@@ -1391,203 +1441,119 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                 </GlassCard>
               ))}
             </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
+              <button
+                onClick={() => setRegistryPage(prev => Math.max(1, prev - 1))}
+                disabled={registryCurrentPage <= 1}
+                style={{
+                  ...styles.actionItemBtn,
+                  border: '1.5px solid var(--card-border)',
+                  opacity: registryCurrentPage <= 1 ? 0.45 : 1
+                }}
+                className="press-interactive"
+              >
+                Previous Page
+              </button>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
+                Page <strong>{registryCurrentPage}</strong> of <strong>{registryTotalPages}</strong>
+              </div>
+              <button
+                onClick={() => setRegistryPage(prev => Math.min(registryTotalPages, prev + 1))}
+                disabled={registryCurrentPage >= registryTotalPages}
+                style={{
+                  ...styles.actionItemBtn,
+                  border: '1.5px solid var(--card-border)',
+                  opacity: registryCurrentPage >= registryTotalPages ? 0.45 : 1
+                }}
+                className="press-interactive"
+              >
+                Next Page
+              </button>
+            </div>
           </div>
 
           {selectedStudent && editStudent ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }} className="anim-fade-in">
-              <div style={styles.readOnlyBlock}>
-                <h3 style={{ marginTop: 0, marginBottom: '14px', fontSize: '1.3rem', fontWeight: 900, color: 'var(--dark-charcoal)', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '8px' }}>
-                  {selectedStudent.name}
-                </h3>
-                <div style={styles.metaRow}><span>Admission Number</span><strong>{selectedStudent.admissionNumber}</strong></div>
-                <div style={styles.metaRow}><span>Father Name</span><strong>{selectedStudent.fatherName || 'N/A'}</strong></div>
-                <div style={styles.metaRow}><span>Mother Name</span><strong>{selectedStudent.motherName || 'N/A'}</strong></div>
-                <div style={styles.metaRow}><span>Contact Mobile</span><strong>{selectedStudent.mobile || 'N/A'}</strong></div>
-                <div style={styles.metaRow}><span>Course</span><strong>{selectedStudent.course}</strong></div>
-                <div style={styles.metaRow}><span>Branch</span><strong>{selectedStudent.branch}</strong></div>
-                <div style={styles.metaRow}><span>Academic Year</span><strong>2026-27</strong></div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Student Name</label>
-                  <input
-                    type="text"
-                    value={editStudent.name}
-                    onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })}
-                    style={styles.textInputBox}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Father Name</label>
-                    <input
-                      type="text"
-                      value={editStudent.fatherName}
-                      onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })}
-                      style={styles.textInputBox}
-                    />
+            <div style={styles.modalOverlay} className="anim-fade-in">
+              <div style={{ ...styles.overlaySheet, maxWidth: '780px', maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '12px' }}>
+                  <div>
+                    <h3 style={styles.modalTitle}>Student Profile Editor</h3>
+                    <p style={{ fontSize: '11px', color: '#64748B', margin: 0 }}>
+                      Clicked student card opens this hover editor for quick profile updates and OTP actions.
+                    </p>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Mother Name</label>
-                    <input
-                      type="text"
-                      value={editStudent.motherName}
-                      onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Mobile</label>
-                    <input
-                      type="text"
-                      value={editStudent.mobile}
-                      onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Parent Contact</label>
-                    <input
-                      type="text"
-                      value={editStudent.parentMobile}
-                      onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Course</label>
-                    <input
-                      type="text"
-                      value={editStudent.course}
-                      onChange={(e) => setEditStudent({ ...editStudent, course: e.target.value })}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Section</label>
-                    <input
-                      type="text"
-                      value={editStudent.section}
-                      onChange={(e) => setEditStudent({ ...editStudent, section: e.target.value })}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Campus</label>
-                    <select
-                      value={editStudent.branch}
-                      onChange={(e) => setEditStudent({ ...editStudent, branch: e.target.value })}
-                      style={styles.selectInput}
-                    >
-                      <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
-                      <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
-                      <option value="Beemaram C1">Beemaram Campus C1</option>
-                      <option value="Beemaram C2">Beemaram Campus C2</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Roll Number</label>
-                    <input
-                      type="text"
-                      value={editStudent.rollNumber}
-                      onChange={(e) => setEditStudent({ ...editStudent, rollNumber: e.target.value })}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-                </div>
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Permanent Address</label>
-                  <input
-                    type="text"
-                    value={editStudent.address}
-                    onChange={(e) => setEditStudent({ ...editStudent, address: e.target.value })}
-                    style={styles.textInputBox}
-                  />
-                </div>
-
-                </div>
-              {/* SAVE AND SUBMIT PROFILE CHANGES & DELETE OPTION FOR ADMIN 1 */}
-              <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
-                <button
-                  onClick={() => { setOtpInput(''); setIsOtpModalOpen(true); }}
-                  style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0 }}
-                  className="press-interactive"
-                >
-                  Submit Profile Changes
-                </button>
-                {role === 'admin1' && (
                   <button
-                    onClick={() => { setDeleteStuOtpInput(''); setIsDeleteStuOtpOpen(true); }}
-                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#DC2626', color: '#fff', border: 'none' }}
-                    className="press-interactive"
+                    onClick={() => { setSelectedStudent(null); setEditStudent(null); }}
+                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
-                    Delete Student (Permanent)
+                    -
                   </button>
-                )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div style={styles.readOnlyBlock}>
+                    <div style={styles.metaRow}><span>Admission Number</span><strong>{selectedStudent.admissionNumber || 'N/A'}</strong></div>
+                    <div style={styles.metaRow}><span>Name</span><strong>{selectedStudent.name || 'N/A'}</strong></div>
+                    <div style={styles.metaRow}><span>Campus</span><strong>{selectedStudent.branch || 'N/A'}</strong></div>
+                    <div style={styles.metaRow}><span>Mobile</span><strong>{selectedStudent.mobile || 'N/A'}</strong></div>
+                    <div style={styles.metaRow}><span>Course</span><strong>{selectedStudent.course || 'N/A'}</strong></div>
+                    <div style={styles.metaRow}><span>Status</span><strong>{selectedStudent.status || 'Active'}</strong></div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Student Name</label>
+                        <input type="text" value={editStudent.name || ''} onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })} style={styles.textInputBox} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Admission Number</label>
+                        <input type="text" value={editStudent.admissionNumber || ''} onChange={(e) => setEditStudent({ ...editStudent, admissionNumber: e.target.value })} style={styles.textInputBox} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Campus</label>
+                        <select value={editStudent.branch || ''} onChange={(e) => setEditStudent({ ...editStudent, branch: e.target.value })} style={styles.selectInput}>
+                          <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
+                          <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
+                          <option value="Beemaram C1">Beemaram Campus C1</option>
+                          <option value="Beemaram C2">Beemaram Campus C2</option>
+                        </select>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Mobile</label>
+                        <input type="text" value={editStudent.mobile || ''} onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })} style={styles.textInputBox} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Course</label>
+                        <input type="text" value={editStudent.course || ''} onChange={(e) => setEditStudent({ ...editStudent, course: e.target.value })} style={styles.textInputBox} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Section</label>
+                        <input type="text" value={editStudent.section || ''} onChange={(e) => setEditStudent({ ...editStudent, section: e.target.value })} style={styles.textInputBox} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Mother Name</label>
+                      <input type="text" value={editStudent.motherName || ''} onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })} style={styles.textInputBox} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Parent Contact</label>
+                      <input type="text" value={editStudent.parentMobile || ''} onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })} style={styles.textInputBox} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={styles.formLabel}>Permanent Address</label>
+                      <input type="text" value={editStudent.address || ''} onChange={(e) => setEditStudent({ ...editStudent, address: e.target.value })} style={styles.textInputBox} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                      <button onClick={() => { setOtpInput(''); setIsOtpModalOpen(true); }} style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0 }} className="press-interactive">Submit Profile Changes</button>
+                      {role === 'admin1' && (
+                        <button onClick={() => { setDeleteStuOtpInput(''); setIsDeleteStuOtpOpen(true); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#DC2626', color: '#fff', border: 'none' }} className="press-interactive">Delete Student</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          ) : (
-            <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
-              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Register New Admission Student</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Admission Number</label>
-                    <input
-                      type="text"
-                      placeholder={`e.g. ADM2400${students.length + 1}`}
-                      value={newStuAdmissionNumber}
-                      onChange={(e) => { setNewStuAdmissionNumber(e.target.value); setRegStuError(''); }}
-                      style={{ ...styles.textInputBox, borderColor: regStuError ? '#EF4444' : undefined }}
-                    />
-                    {regStuError && <span style={{ color: '#DC2626', fontSize: '11px', fontWeight: 700 }}>{regStuError}</span>}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Full Student Name</label>
-                    <input type="text" placeholder="e.g. Rahul Sharma" value={newStuName} onChange={(e) => setNewStuName(e.target.value)} style={styles.textInputBox} />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Father Name</label>
-                    <input type="text" placeholder="Father Name" value={newStuFather} onChange={(e) => setNewStuFather(e.target.value)} style={styles.textInputBox} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Mobile Number</label>
-                    <input type="text" placeholder="e.g. 9900000000" value={newStuMobile} onChange={(e) => setNewStuMobile(e.target.value)} style={styles.textInputBox} />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Select Course</label>
-                    <select value={newStuCourse} onChange={(e) => setNewStuCourse(e.target.value)} style={styles.selectInput}>
-                      <option value="MPC">MPC</option>
-                      <option value="BiPC">BiPC</option>
-                      <option value="CEC">CEC</option>
-                    </select>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                    <label style={styles.formLabel}>Select Campus</label>
-                    <select value={newStuBranch} onChange={(e) => setNewStuBranch(e.target.value)} style={styles.selectInput}>
-                      <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
-                      <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
-                      <option value="Beemaram C1">Beemaram Campus C1</option>
-                      <option value="Beemaram C2">Beemaram Campus C2</option>
-                    </select>
-                  </div>
-                </div>
-                {/* SUBMIT REGISTER DETAILS BUTTON */}
-                <button onClick={openStudentRegOtpModal} style={styles.saveSubmitBtn} className="press-interactive">Submit & Create Student Profile</button>
-              </div>
-            </div>
-          )}
+          ) : null}
 
           {/* STUDENT REGISTRATION OTP MODAL */}
           {isRegStuOtpModalOpen && (
@@ -3049,12 +3015,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   //  SUBPAGE 12: STUDENT FEE EDITOR (Admin 2)
   if (activePage === 'fee_editor') {
     const filteredFeeStudents = students.filter((student) => matchesStudentQuery(student, feeEditSearch));
+    const feeEditorPageSize = 20;
+    const feeEditorTotalPages = Math.max(1, Math.ceil(filteredFeeStudents.length / feeEditorPageSize));
+    const feeEditorCurrentPage = Math.min(feeEditorPage, feeEditorTotalPages);
+    const feeEditorPageStudents = filteredFeeStudents.slice((feeEditorCurrentPage - 1) * feeEditorPageSize, feeEditorCurrentPage * feeEditorPageSize);
 
     const openFeeStudent = async (student: Student) => {
       try {
-        const targetBranch = student.branch || (role === 'admin1' ? selectedFeeBranch : loggedInCampus);
-        const breakdown = await admin2Service.getFeeBreakdown(student._id || 'fallback_id', targetBranch);
         setSelectedFeeStudent(student);
+        setFeeBreakdownData(null);
+        const targetBranch = student.branch || (role === 'admin1' ? selectedFeeBranch : loggedInCampus);
+        const studentKey = student._id || student.studentId || student.admissionNumber;
+        const breakdown = await admin2Service.getFeeBreakdown(studentKey, targetBranch);
         setFeeBreakdownData(breakdown);
         setEditTuitionWaiver(String(breakdown.tuitionWaiver));
         setEditHostelWaiver(String(breakdown.hostelWaiver));
@@ -3080,19 +3052,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       }
     };
 
-        const handleApplyWaivers = async (keyToUse: string) => {
+    const handleApplyWaivers = async (keyToUse: string) => {
       if (!selectedFeeStudent) return;
       try {
         setGlobalSecurityKey(keyToUse);
         const targetBranch = selectedFeeStudent.branch || (role === 'admin1' ? selectedFeeBranch : loggedInCampus);
-        const res = await admin2Service.applyFeeOverride(selectedFeeStudent._id || 'fallback_id', {
+        const studentKey = selectedFeeStudent._id || selectedFeeStudent.studentId || selectedFeeStudent.admissionNumber;
+        const res = await admin2Service.applyFeeOverride(studentKey, {
           tuitionWaiver: Number(editTuitionWaiver) || 0,
           hostelWaiver: Number(editHostelWaiver) || 0,
           transportWaiver: 0,
           miscWaiver: Number(editMiscWaiver) || 0,
         }, targetBranch);
         if (res.status === 'success') {
-          const breakdown = await admin2Service.getFeeBreakdown(selectedFeeStudent._id || 'fallback_id', targetBranch);
+          const breakdown = await admin2Service.getFeeBreakdown(studentKey, targetBranch);
           setFeeBreakdownData(breakdown);
           triggerToast(`Fee waivers applied for ${selectedFeeStudent.name}.`);
           setIsFeeOtpOpen(false);
@@ -3118,7 +3091,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>Search Student</h4>
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-              <input type="text" placeholder="Search student by Name or Admission Number..." value={feeEditSearch} onChange={(e) => setFeeEditSearch(e.target.value)} style={{ ...styles.textInputBox, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && handleFeeSearch()} />
+              <input type="text" placeholder="Search student by Name or Admission Number..." value={feeEditSearch} onChange={(e) => { setFeeEditSearch(e.target.value); setFeeEditorPage(1); }} style={{ ...styles.textInputBox, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && handleFeeSearch()} />
               <button onClick={handleFeeSearch} style={{ ...styles.saveSubmitBtn, marginTop: 0, padding: '12px 24px' }} className="press-interactive">Load</button>
             </div>
           </GlassCard>
@@ -3127,7 +3100,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Student Grid</h4>
               <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
-                Showing <strong>{filteredFeeStudents.length}</strong> of <strong>{students.length}</strong>
+                Showing <strong>{feeEditorPageStudents.length}</strong> of <strong>{filteredFeeStudents.length}</strong>
               </span>
             </div>
 
@@ -3136,7 +3109,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
               gap: '12px'
             }}>
-              {filteredFeeStudents.map((student) => (
+              {feeEditorPageStudents.map((student) => (
                 <GlassCard
                   key={student._id || student.admissionNumber || student.studentId}
                   hoverable={true}
@@ -3207,6 +3180,35 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                   </div>
                 </GlassCard>
               ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
+              <button
+                onClick={() => setFeeEditorPage(prev => Math.max(1, prev - 1))}
+                disabled={feeEditorCurrentPage <= 1}
+                style={{
+                  ...styles.actionItemBtn,
+                  border: '1.5px solid var(--card-border)',
+                  opacity: feeEditorCurrentPage <= 1 ? 0.45 : 1
+                }}
+                className="press-interactive"
+              >
+                Previous Page
+              </button>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
+                Page <strong>{feeEditorCurrentPage}</strong> of <strong>{feeEditorTotalPages}</strong>
+              </div>
+              <button
+                onClick={() => setFeeEditorPage(prev => Math.min(feeEditorTotalPages, prev + 1))}
+                disabled={feeEditorCurrentPage >= feeEditorTotalPages}
+                style={{
+                  ...styles.actionItemBtn,
+                  border: '1.5px solid var(--card-border)',
+                  opacity: feeEditorCurrentPage >= feeEditorTotalPages ? 0.45 : 1
+                }}
+                className="press-interactive"
+              >
+                Next Page
+              </button>
             </div>
           </div>
 
