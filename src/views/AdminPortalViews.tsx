@@ -4283,7 +4283,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               }}
               className="press-interactive"
             >
-              ðŸ“¥ Download All Records (PDF)
+              Download All Records (PDF)
             </button>
           </div>
         </header>
@@ -4552,7 +4552,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
                     style={{ ...styles.saveSubmitBtn, flex: 1.5, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }}
                     className="press-interactive"
                   >
-                    Proceed to OTP Verification ðŸ”
+                    Proceed to OTP Verification 
                   </button>
                   <button onClick={() => { setIsPaymentAmountModalOpen(false); setSelectedWorkerForPayment(null); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
                     Cancel

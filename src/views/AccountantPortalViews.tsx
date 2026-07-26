@@ -1166,7 +1166,7 @@ export const AccountantDashboardView: React.FC = () => {
                 {/* FEE WAIVERS SECTION */}
                 <div style={{ background: '#F0FDF4', border: '1.5px solid #BBF7D0', borderRadius: '12px', padding: '12px', marginTop: '4px' }}>
                   <div style={{ fontSize: '11px', fontWeight: 800, color: '#166534', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    ðŸŽ Fee Concession / Waivers
+                     Fee Concession / Waivers
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1186,7 +1186,7 @@ export const AccountantDashboardView: React.FC = () => {
 
                 <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
                   <button onClick={() => { setStuOtpInput(''); setIsStuOtpModalOpen(true); }} style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }} className="press-interactive">
-                    ðŸ” Save & Update Profile (OTP Required)
+                     Save & Update Profile (OTP Required)
                   </button>
                   <button onClick={() => { setStudentToDelete(editStudent); setIsDeleteConfirmModalOpen(true); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#DC2626', color: '#fff', border: 'none' }} className="press-interactive">
                     Delete Record
@@ -1203,7 +1203,7 @@ export const AccountantDashboardView: React.FC = () => {
         <div style={{ ...styles.overlayOverlay, zIndex: 1400 }} className="anim-fade-in">
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--royal-gold)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ ...styles.modalTitle, color: '#7C5A00' }}>ðŸ” OTP Security Verification</h3>
+              <h3 style={{ ...styles.modalTitle, color: '#7C5A00' }}> OTP Security Verification</h3>
               <button onClick={() => setIsStuOtpModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>âœ•</button>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
@@ -1344,7 +1344,7 @@ export const AccountantDashboardView: React.FC = () => {
                 style={{ ...styles.saveSubmitBtn, marginTop: '14px', backgroundColor: '#10B981', color: '#FFFFFF', fontWeight: 800 }}
                 className="press-interactive"
               >
-                ðŸ” Register Student in Database (OTP Required)
+                 Register Student in Database (OTP Required)
               </button>
             </div>
           </div>
@@ -1356,7 +1356,7 @@ export const AccountantDashboardView: React.FC = () => {
         <div style={{ ...styles.overlayOverlay, zIndex: 1300 }} className="anim-fade-in">
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid #10B981' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ ...styles.modalTitle, color: '#059669' }}>ðŸ” Security Authorization</h3>
+              <h3 style={{ ...styles.modalTitle, color: '#059669' }}> Security Authorization</h3>
               <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>âœ•</button>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.6, marginBottom: '14px' }}>
