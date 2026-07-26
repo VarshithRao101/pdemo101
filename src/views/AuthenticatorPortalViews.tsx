@@ -330,6 +330,33 @@ export const AuthenticatorDashboardView: React.FC = () => {
     ]);
   }; 
 
+  const downloadOtpSectionPdf = (section: 'admin1' | 'admin2' | 'accountant') => {
+    if (!keysData) return;
+    if (section === 'admin1') {
+      openPrintableKeySheet('Section 1 - Admin 1 OTPs', [
+        { label: 'Student Registry', username: 'admin1', password: keysData.sectionOtps?.admin1?.studentRegistry || '' },
+        { label: 'Management', username: 'admin1', password: keysData.sectionOtps?.admin1?.management || keysData.sectionOtps?.admin1?.facultyManagement || '' },
+        { label: 'Student Fee Structure Updation', username: 'admin1', password: keysData.sectionOtps?.admin1?.feeStructure || '784920' },
+        { label: 'Student Fee Override / Waiver', username: 'admin1', password: keysData.sectionOtps?.admin1?.feeOverride || keysData.sectionOtps?.admin1?.feeStructure || '938201' },
+        { label: 'Multi-Branch Expenditure', username: 'admin1', password: keysData.sectionOtps?.admin1?.expenditure || '' },
+      ]);
+      return;
+    }
+    if (section === 'admin2') {
+      openPrintableKeySheet('Section 2 - Admin 2 OTPs', [
+        { label: 'Fee Structure & Waivers', username: 'admin2', password: keysData.sectionOtps?.admin2?.feeStructure || keysData.sectionOtps?.admin1?.feeStructure || '784920' },
+        { label: 'Campus Expenditure', username: 'admin2', password: keysData.sectionOtps?.admin2?.expenditure || '' },
+        { label: 'Worker Payments', username: 'admin2', password: keysData.sectionOtps?.admin2?.workerPayments || '' },
+      ]);
+      return;
+    }
+    openPrintableKeySheet('Section 3 - Accountant OTPs', [
+      { label: 'Update Student Details', username: 'accountant', password: keysData.sectionOtps?.accountant?.studentDetails || '' },
+      { label: 'Student Fee Payment', username: 'accountant', password: keysData.sectionOtps?.accountant?.fees || '' },
+      { label: 'Hostel Registry', username: 'accountant', password: keysData.sectionOtps?.accountant?.hostel || '' },
+    ]);
+  };
+
   const activeSessions = (stats.activeSessions || []) as ActiveSessionInfo[];
 
   return (
@@ -647,7 +674,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
             {/* Admin 1 (Rector) Section */}
             <div>
-              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Admin 1 (Rector) Passwords</h4>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
+                <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: 0 }}>Admin 1 (Rector) Passwords</h4>
+                <button onClick={() => downloadOtpSectionPdf('admin1')} style={{ ...styles.copyBtn, width: 'auto', minWidth: '160px' }} className="press-interactive">Download PDF</button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
                 <GlassCard hoverable={false} style={styles.keyCard}>
                   <span style={styles.keyRoleLabel}>Student Registry</span>
@@ -693,7 +723,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
             {/* Admin 2 Section */}
             <div>
-              <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: '14px' }}>Admin 2 (Principal Deans) Passwords</h4>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
+                <h4 style={{ ...styles.sectionSubtitle, color: 'var(--royal-gold)', borderBottom: '2px solid rgba(212,175,55,0.2)', paddingBottom: '6px', marginBottom: 0 }}>Admin 2 (Principal Deans) Passwords</h4>
+                <button onClick={() => downloadOtpSectionPdf('admin2')} style={{ ...styles.copyBtn, width: 'auto', minWidth: '160px' }} className="press-interactive">Download PDF</button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
                 <GlassCard hoverable={false} style={styles.keyCard}>
                   <span style={styles.keyRoleLabel}>Fee Structure & Waivers</span>
@@ -1701,6 +1734,8 @@ const styles = {
     boxShadow: '0 24px 48px rgba(0,0,0,0.16)'
   }
 };
+
+
 
 
 
