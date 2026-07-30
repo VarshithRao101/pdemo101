@@ -351,7 +351,7 @@ export const apiClient = {
         accountant1_e2: 'accountant_erragattugutta_c2_1', acc1_e2: 'accountant_erragattugutta_c2_1',
         accountant2_e2: 'accountant_erragattugutta_c2_2', acc2_e2: 'accountant_erragattugutta_c2_2',
         accountant1_b1: 'accountant_beemaram_c1_1', acc1_b1: 'accountant_beemaram_c1_1',
-        accountant2_b1: 'accountant_beemaram_c1_2', acc1_b1: 'accountant_beemaram_c1_2',
+        accountant2_b1: 'accountant_beemaram_c1_2', acc2_b1: 'accountant_beemaram_c1_2',
         accountant1_b2: 'accountant_beemaram_c2_1', acc1_b2: 'accountant_beemaram_c2_1',
         accountant2_b2: 'accountant_beemaram_c2_2', acc2_b2: 'accountant_beemaram_c2_2',
         authenticator: '9059068384', security: '9059068384'
@@ -430,7 +430,7 @@ export const apiClient = {
         accountant1_e2: 'accountant_erragattugutta_c2_1', acc1_e2: 'accountant_erragattugutta_c2_1',
         accountant2_e2: 'accountant_erragattugutta_c2_2', acc2_e2: 'accountant_erragattugutta_c2_2',
         accountant1_b1: 'accountant_beemaram_c1_1', acc1_b1: 'accountant_beemaram_c1_1',
-        accountant2_b1: 'accountant_beemaram_c1_2', acc1_b1: 'accountant_beemaram_c1_2',
+        accountant2_b1: 'accountant_beemaram_c1_2', acc2_b1: 'accountant_beemaram_c1_2',
         accountant1_b2: 'accountant_beemaram_c2_1', acc1_b2: 'accountant_beemaram_c2_1',
         accountant2_b2: 'accountant_beemaram_c2_2', acc2_b2: 'accountant_beemaram_c2_2',
         authenticator: '9059068384', security: '9059068384'
