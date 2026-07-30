@@ -337,34 +337,13 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Manual Regeneration for PINs
   const handleManualRegeneratePins = async () => {
     try {
-      // Regenerate daily PINs in mock service or local state
-      const newAdmin1Pin = Math.floor(100000 + Math.random() * 900000).toString();
-      const newAdmin2Pin = Math.floor(100000 + Math.random() * 900000).toString();
-      const newAccountantPin = Math.floor(100000 + Math.random() * 900000).toString();
-
-      setKeysData((prev: any) => ({
-        ...prev,
-        dailyPins: {
-          admin1: newAdmin1Pin,
-          authenticator: '789123',
-          admin2_erragattugutta_c1: newAdmin2Pin,
-          admin2_erragattugutta_c2: newAdmin2Pin,
-          admin2_beemaram_c1: newAdmin2Pin,
-          admin2_beemaram_c2: newAdmin2Pin,
-          accountant_erragattugutta_c1_1: newAccountantPin,
-          accountant_erragattugutta_c1_2: newAccountantPin,
-          accountant_erragattugutta_c2_1: newAccountantPin,
-          accountant_erragattugutta_c2_2: newAccountantPin,
-          accountant_beemaram_c1_1: newAccountantPin,
-          accountant_beemaram_c1_2: newAccountantPin,
-          accountant_beemaram_c2_1: newAccountantPin,
-          accountant_beemaram_c2_2: newAccountantPin,
-        }
-      }));
-
-      triggerToast('Security PINs manually regenerated successfully.');
+      const data = await authenticatorService.regenerateKeys();
+      if (data) {
+        setKeysData(data);
+      }
+      triggerToast('⚡ All 9 Account Security PINs regenerated & activated! Old PINs invalidated.');
     } catch (err: any) {
-      triggerToast('Failed to regenerate PINs.');
+      triggerToast(err?.message || 'Failed to regenerate PINs.');
     }
   };
 

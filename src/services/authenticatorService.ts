@@ -62,6 +62,12 @@ export const authenticatorService = {
     return res.data;
   },
 
+  // Regenerate daily 6-digit security PINs
+  async regenerateKeys(): Promise<any> {
+    const res = await apiClient.post<{ status: string; message: string; data: any }>('/authenticator/regenerate-keys', {});
+    return res.data;
+  },
+
   // Get backup codes list
   async getBackupCodes(): Promise<BackupCodeInfo[]> {
     const res = await apiClient.get<{ status: string; data: BackupCodeInfo[] }>('/authenticator/backup-codes');
