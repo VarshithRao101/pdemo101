@@ -550,14 +550,14 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
                   }}
                   style={{
                     ...styles.drawerLinkBtn,
-                    color: isActive ? '#3B82F6' : '#94A3B8',
-                    borderLeft: isActive ? '3px solid #3B82F6' : '3px solid transparent',
-                    backgroundColor: isActive ? 'rgba(59, 130, 246, 0.06)' : 'transparent',
-                    fontWeight: isActive ? 700 : 500
+                    color: isActive ? '#FFFFFF' : '#CBD5E1',
+                    borderLeft: isActive ? '3px solid #60A5FA' : '3px solid transparent',
+                    backgroundColor: isActive ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
+                    fontWeight: isActive ? 800 : 600
                   }}
                 >
-                  <span style={styles.drawerLinkIconCol}>{item.icon}</span>
-                  <span>{item.label}</span>
+                  <span style={{ ...styles.drawerLinkIconCol, color: isActive ? '#60A5FA' : '#94A3B8' }}>{item.icon}</span>
+                  <span style={{ color: isActive ? '#FFFFFF' : '#E2E8F0' }}>{item.label}</span>
                 </button>
               );
             })}
@@ -665,11 +665,11 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
             >
               {displayName}
             </h3>
-            <span style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>ID: {displayId} &gt;</span>
+            <span style={{ fontSize: '11px', color: '#CBD5E1', marginTop: '2px', fontWeight: 600 }}>ID: {displayId} &gt;</span>
             <div style={{
               fontSize: '10px',
               fontWeight: 800,
-              color: 'var(--royal-gold)',
+              color: '#F59E0B',
               letterSpacing: '0.08em',
               marginTop: '6px',
               textTransform: 'uppercase'
@@ -677,12 +677,12 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               {displayBrand}
             </div>
             <div style={{ marginTop: '10px' }}>
-              <LiveConnectionIndicator compact />
+              <LiveConnectionIndicator compact textColor="#E2E8F0" />
             </div>
           </div>
         </div>
 
-        <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '16px 0' }} />
+        <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.12)', margin: '16px 0' }} />
 
         {/* Sidebar Nav Links */}
         <div style={{
@@ -710,19 +710,19 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
                   cursor: 'pointer',
                   width: '100%',
                   textAlign: 'left',
-                  fontSize: '13px',
+                  fontSize: '13.5px',
                   fontFamily: 'var(--font-family)',
                   transition: 'all 0.2s ease',
-                  backgroundColor: isActive ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
-                  color: isActive ? '#3B82F6' : '#94A3B8',
-                  fontWeight: isActive ? 700 : 500,
-                  borderLeft: isActive ? '3px solid #3B82F6' : '3px solid transparent',
+                  backgroundColor: isActive ? 'rgba(59, 130, 246, 0.28)' : 'transparent',
+                  color: isActive ? '#FFFFFF' : '#CBD5E1',
+                  fontWeight: isActive ? 800 : 600,
+                  borderLeft: isActive ? '3px solid #60A5FA' : '3px solid transparent',
                   position: 'relative'
                 }}
                 className="press-interactive"
               >
-                <span style={{ display: 'flex', alignItems: 'center', color: isActive ? '#3B82F6' : '#94A3B8' }}>{item.icon}</span>
-                <span style={{ flex: 1 }}>{item.label}</span>
+                <span style={{ display: 'flex', alignItems: 'center', color: isActive ? '#60A5FA' : '#94A3B8' }}>{item.icon}</span>
+                <span style={{ flex: 1, color: isActive ? '#FFFFFF' : '#E2E8F0' }}>{item.label}</span>
                 {(item as any).badge && (
                   <span style={{
                     backgroundColor: '#EF4444',

@@ -3,15 +3,16 @@ import { useSocketConnectionState } from '../../services/socketClient';
 
 interface LiveConnectionIndicatorProps {
   compact?: boolean;
+  textColor?: string;
 }
 
-export const LiveConnectionIndicator: React.FC<LiveConnectionIndicatorProps> = ({ compact = false }) => {
+export const LiveConnectionIndicator: React.FC<LiveConnectionIndicatorProps> = ({ compact = false, textColor }) => {
   const connectionState = useSocketConnectionState();
 
   const colorMap = {
-    connected: '#16A34A',
-    reconnecting: '#D97706',
-    disconnected: '#DC2626',
+    connected: '#10B981',
+    reconnecting: '#F59E0B',
+    disconnected: '#EF4444',
   } as const;
 
   const labelMap = {
@@ -32,8 +33,8 @@ export const LiveConnectionIndicator: React.FC<LiveConnectionIndicatorProps> = (
         padding: compact ? '2px 4px' : '4px 6px',
         border: 'none',
         backgroundColor: 'transparent',
-        color: 'var(--dark-charcoal)',
-        fontSize: compact ? '10px' : '11px',
+        color: textColor || (compact ? '#E2E8F0' : 'inherit'),
+        fontSize: compact ? '11px' : '11.5px',
         fontWeight: 800,
         letterSpacing: '0.02em',
         boxShadow: 'none',
@@ -42,14 +43,14 @@ export const LiveConnectionIndicator: React.FC<LiveConnectionIndicatorProps> = (
     >
       <span
         style={{
-          width: compact ? '7px' : '8px',
-          height: compact ? '7px' : '8px',
+          width: compact ? '8px' : '9px',
+          height: compact ? '8px' : '9px',
           borderRadius: '50%',
           backgroundColor: color,
-          boxShadow: connectionState === 'connected' ? `0 0 0 6px ${color}22` : 'none',
+          boxShadow: connectionState === 'connected' ? `0 0 8px ${color}` : 'none',
         }}
       />
-      <span>{label}</span>
+      <span style={{ color: textColor || (compact ? '#E2E8F0' : 'inherit') }}>{label}</span>
     </div>
   );
 };
