@@ -717,23 +717,25 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            backgroundColor: activeRoleCard.colorBg,
+            backgroundColor: '#0F172A',
             color: '#FFFFFF',
-            padding: '6px 14px',
+            padding: '7px 16px',
             borderRadius: '999px',
-            border: `1.5px solid ${activeRoleCard.colorAccent}`,
-            fontSize: '12px',
+            border: `1.5px solid ${activeRoleCard.colorAccent || '#F59E0B'}`,
+            fontSize: '12.5px',
             fontWeight: 800,
-            boxShadow: `0 4px 12px rgba(0, 0, 0, 0.15)`,
-            marginBottom: '8px'
+            boxShadow: `0 4px 14px rgba(15, 23, 42, 0.25)`,
+            marginBottom: '10px'
           }}>
-            <span style={{ color: activeRoleCard.colorAccent }}>
+            <span style={{ color: activeRoleCard.colorAccent || '#F59E0B', display: 'flex', alignItems: 'center' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
             </span>
-            <span>{activeRoleCard.title} ({activeRoleCard.subtitle})</span>
+            <span style={{ color: '#FFFFFF', fontWeight: 800, letterSpacing: '0.02em' }}>
+              {activeRoleCard.title} ({activeRoleCard.subtitle})
+            </span>
           </div>
 
           <p style={{ fontSize: '13px', color: '#0F172A', fontWeight: 850, margin: '4px 0 0' }}>
