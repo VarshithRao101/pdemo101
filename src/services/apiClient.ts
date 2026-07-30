@@ -108,7 +108,7 @@ export const getOrGenerateSecurityKeys = (forceRegenerate = false) => {
 
   const pins = {
     admin1: genPin('admin1'),
-    authenticator: '789456',
+    authenticator: genPin('authenticator'),
     admin2_erragattugutta_c1: genPin('admin2_erragattugutta_c1'),
     admin2_erragattugutta_c2: genPin('admin2_erragattugutta_c2'),
     admin2_beemaram_c1: genPin('admin2_beemaram_c1'),

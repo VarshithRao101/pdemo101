@@ -615,6 +615,17 @@ export const AccountantDashboardView: React.FC = () => {
     window.addEventListener('storage', handleSync);
     window.addEventListener('jc_sync_data', handleSync);
 
+    const handleFocus = () => {
+      refreshWithPulse('students');
+    };
+    window.addEventListener('focus', handleFocus);
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshWithPulse('students');
+      }
+    }, 30000);
+
     const unsubscribers = [
       onSocketEvent('student:created', () => refreshWithPulse('students')),
       onSocketEvent('student:updated', () => refreshWithPulse('students')),
@@ -630,6 +641,8 @@ export const AccountantDashboardView: React.FC = () => {
     return () => {
       window.removeEventListener('storage', handleSync);
       window.removeEventListener('jc_sync_data', handleSync);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
   }, [refreshWithPulse]);

@@ -3,9 +3,9 @@ import { NavigationProvider, useNavigation } from './context/NavigationContext';
 import { ResponsiveLayout } from './components/layout/ResponsiveLayout';
 import { PinView } from './views/PinView';
 import { PortfolioView } from './views/PortfolioView';
-import { AdminDashboardView } from './views/AdminPortalViews';
-import { AccountantDashboardView } from './views/AccountantPortalViews';
-import { AuthenticatorDashboardView } from './views/AuthenticatorPortalViews';
+const AdminDashboardView = React.lazy(() => import('./views/AdminPortalViews').then(m => ({ default: m.AdminDashboardView })));
+const AccountantDashboardView = React.lazy(() => import('./views/AccountantPortalViews').then(m => ({ default: m.AccountantDashboardView })));
+const AuthenticatorDashboardView = React.lazy(() => import('./views/AuthenticatorPortalViews').then(m => ({ default: m.AuthenticatorDashboardView })));
 
 const UNIVERSAL_HASH = '#/secure-gateway-portal-v2-x9k84m2n7p1q3w5r8z-inspire';
 const AUTHENTICATOR_HASH = '#/sec-auth-sys-9i0j7k8l';
@@ -167,7 +167,9 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
   if (flowStage === 'authenticated') {
     return (
       <ResponsiveLayout>
-        {renderActiveView()}
+        <React.Suspense fallback={<HorizontalProgressBarLoader message="Loading Portal View..." durationMs={600} />}>
+          {renderActiveView()}
+        </React.Suspense>
       </ResponsiveLayout>
     );
   }

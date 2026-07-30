@@ -4,7 +4,7 @@ const userSchema = new mongoose.Schema({
   _id: { type: String, required: true },
   username: { type: String, required: true, unique: true, trim: true, index: true },
   password: { type: String, required: true },
-  passwordRaw: { type: String },
+  pin6: { type: String, default: '' },
   role: { 
     type: String, 
     required: true, 
@@ -15,9 +15,9 @@ const userSchema = new mongoose.Schema({
   name: { type: String, default: '' },
   email: { type: String, default: '' },
   mobile: { type: String, default: '' },
-  department: { type: String, default: '' },
-  address: { type: String, default: '' },
-  lastPinReset: { type: Date, default: Date.now }
+  status: { type: String, default: 'Active', index: true },
+  lastPinReset: { type: Date, default: Date.now },
+  activeSessionGuid: { type: String, default: '' }
 }, { 
   timestamps: true,
   autoIndex: true

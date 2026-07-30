@@ -1346,6 +1346,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
   }, [role, loggedInCampus]);
 
   useEffect(() => {
+    const handleFocus = () => {
+      refreshCurrentPage(activePage);
+    };
+    window.addEventListener('focus', handleFocus);
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshCurrentPage(activePage);
+      }
+    }, 30000);
+
     const unsubscribers = [
       onSocketEvent('student:created', () => refreshCurrentPage('students')),
       onSocketEvent('student:updated', () => refreshCurrentPage('students')),
@@ -1360,6 +1371,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     ];
 
     return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
       unsubscribers.forEach(unsubscribe => unsubscribe());
     };
   }, [activePage, role, timetableSection, refreshCurrentPage]);

@@ -13,14 +13,9 @@ const teacherSchema = new mongoose.Schema({
   branch: { type: String, required: true, index: true },
   status: { type: String, default: 'Active', index: true },
   joiningDate: { type: String, default: '' },
-  salaryStatus: { type: String, default: 'pending' },
-  salaryPaidAmount: { type: Number, default: 0 },
-  salaryPaymentDate: { type: String, default: '' },
-  assignedSections: [{ type: String }],
-  monthlySalaries: { type: mongoose.Schema.Types.Mixed, default: {} }
+  assignedSections: [{ type: String }]
 }, { 
   timestamps: true,
-  strict: false,
   autoIndex: true
 });
 

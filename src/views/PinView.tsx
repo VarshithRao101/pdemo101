@@ -42,14 +42,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     setToastMessage(null);
   };
 
-  const getDefaultPasswordForUser = (id: string) => {
-    const norm = (id || '').trim().toLowerCase();
-    if (norm === 'admin1' || norm === 'rector' || norm === 'superadmin') return 'RectorPass#2026';
-    if (norm === 'admin2' || norm.includes('admin2') || norm === 'principal') return 'DeanE1#8492';
-    if (norm === 'accountant' || norm.includes('accountant') || norm === 'acc') return 'AccE1#4102';
-    if (norm === '9059068384' || norm === 'authenticator' || norm === 'security') return '';
-    return '';
-  };
+
 
   const [userId, setUserId] = useState<string>('');
   const [passwordInput, setPasswordInput] = useState<string>('');

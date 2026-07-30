@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { apiClient } from '../services/apiClient';
-import { connectSocket, disconnectSocket } from '../services/socketClient';
 
 export type TabType = 'dashboard' | 'keys' | 'backup_codes' | 'accounts' | 'sync_integrity' | 'settings';
 export type PortalRoleType = 'admin1' | 'admin2' | 'accountant' | 'authenticator';
@@ -66,7 +65,6 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       const { token, user: userData } = response;
       localStorage.setItem('auth_token', token);
       sessionStorage.setItem('auth_token', token);
-      connectSocket(token);
       setUser(userData);
       setIsAuthenticated(true);
 
@@ -94,7 +92,6 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
   const logout = () => {
     localStorage.removeItem('auth_token');
     sessionStorage.removeItem('auth_token');
-    disconnectSocket();
     setUser(null);
     setIsAuthenticated(false);
     setPortalRole('admin1');

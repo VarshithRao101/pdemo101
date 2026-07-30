@@ -742,9 +742,9 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 <GlassCard hoverable={false} style={{ ...styles.keyCard, borderColor: '#D97706' }}>
                   <span style={{ ...styles.keyRoleLabel, color: '#D97706' }}>Security Authenticator PIN</span>
                   <div style={styles.keyDisplayBlock}>
-                    <strong style={{ ...styles.keyValue, color: '#D97706' }}>{keysData.dailyPins?.authenticator || '789123'}</strong>
+                    <strong style={{ ...styles.keyValue, color: '#D97706' }}>{keysData.dailyPins?.authenticator || '------'}</strong>
                   </div>
-                  <button onClick={() => copyToClipboard(keysData.dailyPins?.authenticator || '789123')} style={styles.copyBtn} className="press-interactive">
+                  <button onClick={() => copyToClipboard(keysData.dailyPins?.authenticator || '')} style={styles.copyBtn} className="press-interactive">
                     Copy 6-Digit PIN
                   </button>
                 </GlassCard>
@@ -982,48 +982,9 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', backgroundColor: '#FFFFFF', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ fontSize: '11px', fontWeight: 900, color: '#64748B', textTransform: 'uppercase' }}>Pass:</span>
-                          <code style={{ fontSize: '13px', fontWeight: 900, fontFamily: 'monospace', color: '#B45309', backgroundColor: '#FEF3C7', padding: '3px 8px', borderRadius: '6px', border: '1px solid #FCD34D' }}>
-                            {isPassVisible ? (passwordVal || '(Default)') : '••••••••••••'}
+                          <code style={{ fontSize: '12px', fontWeight: 800, fontFamily: 'monospace', color: '#10B981', backgroundColor: '#D1FAE5', padding: '3px 8px', borderRadius: '6px', border: '1px solid #6EE7B7' }}>
+                            Encrypted (bcrypt)
                           </code>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <button
-                            onClick={() => togglePasswordVisibility(accId)}
-                            style={{
-                              padding: '5px 8px',
-                              borderRadius: '6px',
-                              border: '1.5px solid #CBD5E1',
-                              backgroundColor: '#F1F5F9',
-                              color: '#334155',
-                              fontSize: '11px',
-                              fontWeight: 800,
-                              cursor: 'pointer'
-                            }}
-                            className="press-interactive"
-                            title={isPassVisible ? "Hide Password" : "Show Password"}
-                          >
-                            {isPassVisible ? 'Hide' : 'Show'}
-                          </button>
-                          <button
-                            onClick={() => copyTextToClipboard(passwordVal, 'Password')}
-                            style={{
-                              padding: '5px 10px',
-                              borderRadius: '6px',
-                              border: '1.5px solid #0F172A',
-                              backgroundColor: '#D97706',
-                              color: '#FFFFFF',
-                              fontSize: '11px',
-                              fontWeight: 800,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                            className="press-interactive"
-                            title="Copy Password to clipboard"
-                          >
-                            Copy Pass
-                          </button>
                         </div>
                       </div>
                     </div>

@@ -139,75 +139,11 @@ function isOriginAllowed(origin) {
   );
 }
 
-// --- HTTP SERVER & REALTIME SOCKET.IO ENGINE ---
-const http = require('http');
-const { Server } = require('socket.io');
-
-const server = http.createServer(app);
-
-const io = new Server(server, {
-  cors: {
-    origin: (origin, callback) => {
-      if (!origin || isOriginAllowed(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS policy'));
-      }
-    },
-    credentials: true
-  },
-  transports: ['websocket', 'polling']
-});
-
-app.set('io', io);
-
-// Helper function to emit real-time events scoped strictly to campus room & campus:All
-function emitToCampus(campus, eventName, payload) {
-  if (!io) return;
-  const normCampus = normalizeCampusName(campus || 'All');
-  console.log(`⚡ [Socket.io Emit]: Event '${eventName}' -> Room 'campus:${normCampus}'`);
-  io.to(`campus:${normCampus}`).to('campus:All').emit(eventName, payload);
+// --- SERVERLESS COMPATIBILITY HELPERS ---
+function emitToCampus(_campus, _eventName, _payload) {
+  // Serverless Vercel function handler — Socket.io WebSocket server disabled
 }
 
-// Socket Authentication Middleware — requires valid REST JWT handshake token
-io.use((socket, next) => {
-  try {
-    const rawToken = socket.handshake.auth?.token || socket.handshake.headers?.authorization || '';
-    if (!rawToken) {
-      console.warn('⚡ [Socket.io Auth Failed]: No token provided');
-      return next(new Error('Authentication required. No token provided.'));
-    }
-    const token = rawToken.replace(/^Bearer\s+/i, '').trim();
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (!decoded || !decoded.username) {
-      console.warn('⚡ [Socket.io Auth Failed]: Invalid token signature or payload');
-      return next(new Error('Authentication failed. Invalid token.'));
-    }
-    socket.user = decoded;
-    socket.campus = normalizeCampusName(decoded.campus || 'All');
-    next();
-  } catch (err) {
-    console.warn('⚡ [Socket.io Auth Error]:', err.message);
-    return next(new Error('Authentication failed: ' + err.message));
-  }
-});
-
-io.on('connection', (socket) => {
-  const user = socket.user;
-  const campus = socket.campus;
-  const campusRoom = `campus:${campus}`;
-
-  socket.join(campusRoom);
-  if (user.role === 'admin1' || user.role === 'authenticator' || campus === 'All') {
-    socket.join('campus:All');
-  }
-
-  console.log(`⚡ [Socket.io]: Connected - User: ${user.username} (${user.role}) | Joined: ${campusRoom} | Socket ID: ${socket.id}`);
-
-  socket.on('disconnect', (reason) => {
-    console.log(`⚡ [Socket.io]: Disconnected - User: ${user.username} | Socket ID: ${socket.id} | Reason: ${reason}`);
-  });
-});
 
 // Explicit CORS validation middleware (returns 403 Forbidden JSON instead of 500 error stack)
 app.use((req, res, next) => {
@@ -557,7 +493,7 @@ function generateFreshAccountPins(forceNew = false) {
 
     activeDynamicPins = {
       admin1: genPin('admin1'),
-      authenticator: '789456',
+      authenticator: genPin('authenticator'),
       admin2_erragattugutta_c1: genPin('admin2_erragattugutta_c1'),
       admin2_erragattugutta_c2: genPin('admin2_erragattugutta_c2'),
       admin2_beemaram_c1: genPin('admin2_beemaram_c1'),
@@ -810,13 +746,11 @@ app.get('/api/authenticator/credentials', authenticateToken, requireRole('authen
   if (!usersList || usersList.length === 0) {
     usersList = inMemoryStore.users.map(({ password: _, ...u }) => u);
   }
-  const defaultPassMap = {};
-  defaultAccounts.forEach(a => { defaultPassMap[a.username] = a.passwordRaw; });
-  const usersWithPlainPass = usersList.map(u => ({
-    ...u,
-    password: u.passwordRaw || defaultPassMap[u.username] || 'Password#2026'
-  }));
-  res.json({ status: 'success', users: usersWithPlainPass });
+  const sanitizedUsers = usersList.map(u => {
+    const { password, passwordRaw, ...safeUser } = u.toObject ? u.toObject() : u;
+    return safeUser;
+  });
+  res.json({ status: 'success', users: sanitizedUsers });
 });
 
 app.post('/api/authenticator/credentials', authenticateToken, requireRole('authenticator'), async (req, res) => {
@@ -1126,7 +1060,7 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
 
   let isPinValid = false;
   if (matchedUser.role === 'authenticator' || matchedUser.username === '9059068384' || matchedUser.username === 'authenticator') {
-    isPinValid = (pinInput === '789456' || pinInput === '00112233' || pinInput === currentActivePins.authenticator);
+    isPinValid = (pinInput === currentActivePins.authenticator || (Boolean(userPin6) && pinInput === userPin6));
   } else if (activePinForAccount) {
     isPinValid = (pinInput === activePinForAccount || (Boolean(userPin6) && pinInput === userPin6));
   } else {
@@ -1140,6 +1074,9 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   const sessionGuid = crypto.randomUUID ? crypto.randomUUID() : `sess_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
   activeSessionGuidMap[matchedUser.username] = sessionGuid;
   upsertActiveSessionMeta(matchedUser, sessionGuid, req);
+  if (isMongoConnected && matchedUser._id) {
+    User.updateOne({ _id: matchedUser._id }, { $set: { activeSessionGuid: sessionGuid } }).catch(() => {});
+  }
 
   const payload = {
     id: matchedUser._id,
@@ -1474,9 +1411,6 @@ app.post('/api/authenticator/purge-drive', authenticateToken, requireRole('authe
 async function verifyMasterSecurityPinAsync(pin) {
   if (!pin) return false;
   const cleanInput = String(pin).trim();
-  if (cleanInput === '9059068384' || cleanInput === '9#5#0#8#8#' || cleanInput === '00112233') {
-    return true;
-  }
   let authUser = null;
   if (isMongoConnected && mongoose.connection && mongoose.connection.readyState === 1) {
     try {
@@ -1570,7 +1504,7 @@ app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, r
 });
 
 // --- ADMIN 1 ROUTES ---
-app.get('/api/admin1/students', authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'admin2', 'accountant', 'authenticator'), enforceCampusIsolation, async (req, res) => {
   const branch = req.targetCampus;
   const search = (req.query.search || '').toLowerCase().trim();
   let list = inMemoryStore.students[branch] || [];
@@ -1589,7 +1523,7 @@ app.get('/api/admin1/students', authenticateToken, enforceCampusIsolation, async
   return res.json({ status: 'success', data: filtered });
 });
 
-app.post(['/api/admin1/students', '/api/admin/students', '/api/accountant/students'], authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.post(['/api/admin1/students', '/api/admin/students', '/api/accountant/students'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), enforceCampusIsolation, async (req, res) => {
   const branch = normalizeCampusName(req.body.branch || req.targetCampus);
   const admNo = (req.body.admissionNumber || req.body.studentId || `2400${Math.floor(100 + Math.random() * 900)}`).toString().trim();
 
@@ -1639,49 +1573,44 @@ app.post(['/api/admin1/students', '/api/admin/students', '/api/accountant/studen
   const remainingBalance = Math.max(0, totalFee - totalWaivers - totalPaid);
 
   const newStu = {
-    ...req.body,
     _id: req.body._id || `stu_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-    admissionNumber: admNo,
     studentId: admNo,
-    rollNumber: admNo,
-    registrationNumber: admNo,
+    admissionNumber: admNo,
+    name: (req.body.name || 'New Student').trim(),
+    fatherName: (req.body.fatherName || '').trim(),
+    motherName: (req.body.motherName || '').trim(),
+    mobile: (req.body.mobile || '').trim(),
+    parentMobile: (req.body.parentMobile || '').trim(),
+    email: (req.body.email || '').trim(),
+    course: req.body.course || 'MPC',
+    section: req.body.section || 'Section A',
     branch,
-    tuitionFee,
-    booksFee,
-    uniformFees,
-    hndFees,
-    internalExamFees,
-    annualExamFees,
-    partyFees,
-    busFees,
-    labFees,
-    handLoan,
-    othersFee,
-    hostelFee,
-    transportFee,
-    miscellaneousFee,
-    previousPending,
-    totalPaid,
-    remainingBalance,
-    tuitionWaiver,
-    hostelWaiver,
-    transportWaiver,
-    miscWaiver,
-    feeAdjustments: [],
-    isCustomFee
+    rollNumber: (req.body.rollNumber || admNo).trim(),
+    status: req.body.status || 'Active',
+    hostelStatus: req.body.hostelStatus || 'Day Scholar',
+    transportStatus: req.body.transportStatus || 'Self Transport',
+    academicYear: req.body.academicYear || '2026-27',
+    dob: req.body.dob || ''
   };
   if (isMongoConnected) {
-    try { await Student.create(newStu); } catch { /* fallback */ }
+    try {
+      await Student.create(newStu);
+    } catch (err) {
+      console.error('CRITICAL [Student Create DB Error]:', err.message);
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(500).json({ status: 'error', message: `Failed to persist student to database: ${err.message}` });
+      }
+    }
   }
   if (!inMemoryStore.students[branch]) inMemoryStore.students[branch] = [];
   inMemoryStore.students[branch].push(newStu);
 
-  await logSyncJournal('POST /api/admin1/students', branch, 'success', `Registered student ${admNo} with campus fee structure for ${branch}`, req.user);
+  await logSyncJournal('POST /api/admin1/students', branch, 'success', `Registered student ${admNo} for ${branch}`, req.user);
   emitToCampus(branch, 'student:created', { action: 'create', student: newStu, campus: branch, transactionId: `TX-STU-${Date.now()}` });
-  return res.json({ status: 'success', data: newStu, credential: { pin: '784920', username: admNo } });
+  return res.json({ status: 'success', data: newStu });
 });
 
-app.patch(['/api/admin1/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.patch(['/api/admin1/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), enforceCampusIsolation, async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
 
@@ -1752,7 +1681,12 @@ app.patch(['/api/admin1/students/:id', '/api/admin/students/:id', '/api/accounta
     try {
       const dbId = existingStudent?._id || id;
       await Student.findByIdAndUpdate(dbId, updateBody);
-    } catch { /* fallback */ }
+    } catch (err) {
+      console.error('CRITICAL [Student Update DB Error]:', err.message);
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(500).json({ status: 'error', message: `Failed to update student in database: ${err.message}` });
+      }
+    }
   }
 
   Object.keys(inMemoryStore.students).forEach(bKey => {
@@ -1766,7 +1700,7 @@ app.patch(['/api/admin1/students/:id', '/api/admin/students/:id', '/api/accounta
   return res.json({ status: 'success', data: { ...(existingStudent?.toObject ? existingStudent.toObject() : existingStudent), ...updateBody } });
 });
 
-app.delete(['/api/admin1/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.delete(['/api/admin1/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, requireRole('admin1', 'admin2', 'authenticator'), enforceCampusIsolation, async (req, res) => {
   const { id } = req.params;
   const branch = req.targetCampus;
 
@@ -1802,7 +1736,7 @@ app.delete(['/api/admin1/students/:id', '/api/admin/students/:id', '/api/account
   return res.json({ status: 'success', message: 'Student record permanently deleted from database.' });
 });
 
-app.get(['/api/admin1/teachers', '/api/admin/teachers'], authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.get(['/api/admin1/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'admin2', 'authenticator'), enforceCampusIsolation, async (req, res) => {
   const branch = req.targetCampus;
   let list = [];
   if (isMongoConnected) {
@@ -1831,7 +1765,7 @@ app.get(['/api/admin1/teachers', '/api/admin/teachers'], authenticateToken, enfo
   return res.json({ status: 'success', data: list });
 });
 
-app.post(['/api/admin1/teachers', '/api/admin/teachers'], authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.post(['/api/admin1/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'admin2'), enforceCampusIsolation, async (req, res) => {
   const branch = normalizeCampusName(req.body.branch || req.targetCampus);
   const salaryVal = Number(req.body.salary || 35000);
   const monthlySalaries = req.body.monthlySalaries || createDefaultMonthlySalaries(salaryVal);
@@ -1986,17 +1920,15 @@ app.post(['/api/students/:id/promote', '/api/admin1/students/:id/promote', '/api
     return res.status(400).json({ status: 'error', message: 'Security Password and OTP verification are mandatory for promotion.' });
   }
 
-  const validMasterPasses = ['00112233', '784920', '789456', 'inspire2026'];
-  let isPassValid = validMasterPasses.includes(securityPassword);
-  if (!isPassValid && req.user && req.user.password) {
+  let isPassValid = false;
+  if (req.user && req.user.password) {
     isPassValid = bcrypt.compareSync(securityPassword, req.user.password);
   }
   if (!isPassValid) {
     return res.status(401).json({ status: 'error', message: 'Invalid security password. Promotion denied.' });
   }
 
-  const validOtps = ['784920', '789456', '00112233', '123456'];
-  const isOtpValid = validOtps.includes(otpInput.toString().trim()) || otpInput.toString().trim().length >= 4;
+  const isOtpValid = otpInput && otpInput.toString().trim().length >= 4;
   if (!isOtpValid) {
     return res.status(401).json({ status: 'error', message: 'Invalid OTP verification code.' });
   }
@@ -3087,7 +3019,14 @@ app.post('/api/accountant/students/:id/payments', authenticateToken, enforceCamp
 
   // --- Persist payment record ---
   if (isMongoConnected) {
-    try { await Payment.create(newPayment); } catch { /* fallback */ }
+    try {
+      await Payment.create(newPayment);
+    } catch (err) {
+      console.error('CRITICAL [Payment Create DB Error]:', err.message);
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(500).json({ status: 'error', message: `Failed to persist payment receipt to database: ${err.message}` });
+      }
+    }
   }
   if (!inMemoryStore.payments[branch]) inMemoryStore.payments[branch] = [];
   inMemoryStore.payments[branch].push(newPayment);
@@ -3097,7 +3036,9 @@ app.post('/api/accountant/students/:id/payments', authenticateToken, enforceCamp
   if (isMongoConnected) {
     try {
       await Student.findByIdAndUpdate(stuObj._id, { $set: studentUpdate });
-    } catch { /* fallback */ }
+    } catch (err) {
+      console.error('CRITICAL [Payment Student Total Update DB Error]:', err.message);
+    }
   }
   // Update inMemoryStore
   Object.keys(inMemoryStore.students).forEach(bKey => {
@@ -3137,18 +3078,40 @@ app.post('/api/accountant/students/:id/payments', authenticateToken, enforceCamp
   return res.json({ status: 'success', data: { payment: newPayment, student: updatedStudent } });
 });
 
-app.get('/api/accountant/hostel', authenticateToken, (req, res) => {
-  return res.json({
-    status: 'success',
-    data: {
+app.get(['/api/accountant/hostel', '/api/admin2/hostel'], authenticateToken, enforceCampusIsolation, async (req, res) => {
+  const branch = req.targetCampus;
+  let data = null;
+  if (isMongoConnected) {
+    try {
+      data = await Hostel.findOne({ branch });
+    } catch { /* fallback */ }
+  }
+  if (!data) {
+    data = inMemoryStore.hostels[branch] || {
+      branch,
       blocks: {
         BlockA: { name: 'Block A', capacity: 50, occupied: 12 },
         BlockB: { name: 'Block B', capacity: 50, occupied: 10 },
         BlockC: { name: 'Block C', capacity: 50, occupied: 8 }
       },
       rooms: []
+    };
+  }
+  return res.json({ status: 'success', data });
+});
+
+app.post(['/api/accountant/hostel', '/api/admin2/hostel'], authenticateToken, requireRole('accountant', 'admin1', 'admin2'), enforceCampusIsolation, async (req, res) => {
+  const branch = req.targetCampus;
+  const payload = { ...req.body, branch };
+  if (isMongoConnected) {
+    try {
+      await Hostel.findOneAndUpdate({ branch }, payload, { upsert: true, new: true });
+    } catch (err) {
+      console.error('CRITICAL [Hostel Save DB Error]:', err.message);
     }
-  });
+  }
+  inMemoryStore.hostels[branch] = payload;
+  return res.json({ status: 'success', message: 'Hostel allocation updated successfully.', data: payload });
 });
 
 app.get('/api/accountant/attendance', authenticateToken, (req, res) => res.json({ status: 'success', data: [] }));
@@ -3238,12 +3201,12 @@ async function startServer() {
     });
   }
 
-  server.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Inspire ERP Server running on http://0.0.0.0:${PORT}`);
   });
 }
 
-if (require.main === module || process.env.RUN_SERVER === 'true' || process.env.NODE_ENV !== 'production') {
+if (require.main === module || process.env.RUN_SERVER === 'true') {
   startServer();
 }
 
