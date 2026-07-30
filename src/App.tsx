@@ -28,14 +28,6 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       const isUnivGateHash = hash === UNIVERSAL_HASH || hash.includes('secure-gateway-portal-v2') || hash.includes('v1-portal-gate-x89f2a7b');
       const isGenericLoginHash = hash.includes('login') || hash.includes('portal-gate');
 
-      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
-      const hasAuthToken = Boolean(token);
-
-      if (isAuthenticated || hasAuthToken) {
-        setFlowStage('authenticated');
-        return;
-      }
-
       if (isAuthGateHash || isUnivGateHash || isGenericLoginHash) {
         setFlowStage('pin');
         return;
@@ -53,7 +45,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
         hash.includes('sync_integrity');
 
       if (isInternalDashboardHash) {
-        setFlowStage(prev => (prev === 'authenticated' ? 'authenticated' : 'pin'));
+        setFlowStage(isAuthenticated ? 'authenticated' : 'pin');
         return;
       }
 
@@ -65,7 +57,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
         return;
       }
 
-      setFlowStage(prev => (prev === 'authenticated' ? 'authenticated' : 'portfolio'));
+      setFlowStage(isAuthenticated ? 'authenticated' : 'portfolio');
     };
 
     window.addEventListener('hashchange', handleHashChange);
@@ -94,10 +86,10 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       const isAuthGateHash = hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l');
       const isUnivGateHash = hash === UNIVERSAL_HASH || hash.includes('secure-gateway-portal-v2') || hash.includes('v1-portal-gate-x89f2a7b');
 
-      if (isValid) {
-        setFlowStage('authenticated');
-      } else if (isAuthGateHash || isUnivGateHash || hash.includes('login') || hash.includes('authenticator') || hash.includes('portal-gate')) {
+      if (isAuthGateHash || isUnivGateHash || hash.includes('login') || hash.includes('portal-gate')) {
         setFlowStage('pin');
+      } else if (isValid) {
+        setFlowStage('authenticated');
       } else {
         setFlowStage('portfolio');
       }

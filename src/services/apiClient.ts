@@ -494,6 +494,13 @@ export const apiClient = {
     }
 
     if (cleanPath === '/auth/me') {
+      const activeToken = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') || '';
+      if (!activeToken || !activeToken.trim()) {
+        const err: ApiError = new Error('Unauthorized. Authentication token missing.');
+        err.status = 401;
+        throw err;
+      }
+
       let role: 'admin1' | 'admin2' | 'accountant' | 'authenticator' = 'admin1';
       const isAuthUrl = typeof window !== 'undefined' && (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator'));
 
