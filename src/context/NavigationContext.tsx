@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, type ReactNode }
 import { apiClient } from '../services/apiClient';
 import { connectSocket, disconnectSocket } from '../services/socketClient';
 
-export type TabType = 'dashboard' | 'keys' | 'backup_codes' | 'accounts' | 'sync_integrity';
+export type TabType = 'dashboard' | 'keys' | 'backup_codes' | 'accounts' | 'sync_integrity' | 'settings';
 export type PortalRoleType = 'admin1' | 'admin2' | 'accountant' | 'authenticator';
 export type ThemeModeType = 'Light' | 'Dark' | 'System';
 

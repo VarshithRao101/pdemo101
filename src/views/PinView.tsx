@@ -18,16 +18,61 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const [lastKeypadIndex, setLastKeypadIndex] = useState<number | null>(null);
   const { isMobile, portalRole, login } = useNavigation();
 
-  const currentMode = mode || (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
+  const [portalMode, setPortalMode] = useState<'universal' | 'authenticator'>(() => {
+    if (mode) return mode;
+    const hash = window.location.hash;
+    if (hash.includes('sec-auth-sys-9i0j7k8l') || hash.includes('authenticator')) return 'authenticator';
+    return 'universal';
+  });
+
+  const currentMode = portalMode;
+
+  const handlePortalSwitch = (newMode: 'universal' | 'authenticator') => {
+    setPortalMode(newMode);
+    if (newMode === 'authenticator') {
+      window.location.hash = '#/sec-auth-sys-9i0j7k8l';
+      setUserId('9059068384');
+      setPasswordInput('');
+    } else {
+      window.location.hash = '#/v1-portal-gate-x89f2a7b';
+      setUserId('');
+      setPasswordInput('');
+    }
+    setIsError(false);
+    setToastMessage(null);
+  };
+
+  const getDefaultPasswordForUser = (id: string) => {
+    const norm = (id || '').trim().toLowerCase();
+    if (norm === 'admin1' || norm === 'rector' || norm === 'superadmin') return 'RectorPass#2026';
+    if (norm === 'admin2' || norm.includes('admin2') || norm === 'principal') return 'DeanE1#8492';
+    if (norm === 'accountant' || norm.includes('accountant') || norm === 'acc') return 'AccE1#4102';
+    if (norm === '9059068384' || norm === 'authenticator' || norm === 'security') return '';
+    return '';
+  };
 
   const [userId, setUserId] = useState<string>('');
   const [passwordInput, setPasswordInput] = useState<string>('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleSelectRoleCard = (roleId: string) => {
+    if (roleId === 'admin2') {
+      setUserId('admin2_erragattugutta_c1');
+    } else if (roleId === 'accountant') {
+      setUserId('accountant_erragattugutta_c1_1');
+    } else {
+      setUserId('admin1');
+    }
+    setPasswordInput('');
+  };
   const [step, setStep] = useState<'credentials' | 'pin'>('credentials');
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [focusedField, setFocusedField] = useState<'userId' | 'password' | null>(null);
 
   // Clear toast after 3 seconds
   useEffect(() => {
     if (toastMessage) {
-      const timer = setTimeout(() => setToastMessage(null), 3000);
+      const timer = setTimeout(() => setToastMessage(null), 3500);
       return () => clearTimeout(timer);
     }
   }, [toastMessage]);
@@ -53,8 +98,6 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     setPin('');
   };
 
-  const [isSuccess, setIsSuccess] = useState(false);
-
   const handleConfirm = async (customPin?: string) => {
     const pinToSubmit = customPin || pin;
     if (pinToSubmit.length !== 6) {
@@ -66,13 +109,13 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     if (currentMode === 'authenticator') {
       identifier = '9059068384';
     } else if (!identifier) {
-      triggerError('Please enter your User ID first');
+      triggerError('Please select a Role or enter your User ID first');
       setStep('credentials');
       return;
     }
 
     if (!passwordInput.trim()) {
-      triggerError('Please enter your Password first');
+      triggerError('Please enter your Account Password first');
       setStep('credentials');
       return;
     }
@@ -81,11 +124,10 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
     try {
       await login(identifier, pinToSubmit, currentMode, passwordInput.trim());
-      // On success: trigger success animation then enter portal
       setIsSuccess(true);
       setTimeout(() => {
-        onComplete(); // Set authenticated FIRST
-        window.location.hash = '#/dashboard'; // Then set hash
+        onComplete();
+        window.location.hash = '#/dashboard';
       }, 1200);
     } catch (err: any) {
       const msg =
@@ -105,7 +147,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     }
   }, [pin, step, isChecking, isSuccess]);
 
-  // Listen for physical keyboard input when entering the PIN (main number row & Numpad)
+  // Physical keyboard support for 6-digit PIN
   useEffect(() => {
     if (step !== 'pin' || isChecking || isSuccess) return;
 
@@ -138,7 +180,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
   const handleResetPin = () => {
     setPin('');
-    setToastMessage('PIN reset link sent to your registered mobile number');
+    setToastMessage('PIN reset request link sent to your registered mobile number');
   };
 
   const handleCredentialsFormSubmit = async (e?: React.FormEvent) => {
@@ -151,7 +193,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     if (currentMode === 'authenticator') {
       identifier = '9059068384';
     } else if (!identifier) {
-      triggerError('Please enter your User ID first');
+      triggerError('Please select a Role or enter your User ID first');
       return;
     }
 
@@ -177,160 +219,529 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     }
   };
 
-  // Shared credentials layout page
+  // Role Selection Data
+  const roleCards = [
+    {
+      id: 'admin1',
+      title: 'Admin 1',
+      subtitle: 'Master Admin',
+      badge: 'Super Admin',
+      colorBg: '#0F172A',
+      colorAccent: '#F59E0B',
+      borderColor: '#F59E0B',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      )
+    },
+    {
+      id: 'admin2',
+      title: 'Admin 2',
+      subtitle: 'Campus Principal',
+      badge: 'Principal',
+      colorBg: '#065F46',
+      colorAccent: '#10B981',
+      borderColor: '#10B981',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+          <path d="M6 12v5c3 3 9 3 12 0v-5" />
+        </svg>
+      )
+    },
+    {
+      id: 'accountant',
+      title: 'Accountant',
+      subtitle: 'Financial Ledger',
+      badge: 'Finance',
+      colorBg: '#3730A3',
+      colorAccent: '#6366F1',
+      borderColor: '#6366F1',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="2" />
+          <line x1="2" y1="10" x2="22" y2="10" />
+        </svg>
+      )
+    }
+  ];
+
+  // Render Step 1: Credentials & Role Selection
   const renderCredentialsContent = () => {
     return (
-      <>
-        {/* Main Title Section */}
-        <div style={styles.titleSection}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+        {/* Main Logo & Title Header */}
+        <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
             <InspireLogo size="md" />
           </div>
-          <p style={{ ...styles.subtitle, color: styles.subtitle.color }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em', fontFamily: 'var(--font-family)' }}>
             {currentMode === 'authenticator'
               ? 'Security Authenticator Gateway'
-              : 'Universal Administrative Gateway'}
+              : 'Inspire ERP Security Gateway'}
+          </h2>
+          <p style={{ fontSize: '12px', color: '#64748B', fontWeight: 700, marginTop: '4px', margin: 0 }}>
+            Enter password & 6-digit PIN to access administrative portals
           </p>
         </div>
 
+        {/* Portal Gateway Switcher Bar */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '6px',
+          backgroundColor: '#F8FAFC',
+          padding: '4px',
+          borderRadius: '14px',
+          marginBottom: '20px',
+          border: '1.5px solid #E2E8F0'
+        }}>
+          <button
+            type="button"
+            onClick={() => handlePortalSwitch('universal')}
+            style={{
+              padding: '10px 8px',
+              borderRadius: '10px',
+              border: currentMode === 'universal' ? '1.5px solid #0F172A' : '1.5px solid transparent',
+              backgroundColor: currentMode === 'universal' ? '#0F172A' : 'transparent',
+              color: currentMode === 'universal' ? '#FFFFFF' : '#64748B',
+              fontWeight: 800,
+              fontSize: '12px',
+              cursor: 'pointer',
+              transition: 'all 0.18s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              boxShadow: currentMode === 'universal' ? '0 2px 8px rgba(15,23,42,0.15)' : 'none'
+            }}
+            className="press-interactive"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: currentMode === 'universal' ? '#FFFFFF' : 'currentColor' }}>
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+            </svg>
+            <span style={{ color: currentMode === 'universal' ? '#FFFFFF' : '#64748B', fontWeight: 800 }}>Universal Portal</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handlePortalSwitch('authenticator')}
+            style={{
+              padding: '10px 8px',
+              borderRadius: '10px',
+              border: currentMode === 'authenticator' ? '1.5px solid #F59E0B' : '1.5px solid transparent',
+              backgroundColor: currentMode === 'authenticator' ? '#D97706' : 'transparent',
+              color: currentMode === 'authenticator' ? '#FFFFFF' : '#64748B',
+              fontWeight: 800,
+              fontSize: '12px',
+              cursor: 'pointer',
+              transition: 'all 0.18s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              boxShadow: currentMode === 'authenticator' ? '0 2px 8px rgba(217, 119, 6, 0.25)' : 'none'
+            }}
+            className="press-interactive"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: currentMode === 'authenticator' ? '#FFFFFF' : 'currentColor' }}>
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <span style={{ color: currentMode === 'authenticator' ? '#FFFFFF' : '#64748B', fontWeight: 800 }}>Authenticator</span>
+          </button>
+        </div>
+
+        {/* Role Quick Selector Grid (Admin 1, Admin 2, Accountant) */}
+        {currentMode === 'universal' && (
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '8px' }}>
+              Select Administrative Role
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '10px' }}>
+              {roleCards.map(rc => {
+                const isSelected = 
+                  (rc.id === 'admin1' && (userId === 'admin1' || userId === 'admin')) ||
+                  (rc.id === 'admin2' && userId.includes('admin2')) ||
+                  (rc.id === 'accountant' && userId.includes('accountant'));
+                return (
+                  <button
+                    key={rc.id}
+                    type="button"
+                    onClick={() => handleSelectRoleCard(rc.id)}
+                    style={{
+                      padding: '12px 6px',
+                      borderRadius: '14px',
+                      border: isSelected ? `2px solid ${rc.borderColor}` : '1.5px solid #E2E8F0',
+                      backgroundColor: isSelected ? rc.colorBg : '#FFFFFF',
+                      color: isSelected ? '#FFFFFF' : '#0F172A',
+                      boxShadow: isSelected ? `0 4px 12px rgba(0,0,0,0.12)` : '0 2px 4px rgba(0,0,0,0.02)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      transition: 'all 0.18s ease',
+                      position: 'relative'
+                    }}
+                    className="press-interactive"
+                  >
+                    {isSelected && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '4px',
+                        right: '4px',
+                        width: '14px',
+                        height: '14px',
+                        borderRadius: '50%',
+                        backgroundColor: rc.colorAccent,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#FFFFFF'
+                      }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                    )}
+                    <div style={{ color: isSelected ? (rc.id === 'admin1' ? '#F59E0B' : rc.colorAccent) : '#64748B' }}>
+                      {rc.icon}
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: 800, lineHeight: 1, color: isSelected ? '#FFFFFF' : '#0F172A' }}>{rc.title}</div>
+                    <div style={{ fontSize: '9px', fontWeight: 600, color: isSelected ? '#FFFFFF' : '#94A3B8' }}>
+                      {rc.subtitle}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Campus selector pills when Admin 2 or Accountant is active */}
+            {userId.includes('admin2') && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: '#F8FAFC', padding: '10px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                <span style={{ fontSize: '10px', fontWeight: 800, color: '#065F46', textTransform: 'uppercase' }}>Select Admin 2 Campus:</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  {[
+                    { id: 'admin2_erragattugutta_c1', label: 'Erragattugutta C1' },
+                    { id: 'admin2_erragattugutta_c2', label: 'Erragattugutta C2' },
+                    { id: 'admin2_beemaram_c1', label: 'Beemaram C1' },
+                    { id: 'admin2_beemaram_c2', label: 'Beemaram C2' }
+                  ].map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => { setUserId(c.id); setPasswordInput(''); }}
+                      style={{
+                        padding: '6px 8px',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        border: userId === c.id ? '1.5px solid #10B981' : '1px solid #CBD5E1',
+                        backgroundColor: userId === c.id ? '#065F46' : '#FFFFFF',
+                        color: userId === c.id ? '#FFFFFF' : '#334155',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {userId.includes('accountant') && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: '#F8FAFC', padding: '10px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                <span style={{ fontSize: '10px', fontWeight: 800, color: '#3730A3', textTransform: 'uppercase' }}>Select Accountant Campus:</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  {[
+                    { id: 'accountant_erragattugutta_c1_1', label: 'Erragattugutta C1' },
+                    { id: 'accountant_erragattugutta_c2_1', label: 'Erragattugutta C2' },
+                    { id: 'accountant_beemaram_c1_1', label: 'Beemaram C1' },
+                    { id: 'accountant_beemaram_c2_1', label: 'Beemaram C2' }
+                  ].map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => { setUserId(c.id); setPasswordInput(''); }}
+                      style={{
+                        padding: '6px 8px',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        border: userId === c.id ? '1.5px solid #6366F1' : '1px solid #CBD5E1',
+                        backgroundColor: userId === c.id ? '#3730A3' : '#FFFFFF',
+                        color: userId === c.id ? '#FFFFFF' : '#334155',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Credentials Form Inputs */}
-        <form
-          onSubmit={handleCredentialsFormSubmit}
-          style={{ display: 'flex', flexDirection: 'column', gap: '14px', margin: '24px 0', width: '100%', maxWidth: '340px', marginLeft: 'auto', marginRight: 'auto' }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-            <label style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {currentMode === 'authenticator' ? 'Fixed Authenticator Account ID' : 'User ID / ID Card No'}
+        <form onSubmit={handleCredentialsFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* User ID / Role Identifier Input */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              {currentMode === 'authenticator' ? 'Fixed Authenticator Account ID' : 'User ID / Role Identifier'}
             </label>
-            <input
-              type="text"
-              placeholder={currentMode === 'authenticator' ? '9059068384' : 'e.g. admin1 / admin2 / accountant'}
-              value={currentMode === 'authenticator' ? '9059068384' : userId}
-              onChange={(e) => setUserId(e.target.value)}
-              readOnly={currentMode === 'authenticator'}
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                borderRadius: '12px',
-                border: '1.5px solid #CBD5E1',
-                backgroundColor: currentMode === 'authenticator' ? '#E2E8F0' : '#F8FAFC',
-                fontFamily: 'var(--font-family)',
-                fontSize: '14px',
-                fontWeight: 600,
-                color: '#0F172A',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-            />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <div style={{ position: 'absolute', left: '12px', color: focusedField === 'userId' ? '#D97706' : '#64748B', display: 'flex', alignItems: 'center', transition: 'color 0.15s ease' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder={currentMode === 'authenticator' ? '9059068384' : 'admin1 / admin2 / accountant'}
+                value={currentMode === 'authenticator' ? '9059068384' : userId}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setUserId(val);
+                }}
+                onFocus={() => setFocusedField('userId')}
+                onBlur={() => setFocusedField(null)}
+                readOnly={currentMode === 'authenticator'}
+                style={{
+                  width: '100%',
+                  padding: '14px 14px 14px 40px',
+                  borderRadius: '14px',
+                  border: focusedField === 'userId' ? '2px solid #F59E0B' : '1.5px solid #CBD5E1',
+                  backgroundColor: currentMode === 'authenticator' ? '#FEF3C7' : '#FFFFFF',
+                  fontFamily: 'var(--font-family)',
+                  fontSize: '14px',
+                  fontWeight: 800,
+                  color: '#0F172A',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  boxShadow: focusedField === 'userId'
+                    ? '0 0 14px rgba(245, 158, 11, 0.35)'
+                    : '0 2px 4px rgba(0, 0, 0, 0.03)',
+                  transition: 'all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                }}
+              />
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-            <label style={{ fontSize: '11px', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Account Password
-            </label>
-            <input
-              type="password"
-              placeholder={currentMode === 'authenticator' ? 'Enter Security Password' : 'Enter Account Password'}
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCredentialsFormSubmit(); } }}
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                borderRadius: '12px',
-                border: '1.5px solid #CBD5E1',
-                backgroundColor: '#F8FAFC',
-                fontFamily: 'var(--font-family)',
-                fontSize: '14px',
-                fontWeight: 600,
-                color: '#0F172A',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-            />
+          {/* Account Password Input */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Account Password
+              </label>
+            </div>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <div style={{ position: 'absolute', left: '12px', color: focusedField === 'password' ? '#D97706' : '#64748B', display: 'flex', alignItems: 'center', transition: 'color 0.15s ease' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </div>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter Account Password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                onFocus={() => setFocusedField('password')}
+                onBlur={() => setFocusedField(null)}
+                style={{
+                  width: '100%',
+                  padding: '14px 44px 14px 40px',
+                  borderRadius: '14px',
+                  border: focusedField === 'password' ? '2px solid #F59E0B' : '1.5px solid #CBD5E1',
+                  backgroundColor: '#FFFFFF',
+                  fontFamily: 'var(--font-family)',
+                  fontSize: '14px',
+                  fontWeight: 800,
+                  color: '#0F172A',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  boxShadow: focusedField === 'password'
+                    ? '0 0 14px rgba(245, 158, 11, 0.35)'
+                    : '0 2px 4px rgba(0, 0, 0, 0.03)',
+                  transition: 'all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#64748B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '4px'
+                }}
+              >
+                {showPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
+          {/* Continue Action Button */}
           <button
             type="submit"
             style={{
               width: '100%',
               padding: '14px',
               borderRadius: '14px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 850,
-              fontSize: '14px',
-              backgroundColor: '#0A2540',
+              border: '1.5px solid #F59E0B',
+              background: 'linear-gradient(135deg, #D97706, #B45309)',
               color: '#FFFFFF',
-              boxShadow: '0 6px 18px rgba(10, 37, 64, 0.3)',
-              marginTop: '8px',
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+              fontWeight: 800,
+              fontSize: '14px',
+              boxShadow: '0 4px 14px rgba(217, 119, 6, 0.35)',
+              marginTop: '6px',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
+              fontFamily: 'var(--font-family)',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
             }}
             className="press-interactive"
           >
-            Continue to 6-Digit Security Key →
+            <span>Continue to 6-Digit PIN</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
           </button>
         </form>
-        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--muted-gray)', letterSpacing: '0.05em' }}>
-          Trent B Technologies
+
+        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>
+          TRNT BEE Technologies System
         </div>
-      </>
+      </div>
     );
   };
 
-  // Shared content widget
+  // Render Step 2: 6-Digit PIN Entry
   const renderPinContent = () => {
+    // Current role badge metadata
+    const activeRoleCard = roleCards.find(r => r.id === userId.trim().toLowerCase()) || {
+      title: userId || 'Admin User',
+      subtitle: 'Authenticated User',
+      colorBg: '#0F172A',
+      colorAccent: '#F59E0B'
+    };
+
     return (
-      <>
-        {/* Top Action Bar */}
-        <header style={styles.header}>
+      <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+        {/* Top Header Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <button
             onClick={() => setStep('credentials')}
             className="press-interactive"
             style={{
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--royal-gold)',
-              fontWeight: 700,
-              fontSize: '12px',
+              border: '1.5px solid #CBD5E1',
+              backgroundColor: '#FFFFFF',
+              color: '#0F172A',
+              fontWeight: 800,
+              fontSize: '11px',
               cursor: 'pointer',
-              padding: '4px 8px'
+              padding: '6px 12px',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.04)'
             }}
           >
-            ← Edit ID
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12 19 5 12 12 5" />
+            </svg>
+            <span>Edit ID / Role</span>
           </button>
+
           <button
             onClick={handleResetPin}
             className="press-interactive"
-            style={styles.resetBtn}
+            style={{
+              border: '1.5px solid #CBD5E1',
+              backgroundColor: '#F8FAFC',
+              color: '#475569',
+              fontWeight: 800,
+              fontSize: '11px',
+              cursor: 'pointer',
+              padding: '6px 12px',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+            }}
           >
-            Reset PIN
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+            </svg>
+            <span>Reset PIN</span>
           </button>
-        </header>
+        </div>
 
-        {/* Main Title Section */}
-        <div style={styles.titleSection}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-            <InspireLogo size="md" />
+        {/* Title & Active Role Badge */}
+        <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+            <InspireLogo size="sm" />
           </div>
-          <p style={{ ...styles.subtitle, color: styles.subtitle.color }}>
-            {currentMode === 'authenticator'
-              ? 'Security Authenticator Portal'
-              : portalRole === 'admin2'
-              ? 'Admin 2 (Campus Principal) Portal'
-              : portalRole === 'accountant'
-              ? 'Accountant Portal'
-              : 'Universal Administrative Portal'}
-          </p>
-          <p style={{ fontSize: '11px', color: 'var(--muted-gray)', fontWeight: 500, marginTop: '2px', opacity: 0.8 }}>
-            Enter your 6-digit access PIN
+
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: activeRoleCard.colorBg,
+            color: '#FFFFFF',
+            padding: '6px 14px',
+            borderRadius: '999px',
+            border: `1.5px solid ${activeRoleCard.colorAccent}`,
+            fontSize: '12px',
+            fontWeight: 800,
+            boxShadow: `0 4px 12px rgba(0, 0, 0, 0.15)`,
+            marginBottom: '8px'
+          }}>
+            <span style={{ color: activeRoleCard.colorAccent }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </span>
+            <span>{activeRoleCard.title} ({activeRoleCard.subtitle})</span>
+          </div>
+
+          <p style={{ fontSize: '13px', color: '#0F172A', fontWeight: 850, margin: '4px 0 0' }}>
+            Enter 6-Digit Security PIN
           </p>
         </div>
 
+        {/* 6-Digit PIN Component */}
         <PinEntry
           pin={pin}
           onKeyPress={handleKeyPress}
@@ -340,164 +751,157 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           isError={isError}
           isChecking={isChecking}
         />
-        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--muted-gray)', letterSpacing: '0.05em' }}>
-          Trent B Technologies
+
+        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>
+          Physical keyboard numeric entry enabled
         </div>
-      </>
+      </div>
     );
   };
 
-  const renderContent = () => {
-    if (isSuccess) {
-      return (
+  // Render Success Animation
+  const renderSuccessContent = () => {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '30px 10px',
+        textAlign: 'center'
+      }} className="anim-scale-in">
         <div style={{
+          width: '72px',
+          height: '72px',
+          borderRadius: '20px',
+          backgroundColor: '#059669',
+          border: '3px solid #047857',
+          boxShadow: '4px 4px 0px #047857',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '40px 0',
-          textAlign: 'center'
-        }} className="anim-scale-in">
-          <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 8px 30px rgba(16, 185, 129, 0.4)',
-            marginBottom: '20px',
-            border: '2px solid rgba(255, 255, 255, 0.4)'
-          }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-          <h3 style={{ color: '#065F46', fontWeight: 800, fontSize: '22px', letterSpacing: '-0.02em', margin: 0, fontFamily: 'var(--font-family)' }}>Access Granted</h3>
-          <p style={{ fontSize: '13px', color: '#047857', marginTop: '6px', fontWeight: 600, fontFamily: 'var(--font-family)' }}>Syncing secure session...</p>
+          color: '#FFFFFF',
+          marginBottom: '16px'
+        }}>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
         </div>
-      );
-    }
+        <h3 style={{ color: '#065F46', fontWeight: 900, fontSize: '22px', margin: 0, fontFamily: 'var(--font-family)' }}>
+          Access Granted
+        </h3>
+        <p style={{ fontSize: '13px', color: '#047857', marginTop: '6px', fontWeight: 700, fontFamily: 'var(--font-family)' }}>
+          Syncing secure ERP session...
+        </p>
+      </div>
+    );
+  };
+
+  const renderActiveContent = () => {
+    if (isSuccess) return renderSuccessContent();
     return step === 'credentials' ? renderCredentialsContent() : renderPinContent();
   };
 
-  if (isMobile) {
-    return (
-      <div className="view-container anim-slide-in-right" style={styles.container}>
-        <div style={{
-          width: '100%',
-          maxWidth: '420px',
-          display: 'flex',
-          flexDirection: 'column',
-          padding: '30px 24px',
-          backgroundColor: '#FFFFFF',
-          border: isError 
-            ? '2px solid #EF4444' 
-            : isSuccess 
-            ? '2px solid #10B981' 
-            : '1px solid #E2E8F0',
-          boxShadow: isError 
-            ? '0 0 35px rgba(239, 68, 68, 0.4), 0 20px 50px rgba(0, 0, 0, 0.3)' 
-            : isSuccess 
-            ? '0 0 45px rgba(16, 185, 129, 0.4), 0 20px 50px rgba(0, 0, 0, 0.3)' 
-            : '0 20px 50px rgba(0, 0, 0, 0.35)',
-          borderRadius: '24px',
-          boxSizing: 'border-box',
-          margin: 'auto 0',
-          transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'
-        }} className={isError ? 'anim-shiver' : 'anim-scale-in'}>
-          {renderContent()}
-        </div>
-
-        {/* Checking/Loading Modal Overlay */}
-        {isChecking && !isSuccess && (
-          <div style={styles.loaderOverlay} className="anim-fade-in">
-            <div style={styles.loaderContainer} className="glass-panel-heavy anim-scale-in">
-              <div style={styles.spinner} />
-              <span style={styles.loaderText}>Checking...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Floating Action Notification Toast */}
-        {toastMessage && (
-          <div style={styles.toastContainer} className="anim-slide-up">
-            <div style={{
-              padding: '12px 18px',
-              textAlign: 'center',
-              backgroundColor: '#FFFFFF',
-              border: isError ? '1px solid #EF4444' : '1px solid #D97706',
-              boxShadow: 'var(--shadow-lg)',
-              borderRadius: '12px',
-            }}>
-              <span style={{
-                ...styles.toastText,
-                color: isError ? '#B91C1C' : '#0F172A'
-              }}>{toastMessage}</span>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Laptop/Desktop Viewport Wrapper
   return (
-    <div style={styles.desktopBg} className="anim-fade-in">
-      <div style={styles.ambientGlow} />
-
+    <div style={styles.outerCanvas} className="anim-fade-in">
+      {/* Background Image Asset */}
+      <img
+        src={abstractBg}
+        alt="Portal Background"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          opacity: 0.95,
+          filter: 'brightness(1.02) contrast(1.05)',
+          pointerEvents: 'none',
+          zIndex: 0
+        }}
+      />
+      {/* Backdrop overlay */}
       <div style={{
-        width: '420px',
+        position: 'absolute',
+        inset: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.35)',
+        backdropFilter: 'blur(2px)',
+        pointerEvents: 'none',
+        zIndex: 1
+      }} />
+
+      {/* Main Ultra-Minimalist Card Box */}
+      <div style={{
+        width: '100%',
+        maxWidth: '420px',
         display: 'flex',
         flexDirection: 'column',
-        padding: '40px 34px',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: isError 
-          ? '2px solid #EF4444' 
-          : isSuccess 
-          ? '2px solid #10B981' 
-          : '1px solid rgba(212, 175, 55, 0.35)',
-        boxShadow: isError 
-          ? '0 0 45px rgba(239, 68, 68, 0.4), 0 24px 60px rgba(0, 0, 0, 0.4)' 
-          : isSuccess 
-          ? '0 0 55px rgba(16, 185, 129, 0.4), 0 24px 60px rgba(0, 0, 0, 0.4)' 
-          : '0 24px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(212, 175, 55, 0.15)',
-        borderRadius: '24px',
+        padding: '32px 28px',
+        backgroundColor: '#FFFFFF',
+        border: isError
+          ? '1px solid #B45309'
+          : isSuccess
+          ? '1px solid #2E7D5B'
+          : '1px solid #E4E4E1',
+        borderRadius: '6px',
         position: 'relative',
         zIndex: 10,
-        transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'
+        boxSizing: 'border-box',
+        transition: 'border-color 150ms ease'
       }} className={isError ? 'anim-shiver' : 'anim-scale-in'}>
-        {renderContent()}
+        {renderActiveContent()}
       </div>
 
-      {/* Checking/Loading Modal Overlay */}
+      {/* Checking / Verification Loader Overlay */}
       {isChecking && !isSuccess && (
         <div style={styles.loaderOverlay} className="anim-fade-in">
-          <div style={styles.loaderContainer} className="glass-panel-heavy anim-scale-in">
-            <div style={styles.spinner} />
-            <span style={styles.loaderText}>Checking...</span>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '20px 24px',
+            borderRadius: '6px',
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #E4E4E1',
+          }}>
+            <div style={{
+              width: '24px',
+              height: '24px',
+              border: '2px solid #E4E4E1',
+              borderTop: '2px solid #1C1C1E',
+              borderRadius: '50%',
+              animation: 'rotate 0.8s linear infinite'
+            }} />
+            <span style={{ fontSize: '13px', fontWeight: 500, color: '#1C1C1E' }}>Authenticating Credentials...</span>
           </div>
         </div>
       )}
 
-      {/* Floating Action Notification Toast */}
+      {/* Action Notification Toast Banner */}
       {toastMessage && (
         <div style={styles.toastContainer} className="anim-slide-up">
           <div style={{
             padding: '12px 18px',
             textAlign: 'center',
-            backgroundColor: '#FFFFFF',
-            border: isError ? '1px solid #EF4444' : '1px solid #D97706',
-            boxShadow: 'var(--shadow-lg)',
+            backgroundColor: '#0F172A',
+            border: isError ? '2px solid #EF4444' : '2px solid #3B82F6',
             borderRadius: '12px',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
           }}>
-            <span style={{
-              ...styles.toastText,
-              color: isError ? '#B91C1C' : '#0F172A'
-            }}>{toastMessage}</span>
+            <div style={{ color: isError ? '#F87171' : '#60A5FA', display: 'flex' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', textAlign: 'left' }}>
+              {toastMessage}
+            </span>
           </div>
         </div>
       )}
@@ -506,190 +910,22 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 };
 
 const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0A2540',
-    backgroundImage: `linear-gradient(135deg, rgba(10, 37, 64, 0.82) 0%, rgba(7, 22, 38, 0.92) 100%), url(${abstractBg})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
-    padding: '24px',
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 9999,
-  },
-  desktopBg: {
+  outerCanvas: {
     width: '100vw',
     minHeight: '100vh',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0A2540',
-    backgroundImage: `linear-gradient(135deg, rgba(10, 37, 64, 0.82) 0%, rgba(7, 22, 38, 0.92) 100%), url(${abstractBg})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
+    backgroundColor: '#0F172A',
+    padding: '20px',
     position: 'fixed',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    overflow: 'auto',
+    overflowY: 'auto',
     zIndex: 9999,
-  },
-  ambientGlow: {
-    position: 'absolute',
-    width: '640px',
-    height: '640px',
-    background: 'radial-gradient(circle, rgba(212, 175, 55, 0.16) 0%, rgba(10, 37, 64, 0) 70%)',
-    pointerEvents: 'none',
-    zIndex: 1,
-  },
-  header: {
-    height: '44px',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  resetBtn: {
-    background: 'rgba(255, 255, 255, 0.45)',
-    border: '1px solid rgba(255, 255, 255, 0.6)',
-    padding: '8px 16px',
-    borderRadius: 'var(--radius-full)',
-    fontSize: '12px',
-    fontWeight: 600,
-    color: 'var(--dark-charcoal)',
-    cursor: 'pointer',
-    fontFamily: 'var(--font-family)',
-    boxShadow: 'var(--shadow-sm)',
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
-  },
-  titleSection: {
-    textAlign: 'center',
-    marginTop: '16px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  welcomeTitle: {
-    fontSize: '32px',
-    fontWeight: 900,
-    color: 'var(--dark-charcoal)',
-    letterSpacing: '-0.03em',
-    lineHeight: '1.05',
-  },
-  subtitle: {
-    fontSize: '14px',
-    color: '#475569',
-    fontWeight: 700,
-    marginTop: '0px',
-  },
-  pinContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '10px',
-    margin: '24px 0',
-  },
-  pinBox: {
-    width: '42px',
-    height: '48px',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: '1.5px',
-    transition: 'all 0.15s cubic-bezier(0.2, 0.8, 0.2, 1)',
-    background: 'rgba(255, 255, 255, 0.45)',
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
-  },
-  pinDot: {
-    width: '11px',
-    height: '11px',
-    borderRadius: '50%',
-    background: 'var(--gold-gradient)',
-    boxShadow: '0 0 6px rgba(212,175,55,0.4)',
-  },
-  bioContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    margin: '8px 0 24px 0',
-  },
-  bioButton: {
-    background: 'rgba(255, 255, 255, 0.45)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '10px 20px',
-    borderRadius: 'var(--radius-full)',
-    fontSize: '13px',
-    fontWeight: 600,
-    color: 'var(--dark-charcoal)',
-    cursor: 'pointer',
-    fontFamily: 'var(--font-family)',
-    boxShadow: 'var(--shadow-sm)',
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
-    transition: 'all 0.3s ease',
-  },
-  bioText: {
-    letterSpacing: '-0.01em',
-  },
-  keypadContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    width: '100%',
-    maxWidth: '280px',
-    margin: '0 auto 16px auto',
-  },
-  keypadRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: '16px',
-  },
-  keypadButton: {
-    width: '64px',
-    height: '64px',
-    borderRadius: '50%',
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    border: '1px solid rgba(255, 255, 255, 0.6)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '22px',
-    fontWeight: 500,
-    color: 'var(--dark-charcoal)',
-    cursor: 'pointer',
-    boxShadow: 'var(--shadow-sm)',
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
-    fontFamily: 'var(--font-family)',
-  },
-  keypadActionBtn: {
-    width: '64px',
-    height: '64px',
-    borderRadius: '50%',
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
-    border: '1px solid rgba(255, 255, 255, 0.6)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: 'var(--dark-charcoal)',
-    cursor: 'pointer',
-    boxShadow: 'var(--shadow-sm)',
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
-    transition: 'all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
+    boxSizing: 'border-box'
   },
   loaderOverlay: {
     position: 'absolute',
@@ -697,76 +933,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(250, 250, 250, 0.6)',
-    backdropFilter: 'blur(8px)',
-    WebkitBackdropFilter: 'blur(8px)',
+    backgroundColor: 'rgba(250, 250, 249, 0.85)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 9999,
-  },
-  loaderContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '16px',
-    padding: '24px 32px',
-    borderRadius: 'var(--radius-lg)',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    border: '1px solid rgba(255, 255, 255, 0.8)',
-    boxShadow: 'var(--shadow-lg)',
-  },
-  spinner: {
-    width: '28px',
-    height: '28px',
-    border: '3px solid rgba(212, 175, 55, 0.2)',
-    borderTop: '3px solid var(--royal-gold)',
-    borderRadius: '50%',
-    animation: 'fadeIn 0.3s ease, rotate 0.8s linear infinite',
-  },
-  loaderText: {
-    fontSize: '14px',
-    fontWeight: 600,
-    color: 'var(--dark-charcoal)',
+    zIndex: 9999
   },
   toastContainer: {
-    position: 'absolute',
+    position: 'fixed',
     bottom: '24px',
-    left: '24px',
-    right: '24px',
+    left: '50%',
+    transform: 'translateX(-50%)',
     zIndex: 10000,
-    pointerEvents: 'none',
-  },
-  toastCard: {
-    padding: '12px 18px',
-    textAlign: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    border: '1px solid rgba(212, 175, 55, 0.3)',
-    boxShadow: 'var(--shadow-lg)',
-  },
-  toastText: {
-    fontSize: '12px',
-    fontWeight: 600,
-    color: 'var(--dark-charcoal)',
-  },
+    maxWidth: '380px',
+    width: 'calc(100% - 40px)'
+  }
 };
-
-// Add raw keyframe spin style injection directly into the head if not loaded
-const injectSpinnerKeyframes = () => {
-  if (typeof document === 'undefined') return;
-  const styleId = 'spinner-keyframe-style';
-  if (document.getElementById(styleId)) return;
-
-  const styleNode = document.createElement('style');
-  styleNode.id = styleId;
-  styleNode.innerHTML = `
-    @keyframes rotate {
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-  `;
-  document.head.appendChild(styleNode);
-};
-
-injectSpinnerKeyframes();

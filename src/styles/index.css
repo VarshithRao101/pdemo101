@@ -2,56 +2,42 @@
 @import './glass.css';
 @import './animations.css';
 
-/* Global resets & body configurations */
+/* Global Resets & Minimalist Body Configuration */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent; /* Disable tap highlight box on mobile */
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11"; /* Clean OpenType rendering */
+  -webkit-tap-highlight-color: transparent;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 html, body {
-  background-color: #F8FAFC !important;
-  color: #0F172A;
-  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #FAFAF9 !important;
+  background-image: none !important;
+  color: #1C1C1E;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
   width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.5;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-body.neo-2d, html.neo-2d {
-  background-color: #070B19 !important;
-  background-image: linear-gradient(rgba(248, 250, 252, 0.8), rgba(255, 255, 255, 0.88)), url('../assets/minimalist_portal_bg.png') !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  background-attachment: fixed !important;
+body.neo-2d, html.neo-2d, body.dark-theme, html.dark-theme {
+  background-color: #FAFAF9 !important;
+  background-image: none !important;
 }
 
-body.dark-theme, .dark-theme body, html.dark-theme, .dark-theme {
-  background-image: linear-gradient(rgba(7, 11, 25, 0.82), rgba(15, 23, 42, 0.88)), url('../assets/minimalist_portal_bg.png') !important;
-}
-
-/* Semi-transparent view containers for luxury background waves display */
 .view-container,
 .splash-container {
-  background-color: rgba(248, 250, 252, 0.7) !important;
+  background-color: #FAFAF9 !important;
   background-image: none !important;
-  backdrop-filter: blur(25px) saturate(130%);
-  -webkit-backdrop-filter: blur(25px) saturate(130%);
-}
-
-.dark-theme .view-container,
-.dark-theme .splash-container {
-  background-color: rgba(7, 11, 25, 0.7) !important;
-  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 #root {
@@ -59,40 +45,62 @@ body.dark-theme, .dark-theme body, html.dark-theme, .dark-theme {
   width: 100%;
   display: flex;
   flex-direction: column;
+  background-color: #FAFAF9;
 }
 
-/* Typography styles */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--dark-charcoal);
-}
-
-h1 {
-  font-size: 28px;
-  line-height: 1.25;
-}
-
-h2 {
+/* Restrained Typography Scale */
+h1, .page-title {
   font-size: 22px;
-  line-height: 1.3;
-}
-
-h3 {
-  font-size: 18px;
+  font-weight: 600;
   line-height: 1.4;
+  color: #1C1C1E;
+  letter-spacing: -0.01em;
 }
 
-p {
-  color: var(--muted-gray);
-  font-size: 15px;
-  font-weight: 400;
+h2, h3, .section-heading {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #1C1C1E;
+  letter-spacing: -0.01em;
 }
 
-/* Hide default scrollbars and use premium Notion/macOS styles for views */
+h4, h5, h6 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1C1C1E;
+}
+
+p, span, div {
+  color: #1C1C1E;
+}
+
+p.muted, span.muted, .text-secondary {
+  color: #6E6E73 !important;
+}
+
+/* Numeric Alignment in Tables */
+table, td, th, .tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Signature 2px Accent Bar Element */
+.signature-bar {
+  border-left: 2px solid var(--portal-accent) !important;
+  padding-left: 10px;
+}
+
+.active-nav-item {
+  border-left: 2px solid var(--portal-accent) !important;
+  color: #1C1C1E !important;
+  font-weight: 600 !important;
+  background-color: #FFFFFF !important;
+}
+
+/* Scrollbar Minimalist Styling */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -100,165 +108,155 @@ p {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(212, 175, 55, 0.25);
-  border-radius: var(--radius-full);
-  transition: background 0.2s ease;
+  background: #E4E4E1;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(212, 175, 55, 0.55);
+  background: #A6A6AA;
 }
 
-/* Utilities */
-.text-gold-gradient {
-  background: var(--gold-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.semibold {
-  font-weight: 600;
-}
-
-.medium {
-  font-weight: 500;
-}
-
-.bold {
-  font-weight: 700;
-}
-
-/* Active touch feedback */
-.active-dim:active {
-  opacity: 0.7;
-  transform: scale(0.97);
-}
-
-/* Responsive adjustments */
-.desktop-nav {
-  display: none;
-}
-
-@media (min-width: 900px) {
-  .desktop-nav {
-    display: flex !important;
-  }
-}
-
-@media (min-width: 768px) {
-  .view-container {
-    padding-bottom: 32px !important; /* Sidebar layout doesn't need space for bottom navigation bar */
-  }
-}
-
-/* ─── GLOBAL ROUNDED CORNERS OVERRIDE ─────────────────────────────────────── */
-/* Ensures zero sharp edges anywhere in the app — all interactive
-   elements and cards always inherit the design-system border-radius. */
-
-button, input, textarea, select {
-  border-radius: var(--radius-sm);
-}
-
-input[type="checkbox"],
-input[type="radio"] {
-  border-radius: var(--radius-xs);
-}
-
-/* Any element that has a very small hardcoded borderRadius (legacy) 
-   gets bumped to a comfortable soft rounded default */
-.shimmer-item {
-  border-radius: var(--radius-xs) !important;
-}
-
-/* Make all modal / overlay panels use large rounded corners */
-.modal-overlay > *,
-[class*="modal"] > div:first-child {
-  border-radius: var(--radius-xl) !important;
-}
-
-/* Bottom navigation bar — full top-left/top-right pill rounding */
-.floating-bottom-nav {
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-}
-
-/* ─── GLOBAL INPUT FOCUS RING ─────────────────────────────────────────────── */
-/* Gold glow ring on every focused interactive field */
-input:focus,
-textarea:focus,
-select:focus {
-  outline: none;
-  border-color: var(--royal-gold) !important;
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.18), 0 1px 3px rgba(0,0,0,0.06) !important;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-/* ─── GOLD TEXT SELECTION ─────────────────────────────────────────────────── */
-::selection {
-  background-color: rgba(212, 175, 55, 0.22);
-  color: var(--dark-charcoal);
-}
-
-::-moz-selection {
-  background-color: rgba(212, 175, 55, 0.22);
-  color: var(--dark-charcoal);
-}
-
-/* ─── CARD HOVER LIFT ─────────────────────────────────────────────────────── */
-/* Apply to any container that should lift on hover */
-.card-hover-lift {
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  cursor: pointer;
-}
-
-.card-hover-lift:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg);
-}
-
-.card-hover-lift:active {
-  transform: translateY(-1px) scale(0.985);
-  transition-duration: 0.1s;
-}
-
-/* ─── SMOOTH INPUT TRANSITIONS ───────────────────────────────────────────── */
+/* Form Controls & Inputs */
 input, textarea, select {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-}
-
-/* ─── LINK / BUTTON RESET SMOOTHNESS ─────────────────────────────────────── */
-button {
-  cursor: pointer;
-  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
-}
-
-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  transform: none !important;
-}
-
-/* ─── PREMIUM KEYPAD BUTTONS ─────────────────────────────────────────────── */
-.premium-keypad-btn {
-  background: rgba(255, 255, 255, 0.25) !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.45) !important;
+  border-radius: 10px !important;
+  border: 1.5px solid #CBD5E1 !important;
+  background-color: #FFFFFF !important;
   color: #0F172A !important;
-  font-family: var(--font-family);
-  font-weight: 600;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
 }
 
-.premium-keypad-btn:hover {
-  background: rgba(255, 255, 255, 0.45) !important;
-  border-color: var(--royal-gold) !important;
-  transform: scale(1.08) !important;
-  box-shadow: 0 6px 18px rgba(212, 175, 55, 0.15) !important;
+input:focus, textarea:focus, select:focus {
+  border-color: var(--portal-accent) !important;
+  box-shadow: 0 0 0 3.5px rgba(55, 48, 163, 0.12) !important;
+  outline: none !important;
 }
 
-.premium-keypad-btn:active {
-  transform: scale(0.95) !important;
+input::placeholder, textarea::placeholder {
+  color: #94A3B8;
 }
+
+label {
+  font-size: 11.5px;
+  color: #64748B;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 5px;
+  display: block;
+}
+
+/* Buttons */
+button {
+  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.press-interactive {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.press-interactive:hover {
+  transform: translateY(-2px) !important;
+}
+
+.press-interactive:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+.btn-primary {
+  background-color: var(--portal-accent) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  padding: 10px 18px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+
+.btn-primary:hover {
+  opacity: 0.94;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border: 1.5px solid #CBD5E1 !important;
+  padding: 10px 18px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+
+.btn-secondary:hover {
+  border-color: #0F172A !important;
+  background-color: #F8FAFC !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+/* Flat Table Styling */
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+th {
+  color: #475569;
+  font-weight: 800;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1.5px solid #E2E8F0;
+  background-color: #F1F5F9;
+}
+
+td {
+  color: #0F172A;
+  font-weight: 500;
+  padding: 12px 14px;
+  border-bottom: 1px solid #E2E8F0;
+  font-variant-numeric: tabular-nums;
+  background-color: #FFFFFF;
+  transition: background-color 0.15s ease;
+}
+
+tbody tr:hover td {
+  background-color: #F8FAFC !important;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.num-col {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* Text Selection */
+::selection {
+  background-color: #E2E8F0;
+  color: #0F172A;
+}
+

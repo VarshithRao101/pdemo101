@@ -1,9 +1,45 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* Default Theme Definitions (re-mappable via classes) */
+/* Default Theme Definitions - Global Ultra-Minimalist Design System */
 :root {
   /* Typography */
-  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* Global Minimalist Color Palette */
+  --canvas-bg: #F8FAFC;
+  --surface-bg: #FFFFFF;
+  --border-divider: #E2E8F0;
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --text-disabled: #94A3B8;
+  --status-success: #059669;
+  --status-warning: #D97706;
+
+  /* Legacy & Compatibility Mapped Variables */
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #FFFFFF;
+  --bg-surface: #FFFFFF;
+  --bg-surface-strong: #F1F5F9;
+
+  --dark-charcoal: #0F172A;
+  --muted-gray: #64748B;
+  --light-gray: #E2E8F0;
+  --white: #FFFFFF;
+
+  --card-bg: #FFFFFF;
+  --card-border: #E2E8F0;
+
+  --glass-bg: #FFFFFF;
+  --glass-bg-hover: #F8FAFC;
+  --glass-border: #CBD5E1;
+  --glass-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 10px 24px rgba(15, 23, 42, 0.08);
+
+  /* Default Portal Accent (Overridden per role) */
+  --portal-accent: #3730A3;
 
   /* Spacing */
   --spacing-xs: 4px;
@@ -12,121 +48,39 @@
   --spacing-lg: 24px;
   --spacing-xl: 32px;
 
-  /* Curved Boundaries - Rounded Corners */
-  --radius-xs: 10px;
-  --radius-sm: 16px;
-  --radius-md: 22px;
-  --radius-lg: 28px;
-  --radius-xl: 40px;
+  /* Modern Border Radius */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
   --radius-full: 9999px;
 
-  /* Brand Palette */
-  --brand-red: #EF4444;
-  --brand-blue: #3B82F6;
-  --brand-yellow: #FBBF24;
-  --brand-green: #22C55E;
-  --brand-grey: #94A3B8;
-  --brand-black: #020617;
-  --brand-white: #F8FAFC;
-
-  /* Gold Accent */
-  --royal-gold: #D4AF37;
-  --royal-gold-rgb: 212, 175, 55;
-
-  /* Gradients */
-  --brand-gradient: linear-gradient(135deg, #3B82F6 0%, #FBBF24 45%, #EF4444 100%);
-  --brand-gradient-soft: linear-gradient(180deg, rgba(59,130,246,0.22) 0%, rgba(251,191,36,0.14) 50%, rgba(239,68,68,0.1) 100%);
-  --gold-gradient: linear-gradient(135deg, #FBBF24 0%, #D4AF37 55%, #B38F4D 100%);
+  --royal-gold: #3730A3;
+  --royal-gold-rgb: 55, 48, 163;
+  --gold-gradient: none;
+  --brand-gradient: none;
+  --brand-gradient-soft: none;
 
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Light Theme Variables */
-.light-theme, :root:not(.dark-theme) {
-  --bg-primary: #F8FAFC;
-  --bg-secondary: #FFFFFF;
-  --bg-surface: rgba(15, 23, 42, 0.04);
-  --bg-surface-strong: rgba(15, 23, 42, 0.08);
-
-  /* Text Colors */
-  --dark-charcoal: #0F172A;
-  --muted-gray: #475569;
-  --light-gray: #E2E8F0;
-  --white: #FFFFFF;
-
-  /* Card Colors */
-  --card-bg: #FFFFFF;
-  --card-border: rgba(15, 23, 42, 0.08);
-
-  /* Glass Colors */
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-bg-hover: rgba(15, 23, 42, 0.04);
-  --glass-border: rgba(15, 23, 42, 0.08);
-  --glass-shadow: rgba(15, 23, 42, 0.04);
-
-  /* Shadows */
-  --shadow-sm: 0 4px 10px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 8px 20px rgba(15, 23, 42, 0.06);
-  --shadow-lg: 0 16px 36px rgba(15, 23, 42, 0.08);
-
-  /* Background Gradient */
-  --bg-gradient-overlay: radial-gradient(circle at top left, rgba(59, 130, 246, 0.06), transparent 25%), radial-gradient(circle at 70% 20%, rgba(251, 191, 36, 0.05), transparent 18%), radial-gradient(circle at bottom right, rgba(239, 68, 68, 0.05), transparent 22%);
-  --sidebar-border: rgba(15, 23, 42, 0.06);
+/* Portal Specific Accent Rules */
+.portal-admin1, [data-portal="admin1"] {
+  --portal-accent: #3730A3; /* Indigo */
 }
 
-/* Dark Theme Variables */
-.dark-theme {
-  --bg-primary: #070B19;
-  --bg-secondary: #0F172A;
-  --bg-surface: rgba(255, 255, 255, 0.08);
-  --bg-surface-strong: rgba(255, 255, 255, 0.14);
-
-  /* Text Colors */
-  --dark-charcoal: #F8FAFC;
-  --muted-gray: #94A3B8;
-  --light-gray: #334155;
-  --white: #FFFFFF;
-
-  /* Card Colors */
-  --card-bg: rgba(255, 255, 255, 0.05);
-  --card-border: rgba(255, 255, 255, 0.1);
-
-  /* Glass Colors */
-  --glass-bg: rgba(10, 16, 32, 0.72);
-  --glass-bg-hover: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --glass-shadow: rgba(0, 0, 0, 0.28);
-
-  /* Shadows */
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.45);
-
-  /* Background Gradient */
-  --bg-gradient-overlay: radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 25%), radial-gradient(circle at 70% 20%, rgba(251, 191, 36, 0.12), transparent 18%), radial-gradient(circle at bottom right, rgba(239, 68, 68, 0.10), transparent 22%);
-  --sidebar-border: rgba(255, 255, 255, 0.1);
+.portal-admin2, [data-portal="admin2"] {
+  --portal-accent: #0F766E; /* Teal */
 }
 
-/* Neo 2D Aesthetics Overrides - Activated only after authentication */
-.neo-2d, .neo-2d.light-theme, .neo-2d :root:not(.dark-theme), .neo-2d:not(.dark-theme) {
-  --card-border: #0F172A;
-  --glass-border: #0F172A;
-  --shadow-sm: 3.5px 3.5px 0px #0F172A;
-  --shadow-md: 5.5px 5.5px 0px #0F172A;
-  --shadow-lg: 8px 8px 0px #0F172A;
-  --glass-bg: rgba(255, 255, 255, 0.95);
-  --glass-bg-hover: rgba(15, 23, 42, 0.05);
+.portal-accountant, [data-portal="accountant"] {
+  --portal-accent: #B45309; /* Amber */
 }
 
-.neo-2d.dark-theme, .neo-2d .dark-theme {
-  --card-bg: #0F172A;
-  --card-border: #64748B;
-  --glass-bg: #0A1020;
-  --glass-border: #64748B;
-  --glass-bg-hover: rgba(255, 255, 255, 0.05);
-  --shadow-sm: 3.5px 3.5px 0px #64748B;
-  --shadow-md: 5.5px 5.5px 0px #64748B;
-  --shadow-lg: 8px 8px 0px #64748B;
+.portal-authenticator, [data-portal="authenticator"] {
+  --portal-accent: #1C1C1E; /* Neutral Dark */
 }
+
 

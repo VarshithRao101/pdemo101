@@ -10,14 +10,14 @@ export const LiveConnectionIndicator: React.FC<LiveConnectionIndicatorProps> = (
 
   const colorMap = {
     connected: '#16A34A',
-    reconnecting: '#16A34A',
-    disconnected: '#16A34A',
+    reconnecting: '#D97706',
+    disconnected: '#DC2626',
   } as const;
 
   const labelMap = {
     connected: 'Live Node',
-    reconnecting: 'Live Node',
-    disconnected: 'Live Node',
+    reconnecting: 'Reconnecting...',
+    disconnected: 'Offline',
   } as const;
 
   const color = colorMap[connectionState];

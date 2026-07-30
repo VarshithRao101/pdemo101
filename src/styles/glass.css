@@ -1,267 +1,131 @@
-.glass-panel {
-  background: var(--card-bg);
-  border: 1.5px solid var(--card-border);
-  box-shadow: var(--shadow-sm);
-}
-.neo-2d .glass-panel {
-  border: 2px solid var(--card-border);
-}
+/* Global Ultra-Minimalist Component Surfaces */
 
-.glass-panel-heavy {
-  background: var(--bg-secondary);
-  border: 1.5px solid var(--card-border);
-  box-shadow: var(--shadow-md);
-}
-.neo-2d .glass-panel-heavy {
-  border: 2px solid var(--card-border);
-}
-
-.glass-card-interactive {
-  background: var(--card-bg);
-  border: 1.5px solid var(--card-border);
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s, border-color 0.2s;
-  position: relative;
-  overflow: hidden;
-}
-.neo-2d .glass-card-interactive {
-  border: 2px solid var(--card-border);
-}
-
-.glass-card-interactive::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
+.glass-panel,
+.glass-panel-heavy,
+.glass-card-interactive,
+.neo-2d-card {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03) !important;
+  border-radius: 14px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .glass-card-interactive:hover,
-.glass-card-interactive:active {
-  background: var(--card-bg);
+.glass-panel:hover,
+.neo-2d-card:hover {
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06) !important;
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--royal-gold);
 }
 
-.glass-card-interactive:hover::after {
-  opacity: 0.5;
+/* Module Grid Tiles */
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  width: 100%;
 }
 
-.glass-card-interactive:active {
-  transform: translateY(-1px) scale(0.99);
-  transition: transform 0.1s ease;
+.grid-container > div,
+.grid-container > button,
+.grid-container > a,
+.moduleCardNew,
+.module-card {
+  background: #FFFFFF !important;
+  border: 1.5px solid #E2E8F0 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03) !important;
+  padding: 18px !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative !important;
+  text-align: left !important;
 }
 
-.glass-input {
-  background: var(--bg-secondary);
-  border: 1.5px solid var(--card-border);
-  color: var(--dark-charcoal);
-  border-radius: var(--radius-sm);
-  padding: 12px 16px;
-  font-family: var(--font-family);
-  font-size: 15px;
-  font-weight: 500;
-  outline: none;
-  transition: all 0.2s ease;
-}
-.neo-2d .glass-input {
-  border: 2px solid var(--card-border);
+.grid-container > div:hover,
+.grid-container > button:hover,
+.grid-container > a:hover,
+.moduleCardNew:hover,
+.module-card:hover {
+  border-color: var(--portal-accent) !important;
+  background-color: #FFFFFF !important;
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08) !important;
 }
 
-.glass-input::placeholder {
-  color: var(--muted-gray);
-  opacity: 0.7;
-}
-
-.glass-input:focus {
-  background: var(--bg-secondary);
-  border-color: var(--royal-gold);
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
-}
-
-/* Glass gold highlight container */
-.glass-gold-ring {
-  position: relative;
-}
-.glass-gold-ring::before {
-  content: '';
-  position: absolute;
-  inset: -1.5px;
-  border-radius: inherit;
-  background: var(--brand-blue); /* 2D style uses a clean blue accent outline */
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0.15;
-}
-
-/* ─── GLASS FORM FIELD ─────────────────────────────────────────────────────── */
-/* Wrapper around label + input with subtle inset shadow & left-border accent */
-.glass-form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.glass-form-field label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted-gray);
-}
-
-.glass-form-field input,
-.glass-form-field select,
-.glass-form-field textarea {
-  background: var(--bg-secondary);
-  border: 1.5px solid var(--card-border);
-  color: var(--dark-charcoal);
-  border-radius: var(--radius-sm);
-  padding: 11px 14px;
-  font-family: var(--font-family);
-  font-size: 14px;
-  font-weight: 500;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
-}
-
-/* ─── STATUS PILL ──────────────────────────────────────────────────────────── */
+/* Status Badges */
 .glass-status-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 3px 10px;
-  border-radius: var(--radius-full);
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border: 1px solid transparent;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid #CBD5E1;
+  background-color: #F8FAFC;
+  color: #0F172A;
+  transition: all 0.15s ease;
 }
 
 .glass-status-pill.status-present,
 .glass-status-pill.status-paid,
 .glass-status-pill.status-active {
-  background: rgba(34, 197, 94, 0.12);
-  color: #15803d;
-  border-color: rgba(34, 197, 94, 0.25);
+  background-color: #ECFDF5;
+  color: #059669;
+  border-color: #A7F3D0;
 }
 
 .glass-status-pill.status-absent,
 .glass-status-pill.status-unpaid,
 .glass-status-pill.status-error {
-  background: rgba(239, 68, 68, 0.1);
-  color: #dc2626;
-  border-color: rgba(239, 68, 68, 0.2);
+  background-color: #FEF2F2;
+  color: #DC2626;
+  border-color: #FCA5A5;
 }
 
 .glass-status-pill.status-late,
 .glass-status-pill.status-pending,
 .glass-status-pill.status-warning {
-  background: rgba(251, 191, 36, 0.12);
-  color: #92400e;
-  border-color: rgba(251, 191, 36, 0.25);
+  background-color: #FFFBEB;
+  color: #D97706;
+  border-color: #FDE68A;
 }
 
-.glass-status-pill.status-leave,
-.glass-status-pill.status-info {
-  background: rgba(59, 130, 246, 0.1);
-  color: #1d4ed8;
-  border-color: rgba(59, 130, 246, 0.2);
-}
-
-/* ─── NEO-2D CARD ──────────────────────────────────────────────────────────── */
-.neo-2d-card {
-  background: rgba(255,255,255,0.9);
-  border: 1px solid var(--card-border);
-  border-radius: 14px;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-  position: relative;
-}
-
-.neo-2d-card:hover {
-  border-color: rgba(212,175,55,0.4);
-  box-shadow: 0 4px 16px rgba(15,23,42,0.06);
-}
-
-/* ─── HOVER GOLD BORDER ─────────────────────────────────────────────────────  */
-.hover-gold {
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.hover-gold:hover {
-  border-color: rgba(212,175,55,0.35) !important;
-  box-shadow: 0 2px 10px rgba(212,175,55,0.08) !important;
-}
-
-/* ─── MODULE CARD HOVER ─────────────────────────────────────────────────────  */
-/* Applied to press-interactive module grid cards */
-.press-interactive[style*="moduleCardNew"],
-div.press-interactive:hover {
-  border-color: rgba(212,175,55,0.3) !important;
-}
-
-
-/* KPI / stats cards with colored top accent strip */
+/* Metric / KPI Cards */
 .glass-metric-card {
-  background: var(--card-bg);
-  border: 1.5px solid var(--card-border);
-  box-shadow: var(--shadow-sm);
-  border-radius: var(--radius-md);
+  background: #FFFFFF;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 14px;
   padding: 18px 20px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
   position: relative;
-  overflow: hidden;
-  transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s ease;
-}
-
-.glass-metric-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--gold-gradient);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-metric-card:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
 }
 
 .glass-metric-card .metric-value {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
-  color: var(--dark-charcoal);
-  letter-spacing: -0.03em;
-  line-height: 1;
+  color: #0F172A;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
 }
 
 .glass-metric-card .metric-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted-gray);
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748B;
+  margin-top: 4px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-top: 6px;
+  letter-spacing: 0.04em;
 }
 
-/* ─── ZEBRA TABLE ROWS ──────────────────────────────────────────────────────  */
-.zebra-row:nth-child(even) {
-  background-color: rgba(212, 175, 55, 0.03);
-}
-
-.zebra-row:hover {
-  background-color: rgba(212, 175, 55, 0.06) !important;
-  transition: background-color 0.15s ease;
-}

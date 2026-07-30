@@ -3,6 +3,11 @@ import { InspireLogo } from '../common/InspireLogo';
 import { LiveConnectionIndicator } from '../common/LiveConnectionIndicator';
 import { useNavigation } from '../../context/NavigationContext';
 
+// --- TRNT BEE FLOATING BRAND BADGE (REMOVED) ---
+const TrntBeeBadge = () => {
+  return null;
+};
+
 interface ResponsiveLayoutProps {
   children: ReactNode;
 }
@@ -86,7 +91,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   const displayName = user?.name || 'Staff Member';
   const displayId = user?.username || '—';
   const displayInitials = getInitials(displayName);
-  const displayBrand = 'INSPIRE JUNIOR COLLEGE X TRENT B';
+  const displayBrand = 'INSPIRE JUNIOR COLLEGE X TRNT BEE';
 
 
 
@@ -197,7 +202,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   const renderAboutModal = () => renderModal("About Inspire Junior College", () => setShowAboutModal(false), (
     <>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
-        <InspireLogo size="md" />
+        <InspireLogo size="md" inPortal={true} />
       </div>
       <p style={{ fontSize: '12.5px', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.5, textAlign: 'center' }}>
         Inspire Junior College is Hanumakonda's premier institution for IIT-JEE, NEET, and intermediate education, dedicated to training young minds for bright professional careers.
@@ -507,10 +512,8 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
     return (
       <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: 'var(--bg-primary)', position: 'relative' }}>
         {children}
-        {/* Global Permanent "TB" Trademark Badge */}
-        <div style={{ position: 'fixed', bottom: '12px', right: '16px', zIndex: 99999, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 10px', borderRadius: '8px', backgroundColor: 'rgba(15, 23, 42, 0.88)', backdropFilter: 'blur(8px)', border: '1.5px solid rgba(212, 175, 55, 0.5)', boxShadow: '0 4px 14px rgba(0,0,0,0.3)', color: 'var(--royal-gold)', fontSize: '11px', fontWeight: 900, letterSpacing: '0.1em', fontFamily: 'sans-serif' }}>
-          TB
-        </div>
+        {/* Global Floating TRNT BEE Trademark Badge */}
+        <TrntBeeBadge />
       </div>
     );
   }
@@ -607,9 +610,8 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
 
   return (
     <div style={styles.desktopContainer} className="anim-fade-in">
-      {/* Left Sidebar Menu */}
-      {/* Left Sidebar Menu */}
-      {portalRole !== 'admin1' && portalRole !== 'admin2' && portalRole !== 'accountant' && portalRole !== 'authenticator' && (
+      {/* Left Sidebar Menu Removed As Requested */}
+      {false && (
         <aside style={{
           width: '260px',
           height: '100%',
@@ -824,10 +826,8 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
         {children}
       </main>
 
-      {/* Global Permanent "TB" Trademark Badge */}
-      <div style={{ position: 'fixed', bottom: '12px', right: '16px', zIndex: 99999, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 10px', borderRadius: '8px', backgroundColor: 'rgba(15, 23, 42, 0.88)', backdropFilter: 'blur(8px)', border: '1.5px solid rgba(212, 175, 55, 0.5)', boxShadow: '0 4px 14px rgba(0,0,0,0.3)', color: 'var(--royal-gold)', fontSize: '11px', fontWeight: 900, letterSpacing: '0.1em', fontFamily: 'sans-serif' }}>
-        TB
-      </div>
+      {/* Global Floating TRNT BEE Trademark Badge */}
+      <TrntBeeBadge />
     </div>
   );
 }

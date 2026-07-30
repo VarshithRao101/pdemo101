@@ -139,7 +139,7 @@ export const HorizontalProgressBarLoader: React.FC<HorizontalProgressBarLoaderPr
         </div>
 
         <div style={{ marginTop: '24px', fontSize: '11px', color: '#64748B', fontWeight: 600, letterSpacing: '0.04em' }}>
-          Trent B Technologies
+          TRNT BEE Technologies
         </div>
       </div>
     </div>

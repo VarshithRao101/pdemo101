@@ -7,7 +7,7 @@ import { AdminDashboardView } from './views/AdminPortalViews';
 import { AccountantDashboardView } from './views/AccountantPortalViews';
 import { AuthenticatorDashboardView } from './views/AuthenticatorPortalViews';
 
-const UNIVERSAL_HASH = '#/v1-portal-gate-x89f2a7b';
+const UNIVERSAL_HASH = '#/secure-gateway-portal-v2-x9k84m2n7p1q3w5r8z-inspire';
 const AUTHENTICATOR_HASH = '#/sec-auth-sys-9i0j7k8l';
 
 import { HorizontalProgressBarLoader } from './components/common/HorizontalProgressBarLoader';
@@ -24,22 +24,20 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       const hash = window.location.hash;
       setCurrentHash(hash);
 
-      const isLoginGateHash = hash === AUTHENTICATOR_HASH ||
-        hash.includes('sec-auth-sys-9i0j7k8l') ||
-        hash === UNIVERSAL_HASH ||
-        hash.includes('v1-portal-gate-x89f2a7b') ||
-        hash.includes('login') ||
-        hash.includes('authenticator') ||
-        hash.includes('portal-gate');
+      const isAuthGateHash = hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l');
+      const isUnivGateHash = hash === UNIVERSAL_HASH || hash.includes('secure-gateway-portal-v2') || hash.includes('v1-portal-gate-x89f2a7b');
+      const isGenericLoginHash = hash.includes('login') || hash.includes('portal-gate');
 
-      if (isLoginGateHash) {
-        setFlowStage('pin');
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      const hasAuthToken = Boolean(token);
+
+      if (isAuthenticated || hasAuthToken) {
+        setFlowStage('authenticated');
         return;
       }
 
-      // If authenticated and accessing internal dashboard hashes
-      if (isAuthenticated) {
-        setFlowStage('authenticated');
+      if (isAuthGateHash || isUnivGateHash || isGenericLoginHash) {
+        setFlowStage('pin');
         return;
       }
 
@@ -50,7 +48,9 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
         hash.includes('accounts') ||
         hash.includes('reports') ||
         hash.includes('attendance') ||
-        hash.includes('backup');
+        hash.includes('backup') ||
+        hash.includes('settings') ||
+        hash.includes('sync_integrity');
 
       if (isInternalDashboardHash) {
         setFlowStage(prev => (prev === 'authenticated' ? 'authenticated' : 'pin'));
@@ -73,7 +73,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
     handleHashChange();
 
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, portalRole]);
 
   // Sync forcedRole to NavigationContext
   useEffect(() => {
@@ -91,18 +91,13 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
 
     checkSession().then((isValid) => {
       const hash = window.location.hash;
-      const isLoginGateHash = hash === AUTHENTICATOR_HASH ||
-        hash.includes('sec-auth-sys-9i0j7k8l') ||
-        hash === UNIVERSAL_HASH ||
-        hash.includes('v1-portal-gate-x89f2a7b') ||
-        hash.includes('login') ||
-        hash.includes('authenticator') ||
-        hash.includes('portal-gate');
+      const isAuthGateHash = hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l');
+      const isUnivGateHash = hash === UNIVERSAL_HASH || hash.includes('secure-gateway-portal-v2') || hash.includes('v1-portal-gate-x89f2a7b');
 
-      if (isLoginGateHash) {
-        setFlowStage('pin');
-      } else if (isValid) {
+      if (isValid) {
         setFlowStage('authenticated');
+      } else if (isAuthGateHash || isUnivGateHash || hash.includes('login') || hash.includes('authenticator') || hash.includes('portal-gate')) {
+        setFlowStage('pin');
       } else {
         setFlowStage('portfolio');
       }
@@ -150,7 +145,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
     return (
       <HorizontalProgressBarLoader
         message="Initializing Inspire ERP Systems..."
-        subMessage="Trent B Technologies"
+        subMessage="TRNT BEE Technologies"
         durationMs={1200}
         onComplete={() => setIsInitialLoading(false)}
       />

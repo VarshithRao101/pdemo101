@@ -1,28 +1,50 @@
-﻿// apiClient.ts
+// apiClient.ts
 // Real Production HTTP Client connecting to Express/MongoDB backend API
 // Manages real JWT auth tokens, refreshToken auto-renewal, headers, rate limit handling, and campus isolation errors.
 
+import { emitLocalSocketEvent } from './socketClient';
+
 export const getApiBaseUrl = (): string => {
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return '/api';
-  }
   if (import.meta.env && import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  return (import.meta.env && import.meta.env.DEV) ? 'http://localhost:5000/api' : '/api';
+  return '/api';
+};
+
+const triggerMutationEvents = (cleanPath: string, method: string, data: any) => {
+  const m = (method || 'GET').toUpperCase();
+  if (m === 'GET') return;
+
+  if (cleanPath.includes('/students')) {
+    emitLocalSocketEvent('student:updated', data);
+  }
+  if (cleanPath.includes('/attendance')) {
+    emitLocalSocketEvent('attendance:updated', data);
+  }
+  if (cleanPath.includes('/fee') || cleanPath.includes('/academic_fees')) {
+    emitLocalSocketEvent('fee:updated', data);
+    emitLocalSocketEvent('fee-settings:updated', data);
+  }
+  if (cleanPath.includes('/bulletin') || cleanPath.includes('/publishing')) {
+    emitLocalSocketEvent('bulletin:updated', data);
+  }
+  if (cleanPath.includes('/expenditure')) {
+    emitLocalSocketEvent('expenditure:updated', data);
+  }
+  if (cleanPath.includes('/worker-payment') || cleanPath.includes('/salary')) {
+    emitLocalSocketEvent('workerPayment:updated', data);
+  }
+  if (cleanPath.includes('/hostel')) {
+    emitLocalSocketEvent('hostel:updated', data);
+  }
+  if (cleanPath.includes('/journal') || cleanPath.includes('/authenticator') || cleanPath.includes('/restore')) {
+    emitLocalSocketEvent('sync:journal-updated', data);
+  }
 };
 
 // Detect static-only / no-backend deployment (Vercel frontend-only, GitHub Pages, etc.)
-// Set VITE_HAS_BACKEND=true in Vercel env vars when a real backend exists.
 const isStaticOnlyDeploy = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  // If an explicit env flag says backend exists, trust it
-  if (import.meta.env && import.meta.env.VITE_HAS_BACKEND === 'true') return false;
-  // On localhost always try real backend first
-  const host = window.location.hostname;
-  if (host === 'localhost' || host === '127.0.0.1') return false;
-  // On any public domain without VITE_HAS_BACKEND, assume static-only
-  return true;
+  return false;
 };
 
 export interface ApiError extends Error {
@@ -186,7 +208,7 @@ export const apiClient = {
     const baseUrl = getApiBaseUrl();
     const url = `${baseUrl}${cleanPath}`;
 
-    const token = sessionStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
     const headers: Record<string, string> = {
       ...(options.headers as Record<string, string> || {})
     };
@@ -258,6 +280,8 @@ export const apiClient = {
         sessionStorage.setItem('refresh_token', data.refreshToken);
       }
 
+      triggerMutationEvents(cleanPath, options.method || 'GET', data);
+
       return data as T;
     } catch (err: any) {
       // Backend unreachable - fallback to client mock handler for seamless offline preview
@@ -284,7 +308,7 @@ export const apiClient = {
   // Fallback handler for seamless offline development preview
   async fallbackRequest<T = any>(cleanPath: string, options: RequestInit = {}): Promise<T> {
     const method = options.method?.toUpperCase() || 'GET';
-    const token = sessionStorage.getItem('auth_token') || '';
+    const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') || '';
     const username = (token.includes('-for-') ? (token.split('-for-')[1] || 'admin1') : 'admin1').toLowerCase();
     const isAdmin1User = username === 'admin1';
     if (cleanPath === '/auth/verify-credentials') {
@@ -304,6 +328,7 @@ export const apiClient = {
         { _id: 'acc_admin2_beemaram_c1', username: 'admin2_beemaram_c1', passwordRaw: 'DeanB1#3920', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1' },
         { _id: 'acc_admin2_beemaram_c2', username: 'admin2_beemaram_c2', passwordRaw: 'DeanB2#6184', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2' },
 
+        { _id: 'acc_accountant_default', username: 'accountant', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Accountant' },
         { _id: 'acc_accountant_erragattugutta_c1_1', username: 'accountant_erragattugutta_c1_1', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1' },
         { _id: 'acc_accountant_erragattugutta_c1_2', username: 'accountant_erragattugutta_c1_2', passwordRaw: 'AccE1#9381', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1' },
         { _id: 'acc_accountant_erragattugutta_c2_1', username: 'accountant_erragattugutta_c2_1', passwordRaw: 'AccE2#7294', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2' },
@@ -321,12 +346,12 @@ export const apiClient = {
         admin2: 'admin2', admin2_e1: 'admin2_erragattugutta_c1', admin2_c1: 'admin2_erragattugutta_c1',
         admin2_e2: 'admin2_erragattugutta_c2', admin2_c2: 'admin2_erragattugutta_c2',
         admin2_b1: 'admin2_beemaram_c1', admin2_b2: 'admin2_beemaram_c2', principal: 'admin2',
-        accountant: 'accountant_erragattugutta_c1_1', accountant1_e1: 'accountant_erragattugutta_c1_1', acc1_e1: 'accountant_erragattugutta_c1_1',
+        accountant: 'accountant', accountant1: 'accountant_erragattugutta_c1_1', acc: 'accountant', accountant1_e1: 'accountant_erragattugutta_c1_1', acc1_e1: 'accountant_erragattugutta_c1_1',
         accountant2_e1: 'accountant_erragattugutta_c1_2', acc2_e1: 'accountant_erragattugutta_c1_2',
         accountant1_e2: 'accountant_erragattugutta_c2_1', acc1_e2: 'accountant_erragattugutta_c2_1',
         accountant2_e2: 'accountant_erragattugutta_c2_2', acc2_e2: 'accountant_erragattugutta_c2_2',
         accountant1_b1: 'accountant_beemaram_c1_1', acc1_b1: 'accountant_beemaram_c1_1',
-        accountant2_b1: 'accountant_beemaram_c1_2', acc2_b1: 'accountant_beemaram_c1_2',
+        accountant2_b1: 'accountant_beemaram_c1_2', acc1_b1: 'accountant_beemaram_c1_2',
         accountant1_b2: 'accountant_beemaram_c2_1', acc1_b2: 'accountant_beemaram_c2_1',
         accountant2_b2: 'accountant_beemaram_c2_2', acc2_b2: 'accountant_beemaram_c2_2',
         authenticator: '9059068384', security: '9059068384'
@@ -355,7 +380,8 @@ export const apiClient = {
       }
 
       const inputPass = (bodyData.password || '').toString().trim();
-      if (inputPass !== matchedUser.passwordRaw) {
+      const isPassOk = inputPass === matchedUser.passwordRaw;
+      if (!isPassOk) {
         const err: ApiError = new Error('Incorrect account password.');
         err.status = 401;
         throw err;
@@ -381,6 +407,7 @@ export const apiClient = {
         { _id: 'acc_admin2_beemaram_c1', username: 'admin2_beemaram_c1', passwordRaw: 'DeanB1#3920', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1' },
         { _id: 'acc_admin2_beemaram_c2', username: 'admin2_beemaram_c2', passwordRaw: 'DeanB2#6184', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2' },
 
+        { _id: 'acc_accountant_default', username: 'accountant', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Accountant' },
         { _id: 'acc_accountant_erragattugutta_c1_1', username: 'accountant_erragattugutta_c1_1', passwordRaw: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1' },
         { _id: 'acc_accountant_erragattugutta_c1_2', username: 'accountant_erragattugutta_c1_2', passwordRaw: 'AccE1#9381', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1' },
         { _id: 'acc_accountant_erragattugutta_c2_1', username: 'accountant_erragattugutta_c2_1', passwordRaw: 'AccE2#7294', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2' },
@@ -398,12 +425,12 @@ export const apiClient = {
         admin2: 'admin2', admin2_e1: 'admin2_erragattugutta_c1', admin2_c1: 'admin2_erragattugutta_c1',
         admin2_e2: 'admin2_erragattugutta_c2', admin2_c2: 'admin2_erragattugutta_c2',
         admin2_b1: 'admin2_beemaram_c1', admin2_b2: 'admin2_beemaram_c2', principal: 'admin2',
-        accountant: 'accountant_erragattugutta_c1_1', accountant1_e1: 'accountant_erragattugutta_c1_1', acc1_e1: 'accountant_erragattugutta_c1_1',
+        accountant: 'accountant', accountant1: 'accountant_erragattugutta_c1_1', acc: 'accountant', accountant1_e1: 'accountant_erragattugutta_c1_1', acc1_e1: 'accountant_erragattugutta_c1_1',
         accountant2_e1: 'accountant_erragattugutta_c1_2', acc2_e1: 'accountant_erragattugutta_c1_2',
         accountant1_e2: 'accountant_erragattugutta_c2_1', acc1_e2: 'accountant_erragattugutta_c2_1',
         accountant2_e2: 'accountant_erragattugutta_c2_2', acc2_e2: 'accountant_erragattugutta_c2_2',
         accountant1_b1: 'accountant_beemaram_c1_1', acc1_b1: 'accountant_beemaram_c1_1',
-        accountant2_b1: 'accountant_beemaram_c1_2', acc2_b1: 'accountant_beemaram_c1_2',
+        accountant2_b1: 'accountant_beemaram_c1_2', acc1_b1: 'accountant_beemaram_c1_2',
         accountant1_b2: 'accountant_beemaram_c2_1', acc1_b2: 'accountant_beemaram_c2_1',
         accountant2_b2: 'accountant_beemaram_c2_2', acc2_b2: 'accountant_beemaram_c2_2',
         authenticator: '9059068384', security: '9059068384'
@@ -433,7 +460,8 @@ export const apiClient = {
 
       // Password check
       const inputPass = (bodyData.password || '').toString().trim();
-      if (inputPass !== matchedUser.passwordRaw) {
+      const isPassOk = inputPass === matchedUser.passwordRaw;
+      if (!isPassOk) {
         const err: ApiError = new Error('Incorrect account password.');
         err.status = 401;
         throw err;
@@ -442,15 +470,10 @@ export const apiClient = {
       // 6-Digit PIN check
       const inputPin = (bodyData.pin || '').toString().trim();
       const expectedPin = generate24HourDeterministicCode('pin_' + matchedUser.username);
-      const authenticatorPin = (matchedUser as any).pin6 || '789456';
+      const userPin6 = (matchedUser as any).pin6;
 
-      if (matchedUser.role === 'authenticator') {
-        if (inputPin !== authenticatorPin) {
-          const err: ApiError = new Error('Incorrect 6-digit Security PIN.');
-          err.status = 401;
-          throw err;
-        }
-      } else if (inputPin !== expectedPin) {
+      const isPinOk = inputPin === expectedPin || (userPin6 && inputPin === userPin6);
+      if (!isPinOk) {
         const err: ApiError = new Error('Incorrect 6-digit Security PIN for ' + matchedUser.username + '. Check Security Authenticator Portal.');
         err.status = 401;
         throw err;
@@ -519,20 +542,16 @@ export const apiClient = {
 
     if (cleanPath === '/authenticator/accounts') {
       const accountsList = [
-        { _id: 'acc_admin1', username: 'admin1', password: 'RectorPass#2026', role: 'admin1', campus: 'All', name: 'Rector', email: 'rector@inspire.edu', mobile: '9988770000', department: 'Administration', address: 'Central Campus' },
+        { _id: 'acc_admin1', username: 'admin1', password: 'RectorPass#2026', role: 'admin1', campus: 'All', name: 'Rector (Admin 1)', email: 'rector@inspire.edu', mobile: '9988770000', department: 'Administration', address: 'Central Campus' },
         { _id: 'acc_admin2_e1', username: 'admin2_erragattugutta_c1', password: 'DeanE1#8492', role: 'admin2', campus: 'Erragattugutta C1', name: 'Dean Erragattugutta C1', email: 'dean.e1@inspire.edu', mobile: '9988770011', department: 'Administration', address: 'Erragattugutta Campus C1' },
         { _id: 'acc_admin2_e2', username: 'admin2_erragattugutta_c2', password: 'DeanE2#5713', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2', email: 'dean.e2@inspire.edu', mobile: '9988770022', department: 'Administration', address: 'Erragattugutta Campus C2' },
-        { _id: 'acc_admin2_b1', username: 'admin2_beemaram_c1', password: 'DeanB1#3920', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1', email: 'dean.i1@inspire.edu', mobile: '9988770033', department: 'Administration', address: 'Beemaram Campus C1' },
+        { _id: 'acc_admin2_b1', username: 'admin2_beemaram_c1', password: 'DeanB1#3920', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1', email: 'dean.b1@inspire.edu', mobile: '9988770033', department: 'Administration', address: 'Beemaram Campus C1' },
         { _id: 'acc_admin2_b2', username: 'admin2_beemaram_c2', password: 'DeanB2#6184', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2', email: 'dean.b2@inspire.edu', mobile: '9988770044', department: 'Administration', address: 'Beemaram Campus C2' },
-        { _id: 'acc_accountant_e1_1', username: 'accountant_erragattugutta_c1_1', password: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1', email: 'acc1.e1@inspire.edu', mobile: '9988771101', department: 'Finance Dept', address: 'Erragattugutta Campus C1' },
-        { _id: 'acc_accountant_e1_2', username: 'accountant_erragattugutta_c1_2', password: 'AccE1#9381', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1', email: 'acc2.e1@inspire.edu', mobile: '9988771102', department: 'Finance Dept', address: 'Erragattugutta Campus C1' },
-        { _id: 'acc_accountant_e2_1', username: 'accountant_erragattugutta_c2_1', password: 'AccE2#7294', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2', email: 'acc1.e2@inspire.edu', mobile: '9988772201', department: 'Finance Dept', address: 'Erragattugutta Campus C2' },
-        { _id: 'acc_accountant_e2_2', username: 'accountant_erragattugutta_c2_2', password: 'AccE2#1845', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 2 Erragattugutta C2', email: 'acc2.e2@inspire.edu', mobile: '9988772202', department: 'Finance Dept', address: 'Erragattugutta Campus C2' },
-        { _id: 'acc_accountant_b1_1', username: 'accountant_beemaram_c1_1', password: 'AccB1#6530', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 1 Beemaram C1', email: 'acc1.i1@inspire.edu', mobile: '9988773301', department: 'Finance Dept', address: 'Beemaram Campus C1' },
-        { _id: 'acc_accountant_b1_2', username: 'accountant_beemaram_c1_2', password: 'AccB1#2947', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1', email: 'acc2.i1@inspire.edu', mobile: '9988773302', department: 'Finance Dept', address: 'Beemaram Campus C1' },
-        { _id: 'acc_accountant_b2_1', username: 'accountant_beemaram_c2_1', password: 'AccB2#8163', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2', email: 'acc1.b2@inspire.edu', mobile: '9988774401', department: 'Finance Dept', address: 'Beemaram Campus C2' },
-        { _id: 'acc_accountant_b2_2', username: 'accountant_beemaram_c2_2', password: 'AccB2#3750', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2', email: 'acc2.b2@inspire.edu', mobile: '9988774402', department: 'Finance Dept', address: 'Beemaram Campus C2' },
-        { _id: 'acc_authenticator', username: '9059068384', password: 'SecAuth#9059', role: 'authenticator', campus: 'All', name: 'Security Authenticator', email: 'sec9059@inspire.edu', mobile: '9059068384', department: 'Security Console', address: 'Central Security' }
+        { _id: 'acc_accountant_e1_1', username: 'accountant_erragattugutta_c1_1', password: 'AccE1#4102', role: 'accountant', campus: 'Erragattugutta C1', name: 'Accountant Erragattugutta C1', email: 'acc1.e1@inspire.edu', mobile: '9988771101', department: 'Finance Dept', address: 'Erragattugutta Campus C1' },
+        { _id: 'acc_accountant_e2_1', username: 'accountant_erragattugutta_c2_1', password: 'AccE2#7294', role: 'accountant', campus: 'Erragattugutta C2', name: 'Accountant Erragattugutta C2', email: 'acc1.e2@inspire.edu', mobile: '9988772201', department: 'Finance Dept', address: 'Erragattugutta Campus C2' },
+        { _id: 'acc_accountant_b1_1', username: 'accountant_beemaram_c1_1', password: 'AccB1#6530', role: 'accountant', campus: 'Beemaram C1', name: 'Accountant Beemaram C1', email: 'acc1.b1@inspire.edu', mobile: '9988773301', department: 'Finance Dept', address: 'Beemaram Campus C1' },
+        { _id: 'acc_accountant_b2_1', username: 'accountant_beemaram_c2_1', password: 'AccB2#8163', role: 'accountant', campus: 'Beemaram C2', name: 'Accountant Beemaram C2', email: 'acc1.b2@inspire.edu', mobile: '9988774401', department: 'Finance Dept', address: 'Beemaram Campus C2' },
+        { _id: 'acc_authenticator', username: '9059068384', password: '00112233', role: 'authenticator', campus: 'All', name: 'Nayan (Security Authenticator)', email: 'sec9059@inspire.edu', mobile: '9059068384', department: 'Security Console', address: 'Central Security' }
       ];
       return { status: 'success', data: accountsList } as any;
     }    if (cleanPath === '/authenticator/sync-journal') {
@@ -624,8 +643,29 @@ export const apiClient = {
       const hostelWaiver = Number(parsedBody.hostelWaiver || 0);
       const transportWaiver = 0;
       const miscWaiver = Number(parsedBody.miscWaiver || 0);
-      const totalWaivers = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
-      const totalFee = Number(targetStudent.tuitionFee || 0) + Number(targetStudent.hostelFee || 0) + Number(targetStudent.miscellaneousFee || 0) + Number(targetStudent.previousPending || 0);
+      const customWaiver = Number(parsedBody.totalWaiver || 0);
+      const totalWaivers = customWaiver > 0 ? customWaiver : (tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver);
+      
+      const customSlots = parsedBody.customFeeSlots || targetStudent.customFeeSlots;
+      let totalFee = 0;
+      if (customSlots && Array.isArray(customSlots) && customSlots.length > 0) {
+        totalFee = customSlots.reduce((sum: number, s: any) => sum + (Number(s.amount) || 0), 0);
+      } else {
+        totalFee = Number(targetStudent.tuitionFee || 0) +
+                   Number(targetStudent.booksFee || 0) +
+                   Number(targetStudent.uniformFees || 0) +
+                   Number(targetStudent.hndFees || 0) +
+                   Number(targetStudent.internalExamFees || 0) +
+                   Number(targetStudent.annualExamFees || 0) +
+                   Number(targetStudent.partyFees || 0) +
+                   Number(targetStudent.busFees || 0) +
+                   Number(targetStudent.labFees || 0) +
+                   Number(targetStudent.handLoan || 0) +
+                   Number(targetStudent.othersFee || 0) +
+                   Number(targetStudent.hostelFee || 0) +
+                   Number(targetStudent.miscellaneousFee || 0) +
+                   Number(targetStudent.previousPending || 0);
+      }
       const remainingBalance = Math.max(0, totalFee - totalWaivers - Number(targetStudent.totalPaid || 0));
       const updatedStudent = {
         ...targetStudent,
@@ -633,6 +673,7 @@ export const apiClient = {
         hostelWaiver,
         transportWaiver,
         miscWaiver,
+        ...(customSlots ? { customFeeSlots: customSlots } : {}),
         remainingBalance,
         isCustomFee: true,
         branch
@@ -658,18 +699,38 @@ export const apiClient = {
         err.status = 404;
         throw err;
       }
-      const tuitionFee = Number(student.tuitionFee || 120000);
-      const hostelFee = Number(student.hostelFee || 0);
+      let baseFee = 0;
+      let tuitionFee = 0;
+      let hostelFee = 0;
+      let miscFee = 0;
+      let previousPending = 0;
+
+      if (student.customFeeSlots && Array.isArray(student.customFeeSlots) && student.customFeeSlots.length > 0) {
+        baseFee = student.customFeeSlots.reduce((sum: number, s: any) => sum + (Number(s.amount) || 0), 0);
+      } else {
+        tuitionFee = Number(student.tuitionFee || 0);
+        hostelFee = Number(student.hostelFee || 0);
+        miscFee = Number(student.miscellaneousFee || 0);
+        previousPending = Number(student.previousPending || 0);
+        const booksFee = Number(student.booksFee || 0);
+        const uniformFees = Number(student.uniformFees || 0);
+        const hndFees = Number(student.hndFees || 0);
+        const internalExamFees = Number(student.internalExamFees || 0);
+        const annualExamFees = Number(student.annualExamFees || 0);
+        const partyFees = Number(student.partyFees || 0);
+        const busFees = Number(student.busFees || 0);
+        const labFees = Number(student.labFees || 0);
+        const handLoan = Number(student.handLoan || 0);
+        const othersFee = Number(student.othersFee || 0);
+        baseFee = tuitionFee + hostelFee + miscFee + previousPending + booksFee + uniformFees + hndFees + internalExamFees + annualExamFees + partyFees + busFees + labFees + handLoan + othersFee;
+      }
       const transportFee = 0;
-      const miscFee = Number(student.miscellaneousFee || 5000);
-      const previousPending = Number(student.previousPending || 0);
       const totalPaid = Number(student.totalPaid || 0);
       const tuitionWaiver = Number(student.tuitionWaiver || 0);
       const hostelWaiver = Number(student.hostelWaiver || 0);
       const transportWaiver = Number(student.transportWaiver || 0);
       const miscWaiver = Number(student.miscWaiver || 0);
       const individualOverrideDeduction = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
-      const baseFee = tuitionFee + hostelFee + miscFee + previousPending;
       const remainingBalance = Math.max(0, baseFee - individualOverrideDeduction - totalPaid);
       return { status: 'success', data: { baseFee, tuitionFee, hostelFee, transportFee, miscFee, previousPending, scholarshipCategory: individualOverrideDeduction > 0 ? 'Individual Fee Waiver' : 'None', scholarshipPct: 0, scholarshipDeduction: 0, individualOverrideDeduction, tuitionWaiver, hostelWaiver, transportWaiver, miscWaiver, totalPaid, remainingBalance, isCustomFee: Boolean(student.isCustomFee), feeAdjustments: student.feeAdjustments || [], branch } } as any;
     }

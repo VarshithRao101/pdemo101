@@ -95,6 +95,17 @@ export const admin1Service = {
     return res.data;
   },
 
+  // Admission Enquiries
+  async getEnquiries(): Promise<any[]> {
+    const res = await apiClient.get<{ status: string; data: any[] }>('/enquiries');
+    return res.data;
+  },
+
+  async updateEnquiryStatus(id: string, status: string, notes?: string): Promise<any> {
+    const res = await apiClient.patch<any>(`/enquiries/${id}`, { status, notes });
+    return res.data;
+  },
+
   async createBulletin(data: Omit<Bulletin, '_id' | 'id'>): Promise<Bulletin> {
     const res = await apiClient.post<{ status: string; data: Bulletin }>('/admin1/bulletins', data);
     return res.data;
@@ -191,6 +202,60 @@ export const admin1Service = {
     if (testTitle) formData.append('testTitle', testTitle);
     if (date) formData.append('date', date);
     const res = await apiClient.post<{ status: string; message: string; data?: any }>('/admin1/exams/upload', formData);
+    return res;
+  },
+
+  // Academic Year Management
+  async getAcademicYears(): Promise<{ activeYear: string; academicYears: any[] }> {
+    const res = await apiClient.get<{ status: string; data: { activeYear: string; academicYears: any[] } }>('/admin1/academic-years');
+    return res.data;
+  },
+
+  async createAcademicYear(payload: { yearId: string; label: string; startDate?: string; endDate?: string; status?: string }): Promise<any> {
+    const res = await apiClient.post<any>('/admin1/academic-years', payload);
+    return res.data;
+  },
+
+  async updateAcademicYearStatus(yearId: string, status: string): Promise<any> {
+    const res = await apiClient.patch<any>(`/admin1/academic-years/${yearId}/status`, { status });
+    return res.data;
+  },
+
+  // Student Promotion
+  async promoteStudent(id: string, payload: {
+    securityPassword?: string;
+    otpInput?: string;
+    nextAcademicYear?: string;
+    nextCourseYear?: string;
+    hostelStatus?: string;
+    transportStatus?: string;
+    newFeeStructure?: any;
+    waivers?: any;
+  }): Promise<any> {
+    const res = await apiClient.post<any>(`/students/${id}/promote`, payload);
+    return res;
+  },
+
+  // Audit Logs
+  async getAuditLogs(): Promise<any[]> {
+    const res = await apiClient.get<{ status: string; data: any[] }>('/admin/audit-logs');
+    return res.data;
+  },
+
+  // Teacher Monthly Salary
+  async updateTeacherMonthlySalary(id: string, payload: {
+    academicYear?: string;
+    monthKey?: string;
+    expectedSalary?: number;
+    paidAmount?: number;
+    paymentDate?: string;
+    paymentMode?: string;
+    referenceNumber?: string;
+    notes?: string;
+    approvedBy?: string;
+    isHoliday?: boolean;
+  }): Promise<any> {
+    const res = await apiClient.post<any>(`/teachers/${id}/salary-month`, payload);
     return res;
   }
 };

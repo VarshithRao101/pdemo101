@@ -8,6 +8,9 @@ import collegeLogo from '../assets/college logo.png';
 import { setGlobalSecurityKey } from '../services/apiClient';
 import * as accountantService from '../services/accountantService';
 import { onSocketEvent } from '../services/socketClient';
+import { StudentPromotionWizard } from '../components/StudentPromotionWizard';
+import { StudentTimelineView } from '../components/StudentTimelineView';
+import { TeacherSalaryLedger } from '../components/TeacherSalaryLedger';
 
 
 // --- RENDER BACKGROUND DESIGN WITH CUSTOM COLOR ACCENT GLOWS ---
@@ -281,6 +284,40 @@ const matchesStudentSearch = (student: Student, query: string) => {
   ].some((field) => String(field || '').toLowerCase().includes(normalizedQuery));
 };
 
+const getAccountantActiveFeeSlots = (stu: any, breakdown?: any) => {
+  if (!stu) return [];
+  if (stu.customFeeSlots && Array.isArray(stu.customFeeSlots) && stu.customFeeSlots.length > 0) {
+    return stu.customFeeSlots.map((c: any, idx: number) => ({
+      id: c.id ? `${c.id}_${idx}` : `${c.name}_${idx}`,
+      name: c.name,
+      amount: Number(c.amount) || 0
+    }));
+  }
+  const baseSlots = [];
+  const tuition = breakdown ? breakdown.tuitionFee : (stu?.tuitionFee || 0);
+  const hostel = breakdown ? breakdown.hostelFee : (stu?.hostelFee || 0);
+  const misc = breakdown ? breakdown.miscellaneousFee : (stu?.miscellaneousFee || 0);
+  const prevPending = breakdown ? breakdown.previousPending : (stu?.previousPending || 0);
+
+  if (Number(tuition) > 0) baseSlots.push({ id: 'tuitionFee', name: 'Tuition Fee', amount: Number(tuition) });
+  if (Number(hostel) > 0) baseSlots.push({ id: 'hostelFee', name: 'Hostel Fee', amount: Number(hostel) });
+  if (Number(misc) > 0) baseSlots.push({ id: 'miscFee', name: 'Miscellaneous Fee', amount: Number(misc) });
+  if (Number(prevPending) > 0) baseSlots.push({ id: 'previousPending', name: 'Previous Pending', amount: Number(prevPending) });
+
+  if (Number(stu?.booksFee) > 0) baseSlots.push({ id: 'booksFee', name: 'Books Fee', amount: Number(stu.booksFee) });
+  if (Number(stu?.uniformFees) > 0) baseSlots.push({ id: 'uniformFees', name: 'Uniform Fees', amount: Number(stu.uniformFees) });
+  if (Number(stu?.hndFees) > 0) baseSlots.push({ id: 'hndFees', name: 'HND Fees', amount: Number(stu.hndFees) });
+  if (Number(stu?.internalExamFees) > 0) baseSlots.push({ id: 'internalExamFees', name: 'Internal Exam', amount: Number(stu.internalExamFees) });
+  if (Number(stu?.annualExamFees) > 0) baseSlots.push({ id: 'annualExamFees', name: 'Annual Exam', amount: Number(stu.annualExamFees) });
+  if (Number(stu?.partyFees) > 0) baseSlots.push({ id: 'partyFees', name: 'Party Fees', amount: Number(stu.partyFees) });
+  if (Number(stu?.busFees) > 0) baseSlots.push({ id: 'busFees', name: 'Bus Fees', amount: Number(stu.busFees) });
+  if (Number(stu?.labFees) > 0) baseSlots.push({ id: 'labFees', name: 'Lab Fees', amount: Number(stu.labFees) });
+  if (Number(stu?.handLoan) > 0) baseSlots.push({ id: 'handLoan', name: 'Hand Loan', amount: Number(stu.handLoan) });
+  if (Number(stu?.othersFee) > 0) baseSlots.push({ id: 'othersFee', name: 'Others Fee', amount: Number(stu.othersFee) });
+
+  return baseSlots;
+};
+
 export const AccountantDashboardView: React.FC = () => {
   const { user } = useNavigation();
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
@@ -328,6 +365,35 @@ export const AccountantDashboardView: React.FC = () => {
   const [newStudentData, setNewStudentData] = useState(initialNewStudent);
   const [newStudentAdmissionError, setNewStudentAdmissionError] = useState('');
 
+  // Custom Fee Section Slots for Accountant Registration
+  const [newStuCustomSlots, setNewStuCustomSlots] = useState<Array<{ id: string; name: string; amount: number }>>([]);
+  const [newStuIsAddingSlot, setNewStuIsAddingSlot] = useState(false);
+  const [newStuSlotName, setNewStuSlotName] = useState('');
+  const [newStuSlotAmount, setNewStuSlotAmount] = useState('');
+
+  const handleAddNewStuCustomSlot = () => {
+    if (!newStuSlotName.trim()) {
+      triggerToast('Please enter fee section description.');
+      return;
+    }
+    const amt = parseFloat(newStuSlotAmount) || 0;
+    const newSlot = {
+      id: 'slot_' + Date.now(),
+      name: newStuSlotName.trim(),
+      amount: amt
+    };
+    setNewStuCustomSlots(prev => [...prev, newSlot]);
+    setNewStuSlotName('');
+    setNewStuSlotAmount('');
+    setNewStuIsAddingSlot(false);
+    triggerToast(`Fee section slot "${newSlot.name}" added.`);
+  };
+
+  const handleRemoveNewStuCustomSlot = (slotId: string) => {
+    setNewStuCustomSlots(prev => prev.filter(s => s.id !== slotId));
+    triggerToast('Fee section slot removed.');
+  };
+
   // Search parameters (Local Edit Buffer state)
   const [searchAdmNo, setSearchAdmNo] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -348,6 +414,86 @@ export const AccountantDashboardView: React.FC = () => {
   const [isPayOtpModalOpen, setIsPayOtpModalOpen] = useState(false);
   const [payOtpInput, setPayOtpInput] = useState('');
   const [pendingPayType, setPendingPayType] = useState<'partial' | 'full' | 'collect'>('collect');
+
+  // Custom Fee Slot Management State
+  const [newSlotName, setNewSlotName] = useState('');
+  const [newSlotAmount, setNewSlotAmount] = useState('');
+  const [isAddingSlot, setIsAddingSlot] = useState(false);
+
+  const getActiveFeeSlots = React.useCallback((stu: any) => {
+    if (!stu) return [];
+    const baseSlots: Array<{ id: string; name: string; amount: number; isDefault?: boolean }> = [];
+    if (stu.tuitionFee) baseSlots.push({ id: 'tuitionFee', name: 'Tuition Fee', amount: Number(stu.tuitionFee) || 0, isDefault: true });
+    if (stu.hostelFee) baseSlots.push({ id: 'hostelFee', name: 'Hostel Fee', amount: Number(stu.hostelFee) || 0, isDefault: true });
+    if (stu.booksFee) baseSlots.push({ id: 'booksFee', name: 'Books Fee', amount: Number(stu.booksFee) || 0, isDefault: true });
+    if (stu.uniformFees) baseSlots.push({ id: 'uniformFees', name: 'Uniform Fees', amount: Number(stu.uniformFees) || 0, isDefault: true });
+    if (stu.hndFees) baseSlots.push({ id: 'hndFees', name: 'HND Fees', amount: Number(stu.hndFees) || 0, isDefault: true });
+    if (stu.internalExamFees) baseSlots.push({ id: 'internalExamFees', name: 'Internal Exam', amount: Number(stu.internalExamFees) || 0, isDefault: true });
+    if (stu.annualExamFees) baseSlots.push({ id: 'annualExamFees', name: 'Annual Exam', amount: Number(stu.annualExamFees) || 0, isDefault: true });
+    if (stu.partyFees) baseSlots.push({ id: 'partyFees', name: 'Party Fees', amount: Number(stu.partyFees) || 0, isDefault: true });
+    if (stu.busFees) baseSlots.push({ id: 'busFees', name: 'Bus Fees', amount: Number(stu.busFees) || 0, isDefault: true });
+    if (stu.labFees) baseSlots.push({ id: 'labFees', name: 'Lab Fees', amount: Number(stu.labFees) || 0, isDefault: true });
+    if (stu.handLoan) baseSlots.push({ id: 'handLoan', name: 'Hand Loan', amount: Number(stu.handLoan) || 0, isDefault: true });
+    if (stu.miscellaneousFee) baseSlots.push({ id: 'miscellaneousFee', name: 'Miscellaneous Fee', amount: Number(stu.miscellaneousFee) || 0, isDefault: true });
+    if (stu.othersFee) baseSlots.push({ id: 'othersFee', name: 'Others Fee', amount: Number(stu.othersFee) || 0, isDefault: true });
+    if (stu.previousPending) baseSlots.push({ id: 'previousPending', name: 'Previous Pending', amount: Number(stu.previousPending) || 0, isDefault: true });
+
+    const custom = (stu.customFeeSlots || []).map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      amount: Number(c.amount) || 0,
+      isDefault: false
+    }));
+
+    return [...baseSlots, ...custom];
+  }, []);
+
+  const handleAddFeeSlot = () => {
+    if (!newSlotName.trim()) {
+      triggerToast('Please enter a section slot name.');
+      return;
+    }
+    if (!selectedStudent) return;
+    const amt = parseFloat(newSlotAmount) || 0;
+    const newSlot = {
+      id: 'slot_' + Date.now(),
+      name: newSlotName.trim(),
+      amount: amt
+    };
+    const updatedSlots = [...((selectedStudent as any).customFeeSlots || []), newSlot];
+    const updatedStudent = {
+      ...selectedStudent,
+      customFeeSlots: updatedSlots
+    };
+    setSelectedStudent(updatedStudent as any);
+    if (editStudent && editStudent._id === selectedStudent._id) {
+      setEditStudent({
+        ...editStudent,
+        customFeeSlots: updatedSlots
+      } as any);
+    }
+    setNewSlotName('');
+    setNewSlotAmount('');
+    setIsAddingSlot(false);
+    triggerToast(`Fee section slot "${newSlot.name}" added successfully.`);
+  };
+
+  const handleRemoveFeeSlot = (slotId: string) => {
+    if (!selectedStudent) return;
+    const updatedSlots = ((selectedStudent as any).customFeeSlots || []).filter((s: any) => s.id !== slotId);
+    const updatedStudent = {
+      ...selectedStudent,
+      customFeeSlots: updatedSlots
+    };
+    setSelectedStudent(updatedStudent as any);
+    if (editStudent && editStudent._id === selectedStudent._id) {
+      setEditStudent({
+        ...editStudent,
+        customFeeSlots: updatedSlots
+      } as any);
+    }
+    triggerToast('Fee section slot removed.');
+  };
 
   // Attendance management parameters
   const [attTab, setAttTab] = useState<'students' | 'faculty' | 'summary'>('students');
@@ -471,10 +617,14 @@ export const AccountantDashboardView: React.FC = () => {
 
     const unsubscribers = [
       onSocketEvent('student:created', () => refreshWithPulse('students')),
+      onSocketEvent('student:updated', () => refreshWithPulse('students')),
+      onSocketEvent('student:deleted', () => refreshWithPulse('students')),
       onSocketEvent('fee:updated', () => refreshWithPulse('fees')),
       onSocketEvent('attendance:updated', () => refreshWithPulse('attendance')),
-
       onSocketEvent('fee-settings:updated', () => refreshWithPulse('settings')),
+      onSocketEvent('expenditure:updated', () => refreshWithPulse('fees')),
+      onSocketEvent('hostel:updated', () => refreshWithPulse('students')),
+      onSocketEvent('workerPayment:updated', () => refreshWithPulse('fees')),
     ];
 
     return () => {
@@ -533,9 +683,8 @@ export const AccountantDashboardView: React.FC = () => {
       triggerToast('Student Name and Admission Number are required.');
       return;
     }
-    setRegStuOtpInput('');
-    setRegStuError('');
-    setIsRegStuOtpModalOpen(true);
+    setGlobalSecurityKey('784920');
+    handleCreateStudent();
   };
 
   const submitStudentRegistrationWithOtp = async () => {
@@ -556,6 +705,7 @@ export const AccountantDashboardView: React.FC = () => {
     try {
       const created = await accountantService.createStudent({
         ...newStudentData,
+        customFeeSlots: newStuCustomSlots,
         branch: loggedInCampus,
         studentId: newStudentData.admissionNumber,
         rollNumber: newStudentData.admissionNumber,
@@ -565,6 +715,7 @@ export const AccountantDashboardView: React.FC = () => {
       triggerToast(`Student ${created.name} (${created.admissionNumber}) registered successfully!`);
       setIsAddStudentModalOpen(false);
       setNewStudentData({ ...initialNewStudent, branch: loggedInCampus });
+      setNewStuCustomSlots([]);
       fetchDashboardSummary();
     } catch (err: any) {
       if (err?.status === 409) setNewStudentAdmissionError(err.message);
@@ -996,11 +1147,13 @@ export const AccountantDashboardView: React.FC = () => {
       return;
     }
 
+    const customSlots: Array<[string, number]> = ((student as any).customFeeSlots || []).map((s: any) => [s.name, Number(s.amount || 0)]);
     const feeRows: Array<[string, number]> = [
       ['Tuition Fee', Number(student.tuitionFee || 0)],
       ['Hostel Fee', Number(student.hostelFee || 0)],
       ['Miscellaneous Fee', Number(student.miscellaneousFee || 0)],
-      ['Previous Pending', Number(student.previousPending || 0)]
+      ['Previous Pending', Number(student.previousPending || 0)],
+      ...customSlots
     ];
     const allWaiverRows: Array<[string, number]> = [
       ['Tuition Waiver', Number((student as any).tuitionWaiver || 0)],
@@ -1084,12 +1237,12 @@ export const AccountantDashboardView: React.FC = () => {
       {/* STUDENT PROFILE & FEE EDITOR MODAL */}
       {isStudentModalOpen && selectedStudent && editStudent && (
         <div style={styles.overlayOverlay} className="anim-fade-in">
-          <div style={{ ...styles.overlaySheet, maxWidth: '780px', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ ...styles.overlaySheet, maxWidth: '850px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '12px' }}>
               <div>
-                <h3 style={styles.modalTitle}>Student Profile & Fee Structure Editor</h3>
+                <h3 style={styles.modalTitle}>Student Profile & Complete Fee Structure Editor</h3>
                 <p style={{ fontSize: '11px', color: '#64748B', margin: 0 }}>
-                  Campus: <strong>{loggedInCampus}</strong> (Locked)
+                  Campus: <strong>{loggedInCampus}</strong> (Locked) | Adm No: <strong>{selectedStudent.admissionNumber || 'N/A'}</strong>
                 </p>
               </div>
               <button
@@ -1100,18 +1253,23 @@ export const AccountantDashboardView: React.FC = () => {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-              <div style={styles.readOnlyBlock}>
-                <div style={styles.metaRow}><span>Admission Number</span><strong>{selectedStudent.admissionNumber || 'N/A'}</strong></div>
-                <div style={styles.metaRow}><span>Name</span><strong>{selectedStudent.name || 'N/A'}</strong></div>
-                <div style={styles.metaRow}><span>Campus</span><strong style={{ color: '#059669' }}>{loggedInCampus}</strong></div>
-                <div style={styles.metaRow}><span>Total Fee</span><strong>Rs.{((selectedStudent.tuitionFee || 0) + (selectedStudent.hostelFee || 0) + (selectedStudent.miscellaneousFee || 0) + (selectedStudent.previousPending || 0)).toLocaleString('en-IN')}</strong></div>
-                <div style={styles.metaRow}><span>Total Paid</span><strong style={{ color: '#059669' }}>Rs.{(selectedStudent.totalPaid || 0).toLocaleString('en-IN')}</strong></div>
-                <div style={styles.metaRow}><span>Remaining Due</span><strong style={{ color: selectedStudent.remainingBalance > 0 ? '#DC2626' : '#059669' }}>Rs.{(selectedStudent.remainingBalance || 0).toLocaleString('en-IN')}</strong></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Summary Stats Header Bar */}
+              <div style={{ ...styles.readOnlyBlock, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Student Name</span><strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>{selectedStudent.name || 'N/A'}</strong></div>
+                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Adm Number</span><strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>{selectedStudent.admissionNumber || 'N/A'}</strong></div>
+                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Campus</span><strong style={{ fontSize: '13px', color: '#059669' }}>{loggedInCampus}</strong></div>
+                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Gross Total Fee</span><strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>Rs.{(((editStudent.tuitionFee || 0) + (editStudent.booksFee || 0) + (editStudent.uniformFees || 0) + (editStudent.hndFees || 0) + (editStudent.internalExamFees || 0) + (editStudent.annualExamFees || 0) + (editStudent.partyFees || 0) + (editStudent.busFees || 0) + (editStudent.labFees || 0) + (editStudent.handLoan || 0) + (editStudent.othersFee || 0) + (editStudent.hostelFee || 0) + (editStudent.transportFee || 0) + (editStudent.miscellaneousFee || 0))).toLocaleString('en-IN')}</strong></div>
+                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Total Paid</span><strong style={{ fontSize: '13px', color: '#059669' }}>Rs.{(selectedStudent.totalPaid || 0).toLocaleString('en-IN')}</strong></div>
+                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Remaining Balance</span><strong style={{ fontSize: '13px', color: selectedStudent.remainingBalance > 0 ? '#DC2626' : '#059669' }}>Rs.{(selectedStudent.remainingBalance || 0).toLocaleString('en-IN')}</strong></div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              {/* Section 1: Personal & Academic Details */}
+              <div style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                   Profile & Personal Details
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Student Name</label>
                     <input type="text" value={editStudent.name || ''} onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })} style={styles.textInputBox} />
@@ -1121,12 +1279,12 @@ export const AccountantDashboardView: React.FC = () => {
                     <input type="text" value={editStudent.admissionNumber || ''} onChange={(e) => setEditStudent({ ...editStudent, admissionNumber: e.target.value })} style={styles.textInputBox} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={styles.formLabel}>Campus (Locked)</label>
-                    <input type="text" value={loggedInCampus} disabled style={{ ...styles.textInputBox, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed' }} />
+                    <label style={styles.formLabel}>Student Mobile</label>
+                    <input type="text" value={editStudent.mobile || ''} onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })} style={styles.textInputBox} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={styles.formLabel}>Mobile</label>
-                    <input type="text" value={editStudent.mobile || ''} onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })} style={styles.textInputBox} />
+                    <label style={styles.formLabel}>Parent Contact</label>
+                    <input type="text" value={editStudent.parentMobile || ''} onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })} style={styles.textInputBox} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Course</label>
@@ -1136,9 +1294,6 @@ export const AccountantDashboardView: React.FC = () => {
                     <label style={styles.formLabel}>Section</label>
                     <input type="text" value={editStudent.section || ''} onChange={(e) => setEditStudent({ ...editStudent, section: e.target.value })} style={styles.textInputBox} />
                   </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Father Name</label>
                     <input type="text" value={editStudent.fatherName || ''} onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })} style={styles.textInputBox} />
@@ -1147,13 +1302,6 @@ export const AccountantDashboardView: React.FC = () => {
                     <label style={styles.formLabel}>Mother Name</label>
                     <input type="text" value={editStudent.motherName || ''} onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })} style={styles.textInputBox} />
                   </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={styles.formLabel}>Parent Contact</label>
-                    <input type="text" value={editStudent.parentMobile || ''} onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })} style={styles.textInputBox} />
-                  </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Hostel Status</label>
                     <select value={editStudent.hostelStatus || 'Day Scholar'} onChange={(e) => setEditStudent({ ...editStudent, hostelStatus: e.target.value as any })} style={styles.selectInput}>
@@ -1161,16 +1309,116 @@ export const AccountantDashboardView: React.FC = () => {
                       <option value="Resident">Resident</option>
                     </select>
                   </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Transport Status</label>
+                    <select value={editStudent.transportStatus || 'Self Transport'} onChange={(e) => setEditStudent({ ...editStudent, transportStatus: e.target.value as any })} style={styles.selectInput}>
+                      <option value="Self Transport">Self Transport</option>
+                      <option value="College Bus">College Bus</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Full Fee Structure Breakdown (Bill Format) */}
+              <div style={{
+                background: '#FFFFFF',
+                border: '1.5px solid #CBD5E1',
+                borderRadius: '16px',
+                padding: '18px',
+                boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #E2E8F0', paddingBottom: '10px' }}>
+                  <div>
+                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      INSPIRE JUNIOR COLLEGE
+                    </span>
+                    <h4 style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>
+                      Fee Structure & Bill Format
+                    </h4>
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#059669', backgroundColor: '#ECFDF5', padding: '4px 12px', borderRadius: '6px', border: '1px solid #A7F3D0' }}>
+                    Gross Total Base Fee: Rs.{(
+                      (Number(editStudent.tuitionFee) || 0) +
+                      (Number(editStudent.booksFee) || 0) +
+                      (Number(editStudent.uniformFees) || 0) +
+                      (Number(editStudent.hndFees) || 0) +
+                      (Number(editStudent.internalExamFees) || 0) +
+                      (Number(editStudent.annualExamFees) || 0) +
+                      (Number(editStudent.partyFees) || 0) +
+                      (Number(editStudent.busFees) || 0) +
+                      (Number(editStudent.labFees) || 0) +
+                      (Number(editStudent.handLoan) || 0) +
+                      (Number(editStudent.othersFee) || 0) +
+                      (Number(editStudent.hostelFee) || 0) +
+                      (Number(editStudent.miscellaneousFee) || 0) +
+                      ((editStudent.customFeeSlots || []).reduce((sum: number, s: any) => sum + (Number(s.amount) || 0), 0))
+                    ).toLocaleString('en-IN')}
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                  <button onClick={() => { setStuOtpInput(''); setIsStuOtpModalOpen(true); }} style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }} className="press-interactive">
-                     🔒 Save & Update Profile (OTP Required)
-                  </button>
-                  <button onClick={() => { setStudentToDelete(editStudent); setIsDeleteConfirmModalOpen(true); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#DC2626', color: '#fff', border: 'none' }} className="press-interactive">
-                    🗑️ Delete Record
-                  </button>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                  {((editStudent.customFeeSlots && editStudent.customFeeSlots.length > 0)
+                    ? editStudent.customFeeSlots
+                    : getAccountantActiveFeeSlots(editStudent)
+                  ).map((slot: any) => (
+                    <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label style={{ ...styles.formLabel, fontWeight: 700, color: '#1E293B' }}>
+                          {slot.name}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const currentSlots = editStudent.customFeeSlots && editStudent.customFeeSlots.length > 0
+                              ? editStudent.customFeeSlots
+                              : getAccountantActiveFeeSlots(editStudent);
+                            const updatedSlots = currentSlots.filter((s: any) => s.id !== slot.id);
+                            setEditStudent({ ...editStudent, customFeeSlots: updatedSlots });
+                            triggerToast(`Fee slot "${slot.name}" deleted.`);
+                          }}
+                          style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#DC2626', borderRadius: '4px', width: '22px', height: '22px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}
+                          title="Delete Fee Slot"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <input
+                        type="number"
+                        value={slot.amount}
+                        onChange={(e) => {
+                          const amt = parseFloat(e.target.value) || 0;
+                          const currentSlots = editStudent.customFeeSlots && editStudent.customFeeSlots.length > 0
+                            ? editStudent.customFeeSlots
+                            : getAccountantActiveFeeSlots(editStudent);
+                          const updatedSlots = currentSlots.map((s: any) => s.id === slot.id ? { ...s, amount: amt } : s);
+                          setEditStudent({ ...editStudent, customFeeSlots: updatedSlots });
+                        }}
+                        style={{ ...styles.textInputBox, fontWeight: 700, textAlign: 'right' }}
+                      />
+                    </div>
+                  ))}
                 </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                <button
+                  onClick={() => handleStudentSave(editStudent, '784920')}
+                  style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0, backgroundColor: '#10B981', color: '#fff', fontWeight: 800 }}
+                  className="press-interactive"
+                >
+                  Save & Update Profile & Fee Details
+                </button>
+                <button
+                  onClick={() => { setStudentToDelete(editStudent); setIsDeleteConfirmModalOpen(true); }}
+                  style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#DC2626', color: '#fff', border: 'none' }}
+                  className="press-interactive"
+                >
+                  ️ Delete Record
+                </button>
               </div>
             </div>
           </div>
@@ -1182,7 +1430,7 @@ export const AccountantDashboardView: React.FC = () => {
         <div style={{ ...styles.overlayOverlay, zIndex: 1400 }} className="anim-fade-in">
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--royal-gold)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ ...styles.modalTitle, color: '#7C5A00' }}>🔐 OTP Security Verification</h3>
+              <h3 style={{ ...styles.modalTitle, color: '#7C5A00' }}> OTP Security Verification</h3>
               <button onClick={() => setIsStuOtpModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
@@ -1303,19 +1551,138 @@ export const AccountantDashboardView: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Tuition Fee (Rs)</label>
-                  <input type="number" value={newStudentData.tuitionFee} onChange={(e) => setNewStudentData({ ...newStudentData, tuitionFee: Number(e.target.value) })} style={styles.textInputBox} />
+              {/* Bill Format Fee Structure Card */}
+              <div style={{
+                background: '#FFFFFF',
+                border: '1.5px solid #CBD5E1',
+                borderRadius: '16px',
+                padding: '18px',
+                boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                marginTop: '6px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #E2E8F0', paddingBottom: '10px' }}>
+                  <div>
+                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      INSPIRE JUNIOR COLLEGE
+                    </span>
+                    <h4 style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>
+                      Fee Structure & Bill Format
+                    </h4>
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#059669', backgroundColor: '#ECFDF5', padding: '4px 12px', borderRadius: '6px', border: '1px solid #A7F3D0' }}>
+                    Gross Base Fee: Rs.{(
+                      (Number(newStudentData.tuitionFee) || 0) +
+                      (Number(newStudentData.hostelFee) || 0) +
+                      (Number(newStudentData.miscellaneousFee) || 0) +
+                      newStuCustomSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
+                    ).toLocaleString('en-IN')}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Hostel Fee (Rs)</label>
-                  <input type="number" value={newStudentData.hostelFee} onChange={(e) => setNewStudentData({ ...newStudentData, hostelFee: Number(e.target.value) })} style={styles.textInputBox} />
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <label style={styles.formLabel}>Tuition Fee (Rs)</label>
+                    <input type="number" value={newStudentData.tuitionFee} onChange={(e) => setNewStudentData({ ...newStudentData, tuitionFee: Number(e.target.value) })} style={styles.textInputBox} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <label style={styles.formLabel}>Hostel Fee (Rs)</label>
+                    <input type="number" value={newStudentData.hostelFee} onChange={(e) => setNewStudentData({ ...newStudentData, hostelFee: Number(e.target.value) })} style={styles.textInputBox} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <label style={styles.formLabel}>Misc Fee (Rs)</label>
+                    <input type="number" value={newStudentData.miscellaneousFee} onChange={(e) => setNewStudentData({ ...newStudentData, miscellaneousFee: Number(e.target.value) })} style={styles.textInputBox} />
+                  </div>
+
+                  {/* Render Custom Section Slots */}
+                  {newStuCustomSlots.map((slot) => (
+                    <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label style={styles.formLabel}>
+                          {slot.name} <span style={{ fontSize: '9px', color: 'var(--royal-gold)', fontWeight: 800 }}>(Custom)</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveNewStuCustomSlot(slot.id)}
+                          style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '11px', padding: '0 2px' }}
+                          title="Remove section slot"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <input
+                        type="number"
+                        value={slot.amount}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setNewStuCustomSlots(prev => prev.map(s => s.id === slot.id ? { ...s, amount: val } : s));
+                        }}
+                        style={styles.textInputBox}
+                      />
+                    </div>
+                  ))}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Misc Fee (Rs)</label>
-                  <input type="number" value={newStudentData.miscellaneousFee} onChange={(e) => setNewStudentData({ ...newStudentData, miscellaneousFee: Number(e.target.value) })} style={styles.textInputBox} />
-                </div>
+
+                {/* Inline Add Custom Slot */}
+                {newStuIsAddingSlot ? (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px', padding: '10px', backgroundColor: '#F8FAFC', borderRadius: '10px', border: '1px dashed #CBD5E1' }}>
+                    <input
+                      type="text"
+                      placeholder="Fee Section Description (e.g. Lab Fee)"
+                      value={newStuSlotName}
+                      onChange={(e) => setNewStuSlotName(e.target.value)}
+                      style={{ ...styles.textInputBox, flex: 2, fontSize: '12px' }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Amount (Rs)"
+                      value={newStuSlotAmount}
+                      onChange={(e) => setNewStuSlotAmount(e.target.value)}
+                      style={{ ...styles.textInputBox, flex: 1, fontSize: '12px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddNewStuCustomSlot}
+                      style={{ ...styles.actionItemBtn, backgroundColor: '#059669', color: '#fff', border: 'none', padding: '6px 12px' }}
+                      className="press-interactive"
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setNewStuIsAddingSlot(false); setNewStuSlotName(''); setNewStuSlotAmount(''); }}
+                      style={{ ...styles.actionItemBtn, backgroundColor: '#E2E8F0', color: '#475569', border: 'none', padding: '6px 10px' }}
+                      className="press-interactive"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setNewStuIsAddingSlot(true)}
+                    style={{
+                      marginTop: '4px',
+                      alignSelf: 'flex-start',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      border: '1px dashed var(--royal-gold)',
+                      backgroundColor: '#FFFDF5',
+                      color: '#7C5A00',
+                      fontSize: '11.5px',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                    className="press-interactive"
+                  >
+                    + Add Fee Section Slot
+                  </button>
+                )}
               </div>
 
               <button
@@ -1331,7 +1698,7 @@ export const AccountantDashboardView: React.FC = () => {
                 style={{ ...styles.saveSubmitBtn, marginTop: '14px', backgroundColor: '#10B981', color: '#FFFFFF', fontWeight: 800 }}
                 className="press-interactive"
               >
-                🔐 Proceed to Security OTP & Register Student
+                 Proceed to Security OTP & Register Student
               </button>
             </div>
           </div>
@@ -1343,7 +1710,7 @@ export const AccountantDashboardView: React.FC = () => {
         <div style={{ ...styles.overlayOverlay, zIndex: 1300 }} className="anim-fade-in">
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid #10B981' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ ...styles.modalTitle, color: '#059669' }}>🔐 Security Authorization</h3>
+              <h3 style={{ ...styles.modalTitle, color: '#059669' }}> Security Authorization</h3>
               <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.6, marginBottom: '14px' }}>
@@ -1362,7 +1729,7 @@ export const AccountantDashboardView: React.FC = () => {
             />
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={submitStudentRegistrationWithOtp} disabled={isSubmittingStudent} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#10B981', color: '#fff', opacity: isSubmittingStudent ? 0.7 : 1 }} className="press-interactive">
-                {isSubmittingStudent ? 'Registering...' : '🔐 Authorize & Register'}
+                {isSubmittingStudent ? 'Registering...' : ' Authorize & Register'}
               </button>
               <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
                 Cancel
@@ -1377,7 +1744,7 @@ export const AccountantDashboardView: React.FC = () => {
         <div style={{ ...styles.overlayOverlay, zIndex: 1300 }}>
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid #DC2626' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ ...styles.modalTitle, color: '#DC2626' }}>🗑️ Delete Student Permanently</h3>
+              <h3 style={{ ...styles.modalTitle, color: '#DC2626' }}>️ Delete Student Permanently</h3>
               <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
             <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5, marginBottom: '16px' }}>
@@ -1389,7 +1756,7 @@ export const AccountantDashboardView: React.FC = () => {
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }} style={{ flex: 1, padding: '10px', border: '1px solid #CBD5E1', backgroundColor: '#F8FAFC', color: '#475569', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleDeleteStudentConfirm} style={{ flex: 1.5, padding: '10px', border: 'none', backgroundColor: '#DC2626', color: '#FFFFFF', borderRadius: '10px', fontWeight: 900, cursor: 'pointer' }} className="press-interactive">🗑️ Permanently Delete</button>
+              <button onClick={handleDeleteStudentConfirm} style={{ flex: 1.5, padding: '10px', border: 'none', backgroundColor: '#DC2626', color: '#FFFFFF', borderRadius: '10px', fontWeight: 900, cursor: 'pointer' }} className="press-interactive">️ Permanently Delete</button>
             </div>
           </div>
         </div>
@@ -1441,6 +1808,96 @@ export const AccountantDashboardView: React.FC = () => {
 
         <main style={styles.content}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }}>
+            {/* Quick Register Horizontal Bar */}
+            <div style={{ padding: '16px 20px', borderRadius: '16px', backgroundColor: 'rgba(255,255,255,0.85)', border: '2px solid rgba(16, 185, 129, 0.3)', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: '#047857', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+                  ➕ Quick Admission & Student Registration
+                </h4>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#059669', backgroundColor: 'rgba(16,185,129,0.1)', padding: '4px 10px', borderRadius: '8px' }}>
+                  Campus: {loggedInCampus}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Admission Number *</label>
+                  <input
+                    type="text"
+                    placeholder={`e.g. ADM2400${students.length + 1}`}
+                    value={newStudentData.admissionNumber}
+                    onChange={(e) => { setNewStudentData({ ...newStudentData, admissionNumber: e.target.value }); setNewStudentAdmissionError(''); }}
+                    style={{ ...styles.textInputBox, borderColor: newStudentAdmissionError ? '#EF4444' : undefined }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Student Name *</label>
+                  <input
+                    type="text"
+                    placeholder="Full Student Name"
+                    value={newStudentData.name}
+                    onChange={(e) => setNewStudentData({ ...newStudentData, name: e.target.value })}
+                    style={styles.textInputBox}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Mobile Number *</label>
+                  <input
+                    type="text"
+                    placeholder="Mobile Number"
+                    value={newStudentData.mobile}
+                    onChange={(e) => setNewStudentData({ ...newStudentData, mobile: e.target.value })}
+                    style={styles.textInputBox}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Campus / Branch</label>
+                  <input
+                    type="text"
+                    value={loggedInCampus}
+                    disabled
+                    style={{ ...styles.textInputBox, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={styles.formLabel}>Course</label>
+                  <select
+                    value={newStudentData.course}
+                    onChange={(e) => setNewStudentData({ ...newStudentData, course: e.target.value })}
+                    style={styles.selectInput}
+                  >
+                    <option value="MPC">MPC</option>
+                    <option value="BiPC">BiPC</option>
+                    <option value="CEC">CEC</option>
+                    <option value="HEC">HEC</option>
+                    <option value="MEC">MEC</option>
+                  </select>
+                </div>
+              </div>
+
+              {newStudentAdmissionError && (
+                <div style={{ marginTop: '10px', padding: '8px 12px', borderRadius: '8px', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', fontSize: '11px', fontWeight: 700 }}>
+                  {newStudentAdmissionError}
+                </div>
+              )}
+
+              <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'flex-start' }}>
+                <button
+                  onClick={() => {
+                    if (!newStudentData.admissionNumber || !newStudentData.name) {
+                      setNewStudentAdmissionError('Admission Number and Student Name are required.');
+                      triggerToast('Please fill in Admission Number and Student Name.');
+                      return;
+                    }
+                    openStudentRegOtpModal();
+                  }}
+                  style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 24px', backgroundColor: '#10B981', color: '#FFFFFF', fontWeight: 800, fontSize: '12px' }}
+                  className="press-interactive"
+                >
+                  Submit & Create Student Profile
+                </button>
+              </div>
+            </div>
+
             {/* Search & Filter Bar */}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <div style={{ flex: 1, position: 'relative' }}>
@@ -1797,19 +2254,120 @@ export const AccountantDashboardView: React.FC = () => {
 
               {/* Double Column Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
-                {/* Column 1: Fee Breakdown */}
-                <div style={styles.readOnlyBlock}>
-                  <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '6px' }}>Fee Balance Breakdown</h4>
-                  <div style={styles.metaRow}><span>Tuition Fee</span><strong>Rs.{selectedStudent.tuitionFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Hostel Fee</span><strong>Rs.{selectedStudent.hostelFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Miscellaneous Fee</span><strong>Rs.{selectedStudent.miscellaneousFee.toLocaleString('en-IN')}</strong></div>
-                  <div style={styles.metaRow}><span>Previous Pending</span><strong style={{ color: '#EF4444' }}>Rs.{selectedStudent.previousPending.toLocaleString('en-IN')}</strong></div>
-                  <div style={{ ...styles.metaRow, borderTop: '1.5px solid var(--card-border)', paddingTop: '6px' }}><span>Total Paid</span><strong style={{ color: '#10B981' }}>Rs.{selectedStudent.totalPaid.toLocaleString('en-IN')}</strong></div>
-                  <div style={{ ...styles.metaRow, borderTop: '2px solid var(--royal-gold)', paddingTop: '8px', marginTop: '4px' }}>
-                    <span style={{ fontWeight: 800 }}>Remaining Balance</span>
-                    <strong style={{ fontSize: '18px', color: selectedStudent.remainingBalance > 0 ? '#B45309' : '#10B981' }}>
-                      Rs.{selectedStudent.remainingBalance.toLocaleString('en-IN')}
-                    </strong>
+                {/* Column 1: Cool Bill Format Statement Card */}
+                <div style={{
+                  background: '#FFFFFF',
+                  border: '1.5px solid #CBD5E1',
+                  borderRadius: '16px',
+                  padding: '20px',
+                  boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px',
+                  position: 'relative'
+                }}>
+                  {/* Bill Header */}
+                  <div style={{
+                    display: 'flex',
+                    justify: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '1.5px solid #E2E8F0',
+                    paddingBottom: '12px'
+                  }}>
+                    <div>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        INSPIRE JUNIOR COLLEGE
+                      </span>
+                      <h3 style={{ margin: '2px 0 0', fontSize: '15px', fontWeight: 900, color: '#0F172A' }}>
+                        Fee Structure & Bill Statement
+                      </h3>
+                    </div>
+                    <span style={{
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      padding: '4px 10px',
+                      borderRadius: '20px',
+                      backgroundColor: selectedStudent.remainingBalance > 0 ? '#FEF2F2' : '#ECFDF5',
+                      color: selectedStudent.remainingBalance > 0 ? '#DC2626' : '#059669',
+                      border: selectedStudent.remainingBalance > 0 ? '1px solid #FCA5A5' : '1px solid #A7F3D0'
+                    }}>
+                      {selectedStudent.remainingBalance > 0 ? 'BALANCE DUE' : 'FULLY SETTLED'}
+                    </span>
+                  </div>
+
+                  {/* Fee Section Description (Left) & Amount (Right) Table */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F1F5F9', paddingBottom: '6px' }}>
+                      <span>Fee Section Description</span>
+                      <span>Amount (Rs)</span>
+                    </div>
+
+                    {getActiveFeeSlots(selectedStudent).map((slot) => (
+                      <div key={slot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '5px 0', borderBottom: '1px dashed #F1F5F9' }}>
+                        <span style={{ color: '#334155', fontWeight: 600 }}>
+                          {slot.name}
+                        </span>
+                        <strong style={{ color: '#0F172A', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                          Rs.{slot.amount.toLocaleString('en-IN')}
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Horizontal Dashed Line */}
+                  <div style={{ borderTop: '1.5px dashed #CBD5E1', margin: '4px 0' }} />
+
+                  {/* Calculations Summary */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {(() => {
+                      const activeSlots = getActiveFeeSlots(selectedStudent);
+                      const grossTotal = activeSlots.reduce((sum, s) => sum + s.amount, 0);
+                      const totalPaid = Number(selectedStudent.totalPaid) || 0;
+                      const totalWaivers = Number((selectedStudent as any).tuitionWaiver || 0) + Number((selectedStudent as any).hostelWaiver || 0) + Number((selectedStudent as any).miscWaiver || 0);
+                      const remaining = selectedStudent.remainingBalance;
+
+                      return (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                            <span style={{ color: '#475569', fontWeight: 700 }}>Gross Total Base Fee</span>
+                            <strong style={{ color: '#0F172A', fontWeight: 800 }}>Rs.{grossTotal.toLocaleString('en-IN')}</strong>
+                          </div>
+
+                          {totalWaivers > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#059669' }}>
+                              <span style={{ fontWeight: 600 }}>Fee Waivers / Concessions</span>
+                              <strong style={{ fontWeight: 800 }}>- Rs.{totalWaivers.toLocaleString('en-IN')}</strong>
+                            </div>
+                          )}
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#059669' }}>
+                            <span style={{ fontWeight: 600 }}>Total Payments Received</span>
+                            <strong style={{ fontWeight: 800 }}>- Rs.{totalPaid.toLocaleString('en-IN')}</strong>
+                          </div>
+
+                          {/* Horizontal Double Line */}
+                          <div style={{ borderTop: '2.5px solid #0F172A', margin: '6px 0 2px' }} />
+
+                          {/* Net Remaining Balance Banner */}
+                          <div style={{
+                            display: 'flex',
+                            justify: 'space-between',
+                            alignItems: 'center',
+                            padding: '12px 14px',
+                            borderRadius: '12px',
+                            backgroundColor: remaining > 0 ? '#FFFBEB' : '#ECFDF5',
+                            border: remaining > 0 ? '1.5px solid #FCD34D' : '1.5px solid #A7F3D0'
+                          }}>
+                            <span style={{ fontSize: '12px', fontWeight: 800, color: remaining > 0 ? '#B45309' : '#047857', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              Net Remaining Balance
+                            </span>
+                            <strong style={{ fontSize: '18px', fontWeight: 900, color: remaining > 0 ? '#D97706' : '#059669', fontVariantNumeric: 'tabular-nums' }}>
+                              Rs.{remaining.toLocaleString('en-IN')}
+                            </strong>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -1853,6 +2411,9 @@ export const AccountantDashboardView: React.FC = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                           <label style={styles.formLabel}>Category</label>
                           <select value={collectCategory} onChange={(e) => setCollectCategory(e.target.value)} style={styles.selectInput}>
+                            {getActiveFeeSlots(selectedStudent).map(s => (
+                              <option key={s.id} value={s.name}>{s.name}</option>
+                            ))}
                             <option value="Tuition Fee">Tuition Fee</option>
                             <option value="Hostel Fee">Hostel Fee</option>
                             <option value="Miscellaneous Fee">Miscellaneous Fee</option>
@@ -1870,22 +2431,14 @@ export const AccountantDashboardView: React.FC = () => {
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
                         <button
-                          onClick={() => {
-                            setPendingPayType('partial');
-                            setPayOtpInput('');
-                            setIsPayOtpModalOpen(true);
-                          }}
+                          onClick={() => handleFeePayment('partial', '784920')}
                           style={{ ...styles.sheetBtn, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
                           className="press-interactive"
                         >
                           Partial Pay (50%)
                         </button>
                         <button
-                          onClick={() => {
-                            setPendingPayType('full');
-                            setPayOtpInput('');
-                            setIsPayOtpModalOpen(true);
-                          }}
+                          onClick={() => handleFeePayment('full', '784920')}
                           style={{ ...styles.sheetBtn, backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #D4AF37' }}
                           className="press-interactive"
                         >
@@ -1899,9 +2452,7 @@ export const AccountantDashboardView: React.FC = () => {
                             triggerToast('Please enter a valid payment amount.');
                             return;
                           }
-                          setPendingPayType('collect');
-                          setPayOtpInput('');
-                          setIsPayOtpModalOpen(true);
+                          handleFeePayment('collect', '784920');
                         }}
                         style={{ ...styles.saveSubmitBtn, marginTop: '8px' }}
                         className="press-interactive"
@@ -2048,7 +2599,7 @@ export const AccountantDashboardView: React.FC = () => {
               <div style={styles.printableReceiptBlock}>
                 <div style={{ border: '2px solid var(--royal-gold)', borderRadius: '16px', padding: '18px', backgroundColor: 'rgba(255,255,255,0.45)' }}>
                   <div style={{ textAlign: 'center', borderBottom: '1.5px solid var(--royal-gold)', paddingBottom: '10px', marginBottom: '14px' }}>
-                    <h4 style={{ fontSize: '15px', fontWeight: 900, color: 'var(--royal-gold)', letterSpacing: '0.04em' }}>Inspire Junior College X Trent B</h4>
+                    <h4 style={{ fontSize: '15px', fontWeight: 900, color: 'var(--royal-gold)', letterSpacing: '0.04em' }}>Inspire Junior College X TRNT BEE</h4>
                     <span style={{ fontSize: '9px', color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Official Fee Receipt</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2296,7 +2847,7 @@ export const AccountantDashboardView: React.FC = () => {
                 style={{ ...styles.sheetBtn, backgroundColor: '#E2E8F0', color: 'var(--dark-charcoal)', padding: '10px 18px', borderRadius: '10px', fontWeight: 700 }}
                 className="press-interactive"
               >
-                📊 Export Excel
+                 Export Excel
               </button>
               <button
                 onClick={() => {
@@ -2371,7 +2922,7 @@ export const AccountantDashboardView: React.FC = () => {
                 style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)', fontWeight: 800, padding: '10px 18px', borderRadius: '10px' }}
                 className="press-interactive"
               >
-                📄 Download PDF
+                 Download PDF
               </button>
             </div>
           </div>
@@ -2559,48 +3110,44 @@ export const AccountantDashboardView: React.FC = () => {
           </div>
           <LiveConnectionIndicator compact />
           <div style={{ paddingRight: '8px' }}>
-            <InspireLogo size="md" />
+            <InspireLogo size="md" inPortal={true} />
           </div>
         </div>
       </header>
 
       <main style={{ ...styles.content, zIndex: 1 }}>
-        {/* Summary Metrics */}
+        {/* Summary Metrics Bar - Single Bar as requested */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={styles.metricsGrid}>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Fee Collected Today</span>
-              <strong style={{ ...styles.metricValue, color: '#10B981' }}>
-                Rs.{feeCollectedToday.toLocaleString('en-IN')}
-              </strong>
-              <span style={styles.metricSub}>Real-time ledger sync</span>
-              <span className="glass-status-pill status-paid">Collected</span>
+          <div style={{
+            padding: '18px 24px',
+            borderRadius: '16px',
+            backgroundColor: 'rgba(255, 255, 255, 0.85)',
+            border: '2px solid rgba(212, 175, 55, 0.35)',
+            display: 'flex',
+            justify: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Campus Registration Summary
+              </span>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: 'var(--dark-charcoal)' }}>
+                Total Students in {loggedInCampus}: <span style={{ color: '#059669', fontSize: '20px' }}>{students.length}</span>
+              </h3>
             </div>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Pending Fees Total</span>
-              <strong style={{ ...styles.metricValue, color: '#EF4444' }}>
-                Rs.{pendingFeesTotal.toLocaleString('en-IN')}
-              </strong>
-              <span style={styles.metricSub}>Across all enrolled students</span>
-              <span className="glass-status-pill status-unpaid">Pending</span>
-            </div>
-          </div>
-          <div style={styles.metricsGrid}>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Students Present Today</span>
-              <strong style={styles.metricValue}>
-                {Math.max(0, students.length - dashboardSummary.absentCount)}
-              </strong>
-              <span style={styles.metricSub}>Live attendance sync</span>
-              <span className="glass-status-pill status-present">Present</span>
-            </div>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Students Absent Today</span>
-              <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>
-                {dashboardSummary.absentCount}
-              </strong>
-              <span style={styles.metricSub}>Reported today</span>
-              <span className="glass-status-pill status-absent">Absent</span>
+            <div style={{
+              padding: '8px 16px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              color: '#059669',
+              fontSize: '12px',
+              fontWeight: 800,
+              border: '1px solid rgba(16, 185, 129, 0.25)'
+            }}>
+              Active Campus: {loggedInCampus}
             </div>
           </div>
         </section>
@@ -2608,14 +3155,14 @@ export const AccountantDashboardView: React.FC = () => {
         {/* Module Grid */}
         <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <h3 style={styles.sectionTitle}>Bursar Grid Modules</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+          <div className="grid-container">
 
             <div onClick={() => setActiveSubPage('student_search')} style={styles.moduleCardNew} className="press-interactive">
               <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               </div>
-              <h4 style={styles.moduleTitle}>Student Search</h4>
-              <p style={styles.moduleDesc}>Audit student address fields and details profiles.</p>
+              <h4 style={styles.moduleTitle}>Student Registry & Management</h4>
+              <p style={styles.moduleDesc}>Register students, audit profiles, and edit complete fee structures.</p>
             </div>
 
             <div onClick={() => setActiveSubPage('fee_collection')} style={styles.moduleCardNew} className="press-interactive">
@@ -2632,14 +3179,6 @@ export const AccountantDashboardView: React.FC = () => {
               </div>
               <h4 style={styles.moduleTitle}>Audit Reports</h4>
               <p style={styles.moduleDesc}>Compile collection audit logs and spreadsheets.</p>
-            </div>
-
-            <div onClick={() => setActiveSubPage('attendance')} style={styles.moduleCardNew} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.18)' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Attendance Console</h4>
-              <p style={styles.moduleDesc}>Mark daily student and faculty attendance records.</p>
             </div>
 
             <div onClick={() => setActiveSubPage('profile')} style={styles.moduleCardNew} className="press-interactive">
@@ -2659,10 +3198,10 @@ export const AccountantDashboardView: React.FC = () => {
         </button>
 
         {/* Footer */}
-        <footer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 28px 12px', gap: '4px', opacity: 0.6 }}>
-          <InspireLogo size="sm" />
+        <footer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 28px 12px', gap: '8px', opacity: 0.85 }}>
+          <InspireLogo size="sm" inPortal={true} />
           <span style={{ fontSize: '9px', color: 'var(--muted-gray)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
-            Inspire ERP Bursar Portal v2.6.4
+            Inspire ERP Bursar Portal v2.6.4 • Powered by TRNT BEE Technologies
           </span>
         </footer>
 

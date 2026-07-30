@@ -117,10 +117,28 @@ export const authenticatorService = {
     return res.message;
   },
 
-  // Create system database backup
-  async createBackup(): Promise<BackupResponse> {
-    const res = await apiClient.post<{ status: string; message: string; data: BackupResponse }>('/authenticator/backup', {});
+  // Create system database backup (Google Drive 24h rolling)
+  async createBackup(securityPin?: string): Promise<any> {
+    const res = await apiClient.post<{ status: string; message: string; data: any }>('/authenticator/backup', { securityPin });
     return res.data;
+  },
+
+  // Get available backups list across categories and campuses
+  async getAvailableBackups(): Promise<any> {
+    const res = await apiClient.get<{ status: string; data: any }>('/authenticator/available-backups');
+    return res.data;
+  },
+
+  // Restore data payload for specific category and campus
+  async restoreData(payload: { category: string; campus: string; backupData?: any; backupFileContent?: string }): Promise<any> {
+    const res = await apiClient.post<{ status: string; data: any }>('/authenticator/restore-data', payload);
+    return res.data;
+  },
+
+  // Wipe entire database with Security Passcode (9-0-5-9-0-6-8-3-8-4)
+  async wipeEntireDatabase(securityPin: string): Promise<string> {
+    const res = await apiClient.post<{ status: string; message: string }>('/authenticator/wipe-database', { securityPin });
+    return res.message;
   },
 
   // Purge all student and faculty data

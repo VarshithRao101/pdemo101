@@ -1,6 +1,4 @@
 import { useSyncExternalStore } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { getApiBaseUrl } from './apiClient';
 
 export type SocketConnectionState = 'connected' | 'reconnecting' | 'disconnected';
 
@@ -11,27 +9,56 @@ export type SocketLiveEventName =
   | 'exam-results:updated'
   | 'bulletin:updated'
   | 'hostel:updated'
-  | 'student:created';
+  | 'student:created'
+  | 'student:updated'
+  | 'student:deleted'
+  | 'expenditure:updated'
+  | 'workerPayment:updated'
+  | 'sync:journal-updated';
 
 type SocketHandler = (payload: any) => void;
 
-let socket: Socket | null = null;
-let connectionState: SocketConnectionState = 'disconnected';
+let connectionState: SocketConnectionState = 'connected';
 const connectionSubscribers = new Set<() => void>();
+const eventHandlersMap = new Map<string, Set<SocketHandler>>();
 
-const getSocketBaseUrl = () => {
-  const apiBaseUrl = getApiBaseUrl();
+// Cross-tab broadcast channel for instant multi-window synchronization on Vercel
+let broadcastChannel: BroadcastChannel | null = null;
+if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
   try {
-    const parsedUrl = new URL(apiBaseUrl);
-    const pathname = parsedUrl.pathname.replace(/\/api\/?$/, '/');
-    parsedUrl.pathname = pathname === '/' ? '/' : pathname;
-    return parsedUrl.origin + parsedUrl.pathname.replace(/\/$/, '');
-  } catch {
-    return apiBaseUrl.replace(/\/api\/?$/, '');
+    broadcastChannel = new BroadcastChannel('inspire_erp_realtime_sync');
+    broadcastChannel.onmessage = (event) => {
+      const { eventName, payload } = event.data || {};
+      if (eventName) {
+        dispatchLocalEvent(eventName, payload, false);
+      }
+    };
+  } catch (err) {
+    console.warn('BroadcastChannel disabled or unavailable:', err);
+  }
+}
+
+// Internal dispatcher
+const dispatchLocalEvent = (eventName: string, payload: any, broadcast = true) => {
+  const handlers = eventHandlersMap.get(eventName);
+  if (handlers) {
+    handlers.forEach((fn) => {
+      try {
+        fn(payload);
+      } catch (err) {
+        console.error(`Error executing event handler for ${eventName}:`, err);
+      }
+    });
+  }
+
+  if (broadcast && broadcastChannel) {
+    try {
+      broadcastChannel.postMessage({ eventName, payload });
+    } catch (_e) {
+      // Ignore broadcast errors
+    }
   }
 };
-
-const getAuthToken = () => sessionStorage.getItem('auth_token');
 
 const notifyConnectionSubscribers = () => {
   for (const subscriber of connectionSubscribers) {
@@ -45,118 +72,17 @@ const setConnectionState = (nextState: SocketConnectionState) => {
   notifyConnectionSubscribers();
 };
 
-const syncSocketAuth = () => {
-  if (!socket) return;
-  const token = getAuthToken();
-  socket.auth = token ? { token: `Bearer ${token}` } : {};
-};
-
-const bindSocketLifecycle = () => {
-  if (!socket) return;
-
-  socket.off('connect');
-  socket.off('disconnect');
-  socket.off('connect_error');
-  socket.io.off('reconnect_attempt');
-  socket.io.off('reconnect');
-  socket.io.off('reconnect_error');
-
-  socket.on('connect', () => {
-    setConnectionState('connected');
-  });
-
-  socket.on('disconnect', () => {
-    if (getAuthToken()) {
-      setConnectionState('reconnecting');
-    } else {
-      setConnectionState('disconnected');
+export const connectSocket = (_token?: string) => {
+  setConnectionState('connected');
+  return {
+    connected: true,
+    emit: (eventName: string, payload?: any) => {
+      emitLocalSocketEvent(eventName, payload);
     }
-  });
-
-  socket.on('connect_error', () => {
-    if (getAuthToken()) {
-      setConnectionState('reconnecting');
-    } else {
-      setConnectionState('disconnected');
-    }
-  });
-
-  socket.io.on('reconnect_attempt', () => {
-    syncSocketAuth();
-    setConnectionState('reconnecting');
-  });
-
-  socket.io.on('reconnect', () => {
-    syncSocketAuth();
-    setConnectionState('connected');
-  });
-
-  socket.io.on('reconnect_error', () => {
-    setConnectionState('reconnecting');
-  });
-};
-
-const ensureSocket = () => {
-  if (import.meta.env.PROD && !import.meta.env.VITE_ENABLE_REALTIME) {
-    return null;
-  }
-
-  if (!socket) {
-    socket = io(getSocketBaseUrl(), {
-      autoConnect: false,
-      transports: ['websocket'],
-      withCredentials: true,
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 10000,
-    });
-    bindSocketLifecycle();
-
-    // Auto-ack global listener for transaction sync integrity
-    socket.onAny((_eventName, ...args) => {
-      const payload = args[0];
-      if (payload && payload.transactionId) {
-        socket?.emit('sync:ack', { transactionId: payload.transactionId });
-      }
-    });
-  }
-
-  return socket;
-};
-
-export const connectSocket = (token?: string) => {
-  const instance = ensureSocket();
-  if (!instance) {
-    setConnectionState('disconnected');
-    return null;
-  }
-  if (token) {
-    instance.auth = { token: token.startsWith('Bearer ') ? token : `Bearer ${token}` };
-  } else {
-    syncSocketAuth();
-  }
-
-  if (!instance.connected) {
-    instance.connect();
-  } else {
-    setConnectionState('connected');
-  }
-
-  return instance;
+  };
 };
 
 export const disconnectSocket = () => {
-  if (!socket) {
-    setConnectionState('disconnected');
-    return;
-  }
-
-  socket.disconnect();
-  socket.removeAllListeners();
-  socket.io.removeAllListeners();
-  socket = null;
   setConnectionState('disconnected');
 };
 
@@ -170,28 +96,34 @@ export const subscribeSocketConnectionState = (listener: () => void) => {
 export const useSocketConnectionState = () =>
   useSyncExternalStore(subscribeSocketConnectionState, getSocketConnectionState, getSocketConnectionState);
 
-export const onSocketEvent = (eventName: SocketLiveEventName, handler: SocketHandler) => {
-  const instance = ensureSocket();
-  if (!instance) {
-    return () => {};
+export const onSocketEvent = (eventName: SocketLiveEventName | string, handler: SocketHandler) => {
+  if (!eventHandlersMap.has(eventName)) {
+    eventHandlersMap.set(eventName, new Set());
   }
-  instance.on(eventName, handler);
+  const handlers = eventHandlersMap.get(eventName)!;
+  handlers.add(handler);
+
   return () => {
-    instance.off(eventName, handler);
+    handlers.delete(handler);
+    if (handlers.size === 0) {
+      eventHandlersMap.delete(eventName);
+    }
   };
 };
 
-export const onceSocketEvent = (eventName: SocketLiveEventName, handler: SocketHandler) => {
-  const instance = ensureSocket();
-  if (!instance) {
-    return () => {};
-  }
-  instance.once(eventName, handler);
-  return () => {
-    instance.off(eventName, handler);
+export const onceSocketEvent = (eventName: SocketLiveEventName | string, handler: SocketHandler) => {
+  const wrapper: SocketHandler = (payload: any) => {
+    handler(payload);
+    unsubscribe();
   };
+  const unsubscribe = onSocketEvent(eventName, wrapper);
+  return unsubscribe;
+};
+
+export const emitLocalSocketEvent = (eventName: string, payload?: any) => {
+  dispatchLocalEvent(eventName, payload, true);
 };
 
 export const refreshSocketAuth = () => {
-  syncSocketAuth();
+  setConnectionState('connected');
 };
