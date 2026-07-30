@@ -1433,10 +1433,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
               {/* 4 Campus Drop Zones for Selected Category */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '18px' }}>
                 {[
-                  { name: 'JC Main', icon: '🏛️' },
-                  { name: 'JC Boys', icon: '👦' },
-                  { name: 'JC Girls', icon: '👧' },
-                  { name: 'School', icon: '🏫' }
+                  { name: 'Erragattugutta C1', icon: '🏛️' },
+                  { name: 'Erragattugutta C2', icon: '🏢' },
+                  { name: 'Beemaram C1', icon: '🏫' },
+                  { name: 'Beemaram C2', icon: '🎓' }
                 ].map(camp => {
                   const campBackups = (availableBackups[activeRestoreCategory] && availableBackups[activeRestoreCategory][camp.name]) || [];
 

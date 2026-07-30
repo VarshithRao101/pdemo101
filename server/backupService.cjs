@@ -25,12 +25,12 @@ function verifyMasterSecurityPin(pin, storedAuthHash) {
   return false;
 }
 
-// Helper to get standard campus list
+// 4 College Campuses
 const CAMPUSES = [
-  { key: 'JC_Main', name: 'JC Main' },
-  { key: 'JC_Boys', name: 'JC Boys' },
-  { key: 'JC_Girls', name: 'JC Girls' },
-  { key: 'School', name: 'School' }
+  { key: 'Erragattugutta_C1', name: 'Erragattugutta C1' },
+  { key: 'Erragattugutta_C2', name: 'Erragattugutta C2' },
+  { key: 'Beemaram_C1', name: 'Beemaram C1' },
+  { key: 'Beemaram_C2', name: 'Beemaram C2' }
 ];
 
 // 3 Root Categories in Google Drive
@@ -52,35 +52,30 @@ function getEncryptionKey() {
  * Initializes authenticated Google Drive API client
  */
 function getGoogleDriveClient() {
-  const serviceAccountKeyRaw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
-  const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  let privateKey = process.env.GOOGLE_PRIVATE_KEY;
+  const rootFolderId = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID || process.env.GOOGLE_DRIVE_FOLDER_ID || '1BQIGgpPUYq--oN7Wz9xLQ9QRKoZnPz99';
 
-  if (!serviceAccountKeyRaw && !process.env.GOOGLE_OAUTH_TOKEN) {
+  if (!email || !privateKey) {
     return null;
   }
 
+  // Handle double escaped newlines in private key
+  if (privateKey.includes('\\n')) {
+    privateKey = privateKey.replace(/\\n/g, '\n');
+  }
+
   try {
-    let auth;
-    if (serviceAccountKeyRaw) {
-      let credentials;
-      if (serviceAccountKeyRaw.trim().startsWith('{')) {
-        credentials = JSON.parse(serviceAccountKeyRaw);
-      } else {
-        const decoded = Buffer.from(serviceAccountKeyRaw, 'base64').toString('utf8');
-        credentials = JSON.parse(decoded);
-      }
-      auth = new google.auth.GoogleAuth({
-        credentials,
-        scopes: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive']
-      });
-    } else {
-      auth = new google.auth.OAuth2();
-      auth.setCredentials({ access_token: process.env.GOOGLE_OAUTH_TOKEN });
-    }
+    const auth = new google.auth.JWT(
+      email,
+      null,
+      privateKey,
+      ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive']
+    );
 
     return {
       drive: google.drive({ version: 'v3', auth }),
-      rootFolderId: rootFolderId || 'root'
+      rootFolderId
     };
   } catch (err) {
     console.warn('Google Drive auth init notice:', err.message);
