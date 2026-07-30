@@ -110,25 +110,16 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
     }, 1200);
   };
 
-  // Mobile side drawer list items (from Screen 1)
+  // Mobile & Desktop side drawer list items (EXACTLY 5 for Security Authenticator)
   const drawerMenuItems = portalRole === 'authenticator'
     ? [
         { label: 'Dashboard Overview', type: 'dashboard', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
         { label: 'Security Keys (OTP)', type: 'keys', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('keys'); } },
-        { label: 'User Backup Codes', type: 'backup_codes', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('backup_codes'); } },
         { label: 'Staff Accounts Control', type: 'accounts', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('accounts'); } },
         { label: 'Sync Integrity Console', type: 'sync_integrity', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('sync_integrity'); } },
+        { label: 'Settings', type: 'settings', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('settings'); } },
       ]
-    : [
-        { label: 'Home', type: 'home', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
-        { label: 'Notifications', type: 'notif', icon: <SvgBell />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
-        { label: 'About Us', type: 'about', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setShowAboutModal(true); } },
-        { label: 'Spotlight', type: 'spotlight', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setShowSpotlightModal(true); } },
-        { label: 'Help & Feedback', type: 'feedback', icon: <SvgQuestion />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
-        { label: 'Rate the App', type: 'rate', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setShowRateModal(true); } },
-        { label: 'Contact Us', type: 'contact', icon: <SvgPhone />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
-        { label: 'Settings', type: 'settings', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setShowSettingsModal(true); } },
-      ];
+    : [];
 
   // Helper function to render styled Neo-Brutalist Modal Overlay
   const renderModal = (title: string, onClose: () => void, content: React.ReactNode) => {
@@ -508,6 +499,15 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
     </>
   ));
 
+
+  // If NOT Authenticator (admin1, admin2, accountant), render clean full-width content without sidebar
+  if (portalRole !== 'authenticator') {
+    return (
+      <div style={{ width: '100%', minHeight: '100vh', backgroundColor: 'var(--bg-primary)', overflowY: 'auto' }}>
+        {children}
+      </div>
+    );
+  }
 
   if (isMobile) {
     return (
