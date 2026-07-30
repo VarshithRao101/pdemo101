@@ -508,15 +508,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
     </>
   ));
 
-  if (portalRole === 'authenticator') {
-    return (
-      <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: 'var(--bg-primary)', position: 'relative' }}>
-        {children}
-        {/* Global Floating TRNT BEE Trademark Badge */}
-        <TrntBeeBadge />
-      </div>
-    );
-  }
 
   if (isMobile) {
     return (
@@ -610,27 +601,25 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
 
   return (
     <div style={styles.desktopContainer} className="anim-fade-in">
-      {/* Left Sidebar Menu Removed As Requested */}
-      {false && (
-        <aside style={{
-          width: '260px',
-          height: '100%',
+      {/* Left Sidebar Navigation */}
+      <aside style={{
+        width: '260px',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '24px 16px',
+        backgroundColor: '#0c1938',
+        borderRight: '1px solid rgba(255,255,255,0.08)',
+        zIndex: 100,
+        position: 'relative'
+      }}>
+        {/* User profile header card */}
+        <div style={{
           display: 'flex',
           flexDirection: 'column',
-          padding: '24px 16px',
-          backgroundColor: '#0c1938', // Dark blue navy from screenshot
-          borderRight: '1px solid rgba(255,255,255,0.08)',
-          zIndex: 100,
-          position: 'relative'
+          alignItems: 'flex-start',
+          padding: '20px 8px 8px 8px',
         }}>
-          {/* User profile header card */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            padding: '20px 8px 8px 8px',
-          }}>
-          {/* Avatar Clickable to Go to Profile */}
           <div
             style={{
               width: '68px',
@@ -704,16 +693,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           overflowY: 'auto',
           paddingRight: '4px'
         }} className="drawer-scrollbar">
-          {[
-            { label: 'Home', type: 'home', icon: <SvgHome />, action: () => setActiveTab('dashboard') },
-            { label: 'Notifications', type: 'notif', icon: <SvgBell />, action: () => setActiveTab('dashboard'), badge: 5 },
-            { label: 'About Us', type: 'about', icon: <SvgCrest />, action: () => setShowAboutModal(true) },
-            { label: 'Spotlight', type: 'spotlight', icon: <SvgStar />, action: () => setShowSpotlightModal(true) },
-            { label: 'Help & Feedback', type: 'feedback', icon: <SvgQuestion />, action: () => {} },
-            { label: 'Rate the App', type: 'rate', icon: <SvgStar />, action: () => setShowRateModal(true) },
-            { label: 'Contact Us', type: 'contact', icon: <SvgPhone />, action: () => {} },
-            { label: 'Settings', type: 'settings', icon: <SvgCog />, action: () => setShowSettingsModal(true) },
-          ].map((item, idx) => {
+          {drawerMenuItems.map((item, idx) => {
             const isHomeActive = item.type === 'home' && activeTab === 'dashboard';
             const isActive = isHomeActive || item.type === activeTab;
             return (
@@ -743,7 +723,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               >
                 <span style={{ display: 'flex', alignItems: 'center', color: isActive ? '#3B82F6' : '#94A3B8' }}>{item.icon}</span>
                 <span style={{ flex: 1 }}>{item.label}</span>
-                {item.badge && (
+                {(item as any).badge && (
                   <span style={{
                     backgroundColor: '#EF4444',
                     color: '#fff',
@@ -755,7 +735,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                  }}>{item.badge}</span>
+                  }}>{(item as any).badge}</span>
                 )}
               </button>
             );
@@ -813,7 +793,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           </div>
         </div>
       </aside>
-      )}
 
       {/* Main Content Area */}
       <main style={styles.mainContent}>
