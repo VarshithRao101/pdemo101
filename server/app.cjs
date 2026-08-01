@@ -612,17 +612,17 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
     }
 
-    const def = defaultUsers.find(u => u.username === user.username);
+    const def = materializeDefaultUser(defaultUsers.find(u => u.username === user.username));
     let isPasswordOk = safeBcryptCompare(password, user.password);
-    if (!isPasswordOk && def && safeBcryptCompare(password, def.password)) {
-      isPasswordOk = true;
-      user.password = def.password;
+    // Only fall back to builtin if the user is a sys_ (not in MongoDB / no real password stored)
+    if (!isPasswordOk && def && user._id && String(user._id).startsWith('sys_')) {
+      if (safeBcryptCompare(password, def.password)) isPasswordOk = true;
     }
 
     let isPinOk = safeBcryptCompare(String(pin), user.pin);
-    if (!isPinOk && def && safeBcryptCompare(String(pin), def.pin)) {
-      isPinOk = true;
-      user.pin = def.pin;
+    // Only fall back to builtin PIN if user is still using the default (sys_ id means not in MongoDB)
+    if (!isPinOk && def && user._id && String(user._id).startsWith('sys_')) {
+      if (safeBcryptCompare(String(pin), def.pin)) isPinOk = true;
     }
 
     if (!isPasswordOk || !isPinOk) {
@@ -711,17 +711,15 @@ app.post('/api/auth/force-login', mongoRateLimiter, async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
     }
 
-    const def = defaultUsers.find(u => u.username === user.username);
+    const def = materializeDefaultUser(defaultUsers.find(u => u.username === user.username));
     let isPasswordOk = safeBcryptCompare(password, user.password);
-    if (!isPasswordOk && def && safeBcryptCompare(password, def.password)) {
-      isPasswordOk = true;
-      user.password = def.password;
+    if (!isPasswordOk && def && user._id && String(user._id).startsWith('sys_')) {
+      if (safeBcryptCompare(password, def.password)) isPasswordOk = true;
     }
 
     let isPinOk = safeBcryptCompare(String(pin), user.pin);
-    if (!isPinOk && def && safeBcryptCompare(String(pin), def.pin)) {
-      isPinOk = true;
-      user.pin = def.pin;
+    if (!isPinOk && def && user._id && String(user._id).startsWith('sys_')) {
+      if (safeBcryptCompare(String(pin), def.pin)) isPinOk = true;
     }
 
     if (!isPasswordOk || !isPinOk) {
@@ -1845,49 +1843,64 @@ app.get('/api/authenticator/backups', authenticateToken, requireRole('authentica
 
 /**
  * GET & POST /api/authenticator/keys & regenerate-keys
- * Returns and updates 6-digit active security PINs
+ * Returns and updates 6-digit active security PINs - reads from and writes to MongoDB.
  */
 app.get('/api/authenticator/keys', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
-  return res.json({
-    status: 'success',
-    data: {
-      generatedAt: Date.now(),
-      dailyPins: {
-        admin1: '102938',
-        authenticator: '789456',
-        admin2_erragattugutta_c1: '849201',
-        admin2_erragattugutta_c2: '571302',
-        admin2_beemaram_c1: '392003',
-        admin2_beemaram_c2: '618404',
-        accountant_erragattugutta_c1_1: '410201',
-        accountant_erragattugutta_c2_1: '729403',
-        accountant_beemaram_c1_1: '653005',
-        accountant_beemaram_c2_1: '816307'
-      }
+  try {
+    try { await connectToDatabase(); } catch {}
+    const dailyPins = {};
+    // Build list of all usernames we track
+    const trackedUsernames = defaultUsers.map(u => u.username);
+    // Try to read current PINs from DB (stored as pin_plaintext if set, else fall back to builtin)
+    for (const username of trackedUsernames) {
+      const seed = getCredentialSeed(username);
+      dailyPins[username] = seed ? seed.pin : '------';
     }
-  });
+    if (mongoose.connection.readyState === 1) {
+      try {
+        const users = await User.find({ username: { $in: trackedUsernames } }).select('username pin_plaintext').lean();
+        for (const u of users) {
+          if (u.pin_plaintext) dailyPins[u.username] = u.pin_plaintext;
+        }
+      } catch {}
+    }
+    return res.json({
+      status: 'success',
+      data: { generatedAt: Date.now(), dailyPins }
+    });
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
 });
 
 app.post('/api/authenticator/regenerate-keys', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
-  return res.json({
-    status: 'success',
-    message: 'PINs regenerated successfully',
-    data: {
-      generatedAt: Date.now(),
-      dailyPins: {
-        admin1: '102938',
-        authenticator: '789456',
-        admin2_erragattugutta_c1: '849201',
-        admin2_erragattugutta_c2: '571302',
-        admin2_beemaram_c1: '392003',
-        admin2_beemaram_c2: '618404',
-        accountant_erragattugutta_c1_1: '410201',
-        accountant_erragattugutta_c2_1: '729403',
-        accountant_beemaram_c1_1: '653005',
-        accountant_beemaram_c2_1: '816307'
+  try {
+    try { await connectToDatabase(); } catch {}
+    const trackedUsernames = defaultUsers.map(u => u.username);
+    const dailyPins = {};
+    // Generate new random 6-digit PIN for each account and persist to MongoDB
+    for (const username of trackedUsernames) {
+      const newPin = String(Math.floor(100000 + Math.random() * 900000));
+      dailyPins[username] = newPin;
+      if (mongoose.connection.readyState === 1) {
+        try {
+          await User.findOneAndUpdate(
+            { username },
+            { $set: { pin: bcrypt.hashSync(newPin, 10), pin_plaintext: newPin } },
+            { upsert: false }
+          );
+        } catch {}
       }
     }
-  });
+    console.log(`🔑 [Keys]: PINs regenerated for ${trackedUsernames.length} accounts by ${req.user.username}`);
+    return res.json({
+      status: 'success',
+      message: 'PINs regenerated successfully',
+      data: { generatedAt: Date.now(), dailyPins }
+    });
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
 });
 
 /**
@@ -2014,7 +2027,7 @@ app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authe
   try {
     try { await connectToDatabase(); } catch {}
     const { id } = req.params;
-    const { username, password, role, name, email, mobile, department, campus } = req.body || {};
+    const { username: bodyUsername, password, pin: newPin, role, name, email, mobile, department, campus } = req.body || {};
 
     const updateFields = {};
     if (name) updateFields.name = name;
@@ -2026,15 +2039,52 @@ app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authe
     if (password && typeof password === 'string' && password.trim()) {
       updateFields.password = bcrypt.hashSync(password.trim(), 10);
     }
-
-    let updated = { _id: id, username, ...updateFields };
-    if (mongoose.connection.readyState === 1 && !id.startsWith('sys_')) {
-      try {
-        const doc = await User.findByIdAndUpdate(id, { $set: updateFields }, { new: true }).select('-password -pin').lean();
-        if (doc) updated = doc;
-      } catch {}
+    if (newPin && typeof newPin === 'string' && newPin.trim()) {
+      updateFields.pin = bcrypt.hashSync(newPin.trim(), 10);
+      updateFields.pin_plaintext = newPin.trim();
     }
 
+    let updated = { _id: id, ...updateFields };
+
+    if (mongoose.connection.readyState === 1) {
+      try {
+        let doc = null;
+        if (!id.startsWith('sys_')) {
+          // Real MongoDB ObjectId - update by _id
+          doc = await User.findByIdAndUpdate(id, { $set: updateFields }, { new: true }).select('-password -pin').lean();
+        } else {
+          // sys_ prefixed ID means it's a default user - resolve by username
+          const resolvedUsername = id.replace('sys_', '');
+          const targetUsername = bodyUsername || resolvedUsername;
+          // Upsert: if user exists update, if not create from defaults
+          doc = await User.findOneAndUpdate(
+            { username: targetUsername },
+            { $set: updateFields },
+            { new: true, upsert: false }
+          ).select('-password -pin').lean();
+          if (!doc) {
+            // User not in MongoDB yet - seed them first, then apply update
+            const defUser = defaultUsers.find(u => u.username === targetUsername);
+            if (defUser) {
+              const matUser = materializeDefaultUser(defUser);
+              if (matUser) {
+                try {
+                  const created = await User.create({ ...matUser, ...updateFields });
+                  doc = created.toObject();
+                  delete doc.password;
+                  delete doc.pin;
+                } catch {}
+              }
+            }
+          }
+        }
+        if (doc) updated = doc;
+      } catch (dbErr) {
+        console.warn('⚠️ [Auth]: Account update notice:', dbErr.message);
+      }
+    }
+
+    console.log(`✏️ [Accounts]: Updated account [${id}] by ${req.user.username}`);
     return res.json({ status: 'success', data: updated });
   } catch (err) {
     return res.status(500).json({ status: 'error', message: err.message });

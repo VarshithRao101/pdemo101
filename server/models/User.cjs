@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -40,7 +40,14 @@ const userSchema = new mongoose.Schema({
   activeSessionId: {
     type: String,
     default: null
-  }
+  },
+  pin_plaintext: {
+    type: String,
+    default: null
+  },
+  email: { type: String, default: '' },
+  mobile: { type: String, default: '' },
+  department: { type: String, default: '' }
 }, {
   timestamps: true
 });
