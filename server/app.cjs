@@ -24,6 +24,7 @@ const FeeSettings = require('./models/FeeSettings.cjs');
 const Expenditure = require('./models/Expenditure.cjs');
 const WorkerPayment = require('./models/WorkerPayment.cjs');
 const Payment = require('./models/Payment.cjs');
+const Enquiry = require('./models/Enquiry.cjs');
 
 const {
   generateAndUploadBackup,
@@ -1767,6 +1768,58 @@ app.post('/api/authenticator/restore-backup', authenticateToken, requireRole('au
   } catch (err) {
     console.error('Restore backup error:', err.message);
     return res.status(500).json({ status: 'error', message: `Database restoration failure: ${err.message}` });
+  }
+});
+
+
+// --- PUBLIC ENQUIRIES ENDPOINT ---
+// Allows prospective students/parents to submit admissions enquiries from the public portfolio
+app.post('/api/enquiries', async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { studentName, parentName, mobile, email, stream, preferredCampus, currentGrade, notes } = req.body;
+
+    if (!studentName || !mobile || !preferredCampus) {
+      return res.status(400).json({ status: 'error', message: 'Student Name, Mobile Number, and Preferred Campus are required.' });
+    }
+
+    const count = await Enquiry.countDocuments();
+    const referenceCode = `ENQ-2026-${String(count + 1).padStart(4, '0')}`;
+
+    const newEnquiry = await Enquiry.create({
+      referenceCode,
+      studentName: String(studentName).trim(),
+      parentName: String(parentName || '').trim(),
+      mobile: String(mobile).trim(),
+      email: String(email || '').trim(),
+      stream: String(stream || 'MPC').trim(),
+      preferredCampus: String(preferredCampus).trim(),
+      currentGrade: String(currentGrade || '10th Class').trim(),
+      notes: String(notes || '').trim()
+    });
+
+    return res.status(201).json({
+      status: 'success',
+      message: 'Enquiry submitted successfully.',
+      referenceCode: newEnquiry.referenceCode,
+      data: newEnquiry
+    });
+  } catch (err) {
+    console.error('[Enquiry] Creation error:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to submit enquiry.' });
+  }
+});
+
+app.get('/api/enquiries', authenticateToken, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const campus = req.query.branch || req.user.campus;
+    const filter = (campus && campus !== 'All') ? { preferredCampus: campus } : {};
+    const enquiries = await Enquiry.find(filter).sort({ createdAt: -1 }).lean();
+    return res.json({ status: 'success', data: enquiries });
+  } catch (err) {
+    console.error('[Enquiry] List error:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to fetch enquiries.' });
   }
 });
 
