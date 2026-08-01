@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Inspire ERP System - Foundation Server Skeleton
  * Express + MongoDB Atlas with serverless connection caching, bcrypt security,
  * JWT authentication, persistent fail-closed rate limiting, CORS isolation, and role authorization.
@@ -120,6 +120,25 @@ const CREDENTIAL_FILE = process.env.PORTAL_CREDENTIALS_FILE
   ? path.resolve(process.env.PORTAL_CREDENTIALS_FILE)
   : path.join(__dirname, 'credential-secrets.local.json');
 
+// Built-in fallback credentials (used on production where the local file is gitignored).
+// These are the system-default master credentials. Override via PORTAL_CREDENTIALS_JSON env or credential-secrets.local.json.
+const BUILTIN_CREDENTIAL_FALLBACKS = {
+  'admin1':                         { password: 'RectorPass#2026',  pin: '102938' },
+  '9059068384':                     { password: '00112233',          pin: '789456' },
+  'admin2_erragattugutta_c1':       { password: 'DeanE1#8492',       pin: '849201' },
+  'admin2_erragattugutta_c2':       { password: 'DeanE2#5713',       pin: '571302' },
+  'admin2_beemaram_c1':             { password: 'DeanB1#3920',       pin: '392003' },
+  'admin2_beemaram_c2':             { password: 'DeanB2#6184',       pin: '618404' },
+  'accountant_erragattugutta_c1_1': { password: 'AccE1#4102',        pin: '410201' },
+  'accountant_erragattugutta_c1_2': { password: 'AccE1#9381',        pin: '938102' },
+  'accountant_erragattugutta_c2_1': { password: 'AccE2#7294',        pin: '729403' },
+  'accountant_erragattugutta_c2_2': { password: 'AccE2#1845',        pin: '184504' },
+  'accountant_beemaram_c1_1':       { password: 'AccB1#6530',        pin: '653005' },
+  'accountant_beemaram_c1_2':       { password: 'AccB1#2947',        pin: '294706' },
+  'accountant_beemaram_c2_1':       { password: 'AccB2#8163',        pin: '816307' },
+  'accountant_beemaram_c2_2':       { password: 'AccB2#3750',        pin: '375008' }
+};
+
 function loadCredentialSeeds() {
   if (process.env.PORTAL_CREDENTIALS_JSON) {
     try {
@@ -137,20 +156,28 @@ function loadCredentialSeeds() {
     }
   }
 
+  console.log('ℹ️ [Auth]: No external credential file found. Using built-in fallback credentials.');
   return {};
 }
 
 const credentialSeeds = loadCredentialSeeds();
 
 function getCredentialSeed(username) {
-  const seed = credentialSeeds[String(username || '').toLowerCase()];
-  if (!seed || typeof seed.password !== 'string' || typeof seed.pin !== 'string') {
-    return null;
+  const key = String(username || '').toLowerCase();
+  // Priority: env/file override > built-in fallback
+  const fromFile = credentialSeeds[key];
+  if (fromFile && typeof fromFile.password === 'string' && typeof fromFile.pin === 'string') {
+    return { password: fromFile.password, pin: fromFile.pin };
   }
-  return { password: seed.password, pin: seed.pin };
+  const builtin = BUILTIN_CREDENTIAL_FALLBACKS[key];
+  if (builtin) {
+    return { password: builtin.password, pin: builtin.pin };
+  }
+  return null;
 }
 
 function materializeDefaultUser(user) {
+  if (!user) return null;
   const seed = getCredentialSeed(user.username);
   if (!seed) return null;
   return {
@@ -163,6 +190,7 @@ function materializeDefaultUser(user) {
 function materializeDefaultUsers() {
   return defaultUsers.map(materializeDefaultUser).filter(Boolean);
 }
+
 function safeBcryptCompare(input, hash) {
   if (!input || typeof input !== 'string' || !hash || typeof hash !== 'string') {
     return false;
