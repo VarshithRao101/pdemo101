@@ -1,6 +1,19 @@
-// api/index.js
-// Vercel Serverless Function Handler wrapping Express app with cached Mongo connection
-const expressApp = require('../server/app.cjs');
+const fs = require('fs');
+const path = require('path');
+
+let expressApp;
+const distPath = path.join(__dirname, '../dist/server.cjs');
+try {
+  if (fs.existsSync(distPath)) {
+    expressApp = require('../dist/server.cjs');
+  } else {
+    expressApp = require('../server/app.cjs');
+  }
+} catch (loadErr) {
+  console.error('Failed to load bundled server, attempting raw app.cjs:', loadErr.message);
+  expressApp = require('../server/app.cjs');
+}
+
 const { connectToDatabase } = require('../server/db.cjs');
 
 module.exports = async function handler(req, res) {
