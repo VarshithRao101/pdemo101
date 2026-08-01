@@ -1550,12 +1550,14 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
     const receiptNumber = `REC-${Date.now().toString().slice(-6)}`;
     const cashierUsername = req.user.username;
 
+    const payAmt = Math.round(Number(amount) * 100) / 100;
+
     const newPayment = await Payment.create({
       receiptNumber,
       studentId: student.studentId,
       admissionNumber: student.admissionNumber,
       studentName: student.name,
-      amount: Number(amount),
+      amount: payAmt,
       category: String(category).trim(),
       installment: String(installment).trim(),
       paymentMode: String(mode).trim(),
@@ -1566,14 +1568,19 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
       idempotencyKey
     });
 
-    student.totalPaid = Number(student.totalPaid || 0) + Number(amount);
+    // Atomic increment of totalPaid to prevent TOCTOU race conditions
+    const updatedStudent = await Student.findOneAndUpdate(
+      { _id: student._id },
+      { $inc: { totalPaid: payAmt } },
+      { new: true }
+    );
 
-    const totalCustomFees = (student.customFeeSlots || []).reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
-    const grossFees = Number(student.tuitionFee || 0) + Number(student.hostelFee || 0) + Number(student.transportFee || 0) + Number(student.miscellaneousFee || 0) + Number(student.previousPending || 0) + totalCustomFees;
-    const totalWaivers = Number(student.tuitionWaiver || 0) + Number(student.hostelWaiver || 0) + Number(student.transportWaiver || 0) + Number(student.miscWaiver || 0);
+    const totalCustomFees = (updatedStudent.customFeeSlots || []).reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
+    const grossFees = Number(updatedStudent.tuitionFee || 0) + Number(updatedStudent.hostelFee || 0) + Number(updatedStudent.transportFee || 0) + Number(updatedStudent.miscellaneousFee || 0) + Number(updatedStudent.previousPending || 0) + totalCustomFees;
+    const totalWaivers = Number(updatedStudent.tuitionWaiver || 0) + Number(updatedStudent.hostelWaiver || 0) + Number(updatedStudent.transportWaiver || 0) + Number(updatedStudent.miscWaiver || 0);
 
-    student.remainingBalance = Math.max(0, grossFees - totalWaivers - student.totalPaid);
-    await student.save();
+    updatedStudent.remainingBalance = Math.max(0, Math.round((grossFees - totalWaivers - updatedStudent.totalPaid) * 100) / 100);
+    await updatedStudent.save();
 
     return res.status(201).json({
       status: 'success',

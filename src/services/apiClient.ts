@@ -20,12 +20,15 @@ export const setGlobalSecurityKey = (key: string) => {
   activeSecurityKey = key;
 };
 
-// Helper to get local date seed YYYY-MM-DD
+// Helper to get local date seed YYYY-MM-DD in IST (UTC+5:30)
 export const getLocalDateSeed = (): string => {
   const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  // Adjust to IST timezone (UTC+5:30 => 330 minutes offset)
+  const istOffsetMs = (330 + d.getTimezoneOffset()) * 60000;
+  const istDate = new Date(d.getTime() + istOffsetMs);
+  const year = istDate.getFullYear();
+  const month = String(istDate.getMonth() + 1).padStart(2, '0');
+  const day = String(istDate.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
 
