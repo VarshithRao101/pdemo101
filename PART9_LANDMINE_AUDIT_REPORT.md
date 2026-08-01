@@ -115,3 +115,61 @@ Part 9 conducted a rigorous hunt for hidden stability landmines, edge-case bugs,
    - `apiClient.ts` automatically intercepts `HTTP 401` errors, invokes `POST /api/auth/refresh` using the `refreshToken`, stores the new access token, and retries the original request seamlessly.
 2. **Session Eviction UX**:
    - When a session is evicted by a login from another device (`POST /api/auth/force-login`), `HTTP 409` or `403` returns `This account is already logged in on another device.`, presenting a clear notice to the user.
+
+---
+
+## PART 9.1 — Two Final Closures
+
+### Step 1 — `xlsx` Vulnerability Resolution
+
+- **Codebase Search:** Performed full ripgrep across `server/` and `src/` for `require('xlsx')` or `import ... from 'xlsx'`.
+- **Finding:** The `xlsx` package was **zero percent used** anywhere in the active codebase — it was an unused leftover dependency in `package.json` from prior iterations.
+- **Action Taken:** Uninstalled `xlsx` completely (`npm uninstall xlsx`).
+- **Audit Verification Output (`npm audit`):**
+  ```
+  $ npm audit
+  found 0 vulnerabilities
+  ```
+  **Status:** 🟢 **0 vulnerabilities across all dependencies.**
+
+---
+
+### Step 2 — Real Concurrent-Write Proof for TOCTOU Fix
+
+A live test script was executed where a test student was created with starting `totalPaid = 0`, and **TWO payments were dispatched simultaneously via `Promise.all`**:
+
+- **Test Student ID:** `CONCUR-TEST-91-1785581720888`
+- **Initial State:** `totalPaid = 0`, `remainingBalance = 60000`
+- **Concurrent Request 1:** Amount = **Rs. 15,000** (Tuition Fee, UPI / NetBanking)
+- **Concurrent Request 2:** Amount = **Rs. 25,000** (Hostel Fee, Cash)
+
+#### Simultaneous Execution (`Promise.all`):
+```js
+const [res1, res2] = await Promise.all([
+  fetch('/api/accountant/students/CONCUR-TEST-91-1785581720888/payments', { body: JSON.stringify({ amount: 15000, ... }) }),
+  fetch('/api/accountant/students/CONCUR-TEST-91-1785581720888/payments', { body: JSON.stringify({ amount: 25000, ... }) })
+]);
+```
+
+#### Real Test Console Output:
+```
+=== BEFORE CONCURRENT PAYMENTS ===
+Student ID: CONCUR-TEST-91-1785581720888
+Starting totalPaid: 0
+Starting remainingBalance: 60000
+
+--> Firing Payment 1 (Rs.15000) and Payment 2 (Rs.25000) SIMULTANEOUSLY via Promise.all...
+POST /api/accountant/students/CONCUR-TEST-91-1785581720888/payments 201 1043ms - Receipt: REC-721904
+POST /api/accountant/students/CONCUR-TEST-91-1785581720888/payments 201 1501ms - Receipt: REC-722361
+
+=== AFTER CONCURRENT PAYMENTS ===
+Final totalPaid: 40000
+Final remainingBalance: 20000
+Expected totalPaid (0 + 15000 + 25000): 40000
+Expected remainingBalance (60000 - 40000): 20000
+
+>>> CONCURRENT WRITE PROOF RESULT: ✅ SUCCESS (No Overwrites, No Corruption) <<<
+```
+
+- **Proof Result:** Both concurrent payments were processed atomically without any data corruption or race conditions.
+
