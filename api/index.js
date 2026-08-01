@@ -1,30 +1,27 @@
-const fs = require('fs');
-const path = require('path');
+// api/index.js
+// Vercel Serverless Function Handler wrapping Express app with cached Mongo connection
+import { createRequire } from 'module';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-let expressApp;
-const distPath = path.join(__dirname, '../dist/server.cjs');
-try {
-  if (fs.existsSync(distPath)) {
-    expressApp = require('../dist/server.cjs');
-  } else {
-    expressApp = require('../server/app.cjs');
-  }
-} catch (loadErr) {
-  console.error('Failed to load bundled server, attempting raw app.cjs:', loadErr.message);
-  expressApp = require('../server/app.cjs');
-}
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
-const { connectToDatabase } = require('../server/db.cjs');
+const appPath = path.resolve(__dirname, '../server/app.cjs');
+const dbPath = path.resolve(__dirname, '../server/db.cjs');
 
-module.exports = async function handler(req, res) {
+const expressApp = require(appPath);
+const { connectToDatabase } = require(dbPath);
+
+export default async function handler(req, res) {
   try {
-    // Ensure MongoDB connection is attempted / reused before processing API request
     try {
       await connectToDatabase();
     } catch (dbErr) {
       console.warn('MongoDB connection fallback notice:', dbErr.message);
     }
-    
+
     const app = typeof expressApp === 'function' ? expressApp : (expressApp && expressApp.default) || expressApp;
     if (typeof app !== 'function') {
       throw new Error('Express app module failed to export a valid function handler.');
@@ -37,4 +34,4 @@ module.exports = async function handler(req, res) {
       message: err.message || 'Internal server error'
     });
   }
-};
+}
