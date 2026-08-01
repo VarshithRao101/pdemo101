@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
-import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
 import { apiClient, setGlobalSecurityKey } from '../services/apiClient';
 import { admin1Service } from '../services/admin1Service';
 import { admin2Service } from '../services/admin2Service';
 import * as accountantService from '../services/accountantService';
-import { onSocketEvent } from '../services/socketClient';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import { AdminDataAnalytics } from '../components/AdminDataAnalytics';
 import { AcademicYearManager } from '../components/AcademicYearManager';
@@ -16,6 +14,7 @@ import { StudentTimelineView } from '../components/StudentTimelineView';
 import { TeacherSalaryLedger } from '../components/TeacherSalaryLedger';
 import { AuditLogsViewer } from '../components/AuditLogsViewer';
 import collegeLogo from '../assets/college logo.png';
+import { useDataFreshness } from '../hooks/useDataFreshness';
 
 
 // --- RENDER BACKGROUND DESIGN WITH CUSTOM ACCENT COLOR GLOWS ---
@@ -173,6 +172,7 @@ interface Student {
   totalPaid?: number;
   remainingBalance?: number;
   miscWaiver?: number;
+  customFeeSlots?: Array<{ id?: string; name: string; amount: number }>;
 }
 
 interface Teacher {
@@ -244,7 +244,7 @@ interface ExamItem {
 
 
 //  ADMIN DASHBOARD CONTROLLER
-export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3' }> = ({ role = 'admin1' }) => {
+export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ role = 'admin1' }) => {
   const { user } = useNavigation();
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
 
@@ -1345,37 +1345,26 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
     loadInitialData();
   }, [role, loggedInCampus]);
 
-  useEffect(() => {
-    const handleFocus = () => {
-      refreshCurrentPage(activePage);
-    };
-    window.addEventListener('focus', handleFocus);
+  // Smart polling: checks last-changed timestamp first, only triggers full refetch when data changed.
+  // Pauses automatically when tab is hidden; immediately checks on tab focus/visibility restore.
+  const adminRefetch = React.useCallback(async () => {
+    await refreshCurrentPage(activePage);
+  }, [refreshCurrentPage, activePage]);
 
-    const interval = setInterval(() => {
+  const { triggerRefetch: triggerFreshnessRefetch } = useDataFreshness(loggedInCampus, adminRefetch);
+
+  useEffect(() => {
+    // Supplementary window.focus listener — ensures activePage context is always current
+    const handleFocus = () => {
       if (document.visibilityState === 'visible') {
         refreshCurrentPage(activePage);
       }
-    }, 30000);
-
-    const unsubscribers = [
-      onSocketEvent('student:created', () => refreshCurrentPage('students')),
-      onSocketEvent('student:updated', () => refreshCurrentPage('students')),
-      onSocketEvent('student:deleted', () => refreshCurrentPage('students')),
-      onSocketEvent('attendance:updated', () => refreshCurrentPage('attendance')),
-      onSocketEvent('bulletin:updated', () => refreshCurrentPage('bulletins')),
-      onSocketEvent('fee:updated', () => refreshCurrentPage('fees')),
-      onSocketEvent('fee-settings:updated', () => refreshCurrentPage('finance')),
-      onSocketEvent('hostel:updated', () => refreshCurrentPage('students')),
-      onSocketEvent('expenditure:updated', () => refreshCurrentPage('finance')),
-      onSocketEvent('workerPayment:updated', () => refreshCurrentPage('finance')),
-    ];
-
+    };
+    window.addEventListener('focus', handleFocus);
     return () => {
       window.removeEventListener('focus', handleFocus);
-      clearInterval(interval);
-      unsubscribers.forEach(unsubscribe => unsubscribe());
     };
-  }, [activePage, role, timetableSection, refreshCurrentPage]);
+  }, [activePage, refreshCurrentPage]);
 
   // Sync state variables with database records on subpage change
   useEffect(() => {
@@ -1474,7 +1463,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       setIsOtpModalOpen(false);
       setOtpInput('');
       triggerToast(`Student profile and fee breakdown for ${nextStu.name} updated successfully.`);
-      await fetchStudents();
+      await triggerFreshnessRefetch();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save student details.');
     }
@@ -1512,7 +1501,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       setIsDeleteStuOtpOpen(false);
       setDeleteStuOtpInput('');
       triggerToast(`Student record for ${targetStu.name} (${targetStu.admissionNumber || targetId}) permanently deleted.`);
-      await fetchStudents();
+      await triggerFreshnessRefetch();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to delete student record. Check Security OTP.');
     }
@@ -1701,7 +1690,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         setNewStuBranch(loggedInCampus);
         setRegistryPage(1);
         triggerToast(`Student ${newStu.name} created directly in database! ID: ${newAdm} (PIN: ${pin})`);
-        await fetchStudents();
+        // Refetch from server immediately so the list reflects true DB state
+        await triggerFreshnessRefetch();
       } else {
         triggerToast(response?.message || 'Failed to register student.');
       }
@@ -1764,7 +1754,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         setIsFacOtpModalOpen(false);
         setFacOtpInput('');
         triggerToast(` Faculty member ${newFacName} registered successfully for ${newFacBranch}!`);
-        await fetchTeachers();
+        await triggerFreshnessRefetch();
       } else if (facActionType === 'edit' && editTeacher) {
         const targetId = editTeacher.id || editTeacher._id || '';
         const saved = await admin1Service.updateTeacher(targetId, editTeacher);
@@ -1775,7 +1765,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         setIsFacOtpModalOpen(false);
         setFacOtpInput('');
         triggerToast(` Faculty credentials for ${editTeacher.name} saved successfully.`);
-        await fetchTeachers();
+        await triggerFreshnessRefetch();
       } else if (facActionType === ('delete' as any) && pendingDeleteTeacherId) {
         await admin1Service.deleteTeacher(pendingDeleteTeacherId, facOtpInput.trim());
         setTeachers(prev => prev.filter(t => t.id !== pendingDeleteTeacherId && t._id !== pendingDeleteTeacherId));
@@ -1785,7 +1775,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         setIsFacOtpModalOpen(false);
         setFacOtpInput('');
         triggerToast(' Faculty record permanently deleted.');
-        await fetchTeachers();
+        await triggerFreshnessRefetch();
       }
     } catch (err: any) {
       triggerToast(err.message || 'Verification failed.');
@@ -1955,7 +1945,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
       setIsAcadFeeOtpOpen(false);
       setAcadFeeOtpInput('');
       triggerToast(`Academic baseline fees for ${selectedFeeBranch} finalized and locked.`);
-      fetchStudents();
+      // Refetch from server immediately after fee settings update
+      await triggerFreshnessRefetch();
     } catch (err: any) {
       triggerToast(err.message || 'Invalid Security OTP. Failed to save fee settings.');
     }
@@ -4967,173 +4958,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
 
   //  SUBPAGE 9: ATTENDANCE DASHBOARD & MARKING CONSOLE
   if (activePage === 'attendance') {
-    if (role === 'admin3') {
-      const studentsList = attendanceRoster.filter(a => a.type === 'student' && a.section === selectedSection);
-      const facultyList = attendanceRoster.filter(a => a.type === 'faculty');
-
-      return (
-        <div style={styles.container} className="anim-slide-up">
-          {renderBackgroundDesign('indigo')}
-          <header style={styles.header}>
-            <button onClick={() => { setActivePage('menu'); }} style={styles.backArrowBtn} className="press-interactive">
-              Back to Cockpit
-            </button>
-            <h1 style={{ ...styles.title, marginTop: '8px' }}>Attendance Marking Console</h1>
-            <p style={styles.subtitle}>Directly log daily presenters, leaves, and absentees timeline</p>
-          </header>
-
-          <main style={{ ...styles.content, gap: '16px' }}>
-            <div style={{ display: 'flex', gap: '8px', zIndex: 1 }}>
-              {['students', 'faculty', 'summary'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setAttTab(tab as any)}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '12px',
-                    fontSize: '11.5px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    border: attTab === tab ? '1.5px solid #0F172A' : '1.5px solid var(--card-border)',
-                    backgroundColor: attTab === tab ? '#0F172A' : 'rgba(255,255,255,0.5)',
-                    color: attTab === tab ? '#FFFFFF' : 'var(--dark-charcoal)'
-                  }}
-                  className="press-interactive"
-                >
-                  {tab.toUpperCase()}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', zIndex: 1 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                <label style={styles.formLabel}>Reporting Date</label>
-                <input
-                  type="date"
-                  value={attendanceDate}
-                  onChange={(e) => setAttendanceDate(e.target.value)}
-                  style={styles.textInputBox}
-                />
-              </div>
-              {attTab === 'students' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                  <label style={styles.formLabel}>Class Section</label>
-                  <select
-                    value={selectedSection}
-                    onChange={(e) => setSelectedSection(e.target.value)}
-                    style={styles.selectInput}
-                  >
-                    <option value="MPC-A">MPC - Section A</option>
-                    <option value="MPC-B">MPC - Section B</option>
-                    <option value="BiPC-A">BiPC - Section A</option>
-                    <option value="CEC-A">CEC - Section A</option>
-                  </select>
-                </div>
-              )}
-            </div>
-
-            {/* Student list */}
-            {attTab === 'students' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
-                <h4 style={styles.sectionSubtitle}>Student Marking ({selectedSection})</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {studentsList.map((stu) => (
-                    <div key={stu.id} style={styles.receiptRowItem}>
-                      <div>
-                        <strong>{stu.name}</strong>
-                        <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>ID: {stu.id}  Roster Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{stu.status}</span></div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        {(['present', 'absent', 'late'] as const).map((st) => (
-                          <button
-                            key={st}
-                            onClick={() => handleToggleAttendance(stu.id, st)}
-                            style={{
-                              padding: '6px 8px',
-                              fontSize: '9px',
-                              fontWeight: 800,
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              border: '1px solid var(--card-border)',
-                              backgroundColor: stu.status === st ? (st === 'present' ? '#10B981' : st === 'absent' ? '#EF4444' : '#FBBF24') : 'rgba(255,255,255,0.6)',
-                              color: stu.status === st ? '#fff' : 'var(--dark-charcoal)'
-                            }}
-                            className="press-interactive"
-                          >
-                            {st.toUpperCase()}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {/* EXPLICIT SUBMIT CHANGES BUTTON */}
-                <button onClick={() => handleSaveAttendance('student')} style={styles.saveSubmitBtn} className="press-interactive">Submit Attendance Changes</button>
-              </div>
-            )}
-
-            {/* Faculty list */}
-            {attTab === 'faculty' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
-                <h4 style={styles.sectionSubtitle}>Lecturer Attendance Logs</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {facultyList.map((fac) => (
-                    <div key={fac.id} style={styles.receiptRowItem}>
-                      <div>
-                        <strong>{fac.name}</strong>
-                        <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Code: {fac.id}  Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{fac.status}</span></div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        {(['present', 'absent', 'leave'] as const).map((st) => (
-                          <button
-                            key={st}
-                            onClick={() => handleToggleAttendance(fac.id, st)}
-                            style={{
-                              padding: '6px 8px',
-                              fontSize: '9px',
-                              fontWeight: 800,
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              border: '1px solid var(--card-border)',
-                              backgroundColor: fac.status === st ? (st === 'present' ? '#10B981' : st === 'absent' ? '#EF4444' : '#8B5CF6') : 'rgba(255,255,255,0.6)',
-                              color: fac.status === st ? '#fff' : 'var(--dark-charcoal)'
-                            }}
-                            className="press-interactive"
-                          >
-                            {st.toUpperCase()}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {/* EXPLICIT SUBMIT CHANGES BUTTON */}
-                <button onClick={() => handleSaveAttendance('faculty')} style={styles.saveSubmitBtn} className="press-interactive">Submit Faculty Roster Changes</button>
-              </div>
-            )}
-
-            {/* Ratios summary */}
-            {attTab === 'summary' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }} className="anim-fade-in">
-                <div style={styles.readOnlyBlock}>
-                  <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Presenter Statistics Summary</h4>
-                  <div style={styles.metaRow}><span>Total Classrooms Tracked</span><strong>4 Sections</strong></div>
-                  <div style={styles.metaRow}><span>Average Present Ratio</span><strong>96.2% Present Today</strong></div>
-                  <div style={styles.metaRow}><span>Faculty Availability</span><strong>96.8% Available</strong></div>
-                </div>
-              </div>
-            )}
-          </main>
-        </div>
-      );
-    } else {
-      const totals = (attendanceSummary as any)?.totals || {
-        studentsPresent: 2735,
-        studentsAbsent: 111,
-        facultyPresent: 180,
-        facultyAbsent: 6
-      };
+    const totals = (attendanceSummary as any)?.totals || {
+      studentsPresent: 2735,
+      studentsAbsent: 111,
+      facultyPresent: 180,
+      facultyAbsent: 6
+    };
       const sectionsList = (attendanceSummary as any)?.sections || [];
 
       return (
@@ -5191,7 +5021,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
         </div>
       );
     }
-  }
 
 
 
@@ -6956,7 +6785,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' | 'admin3
               </p>
             </div>
           </div>
-          <LiveConnectionIndicator compact />
           {/* VERY VISIBLE LOGO BRANDING WITH THICK BLACK BOX IN PORTAL */}
           <div style={{ paddingRight: '8px' }}>
             <InspireLogo size="md" inPortal={true} />

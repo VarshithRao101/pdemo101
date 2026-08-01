@@ -1,26 +1,50 @@
 const mongoose = require('mongoose');
 
 const teacherSchema = new mongoose.Schema({
-  _id: { type: String, required: true },
-  id: { type: String, required: true, index: true },
-  name: { type: String, required: true },
-  role: { type: String, default: 'Teacher' },
-  classification: { type: String, default: 'Teaching' },
-  subject: { type: String, default: 'General' },
-  salary: { type: Number, default: 50000 },
-  mobile: { type: String, default: '' },
-  email: { type: String, default: '' },
-  branch: { type: String, required: true, index: true },
-  status: { type: String, default: 'Active', index: true },
-  joiningDate: { type: String, default: '' },
-  assignedSections: [{ type: String }]
-}, { 
-  timestamps: true,
-  autoIndex: true
+  id: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true,
+    trim: true
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  subject: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  salary: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  mobile: { type: String, default: '', trim: true },
+  email: { type: String, default: '', trim: true },
+  branch: {
+    type: String,
+    required: true,
+    enum: ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'],
+    index: true
+  },
+  classification: {
+    type: String,
+    enum: ['Teaching', 'Non-Teaching'],
+    default: 'Teaching'
+  },
+  role: { type: String, default: 'Senior Lecturer', trim: true },
+  status: {
+    type: String,
+    enum: ['Active', 'Inactive'],
+    default: 'Active'
+  }
+}, {
+  timestamps: true
 });
-
-teacherSchema.index({ branch: 1, id: 1 });
-teacherSchema.index({ branch: 1, status: 1 });
 
 const Teacher = mongoose.models.Teacher || mongoose.model('Teacher', teacherSchema);
 

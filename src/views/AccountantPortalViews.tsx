@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
-import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import collegeLogo from '../assets/college logo.png';
 import { setGlobalSecurityKey } from '../services/apiClient';
 import * as accountantService from '../services/accountantService';
-import { onSocketEvent } from '../services/socketClient';
 import { StudentPromotionWizard } from '../components/StudentPromotionWizard';
 import { StudentTimelineView } from '../components/StudentTimelineView';
 import { TeacherSalaryLedger } from '../components/TeacherSalaryLedger';
+import { useDataFreshness } from '../hooks/useDataFreshness';
 
 
 // --- RENDER BACKGROUND DESIGN WITH CUSTOM COLOR ACCENT GLOWS ---
@@ -610,40 +609,22 @@ export const AccountantDashboardView: React.FC = () => {
     loadInitialData();
   }, [fetchDashboardSummary, fetchAllStudents]);
 
+  // Smart polling: checks timestamp first, only refetches full data if something changed.
+  // Pauses when tab is hidden, resumes + immediately checks on tab focus/visibility.
+  const accountantRefetch = React.useCallback(async () => {
+    await Promise.all([fetchDashboardSummary(), fetchAllStudents()]);
+  }, [fetchDashboardSummary, fetchAllStudents]);
+
+  const { triggerRefetch: triggerFreshnessRefetch } = useDataFreshness(loggedInCampus, accountantRefetch);
+
   useEffect(() => {
+    // Keep storage/custom-event sync for same-browser-tab coordination
     const handleSync = () => refreshWithPulse('students');
     window.addEventListener('storage', handleSync);
     window.addEventListener('jc_sync_data', handleSync);
-
-    const handleFocus = () => {
-      refreshWithPulse('students');
-    };
-    window.addEventListener('focus', handleFocus);
-
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        refreshWithPulse('students');
-      }
-    }, 30000);
-
-    const unsubscribers = [
-      onSocketEvent('student:created', () => refreshWithPulse('students')),
-      onSocketEvent('student:updated', () => refreshWithPulse('students')),
-      onSocketEvent('student:deleted', () => refreshWithPulse('students')),
-      onSocketEvent('fee:updated', () => refreshWithPulse('fees')),
-      onSocketEvent('attendance:updated', () => refreshWithPulse('attendance')),
-      onSocketEvent('fee-settings:updated', () => refreshWithPulse('settings')),
-      onSocketEvent('expenditure:updated', () => refreshWithPulse('fees')),
-      onSocketEvent('hostel:updated', () => refreshWithPulse('students')),
-      onSocketEvent('workerPayment:updated', () => refreshWithPulse('fees')),
-    ];
-
     return () => {
       window.removeEventListener('storage', handleSync);
       window.removeEventListener('jc_sync_data', handleSync);
-      window.removeEventListener('focus', handleFocus);
-      clearInterval(interval);
-      unsubscribers.forEach(unsubscribe => unsubscribe());
     };
   }, [refreshWithPulse]);
 
@@ -724,12 +705,12 @@ export const AccountantDashboardView: React.FC = () => {
         rollNumber: newStudentData.admissionNumber,
         registrationNumber: newStudentData.admissionNumber
       });
-      setStudents(prev => [created as any, ...prev]);
       triggerToast(`Student ${created.name} (${created.admissionNumber}) registered successfully!`);
       setIsAddStudentModalOpen(false);
       setNewStudentData({ ...initialNewStudent, branch: loggedInCampus });
       setNewStuCustomSlots([]);
-      fetchDashboardSummary();
+      // Refetch from server immediately so local state matches true DB state
+      await triggerFreshnessRefetch();
     } catch (err: any) {
       if (err?.status === 409) setNewStudentAdmissionError(err.message);
       triggerToast(err.message || 'Failed to create student.');
@@ -744,7 +725,6 @@ export const AccountantDashboardView: React.FC = () => {
     setIsLoading(true);
     try {
       await accountantService.deleteStudent(targetId);
-      setStudents(prev => prev.filter(s => (s._id || s.studentId || s.admissionNumber) !== targetId));
       triggerToast(`Student ${studentToDelete.name} permanently deleted from database.`);
       setIsDeleteConfirmModalOpen(false);
       setStudentToDelete(null);
@@ -753,8 +733,8 @@ export const AccountantDashboardView: React.FC = () => {
         setSelectedStudent(null);
         setEditStudent(null);
       }
-      await fetchAllStudents();
-      fetchDashboardSummary();
+      // Refetch from server immediately after delete
+      await triggerFreshnessRefetch();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to delete student.');
     } finally {
@@ -769,11 +749,12 @@ export const AccountantDashboardView: React.FC = () => {
       const res = await accountantService.updateStudent(updated._id, updated, otp);
       setSelectedStudent(res as any);
       setEditStudent({ ...res } as any);
-      setStudents(prev => prev.map(s => s._id === res._id ? (res as any) : s));
       triggerToast('Student profile details & fee structure updated in database.');
       setIsStudentModalOpen(false);
       setIsStuOtpModalOpen(false);
       setStuOtpInput('');
+      // Refetch from server immediately after update
+      await triggerFreshnessRefetch();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save changes.');
     } finally {
@@ -875,23 +856,25 @@ export const AccountantDashboardView: React.FC = () => {
         date: collectDate
       }, otp || securityKey);
 
+      // Update the selected student display immediately from the server response
       const updatedStudent = res.student && res.student.remainingBalance !== undefined
         ? res.student
         : { ...selectedStudent, ...res.student, remainingBalance: (selectedStudent!.remainingBalance - paymentAmount), totalPaid: (selectedStudent!.totalPaid + paymentAmount) };
       setSelectedStudent(updatedStudent as any);
       setEditStudent(updatedStudent as any);
-      setStudents(prev => prev.map(s => s._id === updatedStudent._id ? (updatedStudent as any) : s));
       setCollectAmount('');
       triggerToast(`Payment logged: Rs.${paymentAmount.toLocaleString('en-IN')}`);
       setIsPayOtpModalOpen(false);
       setPayOtpInput('');
-      fetchDashboardSummary();
+      // Refetch full list and dashboard from server immediately after payment
+      await triggerFreshnessRefetch();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to submit payment.');
     } finally {
       setIsLoading(false);
     }
   };
+
 
 
 
@@ -3121,7 +3104,6 @@ export const AccountantDashboardView: React.FC = () => {
               <p style={styles.childMetaText}>Bursar Ledger Terminal</p>
             </div>
           </div>
-          <LiveConnectionIndicator compact />
           <div style={{ paddingRight: '8px' }}>
             <InspireLogo size="md" inPortal={true} />
           </div>

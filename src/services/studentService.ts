@@ -38,6 +38,7 @@ export interface StudentProfile {
   previousPending: number;
   totalPaid: number;
   remainingBalance: number;
+  customFeeSlots?: Array<{ id?: string; name: string; amount: number }>;
   createdAt: string;
   updatedAt: string;
 }

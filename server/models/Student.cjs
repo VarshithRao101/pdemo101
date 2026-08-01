@@ -1,34 +1,80 @@
 const mongoose = require('mongoose');
 
-const studentSchema = new mongoose.Schema({
-  _id: { type: String, required: true },
-  studentId: { type: String, required: true, index: true },
-  admissionNumber: { type: String, required: true, index: true },
+const customFeeSlotSchema = new mongoose.Schema({
+  id: { type: String },
   name: { type: String, required: true },
-  fatherName: { type: String, default: '' },
-  motherName: { type: String, default: '' },
-  mobile: { type: String, default: '' },
-  parentMobile: { type: String, default: '' },
-  email: { type: String, default: '' },
-  course: { type: String, default: 'MPC' },
-  section: { type: String, default: 'Section A' },
-  branch: { type: String, required: true, index: true },
-  rollNumber: { type: String, default: '' },
-  status: { type: String, default: 'Active', index: true },
-  hostelStatus: { type: String, default: 'Day Scholar' },
-  transportStatus: { type: String, default: 'Self Transport' },
-  academicYear: { type: String, default: '2026-27', index: true },
-  dob: { type: String, default: '' }
-}, { 
-  timestamps: true,
-  autoIndex: true
-});
+  amount: { type: Number, required: true, default: 0 }
+}, { _id: false });
 
-// Highly optimized compound indexes for MongoDB Free Tier queries (< 512 MB)
-studentSchema.index({ branch: 1, admissionNumber: 1 });
-studentSchema.index({ branch: 1, studentId: 1 });
-studentSchema.index({ branch: 1, status: 1 });
-studentSchema.index({ branch: 1, academicYear: 1 });
+const studentSchema = new mongoose.Schema({
+  studentId: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true
+  },
+  admissionNumber: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true,
+    trim: true
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  fatherName: { type: String, default: '', trim: true },
+  motherName: { type: String, default: '', trim: true },
+  mobile: { type: String, default: '', trim: true },
+  parentMobile: { type: String, default: '', trim: true },
+  email: { type: String, default: '', trim: true },
+  course: { type: String, default: '', trim: true },
+  section: { type: String, default: '', trim: true },
+  branch: {
+    type: String,
+    required: true,
+    enum: ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'],
+    index: true
+  },
+  rollNumber: { type: String, default: '', trim: true },
+  status: {
+    type: String,
+    enum: ['Active', 'Inactive'],
+    default: 'Active'
+  },
+  dob: { type: String, default: '' },
+  address: { type: String, default: '' },
+  hostelStatus: {
+    type: String,
+    enum: ['Resident', 'Day Scholar'],
+    default: 'Day Scholar'
+  },
+  transportStatus: {
+    type: String,
+    enum: ['College Bus', 'Self Transport'],
+    default: 'Self Transport'
+  },
+  // Base Fees
+  tuitionFee: { type: Number, default: 0 },
+  hostelFee: { type: Number, default: 0 },
+  transportFee: { type: Number, default: 0 },
+  miscellaneousFee: { type: Number, default: 0 },
+  previousPending: { type: Number, default: 0 },
+  totalPaid: { type: Number, default: 0 },
+  remainingBalance: { type: Number, default: 0 },
+  // Fee Waivers (reduces what the student owes)
+  tuitionWaiver: { type: Number, default: 0 },
+  hostelWaiver: { type: Number, default: 0 },
+  transportWaiver: { type: Number, default: 0 },
+  miscWaiver: { type: Number, default: 0 },
+  // Custom Fee Slots
+  customFeeSlots: [customFeeSlotSchema],
+  academicYear: { type: String, default: '2026-2027' }
+}, {
+  timestamps: true
+});
 
 const Student = mongoose.models.Student || mongoose.model('Student', studentSchema);
 

@@ -22,6 +22,7 @@ interface NavigationContextType {
   isAuthenticated: boolean;
   isAuthLoading: boolean;
   login: (identifier: string, pin: string, loginContext?: string, password?: string) => Promise<any>;
+  forceLogin: (identifier: string, pin: string, loginContext?: string, password?: string) => Promise<any>;
   logout: () => void;
   checkSession: () => Promise<boolean>;
 }
@@ -68,7 +69,6 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       setUser(userData);
       setIsAuthenticated(true);
 
-      // Map backend role to frontend portalRole
       const normRole = (userData.role || '').toLowerCase();
       if (normRole.includes('accountant') || normRole.includes('acc')) {
         setPortalRole('accountant');
@@ -89,9 +89,52 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
     }
   };
 
+  const forceLogin = async (identifier: string, pin: string, loginContext?: string, password?: string) => {
+    setIsAuthLoading(true);
+    try {
+      const resolvedContext = loginContext || (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
+      const response = await apiClient.post('/auth/force-login', {
+        identifier,
+        password: password || pin,
+        pin,
+        loginContext: resolvedContext
+      });
+
+      const { token, user: userData } = response;
+      localStorage.setItem('auth_token', token);
+      sessionStorage.setItem('auth_token', token);
+      setUser(userData);
+      setIsAuthenticated(true);
+
+      const normRole = (userData.role || '').toLowerCase();
+      if (normRole.includes('accountant') || normRole.includes('acc')) {
+        setPortalRole('accountant');
+      } else if (normRole.includes('admin2') || normRole.includes('principal')) {
+        setPortalRole('admin2');
+      } else if (normRole.includes('authenticator') || normRole.includes('security')) {
+        setPortalRole('authenticator');
+      } else {
+        setPortalRole('admin1');
+      }
+
+      return userData;
+    } catch (error) {
+      console.error('Force login action failed:', error);
+      throw error;
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
   const logout = () => {
+    const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+    const refreshToken = sessionStorage.getItem('refresh_token');
+    if (token || refreshToken) {
+      apiClient.post('/auth/logout', { refreshToken }).catch(() => {});
+    }
     localStorage.removeItem('auth_token');
     sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('refresh_token');
     setUser(null);
     setIsAuthenticated(false);
     setPortalRole('admin1');
@@ -114,30 +157,20 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       const isExplicitAuthGate = window.location.hash.includes('sec-auth-sys-9i0j7k8l');
       const isExplicitUniversalGate = window.location.hash.includes('v1-portal-gate-x89f2a7b');
 
-      // Only reject if user explicitly clicked cross-portal login URL
       if (isExplicitAuthGate && userData.role !== 'authenticator') {
         console.warn('Clearing saved non-authenticator session on Authenticator URL');
-        localStorage.removeItem('auth_token');
-        sessionStorage.removeItem('auth_token');
-        disconnectSocket();
-        setIsAuthenticated(false);
-        setUser(null);
+        logout();
         return false;
       }
 
       if (isExplicitUniversalGate && userData.role === 'authenticator') {
         console.warn('Clearing saved authenticator session on Universal URL');
-        localStorage.removeItem('auth_token');
-        sessionStorage.removeItem('auth_token');
-        disconnectSocket();
-        setIsAuthenticated(false);
-        setUser(null);
+        logout();
         return false;
       }
 
       setUser(userData);
       setIsAuthenticated(true);
-      connectSocket(token);
 
       const normRoleCheck = (userData.role || '').toLowerCase();
       if (normRoleCheck.includes('accountant') || normRoleCheck.includes('acc')) {
@@ -151,13 +184,9 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       }
 
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Session restore failed, clearing token:', error);
-      localStorage.removeItem('auth_token');
-      sessionStorage.removeItem('auth_token');
-      disconnectSocket();
-      setIsAuthenticated(false);
-      setUser(null);
+      logout();
       return false;
     } finally {
       setIsAuthLoading(false);
@@ -168,7 +197,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
   useEffect(() => {
     if (!isAuthenticated) return;
     let inactivityTimer: any = null;
-    const INACTIVITY_LIMIT = 2 * 60 * 60 * 1000; // 2 Hours
+    const INACTIVITY_LIMIT = 2 * 60 * 60 * 1000;
 
     const resetInactivityTimer = () => {
       if (inactivityTimer) clearTimeout(inactivityTimer);
@@ -189,82 +218,66 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
     };
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    const handlePopState = () => {
-      const hash = window.location.hash.replace('#/', '');
-      if (hash === 'dashboard' || hash === 'academics' || hash === 'updates' || hash === 'profile') {
-        setActiveTabState(hash as TabType);
-      } else {
-        setActiveTabState('dashboard');
-      }
-    };
-    
-    window.addEventListener('popstate', handlePopState);
-    
-    if (window.location.hash) {
-      handlePopState();
-    }
-    
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
+  // Window resize handler
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
-    handleResize();
-    
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Update resolved theme whenever themeMode or system preference changes
+  // Sync theme to DOM
   useEffect(() => {
+    const root = document.documentElement;
     if (themeMode === 'System') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleChange = () => {
-        setTheme(mediaQuery.matches ? 'dark' : 'light');
-      };
-      setTheme(mediaQuery.matches ? 'dark' : 'light');
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      setTheme(systemTheme);
+      root.classList.toggle('dark-theme', systemTheme === 'dark');
+      root.classList.toggle('light-theme', systemTheme === 'light');
     } else {
-      setTheme(themeMode === 'Dark' ? 'dark' : 'light');
+      const chosenTheme = themeMode.toLowerCase() as 'light' | 'dark';
+      setTheme(chosenTheme);
+      root.classList.toggle('dark-theme', chosenTheme === 'dark');
+      root.classList.toggle('light-theme', chosenTheme === 'light');
     }
   }, [themeMode]);
-
-  // Apply resolved theme class to root element
-  useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove('light-theme', 'dark-theme');
-    root.classList.add(`${theme}-theme`);
-  }, [theme]);
 
   const setThemeMode = (mode: ThemeModeType) => {
     setThemeModeState(mode);
     localStorage.setItem('portal_theme_mode', mode);
   };
 
+  // Expose global logout function for 401 session eviction interception
+  useEffect(() => {
+    (window as any).logoutUser = () => {
+      logout();
+      window.location.hash = '#/portfolio';
+    };
+  }, []);
+
   return (
-    <NavigationContext.Provider value={{
-      activeTab,
-      setActiveTab,
-      portalRole,
-      setPortalRole,
-      isMobile,
-      themeMode,
-      setThemeMode,
-      theme,
-      isDrawerOpen,
-      setIsDrawerOpen,
-      user,
-      isAuthenticated,
-      isAuthLoading,
-      login,
-      logout,
-      checkSession
-    }}>
+    <NavigationContext.Provider
+      value={{
+        activeTab,
+        setActiveTab,
+        portalRole,
+        setPortalRole,
+        isMobile,
+        themeMode,
+        setThemeMode,
+        theme,
+        isDrawerOpen,
+        setIsDrawerOpen,
+        user,
+        isAuthenticated,
+        isAuthLoading,
+        login,
+        forceLogin,
+        logout,
+        checkSession,
+      }}
+    >
       {children}
     </NavigationContext.Provider>
   );

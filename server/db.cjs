@@ -1,40 +1,51 @@
 const mongoose = require('mongoose');
 
-let cached = global.mongoose;
+// Configure global Mongoose settings for serverless environments
+mongoose.set('bufferCommands', false);
+mongoose.set('bufferTimeoutMS', 3000);
+mongoose.set('autoIndex', false);
 
+let cached = global.mongoose;
 if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
 async function connectToDatabase() {
-  const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/pdemo101';
+  const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/jc_erp_prod';
 
-  if (cached.conn) {
+  if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn;
   }
 
-  if (!cached.promise) {
+  if (!cached.promise || (mongoose.connection && mongoose.connection.readyState === 0)) {
     const opts = {
+      dbName: process.env.MONGODB_DB_NAME || 'jc_erp_prod',
       bufferCommands: false,
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
+      connectTimeoutMS: 5000,
+      socketTimeoutMS: 15000,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
-      console.log('MongoDB connected successfully');
-      return mongooseInstance;
-    }).catch((err) => {
-      cached.promise = null;
-      console.error('MongoDB connection error:', err);
-      throw err;
-    });
+    cached.promise = mongoose.connect(MONGODB_URI, opts)
+      .then((mongooseInstance) => {
+        console.log('✅ [Database]: Connected to MongoDB (' + (process.env.MONGODB_DB_NAME || 'jc_erp_prod') + ')');
+        return mongooseInstance.connection;
+      })
+      .catch((err) => {
+        cached.promise = null;
+        global.mongoose.promise = null;
+        console.error('❌ [Database]: MongoDB connection error:', err.message);
+        throw err;
+      });
+    global.mongoose.promise = cached.promise;
   }
 
   try {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
+    global.mongoose.promise = null;
     throw e;
   }
 

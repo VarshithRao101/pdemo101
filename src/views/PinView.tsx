@@ -16,7 +16,8 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const [isError, setIsError] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastKeypadIndex, setLastKeypadIndex] = useState<number | null>(null);
-  const { isMobile, portalRole, login } = useNavigation();
+  const [sessionConflict, setSessionConflict] = useState(false);
+  const { isMobile, portalRole, login, forceLogin } = useNavigation();
 
   const [portalMode, setPortalMode] = useState<'universal' | 'authenticator'>(() => {
     if (mode) return mode;
@@ -62,7 +63,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [focusedField, setFocusedField] = useState<'userId' | 'password' | null>(null);
 
-  // Clear toast after 3 seconds
+  // Clear toast after 3.5 seconds
   useEffect(() => {
     if (toastMessage) {
       const timer = setTimeout(() => setToastMessage(null), 3500);
@@ -123,11 +124,34 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         window.location.hash = '#/dashboard';
       }, 1200);
     } catch (err: any) {
+      if (err?.status === 409 || err?.data?.status === 'session_conflict') {
+        setSessionConflict(true);
+        return;
+      }
       const msg =
         err?.data?.message || err?.message || (err?.status === 429
           ? 'Too many attempts. Please wait 15 minutes.'
           : 'Incorrect password or 6-digit PIN. Please try again.');
       triggerError(msg);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleForceLogin = async () => {
+    let identifier = userId.trim();
+    if (currentMode === 'authenticator') identifier = '9059068384';
+    setIsChecking(true);
+    try {
+      await forceLogin(identifier, pin, currentMode, passwordInput.trim());
+      setSessionConflict(false);
+      setIsSuccess(true);
+      setTimeout(() => {
+        onComplete();
+        window.location.hash = '#/dashboard';
+      }, 1200);
+    } catch (err: any) {
+      triggerError(err?.data?.message || err?.message || 'Force login failed. Please try again.');
     } finally {
       setIsChecking(false);
     }
@@ -792,8 +816,90 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     );
   };
 
+  const renderConflictContent = () => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', width: '100%' }} className="anim-scale-in">
+        <div style={{
+          width: '64px',
+          height: '64px',
+          borderRadius: '20px',
+          backgroundColor: '#FEF2F2',
+          border: '2px solid #EF4444',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#DC2626',
+          marginBottom: '16px',
+          boxShadow: '0 4px 14px rgba(239, 68, 68, 0.2)'
+        }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </div>
+
+        <h3 style={{ fontSize: '20px', fontWeight: 900, color: '#991B1B', margin: 0, fontFamily: 'var(--font-family)' }}>
+          Account Logged In Elsewhere
+        </h3>
+
+        <p style={{ fontSize: '13px', color: '#475569', fontWeight: 700, margin: '10px 0 20px', lineHeight: 1.5, fontFamily: 'var(--font-family)' }}>
+          This account (<strong>{userId || 'admin1'}</strong>) is currently active on another device or browser.
+        </p>
+
+        <button
+          type="button"
+          onClick={handleForceLogin}
+          disabled={isChecking}
+          style={{
+            width: '100%',
+            padding: '14px',
+            borderRadius: '14px',
+            border: '1.5px solid #DC2626',
+            backgroundColor: '#DC2626',
+            color: '#FFFFFF',
+            fontWeight: 800,
+            fontSize: '14px',
+            cursor: 'pointer',
+            marginBottom: '10px',
+            boxShadow: '0 4px 14px rgba(220, 38, 38, 0.3)',
+            fontFamily: 'var(--font-family)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+          className="press-interactive"
+        >
+          {isChecking ? 'Evicting Session...' : 'Log out other session and continue'}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { setSessionConflict(false); setStep('credentials'); setPin(''); }}
+          style={{
+            width: '100%',
+            padding: '12px',
+            borderRadius: '12px',
+            border: '1.5px solid #CBD5E1',
+            backgroundColor: '#F8FAFC',
+            color: '#475569',
+            fontWeight: 800,
+            fontSize: '12px',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-family)'
+          }}
+          className="press-interactive"
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  };
+
   const renderActiveContent = () => {
     if (isSuccess) return renderSuccessContent();
+    if (sessionConflict) return renderConflictContent();
     return step === 'credentials' ? renderCredentialsContent() : renderPinContent();
   };
 

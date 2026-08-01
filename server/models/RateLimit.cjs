@@ -1,14 +1,26 @@
 const mongoose = require('mongoose');
 
 const rateLimitSchema = new mongoose.Schema({
-  key: { type: String, required: true, unique: true, index: true },
-  count: { type: Number, default: 1 },
-  expiresAt: { type: Date, required: true, index: { expires: 0 } }
-}, { 
-  timestamps: true,
-  autoIndex: true
+  key: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true
+  },
+  count: {
+    type: Number,
+    required: true,
+    default: 1
+  },
+  resetAt: {
+    type: Date,
+    required: true,
+    index: { expires: '15m' }
+  }
+}, {
+  timestamps: true
 });
 
-const RateLimitModel = mongoose.models.RateLimit || mongoose.model('RateLimit', rateLimitSchema);
+const RateLimit = mongoose.models.RateLimit || mongoose.model('RateLimit', rateLimitSchema);
 
-module.exports = RateLimitModel;
+module.exports = RateLimit;

@@ -1,19 +1,34 @@
 const mongoose = require('mongoose');
 
 const expenditureSchema = new mongoose.Schema({
-  _id: { type: String, required: true },
-  id: { type: String, default: '' },
-  category: { type: String, required: true },
-  amount: { type: Number, required: true },
-  description: { type: String, default: '' },
-  date: { type: String, default: '', index: true },
-  branch: { type: String, required: true, index: true }
-}, { 
-  timestamps: true,
-  autoIndex: true
+  id: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true,
+    trim: true
+  },
+  category: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  amount: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  description: { type: String, default: '', trim: true },
+  date: { type: Date, default: Date.now },
+  branch: {
+    type: String,
+    required: true,
+    enum: ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'],
+    index: true
+  }
+}, {
+  timestamps: true
 });
-
-expenditureSchema.index({ branch: 1, date: -1 });
 
 const Expenditure = mongoose.models.Expenditure || mongoose.model('Expenditure', expenditureSchema);
 

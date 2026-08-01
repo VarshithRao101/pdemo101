@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
-import { LiveConnectionIndicator } from '../components/common/LiveConnectionIndicator';
 import { InspireLogo } from '../components/common/InspireLogo';
-import { onSocketEvent } from '../services/socketClient';
+import { apiClient } from '../services/apiClient';
 import { authenticatorService } from '../services/authenticatorService';
 import type { 
   AccountInfo, 
@@ -48,7 +47,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
   // Account creation/edit state
   const [accountUsername, setAccountUsername] = useState<string>('');
-  const [accountRole, setAccountRole] = useState<'admin1' | 'admin2' | 'admin3' | 'accountant' | 'authenticator'>('accountant');
+  const [accountRole, setAccountRole] = useState<'admin1' | 'admin2' | 'accountant' | 'authenticator'>('accountant');
   const [accountPassword, setAccountPassword] = useState<string>('');
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [accountName, setAccountName] = useState<string>('');
@@ -309,22 +308,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
     }
   };
 
-  // Listen for real-time transaction updates
-  useEffect(() => {
-    const unsubscribe = onSocketEvent('sync:journal-updated' as any, (updatedJournal: any) => {
-      setSyncLogs(prev => {
-        const index = prev.findIndex(item => item.transactionId === updatedJournal.transactionId);
-        if (index > -1) {
-          const next = [...prev];
-          next[index] = updatedJournal;
-          return next;
-        } else {
-          return [updatedJournal, ...prev];
-        }
-      });
-    });
-    return () => unsubscribe();
-  }, []);
+
 
   useEffect(() => {
     loadData();
@@ -346,23 +330,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
       triggerToast(err?.message || 'Failed to regenerate PINs.');
     }
   };
-
-  // Settings Action 1: Make Backup
-  const handleMakeBackup = () => {
-    if (!backupName.trim()) {
-      triggerToast('Please write a backup file name first.');
-      return;
-    }
-    setIsCreatingBackup(true);
-    setTimeout(() => {
-      const nowStr = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
-      localStorage.setItem('last_backup_timestamp', nowStr);
-      setStats(prev => ({ ...prev, lastBackupAt: nowStr }));
-      setIsCreatingBackup(false);
-      triggerToast(`Backup archive "${backupName.trim()}.json" created successfully!`);
-    }, 1200);
-  };
-
   // Settings Action 2: Wipe Database 2-Step Flow
   const handleInitiateWipeStep1 = () => {
     if (!wipePass1.trim()) {
@@ -373,61 +340,27 @@ export const AuthenticatorDashboardView: React.FC = () => {
     setWipeStep(2);
   };
 
-  const handleConfirmWipeStep2 = () => {
+  const handleConfirmWipeStep2 = async () => {
     if (!wipePass2.trim()) {
       triggerToast('Please enter secondary authorization key to confirm.');
       return;
     }
     setIsWipingDb(true);
-    setTimeout(() => {
-      setIsWipingDb(false);
+    try {
+      const msg = await authenticatorService.wipeEntireDatabase(wipePass2.trim());
+      triggerToast(msg || 'Entire database wiped out successfully.');
       setShowWipeModal(false);
       setWipeStep(1);
       setWipePass1('');
       setWipePass2('');
-      triggerToast('Entire database wiped out successfully (UI Simulation).');
-    }, 1500);
+    } catch (err: any) {
+      triggerToast(err.message || 'Wipe database failed.');
+    } finally {
+      setIsWipingDb(false);
+    }
   };
 
-  // Settings Action 3: File Uploads
-  const handleUploadStudents = () => {
-    if (!studentsFile) {
-      triggerToast('Please select a Students record file first.');
-      return;
-    }
-    setIsUploadingStudents(true);
-    setTimeout(() => {
-      setIsUploadingStudents(false);
-      triggerToast(`Students file "${studentsFile.name}" uploaded successfully!`);
-      setStudentsFile(null);
-    }, 1200);
-  };
 
-  const handleUploadTeachers = () => {
-    if (!teachersFile) {
-      triggerToast('Please select a Teachers record file first.');
-      return;
-    }
-    setIsUploadingTeachers(true);
-    setTimeout(() => {
-      setIsUploadingTeachers(false);
-      triggerToast(`Teachers file "${teachersFile.name}" uploaded successfully!`);
-      setTeachersFile(null);
-    }, 1200);
-  };
-
-  const handleUploadExpenditures = () => {
-    if (!expendituresFile) {
-      triggerToast('Please select an Expenditures ledger file first.');
-      return;
-    }
-    setIsUploadingExpenditures(true);
-    setTimeout(() => {
-      setIsUploadingExpenditures(false);
-      triggerToast(`Expenditures file "${expendituresFile.name}" uploaded successfully!`);
-      setExpendituresFile(null);
-    }, 1200);
-  };
 
   // Create/Update Admin & Accountant Accounts
   const handleSaveAccount = async (e: React.FormEvent) => {

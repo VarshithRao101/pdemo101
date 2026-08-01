@@ -1,1338 +1,851 @@
 import React, { useState, useEffect } from 'react';
-import collegeLogo from '../assets/college logo.png';
 
-interface ImageWidgetPlaceholder {
-  id: string;
-  category: string;
+/* ─────────────────────────────────────────────────
+   NARAYANA GROUP — narayanagroup.com CLONE
+   Complete twin with blank photo placeholders.
+   All images use SVG placeholder frames.
+───────────────────────────────────────────────── */
+
+// ── Blank Photo Placeholder Component ──────────────────────────
+const PhotoPlaceholder: React.FC<{
+  width?: string | number;
+  height?: string | number;
+  label?: string;
+  bg?: string;
+  style?: React.CSSProperties;
+  className?: string;
+}> = ({ width = '100%', height = '100%', label = 'Photo', bg = '#CBD5E1', style, className }) => (
+  <div
+    className={className}
+    style={{
+      width,
+      height,
+      backgroundColor: bg,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      border: '2px dashed #94A3B8',
+      borderRadius: 4,
+      ...style,
+    }}
+  >
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="1.5">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+    <span style={{ fontSize: 11, color: '#64748B', fontWeight: 600, fontFamily: 'Inter, sans-serif', textAlign: 'center', padding: '0 8px' }}>{label}</span>
+  </div>
+);
+
+// ── Types ──────────────────────────────────────────────────────
+interface ProgramCard {
   title: string;
-  caption: string;
-  dimensions: string;
-  bgColor: string;
-  accentColor: string;
-  svgIcon: React.ReactNode;
+  subtitle: string;
+  gradFrom: string;
+  gradTo: string;
+  label: string;
 }
 
+interface AchieverCard {
+  name: string;
+  rank: string;
+  exam: string;
+  score: string;
+}
+
+// ── Data ───────────────────────────────────────────────────────
+const PROGRAM_CARDS: ProgramCard[] = [
+  { title: 'Schools', subtitle: 'Age-appropriate programme for holistic development.', gradFrom: '#92ACFF', gradTo: '#3E64DC', label: 'School Campus Photo' },
+  { title: 'Junior Colleges', subtitle: 'Integrated preparation for board exams and competitive exams.', gradFrom: '#47C1F1', gradTo: '#0186B6', label: 'Junior College Campus Photo' },
+  { title: 'Coaching Centres', subtitle: 'Fulfilling engineering and medical dreams with top ranks in IIT-JEE / NEET.', gradFrom: '#31CCB0', gradTo: '#01B695', label: 'Coaching Centre Photo' },
+];
+
+const STAT_CARDS = [
+  { value: '600K+', label: 'Learners Annually', bg: '#6C8BF0' },
+  { value: '50K+', label: 'Skilled Employees', bg: '#32AEDD' },
+  { value: '950+', label: 'Educational Institutes', bg: '#00A1B6' },
+  { value: '23', label: 'States in India', bg: '#9278FA' },
+  { value: '250+', label: 'Cities', bg: '#1BC1A3' },
+];
+
+const ACHIEVERS: AchieverCard[] = [
+  { name: 'Riddi Sharma', rank: 'AIR 1', exam: 'IIT-JEE Advanced 2026', score: '325/360' },
+  { name: 'Sanjana Reddy', rank: 'AIR 2', exam: 'NEET-UG 2026', score: '720/720' },
+  { name: 'Bhumija', rank: 'AIR 3', exam: 'IIT-JEE Advanced 2026', score: '319/360' },
+  { name: 'Parth Bansal', rank: 'AIR 5', exam: 'IIT-JEE Mains 2026', score: '300/300' },
+  { name: 'Spandana', rank: 'AIR 6', exam: 'NEET-UG 2026', score: '715/720' },
+  { name: 'Trisha Ghosh', rank: 'AIR 8', exam: 'IIT-JEE Advanced 2026', score: '310/360' },
+  { name: 'Reyansh Devnani', rank: 'AIR 11', exam: 'IIT-JEE Mains 2026', score: '298/300' },
+  { name: 'S. Vakhin', rank: 'AIR 13', exam: 'NEET-UG 2026', score: '710/720' },
+];
+
+const TOPPER_BANNERS = [
+  'NEET-UG 2026 Toppers',
+  'IIT-JEE Advanced 2026 Toppers',
+  'CBSE Class 12 Toppers 2026',
+  'JEE Advanced 2026 Results',
+  'TG EAPCET 2026 Top Rankers',
+  'Narayana Fraternity Celebrates',
+  'Board Exam Toppers 2026',
+  'National Talent Search 2026',
+];
+
+const CAMPUS_PHOTOS = [
+  'Inside Campus — Library', 'Inside Campus — Classroom', 'Inside Campus — Laboratory',
+  'Inside Campus — Sports Facility', 'Inside Campus — Hostel Block',
+];
+
+const FOOTER_PHOTOS = Array.from({ length: 11 }, (_, i) => `Campus Photo ${i + 1}`);
+
+// ── Styles ─────────────────────────────────────────────────────
+const NAVBAR_BLUE = '#087FBC';
+const ORANGE = '#F68627';
+const DARK_TEXT = '#2B2B2B';
+const BODY_WHITE = '#FFFFFF';
+const LIGHT_GRAY = '#F4F7FF';
+const VERY_LIGHT = '#F9F9F9';
+
+// ── Stylesheet (injected once) ─────────────────────────────────
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@400;700&display=swap');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', system-ui, sans-serif; background: #fff; color: #2B2B2B; }
+.ng-container { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
+.ng-btn-link { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #fff; text-decoration: none; cursor: pointer; border: none; background: none; }
+.ng-btn-link:hover { text-decoration: underline; }
+.ng-program-card { border-radius: 24px; overflow: hidden; position: relative; padding: 24px 24px 0; display: flex; flex-direction: column; }
+.ng-tab-active { background: ${ORANGE}; color: #fff; border-radius: 8px; }
+.ng-fade-in { animation: ngFade .6s ease both; }
+@keyframes ngFade { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+.ng-hero-slide { width: 100%; flex-shrink: 0; }
+.ng-carousel-track { display: flex; transition: transform .6s cubic-bezier(.4,0,.2,1); }
+.ng-stat-card { border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; flex: 1; min-width: 140px; position: relative; overflow: hidden; }
+.ng-about-card { border-radius: 8px; overflow: hidden; flex: 1; display: flex; flex-direction: column; background: #F2F2F2; }
+.ng-achiever-card { background: #fff; border-radius: 16px; overflow: hidden; padding: 0; box-shadow: 0 4px 20px rgba(0,0,0,.10); display: flex; flex-direction: column; min-width: 220px; }
+.ng-footer-photo-strip { display: flex; gap: 8px; overflow: hidden; }
+.ng-footer-photo-strip > div { flex-shrink: 0; width: 100px; height: 80px; border-radius: 8px; overflow: hidden; }
+.ng-nav-link { font-size: 15px; font-weight: 400; color: #fff; text-decoration: none; white-space: nowrap; transition: font-weight .2s; font-family: 'Inter', sans-serif; }
+.ng-nav-link:hover { font-weight: 600; }
+.ng-top-link { font-size: 15px; font-weight: 500; color: ${DARK_TEXT}; text-decoration: none; font-family: 'Inter', sans-serif; transition: color .2s; }
+.ng-top-link:hover { color: ${ORANGE}; }
+.ng-mobile-open { display: flex !important; }
+@media (max-width: 1200px) {
+  .ng-desktop-nav { display: none !important; }
+  .ng-desktop-top-bar { display: none !important; }
+  .ng-mobile-hamburger { display: flex !important; }
+  .ng-stat-card { min-width: 120px; }
+}
+@media (max-width: 768px) {
+  .ng-hero { height: 320px !important; }
+  .ng-program-grid { flex-direction: column !important; }
+  .ng-stats-grid { flex-wrap: wrap; }
+  .ng-about-grid { flex-direction: column !important; }
+  .ng-campus-grid { grid-template-columns: 1fr !important; }
+}
+`;
+
+// ══════════════════════════════════════════════════════════════
+//  MAIN COMPONENT
+// ══════════════════════════════════════════════════════════════
 export const PortfolioView: React.FC = () => {
-  // UI & Form States
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeStreamTab, setActiveStreamTab] = useState<'all' | 'mpc' | 'bipc'>('all');
-  
-  // Admission Form States
+  // Enquiry form state
   const [stuName, setStuName] = useState('');
   const [parentName, setParentName] = useState('');
   const [stuMobile, setStuMobile] = useState('');
   const [stuEmail, setStuEmail] = useState('');
-  const [stuStream, setStuStream] = useState('MPC (IIT-JEE / EAMCET)');
-  const [stuCampus, setStuCampus] = useState('Erragattugutta Campus 1');
-  const [stuGrade, setStuGrade] = useState('10th Class Passed');
+  const [stuStream, setStuStream] = useState('School (Nursery – Grade 10)');
+  const [stuCampus, setStuCampus] = useState('Hanamkonda');
+  const [stuGrade, setStuGrade] = useState('Grade 10 (Completed)');
   const [stuNotes, setStuNotes] = useState('');
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [enquirySuccess, setEnquirySuccess] = useState(false);
   const [enquiryRef, setEnquiryRef] = useState('');
   const [enquiryError, setEnquiryError] = useState('');
 
-  // Official Contact Info
-  const collegePhone = '+91 97043 80320';
-  const collegeEmail = 'Inspirehnk@gmail.com';
-  const instaUrl = 'https://www.instagram.com/inspire_junior_college';
+  // UI state
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [heroSlide, setHeroSlide] = useState(0);
+  const [topperSlide, setTopperSlide] = useState(0);
+  const [achieverSlide, setAchieverSlide] = useState(0);
+  const [aboutTab, setAboutTab] = useState<'vision' | 'mission' | 'who'>('vision');
+
+  // Portal
   const portalHash = '#/secure-gateway-portal-v2-x9k84m2n7p1q3w5r8z-inspire';
+  const orgPhone = '+91 97043 80320';
+  const orgEmail = 'info@narayanagroup.com';
 
-  // Rotating Headline Ticker
-  const headlineTickers = [
-    'IIT-JEE Advanced & Mains Coaching',
-    'NEET-UG Medical Ranks & AIIMS Preparation',
-    'TS EAPCET (EAMCET) Top Performers',
-    'Integrated Intermediate MPC & BiPC Streams'
-  ];
-  const [tickerIndex, setTickerIndex] = useState(0);
-
+  // Hero carousel auto-advance
+  const HERO_SLIDES = 3;
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTickerIndex((prev) => (prev + 1) % headlineTickers.length);
-    }, 3200);
-    return () => clearInterval(timer);
+    const t = setInterval(() => setHeroSlide(s => (s + 1) % HERO_SLIDES), 4000);
+    return () => clearInterval(t);
   }, []);
 
+  // Topper carousel auto
+  useEffect(() => {
+    const t = setInterval(() => setTopperSlide(s => (s + 1) % TOPPER_BANNERS.length), 3500);
+    return () => clearInterval(t);
+  }, []);
+
+  // Achiever carousel auto
+  const visibleAchievers = 3;
+  useEffect(() => {
+    const t = setInterval(() => setAchieverSlide(s => (s + 1) % (ACHIEVERS.length - visibleAchievers + 1)), 3000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Enquiry submit
   const handleEnquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stuName.trim() || !stuMobile.trim()) {
       setEnquiryError('Please enter Student Name and Contact Mobile Number.');
       return;
     }
-
     setIsSubmitting(true);
     setEnquiryError('');
-
     try {
-      const response = await fetch('/api/enquiries', {
+      const res = await fetch('/api/enquiries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          studentName: stuName.trim(),
-          parentName: parentName.trim(),
-          mobile: stuMobile.trim(),
-          email: stuEmail.trim(),
-          stream: stuStream,
-          preferredCampus: stuCampus,
-          currentGrade: stuGrade,
-          notes: stuNotes.trim()
-        })
+        body: JSON.stringify({ studentName: stuName.trim(), parentName: parentName.trim(), mobile: stuMobile.trim(), email: stuEmail.trim(), stream: stuStream, preferredCampus: stuCampus, currentGrade: stuGrade, notes: stuNotes.trim() }),
       });
-
-      const data = await response.json();
-      if (data && data.status === 'success') {
-        setEnquiryRef(data.referenceCode || `INS-2026-${Math.floor(100000 + Math.random() * 900000)}`);
+      const data = await res.json();
+      if (data?.status === 'success') {
+        setEnquiryRef(data.referenceCode || `NRY-2026-${Math.floor(100000 + Math.random() * 900000)}`);
         setEnquirySuccess(true);
       } else {
-        setEnquiryError(data.message || 'Failed to submit enquiry. Please try again.');
+        setEnquiryError(data.message || 'Failed to submit. Please try again.');
       }
-    } catch (err) {
-      // Fallback in case backend is offline
-      const fallbackRef = `INS-2026-${Math.floor(100000 + Math.random() * 900000)}`;
-      setEnquiryRef(fallbackRef);
+    } catch {
+      setEnquiryRef(`NRY-2026-${Math.floor(100000 + Math.random() * 900000)}`);
       setEnquirySuccess(true);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Structured 16 Photo Gallery Box Placeholders (ZERO Emojis, Pure SVG Vector Icons)
-  const photoGalleryBoxes: ImageWidgetPlaceholder[] = [
-    {
-      id: 'main-hero-photo',
-      category: 'HERO FEATURE',
-      title: 'Main Academic Campus Building',
-      caption: 'Front view of Inspire Junior College, Hanamkonda central academic complex.',
-      dimensions: '1200 x 800 PX',
-      bgColor: '#0F172A',
-      accentColor: '#D4AF37',
-      svgIcon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 21h18" />
-          <path d="M5 21V7l7-4 7 4v14" />
-          <path d="M9 10a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v11H9V10z" />
-        </svg>
-      )
-    },
-    {
-      id: 'erragattu-c1',
-      category: 'CAMPUS 1',
-      title: 'Erragattugutta Campus 1 Quadrangle',
-      caption: 'Primary residential block hosting Super-60 IIT-JEE Advanced batch.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#1E293B',
-      accentColor: '#38BDF8',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        </svg>
-      )
-    },
-    {
-      id: 'erragattu-c2',
-      category: 'CAMPUS 2',
-      title: 'Erragattugutta Campus 2 Digital Bay',
-      caption: 'High-tech computer bay & online CBT exam testing simulator.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#0F172A',
-      accentColor: '#818CF8',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-          <line x1="8" y1="21" x2="16" y2="21" />
-          <line x1="12" y1="17" x2="12" y2="21" />
-        </svg>
-      )
-    },
-    {
-      id: 'bheemaram-c1',
-      category: 'CAMPUS 3',
-      title: 'Bheemaram Campus 1 Medical Wing',
-      caption: 'Dedicated NEET-UG medical sciences wing with 3D Bio models.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#064E3B',
-      accentColor: '#34D399',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M10 2v7.31L4.75 18.1A2 2 0 0 0 6.47 21h11.06a2 2 0 0 0 1.72-2.9L14 9.31V2" />
-          <line x1="8.5" y1="2" x2="15.5" y2="2" />
-          <line x1="9" y1="9" x2="15" y2="9" />
-        </svg>
-      )
-    },
-    {
-      id: 'bheemaram-c2',
-      category: 'CAMPUS 4',
-      title: 'Bheemaram Campus 2 Day-Scholar Block',
-      caption: 'Spacious classrooms & interactive problem-solving lounge.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#1E1B4B',
-      accentColor: '#A78BFA',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-        </svg>
-      )
-    },
-    {
-      id: 'smart-classrooms',
-      category: 'INFRASTRUCTURE',
-      title: 'Air-Conditioned Smart Classrooms',
-      caption: 'Ergonomic seating with audio-visual smart board integration.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#1E293B',
-      accentColor: '#F43F5E',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2" />
-          <path d="M8 21h8" />
-          <path d="M12 17v4" />
-        </svg>
-      )
-    },
-    {
-      id: 'physics-lab',
-      category: 'LABORATORIES',
-      title: 'Physics & Optics Research Lab',
-      caption: 'Precision lasers, optical benches & electrical measurement tools.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#0F172A',
-      accentColor: '#38BDF8',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-          <path d="M2 12h20" />
-        </svg>
-      )
-    },
-    {
-      id: 'chemistry-lab',
-      category: 'LABORATORIES',
-      title: 'Advanced Chemistry Laboratory',
-      caption: 'Safety-certified fume hoods, titrations & organic reaction setups.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#1E293B',
-      accentColor: '#10B981',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M6 18h12" />
-          <path d="M10 2v7.31L4.75 18.1A2 2 0 0 0 6.47 21h11.06a2 2 0 0 0 1.72-2.9L14 9.31V2" />
-        </svg>
-      )
-    },
-    {
-      id: 'digital-library',
-      category: 'LEARNING RESOURCE',
-      title: 'Central Digital Library & Quiet Pods',
-      caption: '10,000+ NCERT, HC Verma, Irodov & Allen/Aakash reference books.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#0F172A',
-      accentColor: '#F59E0B',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-        </svg>
-      )
-    },
-    {
-      id: 'test-center',
-      category: 'EXAM TESTING',
-      title: 'IIT-JEE & NEET OMR Practice Arena',
-      caption: 'Weekly grand tests with instant rank analysis and error review.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#1E1B4B',
-      accentColor: '#EC4899',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-          <polyline points="10 9 9 9 8 9" />
-        </svg>
-      )
-    },
-    {
-      id: 'girls-hostel',
-      category: 'RESIDENTIAL',
-      title: 'Girls Air-Conditioned Residential Hostel',
-      caption: '24/7 CCTV security, resident warden & nutritious meal dining hall.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#0F172A',
-      accentColor: '#F472B6',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 21h18" />
-          <path d="M19 21v-8a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v8" />
-          <path d="M9 10a3 3 0 1 0 6 0" />
-        </svg>
-      )
-    },
-    {
-      id: 'boys-hostel',
-      category: 'RESIDENTIAL',
-      title: 'Boys Residential Campus Wing',
-      caption: 'Spacious study desks, biometric access & indoor recreation hall.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#1E293B',
-      accentColor: '#38BDF8',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="4" y="2" width="16" height="20" rx="2" />
-          <line x1="9" y1="6" x2="15" y2="6" />
-          <line x1="9" y1="10" x2="15" y2="10" />
-          <line x1="9" y1="14" x2="15" y2="14" />
-        </svg>
-      )
-    },
-    {
-      id: 'campus-dining',
-      category: 'AMENITIES',
-      title: 'Hygienic Campus Dining & Cafeteria',
-      caption: 'Pure vegetarian & non-vegetarian nutritious meal plans.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#064E3B',
-      accentColor: '#10B981',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 8h1a4 4 0 0 1 0 8h-1" />
-          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
-          <line x1="6" y1="1" x2="6" y2="4" />
-          <line x1="10" y1="1" x2="10" y2="4" />
-          <line x1="14" y1="1" x2="14" y2="4" />
-        </svg>
-      )
-    },
-    {
-      id: 'rankers-felicitation',
-      category: 'ACHIEVEMENTS',
-      title: 'Rankers Felicitation & Award Ceremony',
-      caption: 'Celebrating student achievements in IIT-JEE, NEET & TS EAPCET.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#1E1B4B',
-      accentColor: '#D4AF37',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="8" r="7" />
-          <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
-        </svg>
-      )
-    },
-    {
-      id: 'doubt-counters',
-      category: 'FACULTY',
-      title: 'One-on-One Faculty Doubt Counters',
-      caption: 'Personalized daily doubt clarification sessions with senior lecturers.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#0F172A',
-      accentColor: '#38BDF8',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-      )
-    },
-    {
-      id: 'sports-complex',
-      category: 'SPORTS',
-      title: 'Athletic Turf & Sports Complex',
-      caption: 'Badminton courts, volleyball ground, table tennis & yoga pavilion.',
-      dimensions: '800 x 600 PX',
-      bgColor: '#1E293B',
-      accentColor: '#F59E0B',
-      svgIcon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-          <path d="M2 12h20" />
-        </svg>
-      )
-    }
-  ];
+  // ── Input style helper ──────────────────────────────────────
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '12px 14px', background: '#F8FAFF',
+    border: '1.5px solid #CBD5E1', borderRadius: 8, color: DARK_TEXT,
+    fontSize: 14, outline: 'none', fontFamily: 'Inter, sans-serif',
+  };
 
+  // ── Render ──────────────────────────────────────────────────
   return (
-    <div style={{ backgroundColor: '#0A0E17', color: '#F8FAFC', minHeight: '100vh', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
-      {/* HEADER NAVBAR */}
-      <header style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        backgroundColor: 'rgba(10, 14, 23, 0.92)',
-        backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(212, 175, 55, 0.2)',
-        padding: '14px 24px'
-      }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {/* Logo Brand */}
-          <a href="#hero" style={{ display: 'flex', alignItems: 'center', gap: '14px', textDecoration: 'none' }}>
-            <img
-              src={collegeLogo}
-              alt="Inspire Junior College Logo"
-              style={{ width: '46px', height: '46px', objectFit: 'contain', borderRadius: '8px', border: '1px solid rgba(212, 175, 55, 0.4)' }}
-            />
-            <div>
-              <span style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF', letterSpacing: '0.02em', display: 'block' }}>
-                INSPIRE <span style={{ color: '#D4AF37' }}>JUNIOR COLLEGE</span>
-              </span>
-              <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 700, letterSpacing: '0.05em' }}>
-                HANAMKONDA, TELANGANA • TS BIE CODE: 21182
-              </span>
-            </div>
-          </a>
+    <>
+      {/* Inject CSS */}
+      <style>{CSS}</style>
 
-          {/* Desktop Nav Links */}
-          <nav className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
-            <a href="#about" style={{ color: '#CBD5E1', fontSize: '13px', fontWeight: 700, textDecoration: 'none', transition: 'color 0.2s' }}>About Us</a>
-            <a href="#streams" style={{ color: '#CBD5E1', fontSize: '13px', fontWeight: 700, textDecoration: 'none', transition: 'color 0.2s' }}>MPC & BiPC</a>
-            <a href="#campuses" style={{ color: '#CBD5E1', fontSize: '13px', fontWeight: 700, textDecoration: 'none', transition: 'color 0.2s' }}>4 Campuses</a>
-            <a href="#gallery" style={{ color: '#CBD5E1', fontSize: '13px', fontWeight: 700, textDecoration: 'none', transition: 'color 0.2s' }}>Photo Gallery</a>
-            <a href="#enquiry" style={{ color: '#D4AF37', fontSize: '13px', fontWeight: 800, textDecoration: 'none', transition: 'color 0.2s' }}>Admission 2026-27</a>
-          </nav>
+      <div style={{ background: BODY_WHITE, minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
 
-          {/* Right Header Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            {/* SINGLE SYSTEM PORTAL GATEWAY LINK */}
-            <a
-              href={portalHash}
-              style={{
-                fontSize: '11px',
-                fontWeight: 900,
-                color: '#D4AF37',
-                border: '1px solid rgba(212, 175, 55, 0.5)',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(212, 175, 55, 0.08)',
-                textDecoration: 'none',
-                letterSpacing: '0.04em',
-                transition: 'all 0.2s ease',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-              className="press-interactive"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              ERP PORTAL GATEWAY
+        {/* ══════════════════════════════════════════
+            TOP UTILITY BAR (white)
+        ══════════════════════════════════════════ */}
+        <div className="ng-desktop-top-bar" style={{ background: BODY_WHITE, borderBottom: '1px solid #E2E8F0', padding: '10px 0' }}>
+          <div className="ng-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Logo */}
+            <a href="#hero" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
+              <div style={{ width: 50, height: 50, background: NAVBAR_BLUE, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                  <path d="M16 4L4 10v12l12 6 12-6V10L16 4z" fill="#fff" opacity=".9"/>
+                  <path d="M16 4v18M4 10l12 6 12-6" stroke="#087FBC" strokeWidth="1.5"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: DARK_TEXT, fontFamily: "'Merriweather', serif" }}>Narayana</div>
+                <div style={{ fontSize: 11, color: '#64748B', fontWeight: 500 }}>Educational Institutions</div>
+              </div>
             </a>
 
-            {/* Mobile Menu Button */}
+            {/* Utility links */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+              <a href={portalHash} className="ng-top-link">Parents &amp; Students</a>
+              <a href="#enquiry" className="ng-top-link">Online Fee Payment</a>
+              <a href="#enquiry" className="ng-top-link">Fee Enquiry</a>
+              <a href="#about" className="ng-top-link">Narayana Alumni</a>
+            </div>
+
+            {/* Enquire button */}
+            <a href="#enquiry" style={{ background: ORANGE, color: '#fff', padding: '12px 28px', fontWeight: 600, fontSize: 15, textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+              Enquire Now
+            </a>
+          </div>
+        </div>
+
+        {/* ══════════════════════════════════════════
+            MAIN BLUE NAV BAR
+        ══════════════════════════════════════════ */}
+        <nav style={{ background: NAVBAR_BLUE, position: 'sticky', top: 0, zIndex: 200, boxShadow: '0 4px 12px rgba(0,0,0,.18)' }}>
+          <div className="ng-container" style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+
+            {/* Mobile logo (small screens) */}
+            <a href="#hero" style={{ display: 'none', alignItems: 'center', gap: 8, textDecoration: 'none' }} className="ng-mobile-logo">
+              <div style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.2)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><path d="M16 4L4 10v12l12 6 12-6V10L16 4z" fill="#fff" opacity=".9"/></svg>
+              </div>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: 15, fontFamily: "'Merriweather', serif" }}>Narayana</span>
+            </a>
+
+            {/* Desktop nav links */}
+            <div className="ng-desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 32, width: '100%', justifyContent: 'center' }}>
+              {[
+                { href: '#about', label: 'Experience Narayana' },
+                { href: '#digital', label: 'Digital' },
+                { href: '#streams', label: 'Academics' },
+                { href: '#uniforms', label: 'Uniforms' },
+                { href: '#sports', label: 'nSports' },
+                { href: '#campuses', label: 'Centers' },
+                { href: '#careers', label: 'Careers' },
+                { href: '#blog', label: 'Blog' },
+                { href: '#gallery', label: 'Gallery' },
+                { href: '#news', label: 'News & Media' },
+                { href: '#contact', label: 'Contact us' },
+              ].map(l => (
+                <a key={l.href} href={l.href} className="ng-nav-link">{l.label}</a>
+              ))}
+            </div>
+
+            {/* Mobile hamburger */}
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              style={{
-                background: 'none',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                color: '#FFFFFF',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
-              className="mobile-menu-btn"
+              className="ng-mobile-hamburger"
+              onClick={() => setMobileOpen(o => !o)}
+              style={{ display: 'none', background: 'none', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 6, padding: '6px 10px', color: '#fff', cursor: 'pointer' }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
           </div>
-        </div>
 
-        {/* Mobile Dropdown Menu */}
-        {mobileMenuOpen && (
-          <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <a href="#about" onClick={() => setMobileMenuOpen(false)} style={{ color: '#E2E8F0', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>About College</a>
-            <a href="#streams" onClick={() => setMobileMenuOpen(false)} style={{ color: '#E2E8F0', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>Intermediate Streams (MPC & BiPC)</a>
-            <a href="#campuses" onClick={() => setMobileMenuOpen(false)} style={{ color: '#E2E8F0', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>4 Campuses (Erragattugutta & Bheemaram)</a>
-            <a href="#gallery" onClick={() => setMobileMenuOpen(false)} style={{ color: '#E2E8F0', fontSize: '14px', fontWeight: 700, textDecoration: 'none' }}>Photo Gallery</a>
-            <a href="#enquiry" onClick={() => setMobileMenuOpen(false)} style={{ color: '#D4AF37', fontSize: '14px', fontWeight: 900, textDecoration: 'none' }}>Submit Admission Enquiry</a>
-            <a href={portalHash} onClick={() => setMobileMenuOpen(false)} style={{ color: '#38BDF8', fontSize: '13px', fontWeight: 800, textDecoration: 'none' }}>ERP System Login</a>
-          </div>
-        )}
-      </header>
-
-      {/* HERO SECTION */}
-      <section id="hero" style={{ padding: '80px 24px 60px', position: 'relative', overflow: 'hidden', background: 'radial-gradient(circle at 80% 20%, rgba(212,175,55,0.08) 0%, transparent 60%)' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '48px', alignItems: 'center' }}>
-          
-          {/* Left Column Text & Details */}
-          <div>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '6px 14px',
-              borderRadius: '999px',
-              backgroundColor: 'rgba(212, 175, 55, 0.12)',
-              border: '1px solid rgba(212, 175, 55, 0.3)',
-              color: '#D4AF37',
-              fontSize: '11px',
-              fontWeight: 900,
-              letterSpacing: '0.06em',
-              marginBottom: '20px'
-            }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#D4AF37' }}></span>
-              ADMISSIONS OPEN FOR ACADEMIC YEAR 2026-2027
+          {/* Mobile dropdown */}
+          {mobileOpen && (
+            <div style={{ background: NAVBAR_BLUE, borderTop: '1px solid rgba(255,255,255,0.2)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {['Experience Narayana','Academics','Centers','Gallery','News & Media','Contact us'].map(l => (
+                <a key={l} href="#" onClick={() => setMobileOpen(false)} style={{ color: '#fff', fontSize: 15, fontWeight: 500, textDecoration: 'none' }}>{l}</a>
+              ))}
+              <a href="#enquiry" onClick={() => setMobileOpen(false)} style={{ background: ORANGE, color: '#fff', padding: '10px 20px', fontWeight: 600, textDecoration: 'none', textAlign: 'center', borderRadius: 6 }}>Enquire Now</a>
             </div>
+          )}
+        </nav>
 
-            <h1 style={{ fontSize: 'calc(28px + 1.5vw)', fontWeight: 900, lineHeight: 1.15, color: '#FFFFFF', margin: '0 0 16px', letterSpacing: '-0.02em' }}>
-              Nurturing Academic Excellence. <br />
-              <span style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FEF08A 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                Engineering National Ranks.
-              </span>
-            </h1>
-
-            {/* Dynamic Headline Ticker */}
-            <div style={{ height: '28px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#94A3B8' }}>Focused on:</span>
-              <span style={{ fontSize: '15px', fontWeight: 900, color: '#38BDF8', borderBottom: '1px dashed #38BDF8', paddingBottom: '2px' }}>
-                {headlineTickers[tickerIndex]}
-              </span>
-            </div>
-
-            {/* Motto Box */}
-            <div style={{
-              padding: '16px 20px',
-              backgroundColor: 'rgba(15, 23, 42, 0.75)',
-              borderLeft: '4px solid #D4AF37',
-              borderRadius: '0 12px 12px 0',
-              marginBottom: '28px',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
-            }}>
-              <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.6, color: '#E2E8F0', fontStyle: 'italic', fontWeight: 600 }}>
-                "Inspire Junior College is committed to cultivating intellectual rigor, scientific curiosity, and competitive discipline across MPC & BiPC streams in Hanamkonda."
-              </p>
-            </div>
-
-            {/* Key Statistics Bar */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
-              <div style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
-                <strong style={{ fontSize: '22px', fontWeight: 900, color: '#D4AF37', display: 'block' }}>100+</strong>
-                <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 700 }}>IIT / NIT Selections</span>
-              </div>
-              <div style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
-                <strong style={{ fontSize: '22px', fontWeight: 900, color: '#38BDF8', display: 'block' }}>Top Ranks</strong>
-                <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 700 }}>NEET-UG Medical</span>
-              </div>
-              <div style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
-                <strong style={{ fontSize: '22px', fontWeight: 900, color: '#10B981', display: 'block' }}>98.6%</strong>
-                <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 700 }}>TS EAPCET Pass Rate</span>
-              </div>
-            </div>
-
-            {/* CTA Action Buttons */}
-            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-              <a
-                href="#enquiry"
-                style={{
-                  padding: '14px 28px',
-                  backgroundColor: '#D4AF37',
-                  color: '#0A0E17',
-                  fontSize: '13px',
-                  fontWeight: 900,
-                  borderRadius: '10px',
-                  textDecoration: 'none',
-                  letterSpacing: '0.02em',
-                  boxShadow: '0 8px 24px rgba(212,175,55,0.25)',
-                  transition: 'transform 0.2s ease'
-                }}
-                className="press-interactive"
-              >
-                Submit Admission Enquiry 2026-27
-              </a>
-
-              <a
-                href="#campuses"
-                style={{
-                  padding: '14px 24px',
-                  backgroundColor: 'rgba(255,255,255,0.06)',
-                  color: '#FFFFFF',
-                  fontSize: '13px',
-                  fontWeight: 800,
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255,255,255,0.18)',
-                  textDecoration: 'none',
-                  transition: 'background 0.2s'
-                }}
-                className="press-interactive"
-              >
-                Explore 4 Campuses
-              </a>
-            </div>
-          </div>
-
-          {/* Right Column: Dynamic Cross-Tilted Box Frame for Main Hero Photo */}
-          <div style={{ position: 'relative' }}>
-            <div style={{
-              transform: 'rotate(-2deg)',
-              borderRadius: '24px',
-              padding: '12px',
-              backgroundColor: '#0F172A',
-              border: '2px solid rgba(212, 175, 55, 0.5)',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.6), 0 0 40px rgba(212,175,55,0.12)',
-              position: 'relative',
-              transition: 'transform 0.3s ease'
-            }}
-            className="hero-photo-frame"
-            >
-              {/* Top Frame Label Badge */}
-              <div style={{
-                position: 'absolute',
-                top: '-14px',
-                left: '24px',
-                backgroundColor: '#D4AF37',
-                color: '#0A0E17',
-                padding: '4px 14px',
-                borderRadius: '999px',
-                fontSize: '10px',
-                fontWeight: 900,
-                letterSpacing: '0.08em',
-                zIndex: 2,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-              }}>
-                MAIN CAMPUS HERO PHOTO FRAME — 1200 x 800 PX
-              </div>
-
-              {/* Photo Box Container Placeholder */}
-              <div style={{
-                aspectRatio: '16/10',
-                borderRadius: '16px',
-                backgroundColor: '#1E293B',
-                backgroundImage: 'radial-gradient(rgba(212,175,55,0.15) 1px, transparent 0)',
-                backgroundSize: '24px 24px',
-                display: 'flex',
-                flexDirection: 'column',
-                justify: 'center',
-                alignItems: 'center',
-                padding: '32px',
-                textAlign: 'center',
-                position: 'relative',
-                overflow: 'hidden',
-                border: '1px dashed rgba(212,175,55,0.4)'
-              }}>
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(212,175,55,0.15)',
-                  border: '1px solid rgba(212,175,55,0.4)',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  color: '#D4AF37',
-                  marginBottom: '16px'
-                }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                </div>
-
-                <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF', margin: '0 0 8px' }}>
-                  Inspire Junior College Main Building
-                </h3>
-                <p style={{ fontSize: '12px', color: '#94A3B8', maxWidth: '320px', margin: '0 0 16px', lineHeight: 1.5 }}>
-                  Drop your raw campus quadrangle / main college building photograph here.
-                </p>
-
-                <span style={{ fontSize: '10px', color: '#D4AF37', fontWeight: 800, padding: '4px 10px', backgroundColor: 'rgba(212,175,55,0.1)', borderRadius: '6px' }}>
-                  Hanamkonda Central Campus • Hanamkonda
-                </span>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* ABOUT COLLEGE & MOTTO SECTION */}
-      <section id="about" style={{ padding: '80px 24px', backgroundColor: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 56px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 900, color: '#D4AF37', letterSpacing: '0.1em' }}>LEGACY OF ACADEMIC EXCELLENCE</span>
-            <h2 style={{ fontSize: '32px', fontWeight: 900, color: '#FFFFFF', margin: '8px 0 16px' }}>
-              Why Choose Inspire Junior College?
-            </h2>
-            <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-              Located in the heart of Hanamkonda, Inspire Junior College is built specifically for high-achieving intermediate students aiming for premier engineering and medical institutions across India.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-            <div style={{ padding: '28px', backgroundColor: '#1E293B', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: 'rgba(212,175,55,0.12)', color: '#D4AF37', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10v6M12 2l10 5-10 5L2 7l10-5z"/></svg>
-              </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 10px' }}>IIT-JEE & NEET Coaching</h3>
-              <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-                Integrated 2-year curriculum aligning TS Intermediate Board syllabus with rigorous IIT-JEE Mains/Advanced and NEET-UG problem solving.
-              </p>
-            </div>
-
-            <div style={{ padding: '28px', backgroundColor: '#1E293B', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: 'rgba(56,189,248,0.12)', color: '#38BDF8', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 10px' }}>Experienced Senior Faculty</h3>
-              <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-                Renowned subject experts with 15+ years of experience guiding top national rankers in Physics, Chemistry, Mathematics, and Biology.
-              </p>
-            </div>
-
-            <div style={{ padding: '28px', backgroundColor: '#1E293B', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: 'rgba(16,185,129,0.12)', color: '#10B981', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 10px' }}>Secure AC Hostels</h3>
-              <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-                Separate residential blocks for boys and girls with air-conditioned dorms, biometric security, and dedicated study hours.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ACADEMIC STREAMS SECTION (MPC & BiPC ONLY) */}
-      <section id="streams" style={{ padding: '80px 24px', backgroundColor: '#0A0E17' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 48px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 900, color: '#D4AF37', letterSpacing: '0.1em' }}>SPECIALIZED INTERMEDIATE STREAMS</span>
-            <h2 style={{ fontSize: '32px', fontWeight: 900, color: '#FFFFFF', margin: '8px 0 16px' }}>
-              MPC & BiPC Intermediate Programs
-            </h2>
-            <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-              Tailored specifically for MPC and BiPC branches with focused competitive test preparation.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '32px' }}>
-            {/* MPC Stream Card */}
-            <div style={{
-              padding: '36px',
-              backgroundColor: '#0F172A',
-              borderRadius: '20px',
-              border: '2px solid rgba(56, 189, 248, 0.3)',
-              position: 'relative',
-              boxShadow: '0 12px 36px rgba(0,0,0,0.4)'
-            }}>
-              <span style={{
-                position: 'absolute',
-                top: '20px',
-                right: '20px',
-                backgroundColor: 'rgba(56, 189, 248, 0.15)',
-                color: '#38BDF8',
-                padding: '4px 12px',
-                borderRadius: '999px',
-                fontSize: '11px',
-                fontWeight: 900
-              }}>
-                ENGINEERING BRANCH
-              </span>
-
-              <h3 style={{ fontSize: '26px', fontWeight: 900, color: '#FFFFFF', margin: '0 0 8px' }}>
-                MPC Stream
-              </h3>
-              <p style={{ fontSize: '13px', color: '#38BDF8', fontWeight: 800, margin: '0 0 20px' }}>
-                Mathematics, Physics & Chemistry
-              </p>
-
-              <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: 1.6, marginBottom: '24px' }}>
-                Designed for students aspiring for engineering admissions in IITs, NITs, BITS Pilani, and premier state engineering colleges via TS EAPCET.
-              </p>
-
-              <div style={{ padding: '16px', backgroundColor: '#1E293B', borderRadius: '12px', marginBottom: '20px' }}>
-                <strong style={{ fontSize: '12px', color: '#E2E8F0', display: 'block', marginBottom: '8px' }}>TARGET COMPETITIVE EXAMS:</strong>
-                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#94A3B8', lineHeight: 1.8 }}>
-                  <li>IIT-JEE Mains & IIT-JEE Advanced</li>
-                  <li>BITSAT & VITEEE National Entrance</li>
-                  <li>TS EAPCET (Telangana State Engineering)</li>
-                </ul>
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '11px', padding: '4px 10px', backgroundColor: 'rgba(255,255,255,0.06)', color: '#CBD5E1', borderRadius: '6px' }}>Super-60 IIT Batch</span>
-                <span style={{ fontSize: '11px', padding: '4px 10px', backgroundColor: 'rgba(255,255,255,0.06)', color: '#CBD5E1', borderRadius: '6px' }}>Daily Grand Tests</span>
-                <span style={{ fontSize: '11px', padding: '4px 10px', backgroundColor: 'rgba(255,255,255,0.06)', color: '#CBD5E1', borderRadius: '6px' }}>Erragattugutta Campus</span>
-              </div>
-            </div>
-
-            {/* BiPC Stream Card */}
-            <div style={{
-              padding: '36px',
-              backgroundColor: '#0F172A',
-              borderRadius: '20px',
-              border: '2px solid rgba(16, 185, 129, 0.3)',
-              position: 'relative',
-              boxShadow: '0 12px 36px rgba(0,0,0,0.4)'
-            }}>
-              <span style={{
-                position: 'absolute',
-                top: '20px',
-                right: '20px',
-                backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                color: '#10B981',
-                padding: '4px 12px',
-                borderRadius: '999px',
-                fontSize: '11px',
-                fontWeight: 900
-              }}>
-                MEDICAL BRANCH
-              </span>
-
-              <h3 style={{ fontSize: '26px', fontWeight: 900, color: '#FFFFFF', margin: '0 0 8px' }}>
-                BiPC Stream
-              </h3>
-              <p style={{ fontSize: '13px', color: '#10B981', fontWeight: 800, margin: '0 0 20px' }}>
-                Biology (Botany & Zoology), Physics & Chemistry
-              </p>
-
-              <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: 1.6, marginBottom: '24px' }}>
-                Structured for medical aspirants aiming for MBBS seats in AIIMS, JIPMER, KNRUHS government medical colleges, and B.Sc Agriculture.
-              </p>
-
-              <div style={{ padding: '16px', backgroundColor: '#1E293B', borderRadius: '12px', marginBottom: '20px' }}>
-                <strong style={{ fontSize: '12px', color: '#E2E8F0', display: 'block', marginBottom: '8px' }}>TARGET COMPETITIVE EXAMS:</strong>
-                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#94A3B8', lineHeight: 1.8 }}>
-                  <li>NEET-UG National Medical Entrance</li>
-                  <li>AIIMS & JIPMER Medical Seats</li>
-                  <li>TS EAPCET Agriculture & Pharmacy</li>
-                </ul>
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '11px', padding: '4px 10px', backgroundColor: 'rgba(255,255,255,0.06)', color: '#CBD5E1', borderRadius: '6px' }}>NCERT Intensive Line-by-Line</span>
-                <span style={{ fontSize: '11px', padding: '4px 10px', backgroundColor: 'rgba(255,255,255,0.06)', color: '#CBD5E1', borderRadius: '6px' }}>3D Bio Diagrams Lab</span>
-                <span style={{ fontSize: '11px', padding: '4px 10px', backgroundColor: 'rgba(255,255,255,0.06)', color: '#CBD5E1', borderRadius: '6px' }}>Bheemaram Campus</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* THE 4 CAMPUSES SECTION */}
-      <section id="campuses" style={{ padding: '80px 24px', backgroundColor: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 56px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 900, color: '#D4AF37', letterSpacing: '0.1em' }}>HANAMKONDA CAMPUS NETWORK</span>
-            <h2 style={{ fontSize: '32px', fontWeight: 900, color: '#FFFFFF', margin: '8px 0 16px' }}>
-              Explore Our 4 Specialized Campuses
-            </h2>
-            <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-              Conveniently located across Erragattugutta and Bheemaram in Hanamkonda with state-of-the-art facilities.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-            {/* Erragattugutta C1 */}
-            <div style={{ padding: '28px', backgroundColor: '#1E293B', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <span style={{ fontSize: '10px', fontWeight: 900, color: '#38BDF8', letterSpacing: '0.08em', display: 'block', marginBottom: '8px' }}>CAMPUS 01</span>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 8px' }}>Erragattugutta Campus 1</h3>
-              <p style={{ fontSize: '12px', color: '#CBD5E1', margin: '0 0 14px', fontWeight: 600 }}>Primary Residential & IIT-JEE Super-60 Block</p>
-              <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-                Hosts our premier Super-60 IIT-JEE residential batch, central AC study library, and boys hostel block.
-              </p>
-            </div>
-
-            {/* Erragattugutta C2 */}
-            <div style={{ padding: '28px', backgroundColor: '#1E293B', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <span style={{ fontSize: '10px', fontWeight: 900, color: '#818CF8', letterSpacing: '0.08em', display: 'block', marginBottom: '8px' }}>CAMPUS 02</span>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 8px' }}>Erragattugutta Campus 2</h3>
-              <p style={{ fontSize: '12px', color: '#CBD5E1', margin: '0 0 14px', fontWeight: 600 }}>Digital Bay & Advanced Physics/Maths Center</p>
-              <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-                Equipped with online computer testing terminals, physics optics lab, and faculty research lounge.
-              </p>
-            </div>
-
-            {/* Bheemaram C1 */}
-            <div style={{ padding: '28px', backgroundColor: '#1E293B', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <span style={{ fontSize: '10px', fontWeight: 900, color: '#34D399', letterSpacing: '0.08em', display: 'block', marginBottom: '8px' }}>CAMPUS 03</span>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 8px' }}>Bheemaram Campus 1</h3>
-              <p style={{ fontSize: '12px', color: '#CBD5E1', margin: '0 0 14px', fontWeight: 600 }}>Medical Sciences Wing & 3D Bio Laboratories</p>
-              <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-                Focuses exclusively on BiPC NEET-UG preparation with dedicated Botany & Zoology diagnostic labs.
-              </p>
-            </div>
-
-            {/* Bheemaram C2 */}
-            <div style={{ padding: '28px', backgroundColor: '#1E293B', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <span style={{ fontSize: '10px', fontWeight: 900, color: '#A78BFA', letterSpacing: '0.08em', display: 'block', marginBottom: '8px' }}>CAMPUS 04</span>
-              <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 8px' }}>Bheemaram Campus 2</h3>
-              <p style={{ fontSize: '12px', color: '#CBD5E1', margin: '0 0 14px', fontWeight: 600 }}>Day-Scholar & Integrated Academic Complex</p>
-              <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-                Designed for day-scholars with convenient transport routing across Warangal and Hanamkonda.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* PHOTO GALLERY PLACEHOLDERS GRID (16 Structured Boxes) */}
-      <section id="gallery" style={{ padding: '80px 24px', backgroundColor: '#0A0E17' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 56px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 900, color: '#D4AF37', letterSpacing: '0.1em' }}>CAMPUS PHOTO GALLERY PLACEHOLDERS</span>
-            <h2 style={{ fontSize: '32px', fontWeight: 900, color: '#FFFFFF', margin: '8px 0 16px' }}>
-              Campus Infrastructure & Highlights
-            </h2>
-            <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-              Below are 16 structured placeholder boxes for college photos. Simply replace these frames with your raw campus imagery.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            {photoGalleryBoxes.map((box) => (
-              <div
-                key={box.id}
-                style={{
-                  borderRadius: '16px',
-                  backgroundColor: box.bgColor,
-                  border: `1px solid ${box.accentColor}40`,
-                  padding: '24px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justify: 'space-between',
-                  minHeight: '260px',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  transition: 'transform 0.2s ease, border-color 0.2s ease'
-                }}
-                className="press-interactive"
-              >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 900, color: box.accentColor, letterSpacing: '0.08em' }}>
-                      {box.category}
-                    </span>
-                    <span style={{ fontSize: '9px', fontWeight: 800, color: '#94A3B8', padding: '2px 8px', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: '4px' }}>
-                      {box.dimensions}
-                    </span>
-                  </div>
-
-                  <div style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '10px',
-                    backgroundColor: `${box.accentColor}18`,
-                    color: box.accentColor,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    marginBottom: '14px'
-                  }}>
-                    {box.svgIcon}
-                  </div>
-
-                  <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 6px' }}>
-                    {box.title}
-                  </h3>
-                  <p style={{ fontSize: '12px', color: '#94A3B8', lineHeight: 1.5, margin: 0 }}>
-                    {box.caption}
-                  </p>
-                </div>
-
-                <div style={{
-                  marginTop: '20px',
-                  paddingTop: '12px',
-                  borderTop: '1px dashed rgba(255,255,255,0.1)',
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  color: box.accentColor,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                  PHOTO PLACEHOLDER BOX — DROP IMAGE
-                </div>
+        {/* ══════════════════════════════════════════
+            HERO CAROUSEL — Full-page with blank slides
+        ══════════════════════════════════════════ */}
+        <section id="hero" style={{ position: 'relative', overflow: 'hidden', height: 560 }} className="ng-hero">
+          {/* Slides */}
+          <div style={{ display: 'flex', height: '100%', transform: `translateX(-${heroSlide * 100}%)`, transition: 'transform .7s cubic-bezier(.4,0,.2,1)' }}>
+            {[
+              { label: 'Hero Banner 1 — Main Campus Building' },
+              { label: 'Hero Banner 2 — Students at Work' },
+              { label: 'Hero Banner 3 — Campus Life' },
+            ].map((s, i) => (
+              <div key={i} style={{ minWidth: '100%', height: '100%', position: 'relative' }}>
+                <PhotoPlaceholder label={s.label} bg="#B8CCEA" style={{ width: '100%', height: '100%', borderRadius: 0, border: 'none' }} />
               </div>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* ADMISSION ENQUIRY FORM SECTION (Connected to Admin 2 / Admin 1) */}
-      <section id="enquiry" style={{ padding: '80px 24px', backgroundColor: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ maxWidth: '840px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <span style={{ fontSize: '11px', fontWeight: 900, color: '#D4AF37', letterSpacing: '0.1em' }}>ADMISSION COUNSELING 2026-27</span>
-            <h2 style={{ fontSize: '32px', fontWeight: 900, color: '#FFFFFF', margin: '8px 0 12px' }}>
-              Submit Online Admission Enquiry
-            </h2>
-            <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-              Fill out the form below to connect with our campus admission counselors for MPC & BiPC seat allocation.
-            </p>
+          {/* Gradient overlay */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 15%, rgba(4,17,42,0.72) 75%)' }} />
+
+          {/* Hero text overlay */}
+          <div style={{ position: 'absolute', bottom: '10%', left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#fff', textAlign: 'center', padding: '0 16px' }}>
+            <div style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(6px)', borderRadius: 32, padding: '8px 24px', fontSize: 16, fontWeight: 500, marginBottom: 12, fontFamily: "'Inter', sans-serif" }}>
+              Your dreams are our dreams
+            </div>
+            <h1 style={{ fontSize: 'clamp(24px,4vw,52px)', fontWeight: 700, lineHeight: 1.3, maxWidth: 900, fontFamily: "'Merriweather', serif" }}>
+              Inspiring Young Minds and Empowering Dreams since 1979
+            </h1>
           </div>
 
-          <div style={{
-            backgroundColor: '#1E293B',
-            borderRadius: '24px',
-            padding: '36px',
-            border: '1.5px solid rgba(212, 175, 55, 0.3)',
-            boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
-          }}>
-            {enquirySuccess ? (
-              <div style={{ textAlign: 'center', padding: '30px 10px' }}>
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                  border: '2px solid #10B981',
-                  color: '#10B981',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  margin: '0 auto 20px'
-                }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          {/* Dot indicators */}
+          <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 8 }}>
+            {Array.from({ length: HERO_SLIDES }).map((_, i) => (
+              <button key={i} onClick={() => setHeroSlide(i)} style={{ width: i === heroSlide ? 24 : 8, height: 8, borderRadius: 4, background: i === heroSlide ? ORANGE : 'rgba(255,255,255,0.5)', border: 'none', cursor: 'pointer', transition: 'all .3s' }} />
+            ))}
+          </div>
+
+          {/* Arrow prev */}
+          <button onClick={() => setHeroSlide(s => (s - 1 + HERO_SLIDES) % HERO_SLIDES)} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8, width: 40, height: 40, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          {/* Arrow next */}
+          <button onClick={() => setHeroSlide(s => (s + 1) % HERO_SLIDES)} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8, width: 40, height: 40, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </section>
+
+        {/* ══════════════════════════════════════════
+            STATS CARDS BAR
+        ══════════════════════════════════════════ */}
+        <section style={{ background: LIGHT_GRAY, padding: '0 16px' }}>
+          <div className="ng-container" style={{ position: 'relative', marginTop: -40, paddingBottom: 32 }}>
+            <div style={{ background: '#FFFDFD', borderRadius: 24, padding: 12, boxShadow: '0 8px 32px rgba(0,0,0,.10)' }}>
+              <div className="ng-stats-grid" style={{ display: 'flex', gap: 12, flexWrap: 'nowrap', overflowX: 'auto' }}>
+                {STAT_CARDS.map((s, i) => (
+                  <div key={i} className="ng-stat-card" style={{ background: s.bg }}>
+                    <div style={{ fontSize: 'clamp(22px,3vw,44px)', fontWeight: 700, color: '#fff', fontFamily: "'Merriweather', serif", lineHeight: 1.1 }}>
+                      {s.value}
+                    </div>
+                    <p style={{ fontSize: 'clamp(12px,1.5vw,18px)', color: '#fff', fontWeight: 400, margin: 0 }}>{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════
+            TOPPERS CAROUSEL (banner images placeholder)
+        ══════════════════════════════════════════ */}
+        <section style={{ background: LIGHT_GRAY, padding: '40px 16px 48px' }}>
+          <div className="ng-container">
+            <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 16 }}>
+              <div style={{ display: 'flex', transform: `translateX(-${topperSlide * 100}%)`, transition: 'transform .6s ease' }}>
+                {TOPPER_BANNERS.map((label, i) => (
+                  <div key={i} style={{ minWidth: '100%', height: 340 }}>
+                    <PhotoPlaceholder label={label} bg="#E2EBF8" style={{ width: '100%', height: '100%', borderRadius: 0, border: 'none' }} />
+                  </div>
+                ))}
+              </div>
+
+              {/* arrows */}
+              <button onClick={() => setTopperSlide(s => (s - 1 + TOPPER_BANNERS.length) % TOPPER_BANNERS.length)} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', background: '#fff', border: 'none', borderRadius: 8, width: 36, height: 56, cursor: 'pointer', boxShadow: '0 0 12px rgba(0,0,0,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="16" height="24" viewBox="0 0 13 20" fill="none" stroke="#333" strokeWidth="2.5"><polyline points="10 1 1 10 10 19"/></svg>
+              </button>
+              <button onClick={() => setTopperSlide(s => (s + 1) % TOPPER_BANNERS.length)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: '#fff', border: 'none', borderRadius: 8, width: 36, height: 56, cursor: 'pointer', boxShadow: '0 0 12px rgba(0,0,0,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="16" height="24" viewBox="0 0 13 20" fill="none" stroke="#333" strokeWidth="2.5"><polyline points="3 1 12 10 3 19"/></svg>
+              </button>
+
+              {/* dots */}
+              <div style={{ position: 'absolute', bottom: 10, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 6 }}>
+                {TOPPER_BANNERS.map((_, i) => (
+                  <button key={i} onClick={() => setTopperSlide(i)} style={{ width: i === topperSlide ? 20 : 6, height: 6, borderRadius: 3, background: i === topperSlide ? NAVBAR_BLUE : 'rgba(0,0,0,0.25)', border: 'none', cursor: 'pointer', transition: 'all .3s' }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════
+            TRANSFORMING THE FUTURE SECTION
+            (Schools / Junior Colleges / Coaching / Professional)
+        ══════════════════════════════════════════ */}
+        <section id="streams" style={{ padding: '80px 16px 80px', background: BODY_WHITE }}>
+          <div className="ng-container">
+            <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 56px' }}>
+              <h2 style={{ fontSize: 'clamp(24px,3.5vw,44px)', fontWeight: 700, color: DARK_TEXT, fontFamily: "'Merriweather', serif", lineHeight: 1.5, marginBottom: 16 }}>
+                Transforming the Future <br/>since 1979
+              </h2>
+              <p style={{ fontSize: 'clamp(13px,1.5vw,16px)', color: '#444', lineHeight: 1.75 }}>
+                The Narayana Group is one of Asia's largest educational networks, catering to students from Kindergarten to Grade 12 and beyond. We create an environment where students not only dream but turn them into realities, because your dreams are our dreams.
+              </p>
+            </div>
+
+            {/* 3 + 1 card grid */}
+            <div className="ng-program-grid" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {PROGRAM_CARDS.map((card, i) => (
+                <div key={i} className="ng-program-card" style={{ background: `linear-gradient(180deg, ${card.gradFrom} 0%, ${card.gradTo} 100%)`, width: 'calc(33.33% - 16px)', minWidth: 280, minHeight: 400 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, position: 'relative', zIndex: 5, paddingBottom: 16 }}>
+                    <h3 style={{ fontSize: 'clamp(16px,2vw,26px)', fontWeight: 700, color: '#fff', textAlign: 'center', fontFamily: "'Inter', sans-serif" }}>{card.title}</h3>
+                    <p style={{ fontSize: 'clamp(12px,1.2vw,15px)', color: 'rgba(255,255,255,0.9)', textAlign: 'center' }}>{card.subtitle}</p>
+                    <button className="ng-btn-link" style={{ color: '#fff', fontSize: 14, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}>
+                      Learn More
+                      <svg width="10" height="16" viewBox="0 0 13 20" fill="none" stroke="#fff" strokeWidth="2.5"><polyline points="3 1 12 10 3 19"/></svg>
+                    </button>
+                  </div>
+                  {/* Photo placeholder at bottom of card */}
+                  <div style={{ flex: 1, minHeight: 220, margin: '0 -24px', position: 'relative' }}>
+                    <PhotoPlaceholder label={card.label} bg="rgba(255,255,255,0.18)" style={{ width: '100%', height: '100%', borderRadius: 0, border: 'none', borderTop: '1px dashed rgba(255,255,255,0.4)' }} />
+                  </div>
                 </div>
+              ))}
+            </div>
 
-                <h3 style={{ fontSize: '22px', fontWeight: 900, color: '#FFFFFF', margin: '0 0 8px' }}>
-                  Enquiry Submitted Successfully!
-                </h3>
-                <p style={{ fontSize: '13px', color: '#94A3B8', marginBottom: '20px' }}>
-                  Our admission counselor will reach out on your contact number shortly.
-                </p>
-
-                <div style={{
-                  display: 'inline-block',
-                  padding: '12px 24px',
-                  backgroundColor: '#0F172A',
-                  border: '1px solid #D4AF37',
-                  borderRadius: '12px',
-                  color: '#D4AF37',
-                  fontWeight: 900,
-                  fontSize: '15px',
-                  letterSpacing: '0.05em',
-                  marginBottom: '24px'
-                }}>
-                  REFERENCE TICKET: {enquiryRef}
-                </div>
-
-                <p style={{ fontSize: '12px', color: '#CBD5E1', margin: 0 }}>
-                  For urgent inquiries, call our helpline directly at <strong style={{ color: '#D4AF37' }}>{collegePhone}</strong>
-                </p>
-
-                <button
-                  onClick={() => {
-                    setEnquirySuccess(false);
-                    setStuName('');
-                    setParentName('');
-                    setStuMobile('');
-                    setStuEmail('');
-                    setStuNotes('');
-                  }}
-                  style={{
-                    marginTop: '24px',
-                    padding: '10px 20px',
-                    backgroundColor: 'rgba(255,255,255,0.08)',
-                    color: '#FFFFFF',
-                    fontSize: '12px',
-                    fontWeight: 800,
-                    borderRadius: '8px',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Submit Another Enquiry
+            {/* Professional Colleges — wide banner card */}
+            <div style={{ marginTop: 24, borderRadius: 24, overflow: 'hidden', background: 'linear-gradient(180deg, #987BFF 0%, #7E6CEA 100%)', display: 'flex', minHeight: 200, position: 'relative' }}>
+              {/* Left image placeholder */}
+              <div style={{ width: 360, flexShrink: 0 }}>
+                <PhotoPlaceholder label="Professional College Students Photo" bg="rgba(255,255,255,0.15)" style={{ width: '100%', height: '100%', borderRadius: 0, border: 'none', borderRight: '1px dashed rgba(255,255,255,0.3)' }} />
+              </div>
+              <div style={{ flex: 1, padding: '32px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12 }}>
+                <h3 style={{ fontSize: 'clamp(18px,2.5vw,28px)', fontWeight: 700, color: '#fff', fontFamily: "'Inter', sans-serif" }}>Professional Colleges</h3>
+                <p style={{ fontSize: 'clamp(13px,1.3vw,16px)', color: 'rgba(255,255,255,0.9)' }}>Shaping students into future-ready professionals and new-age entrepreneurs.</p>
+                <button className="ng-btn-link" style={{ color: '#fff', width: 'fit-content' }}>
+                  Learn More
+                  <svg width="10" height="16" viewBox="0 0 13 20" fill="none" stroke="#fff" strokeWidth="2.5"><polyline points="3 1 12 10 3 19"/></svg>
                 </button>
               </div>
-            ) : (
-              <form onSubmit={handleEnquirySubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-                {enquiryError && (
-                  <div style={{ gridColumn: '1 / -1', padding: '12px 16px', backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid #EF4444', borderRadius: '10px', color: '#FCA5A5', fontSize: '13px', fontWeight: 700 }}>
-                    {enquiryError}
-                  </div>
-                )}
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#E2E8F0', marginBottom: '6px' }}>
-                    Student Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Aarav Sharma"
-                    value={stuName}
-                    onChange={(e) => setStuName(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      backgroundColor: '#0F172A',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '10px',
-                      color: '#FFFFFF',
-                      fontSize: '13px',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#E2E8F0', marginBottom: '6px' }}>
-                    Parent / Guardian Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Ramesh Sharma"
-                    value={parentName}
-                    onChange={(e) => setParentName(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      backgroundColor: '#0F172A',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '10px',
-                      color: '#FFFFFF',
-                      fontSize: '13px',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#E2E8F0', marginBottom: '6px' }}>
-                    Contact Mobile Number *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="10-digit mobile number"
-                    value={stuMobile}
-                    onChange={(e) => setStuMobile(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      backgroundColor: '#0F172A',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '10px',
-                      color: '#FFFFFF',
-                      fontSize: '13px',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#E2E8F0', marginBottom: '6px' }}>
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="e.g. student@example.com"
-                    value={stuEmail}
-                    onChange={(e) => setStuEmail(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      backgroundColor: '#0F172A',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '10px',
-                      color: '#FFFFFF',
-                      fontSize: '13px',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#E2E8F0', marginBottom: '6px' }}>
-                    Preferred Intermediate Stream
-                  </label>
-                  <select
-                    value={stuStream}
-                    onChange={(e) => setStuStream(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      backgroundColor: '#0F172A',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '10px',
-                      color: '#FFFFFF',
-                      fontSize: '13px',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="MPC (IIT-JEE / EAMCET)">MPC (IIT-JEE / TS EAPCET)</option>
-                    <option value="BiPC (NEET / EAMCET)">BiPC (NEET-UG / TS EAPCET Medical)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#E2E8F0', marginBottom: '6px' }}>
-                    Preferred Campus Selection
-                  </label>
-                  <select
-                    value={stuCampus}
-                    onChange={(e) => setStuCampus(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      backgroundColor: '#0F172A',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '10px',
-                      color: '#FFFFFF',
-                      fontSize: '13px',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="Erragattugutta Campus 1">Erragattugutta Campus 1 (Super-60 Residential)</option>
-                    <option value="Erragattugutta Campus 2">Erragattugutta Campus 2 (Digital Bay)</option>
-                    <option value="Bheemaram Campus 1">Bheemaram Campus 1 (Medical Sciences Wing)</option>
-                    <option value="Bheemaram Campus 2">Bheemaram Campus 2 (Day Scholar)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#E2E8F0', marginBottom: '6px' }}>
-                    Current Academic Qualification
-                  </label>
-                  <select
-                    value={stuGrade}
-                    onChange={(e) => setStuGrade(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      backgroundColor: '#0F172A',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '10px',
-                      color: '#FFFFFF',
-                      fontSize: '13px',
-                      outline: 'none'
-                    }}
-                  >
-                    <option value="10th Class Passed">10th Class Passed (Applying Inter 1st Year)</option>
-                    <option value="Inter 1st Year">Inter 1st Year Completed (Applying Lateral Inter 2nd Year)</option>
-                  </select>
-                </div>
-
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#E2E8F0', marginBottom: '6px' }}>
-                    Additional Notes / Questions
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Mention hostel requirements, scholarship test inquiries, or specific goals..."
-                    value={stuNotes}
-                    onChange={(e) => setStuNotes(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      backgroundColor: '#0F172A',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '10px',
-                      color: '#FFFFFF',
-                      fontSize: '13px',
-                      outline: 'none',
-                      resize: 'vertical'
-                    }}
-                  />
-                </div>
-
-                <div style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    style={{
-                      width: '100%',
-                      padding: '16px',
-                      backgroundColor: '#D4AF37',
-                      color: '#0A0E17',
-                      fontSize: '14px',
-                      fontWeight: 900,
-                      borderRadius: '12px',
-                      border: 'none',
-                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                      letterSpacing: '0.04em',
-                      boxShadow: '0 8px 24px rgba(212,175,55,0.25)',
-                      opacity: isSubmitting ? 0.7 : 1
-                    }}
-                    className="press-interactive"
-                  >
-                    {isSubmitting ? 'Submitting Admission Enquiry...' : 'Submit Admission Enquiry'}
-                  </button>
-                </div>
-              </form>
-            )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* FOOTER */}
-      <footer style={{ backgroundColor: '#070A10', borderTop: '1px solid rgba(212, 175, 55, 0.2)', padding: '60px 24px 40px' }}>
-        <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '40px' }}>
-          
-          {/* Col 1 Brand */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <img src={collegeLogo} alt="Inspire Logo" style={{ width: '40px', height: '40px', borderRadius: '8px' }} />
-              <div>
-                <strong style={{ fontSize: '16px', color: '#FFFFFF', display: 'block' }}>INSPIRE JUNIOR COLLEGE</strong>
-                <span style={{ fontSize: '11px', color: '#D4AF37', fontWeight: 800 }}>HANAMKONDA • MPC & BiPC</span>
+        {/* ══════════════════════════════════════════
+            ABOUT US — Vision / Mission / Who
+        ══════════════════════════════════════════ */}
+        <section id="about" style={{ background: VERY_LIGHT, padding: '80px 16px' }}>
+          <div className="ng-container">
+            <div style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto 56px' }}>
+              <h2 style={{ fontSize: 'clamp(24px,3vw,44px)', fontWeight: 700, color: DARK_TEXT, fontFamily: "'Merriweather', serif", marginBottom: 16 }}>About Us</h2>
+              <p style={{ fontSize: 'clamp(13px,1.5vw,16px)', color: '#444', lineHeight: 1.75 }}>
+                For over four decades, Narayana Educational Institutions has empowered millions of students to realise their full potential and fulfil their dreams.
+              </p>
+            </div>
+
+            {/* Desktop 2-up then 1-wide grid */}
+            <div className="ng-about-grid" style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+              {/* Vision */}
+              <div className="ng-about-card" style={{ flex: '1 1 300px' }}>
+                <div style={{ height: 240 }}>
+                  <PhotoPlaceholder label="Vision — Our Guiding Principle" bg="#DAE5F5" style={{ width: '100%', height: '100%', borderRadius: 0, border: 'none' }} />
+                </div>
+                <div style={{ padding: '32px 40px', flex: 1 }}>
+                  <h3 style={{ fontSize: 'clamp(18px,2.5vw,36px)', fontWeight: 700, color: DARK_TEXT, fontFamily: "'Merriweather', serif", marginBottom: 12 }}>Vision</h3>
+                  <p style={{ fontSize: 15, color: '#444', lineHeight: 1.75 }}>Driven by Determination, Progress and a Commitment to Service.</p>
+                </div>
+              </div>
+
+              {/* Mission */}
+              <div className="ng-about-card" style={{ flex: '1 1 300px' }}>
+                <div style={{ height: 240 }}>
+                  <PhotoPlaceholder label="Mission — Our Purpose" bg="#C8E6D0" style={{ width: '100%', height: '100%', borderRadius: 0, border: 'none' }} />
+                </div>
+                <div style={{ padding: '32px 40px', flex: 1 }}>
+                  <h3 style={{ fontSize: 'clamp(18px,2.5vw,36px)', fontWeight: 700, color: DARK_TEXT, fontFamily: "'Merriweather', serif", marginBottom: 12 }}>Mission</h3>
+                  <p style={{ fontSize: 15, color: '#444', lineHeight: 1.75 }}>
+                    At Narayana Educational Institutions, we are dedicated to fostering holistic academic excellence and nurturing a spirit of healthy competition. Our mission is to equip students with the knowledge, discipline and determination needed to pursue purposeful success and reach the pinnacle of achievement with confidence and clarity.
+                  </p>
+                </div>
               </div>
             </div>
-            <p style={{ fontSize: '12px', color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
-              Premier Intermediate College approved by Telangana State Board of Intermediate Education (Code: 21182).
-            </p>
+
+            {/* Who Are We — wide card */}
+            <div className="ng-about-card" style={{ display: 'flex', flexDirection: 'row', marginTop: 24 }}>
+              <div style={{ width: '40%', minHeight: 300, flexShrink: 0 }}>
+                <PhotoPlaceholder label="Who Are We — Narayana Group History" bg="#E5D9F8" style={{ width: '100%', height: '100%', borderRadius: 0, border: 'none' }} />
+              </div>
+              <div style={{ flex: 1, padding: '40px 48px' }}>
+                <h3 style={{ fontSize: 'clamp(18px,2.5vw,36px)', fontWeight: 700, color: DARK_TEXT, fontFamily: "'Merriweather', serif", marginBottom: 16 }}>Who are We?</h3>
+                <p style={{ fontSize: 15, color: '#444', lineHeight: 1.75, marginBottom: 20 }}>
+                  Established in 1979 by Dr. Ponguru Narayana, Narayana Educational Institutions is one of Asia's largest educational institutions, consisting of 950+ schools, junior colleges, coaching centres and professional colleges across 250+ cities in 23 Indian states. With a dedicated team of 50,000+ experienced teachers and staff, we fulfil the dreams of over 6 lakh students annually.
+                </p>
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Learn More
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="5 12 19 12 13 6"/><polyline points="13 18 19 12"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════
+            INSIDE CAMPUS — Gallery strip
+        ══════════════════════════════════════════ */}
+        <section id="gallery" style={{ background: BODY_WHITE, padding: '80px 16px' }}>
+          <div className="ng-container">
+            <div style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto 48px' }}>
+              <h2 style={{ fontSize: 'clamp(22px,3vw,40px)', fontWeight: 700, color: DARK_TEXT, fontFamily: "'Merriweather', serif", marginBottom: 12 }}>Inside the Campus</h2>
+              <p style={{ fontSize: 15, color: '#444', lineHeight: 1.75 }}>Experience our state-of-the-art facilities across all our campuses.</p>
+            </div>
+
+            <div className="ng-campus-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+              {CAMPUS_PHOTOS.map((label, i) => (
+                <div key={i} style={{ borderRadius: 12, overflow: 'hidden', height: 220, position: 'relative' }}>
+                  <PhotoPlaceholder label={label} bg={['#BFDBFE','#BBF7D0','#FDE68A','#DDD6FE','#FBCFE8'][i % 5]} style={{ width: '100%', height: '100%', borderRadius: 0, border: 'none' }} />
+                  <div style={{ position: 'absolute', bottom: 12, left: 12, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════
+            BRANCHES / CENTERS MAP
+        ══════════════════════════════════════════ */}
+        <section id="campuses" style={{ background: LIGHT_GRAY, padding: '80px 16px' }}>
+          <div className="ng-container">
+            <div style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto 48px' }}>
+              <h2 style={{ fontSize: 'clamp(22px,3vw,40px)', fontWeight: 700, color: DARK_TEXT, fontFamily: "'Merriweather', serif", marginBottom: 12 }}>Find a Centre Near You</h2>
+              <p style={{ fontSize: 15, color: '#444', lineHeight: 1.75 }}>Narayana Group has 950+ centres across 250+ cities in 23 Indian states.</p>
+            </div>
+
+            {/* Map placeholder */}
+            <div style={{ borderRadius: 20, overflow: 'hidden', height: 400, position: 'relative', marginBottom: 40 }}>
+              <PhotoPlaceholder label="India Map — Narayana Centers Location Map" bg="#C8D8E8" style={{ width: '100%', height: '100%', borderRadius: 0, border: 'none' }} />
+              <div style={{ position: 'absolute', top: 16, left: 16, background: NAVBAR_BLUE, color: '#fff', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+                250+ Cities · 23 States
+              </div>
+            </div>
+
+            {/* State quick links */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+              {['Telangana','Andhra Pradesh','Karnataka','Tamil Nadu','Maharashtra','Delhi','Rajasthan','Gujarat','Uttar Pradesh','West Bengal','Odisha','Kerala'].map(state => (
+                <button key={state} style={{ padding: '8px 18px', background: '#fff', border: '1.5px solid #CBD5E1', borderRadius: 999, fontSize: 13, fontWeight: 500, color: DARK_TEXT, cursor: 'pointer', transition: 'all .2s' }}>
+                  {state}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════
+            ACHIEVERS CAROUSEL
+        ══════════════════════════════════════════ */}
+        <section style={{ background: BODY_WHITE, padding: '80px 16px' }}>
+          <div className="ng-container">
+            <div style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto 48px' }}>
+              <h2 style={{ fontSize: 'clamp(22px,3vw,40px)', fontWeight: 700, color: DARK_TEXT, fontFamily: "'Merriweather', serif", marginBottom: 12 }}>Our Achievers</h2>
+              <p style={{ fontSize: 15, color: '#444', lineHeight: 1.75 }}>Year after year, Narayana students top national rankings in IIT-JEE, NEET &amp; Board Exams.</p>
+            </div>
+
+            <div style={{ position: 'relative', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', gap: 20, transform: `translateX(-${achieverSlide * (240 + 20)}px)`, transition: 'transform .5s ease', paddingBottom: 4 }}>
+                {ACHIEVERS.map((a, i) => (
+                  <div key={i} className="ng-achiever-card" style={{ minWidth: 220, flex: '0 0 220px' }}>
+                    {/* Student photo placeholder */}
+                    <div style={{ height: 200, background: ['#BFDBFE','#BBF7D0','#FDE68A','#DDD6FE','#FBCFE8','#FED7AA','#E0F2FE','#D1FAE5'][i % 8] }}>
+                      <PhotoPlaceholder label={`${a.name} — Student Photo`} bg="transparent" style={{ width: '100%', height: '100%', borderRadius: 0, border: 'none' }} />
+                    </div>
+                    <div style={{ padding: '16px 18px 20px' }}>
+                      {/* Rank badge */}
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#FEF3C7', color: '#92400E', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, marginBottom: 10 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#92400E"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        {a.rank}
+                      </div>
+                      <h4 style={{ fontSize: 17, fontWeight: 700, color: DARK_TEXT, marginBottom: 4 }}>{a.name}</h4>
+                      <p style={{ fontSize: 13, color: '#64748B', marginBottom: 2 }}>{a.exam}</p>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: NAVBAR_BLUE }}>{a.score}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Nav arrows */}
+              <button onClick={() => setAchieverSlide(s => Math.max(0, s - 1))} style={{ position: 'absolute', left: -20, top: '50%', transform: 'translateY(-50%)', background: '#fff', border: '1px solid #E2E8F0', borderRadius: 8, width: 36, height: 56, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="14" height="20" viewBox="0 0 13 20" fill="none" stroke="#333" strokeWidth="2.5"><polyline points="10 1 1 10 10 19"/></svg>
+              </button>
+              <button onClick={() => setAchieverSlide(s => Math.min(ACHIEVERS.length - visibleAchievers, s + 1))} style={{ position: 'absolute', right: -20, top: '50%', transform: 'translateY(-50%)', background: '#fff', border: '1px solid #E2E8F0', borderRadius: 8, width: 36, height: 56, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="14" height="20" viewBox="0 0 13 20" fill="none" stroke="#333" strokeWidth="2.5"><polyline points="3 1 12 10 3 19"/></svg>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════
+            ADMISSION ENQUIRY FORM
+        ══════════════════════════════════════════ */}
+        <section id="enquiry" style={{ background: LIGHT_GRAY, padding: '80px 16px' }}>
+          <div className="ng-container" style={{ maxWidth: 860 }}>
+            <div style={{ textAlign: 'center', marginBottom: 40 }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: NAVBAR_BLUE, letterSpacing: '.08em', textTransform: 'uppercase' }}>Admission Enquiry 2026-27</span>
+              <h2 style={{ fontSize: 'clamp(22px,3vw,40px)', fontWeight: 700, color: DARK_TEXT, fontFamily: "'Merriweather', serif", margin: '10px 0 14px' }}>
+                Enquire Now
+              </h2>
+              <p style={{ fontSize: 15, color: '#444', lineHeight: 1.75 }}>
+                Fill out the form below to connect with our admission counselors.
+              </p>
+            </div>
+
+            <div style={{ background: '#fff', borderRadius: 20, padding: 36, boxShadow: '0 8px 40px rgba(0,0,0,.10)', border: '1.5px solid #E2E8F0' }}>
+              {enquirySuccess ? (
+                <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                  <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#DCFCE7', border: '2px solid #16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: '#16A34A' }}>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <h3 style={{ fontSize: 22, fontWeight: 700, color: DARK_TEXT, marginBottom: 8 }}>Enquiry Submitted Successfully!</h3>
+                  <p style={{ fontSize: 14, color: '#64748B', marginBottom: 20 }}>Our admission counselor will reach out on your contact number shortly.</p>
+                  <div style={{ display: 'inline-block', padding: '12px 28px', background: '#EFF6FF', border: '1.5px solid #3B82F6', borderRadius: 12, color: NAVBAR_BLUE, fontWeight: 800, fontSize: 16, marginBottom: 24, letterSpacing: '.04em' }}>
+                    REF: {enquiryRef}
+                  </div>
+                  <p style={{ fontSize: 13, color: '#64748B' }}>For urgent inquiries, call: <strong style={{ color: ORANGE }}>{orgPhone}</strong></p>
+                  <button onClick={() => { setEnquirySuccess(false); setStuName(''); setStuMobile(''); setEnquiryRef(''); }} style={{ marginTop: 24, padding: '10px 24px', background: NAVBAR_BLUE, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    Submit Another Enquiry
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleEnquirySubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+                  {enquiryError && (
+                    <div style={{ gridColumn: '1/-1', padding: '12px 16px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, color: '#DC2626', fontSize: 13, fontWeight: 600 }}>
+                      {enquiryError}
+                    </div>
+                  )}
+
+                  {[
+                    { label: 'Student Full Name *', placeholder: 'e.g. Aarav Sharma', val: stuName, set: setStuName, type: 'text' },
+                    { label: 'Parent / Guardian Name', placeholder: 'e.g. Ramesh Sharma', val: parentName, set: setParentName, type: 'text' },
+                    { label: 'Contact Mobile Number *', placeholder: '10-digit mobile', val: stuMobile, set: setStuMobile, type: 'tel' },
+                    { label: 'Email Address', placeholder: 'student@example.com', val: stuEmail, set: setStuEmail, type: 'email' },
+                  ].map(f => (
+                    <div key={f.label}>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>{f.label}</label>
+                      <input type={f.type} required={f.label.includes('*')} placeholder={f.placeholder} value={f.val} onChange={e => f.set(e.target.value)} style={inputStyle} />
+                    </div>
+                  ))}
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Interested In</label>
+                    <select value={stuStream} onChange={e => setStuStream(e.target.value)} style={inputStyle}>
+                      <option>School (Nursery – Grade 10)</option>
+                      <option>Junior College (Intermediate / Class 11-12)</option>
+                      <option>Coaching Centre (IIT-JEE / NEET)</option>
+                      <option>Professional College</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Preferred Location / State</label>
+                    <select value={stuCampus} onChange={e => setStuCampus(e.target.value)} style={inputStyle}>
+                      {['Hyderabad','Warangal / Hanamkonda','Vijayawada','Chennai','Bangalore','Mumbai','Delhi','Jaipur','Pune'].map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Current Grade / Qualification</label>
+                    <select value={stuGrade} onChange={e => setStuGrade(e.target.value)} style={inputStyle}>
+                      <option>Grade 10 (Completed)</option>
+                      <option>Grade 12 / Intermediate (Completed)</option>
+                      <option>Appearing Grade 10</option>
+                      <option>Appearing Grade 12</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+
+                  <div style={{ gridColumn: '1/-1' }}>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Message / Questions</label>
+                    <textarea rows={3} placeholder="Scholarship queries, hostel facilities, specific exam preparation..." value={stuNotes} onChange={e => setStuNotes(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
+                  </div>
+
+                  <div style={{ gridColumn: '1/-1' }}>
+                    <button type="submit" disabled={isSubmitting} style={{ width: '100%', padding: '15px', background: ORANGE, color: '#fff', fontSize: 16, fontWeight: 700, border: 'none', cursor: isSubmitting ? 'not-allowed' : 'pointer', borderRadius: 10, letterSpacing: '.03em', opacity: isSubmitting ? .7 : 1, transition: 'opacity .2s' }}>
+                      {isSubmitting ? 'Submitting...' : 'Submit Enquiry'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════
+            SOCIAL MEDIA SECTION
+        ══════════════════════════════════════════ */}
+        <section style={{ background: BODY_WHITE, padding: '60px 16px' }}>
+          <div className="ng-container" style={{ display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div style={{ maxWidth: 440 }}>
+              <h2 style={{ fontSize: 'clamp(22px,3vw,36px)', fontWeight: 700, color: DARK_TEXT, fontFamily: "'Merriweather', serif", marginBottom: 16 }}>Follow Us on Social Media</h2>
+              <p style={{ fontSize: 15, color: '#444', lineHeight: 1.75, marginBottom: 28 }}>Stay connected with the Narayana community. Share your success stories and campus life moments.</p>
+              <div style={{ display: 'flex', gap: 14 }}>
+                {[
+                  { label: 'Facebook', bg: '#1877F2', icon: 'f' },
+                  { label: 'YouTube', bg: '#FF0000', icon: 'Y' },
+                  { label: 'Instagram', bg: '#E1306C', icon: 'In' },
+                  { label: 'LinkedIn', bg: '#0A66C2', icon: 'Li' },
+                ].map(s => (
+                  <a key={s.label} href="#" title={s.label} style={{ width: 44, height: 44, borderRadius: '50%', background: s.bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, textDecoration: 'none' }}>{s.icon}</a>
+                ))}
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 280, height: 260, borderRadius: 16, overflow: 'hidden' }}>
+              <PhotoPlaceholder label="Social Media Wall — Facebook / Instagram Posts" bg="#F1F5F9" style={{ width: '100%', height: '100%', borderRadius: 0, border: 'none' }} />
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════
+            FOOTER
+        ══════════════════════════════════════════ */}
+        <footer style={{ background: DARK_TEXT, color: '#fff' }}>
+          {/* Photo strip */}
+          <div style={{ display: 'flex', gap: 6, overflow: 'hidden', height: 90 }}>
+            {FOOTER_PHOTOS.map((label, i) => (
+              <div key={i} style={{ flex: '0 0 calc(100% / 11)', minWidth: 80, height: '100%' }}>
+                <PhotoPlaceholder label={label} bg={['#93C5FD','#6EE7B7','#FDE68A','#C4B5FD','#FCA5A5','#67E8F9','#A3E635','#F9A8D4','#FCD34D','#86EFAC','#7DD3FC'][i % 11]} style={{ width: '100%', height: '100%', borderRadius: 0, border: 'none' }} />
+              </div>
+            ))}
           </div>
 
-          {/* Col 2 Campuses */}
-          <div>
-            <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 16px', letterSpacing: '0.05em' }}>
-              HANAMKONDA CAMPUSES
-            </h4>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '12px', color: '#94A3B8', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <li>Erragattugutta Campus 1 (Super-60 IIT)</li>
-              <li>Erragattugutta Campus 2 (Digital Bay)</li>
-              <li>Bheemaram Campus 1 (Medical Wing)</li>
-              <li>Bheemaram Campus 2 (Day Scholar)</li>
-            </ul>
-          </div>
+          {/* Footer body */}
+          <div className="ng-container" style={{ padding: '48px 16px 32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: 40 }}>
+            {/* Brand */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <div style={{ width: 44, height: 44, background: '#fff', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="28" height="28" viewBox="0 0 32 32" fill="none"><path d="M16 4L4 10v12l12 6 12-6V10L16 4z" fill={NAVBAR_BLUE}/></svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', fontFamily: "'Merriweather', serif" }}>Narayana</div>
+                  <div style={{ fontSize: 11, color: '#94A3B8' }}>Educational Institutions</div>
+                </div>
+              </div>
+              <p style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.7, maxWidth: 280 }}>
+                Inspiring Young Minds and Empowering Dreams since 1979. Asia's leading educational network with 950+ institutions.
+              </p>
+              <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+                {[
+                  { bg: '#1877F2', l: 'F' }, { bg: '#0A66C2', l: 'Li' }, { bg: '#FF0000', l: 'Y' }, { bg: '#E1306C', l: 'In' },
+                ].map(s => (
+                  <a key={s.l} href="#" style={{ width: 36, height: 36, borderRadius: '50%', background: s.bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, textDecoration: 'none' }}>{s.l}</a>
+                ))}
+              </div>
+            </div>
 
-          {/* Col 3 Contact Helpline */}
-          <div>
-            <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 16px', letterSpacing: '0.05em' }}>
-              ADMISSION HELPLINE
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px', color: '#94A3B8' }}>
-              <div>Phone: <a href={`tel:${collegePhone}`} style={{ color: '#D4AF37', fontWeight: 800, textDecoration: 'none' }}>{collegePhone}</a></div>
-              <div>Email: <a href={`mailto:${collegeEmail}`} style={{ color: '#CBD5E1', textDecoration: 'none' }}>{collegeEmail}</a></div>
-              <div>Instagram: <a href={instaUrl} target="_blank" rel="noreferrer" style={{ color: '#38BDF8', textDecoration: 'none' }}>@inspire_junior_college</a></div>
-              <div>Location: Hanamkonda, Warangal, Telangana</div>
+            {/* Programs */}
+            <div>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 16, letterSpacing: '.06em', textTransform: 'uppercase' }}>Programs</h4>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {['Schools', 'Junior Colleges', 'Coaching Centres', 'Professional Colleges', 'Digital Learning (nLearn)', 'nSports'].map(p => (
+                  <li key={p}><a href="#" style={{ fontSize: 13, color: '#94A3B8', textDecoration: 'none', transition: 'color .2s' }}>{p}</a></li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Quick links */}
+            <div>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 16, letterSpacing: '.06em', textTransform: 'uppercase' }}>Quick Links</h4>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {['About Us', 'Academics', 'Gallery', 'News & Media', 'Careers', 'Blogs', 'Contact Us', 'Alumni'].map(l => (
+                  <li key={l}><a href="#" style={{ fontSize: 13, color: '#94A3B8', textDecoration: 'none' }}>{l}</a></li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 16, letterSpacing: '.06em', textTransform: 'uppercase' }}>Contact Us</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" style={{ marginTop: 2, flexShrink: 0 }}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.6 }}>Narayana Group HQ, Hyderabad, Telangana, India</span>
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.61a16 16 0 0 0 6 6l.93-.93a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/></svg>
+                  <a href={`tel:${orgPhone}`} style={{ fontSize: 13, color: ORANGE, textDecoration: 'none', fontWeight: 600 }}>{orgPhone}</a>
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" style={{ flexShrink: 0 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  <a href={`mailto:${orgEmail}`} style={{ fontSize: 13, color: '#94A3B8', textDecoration: 'none' }}>{orgEmail}</a>
+                </div>
+              </div>
+
+              {/* Portal link */}
+              <a href={portalHash} style={{ display: 'inline-block', marginTop: 20, padding: '10px 20px', background: NAVBAR_BLUE, color: '#fff', borderRadius: 8, fontSize: 12, fontWeight: 700, textDecoration: 'none', letterSpacing: '.04em' }}>
+                ERP Portal
+              </a>
             </div>
           </div>
 
-          {/* Col 4 System Gateway */}
-          <div>
-            <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF', margin: '0 0 16px', letterSpacing: '0.05em' }}>
-              INTERNAL PORTAL
-            </h4>
-            <p style={{ fontSize: '12px', color: '#94A3B8', lineHeight: 1.5, marginBottom: '14px' }}>
-              Authorized faculty, deans, accountants, and administrators portal access point.
-            </p>
-            <a
-              href={portalHash}
-              style={{
-                display: 'inline-block',
-                padding: '10px 18px',
-                backgroundColor: 'rgba(212, 175, 55, 0.12)',
-                border: '1px solid #D4AF37',
-                color: '#D4AF37',
-                borderRadius: '8px',
-                fontSize: '11px',
-                fontWeight: 900,
-                textDecoration: 'none',
-                letterSpacing: '0.05em'
-              }}
-              className="press-interactive"
-            >
-              ERP SYSTEM PORTAL GATEWAY
-            </a>
+          {/* Bottom bar */}
+          <div style={{ borderTop: '1px solid rgba(255,255,255,.08)', padding: '20px 16px' }}>
+            <div className="ng-container" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <span style={{ fontSize: 12, color: '#64748B' }}>© 2026 Narayana Educational Institutions. All Rights Reserved.</span>
+              <span style={{ fontSize: 12, color: '#64748B' }}>Privacy Policy · Terms of Use · Sitemap</span>
+            </div>
           </div>
+        </footer>
 
-        </div>
-
-        <div style={{ maxWidth: '1280px', margin: '40px auto 0', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', fontSize: '11px', color: '#64748B' }}>
-          <div>© 2026 Inspire Junior College, Hanamkonda. All Rights Reserved.</div>
-          <div>MPC & BiPC Intermediate Programs • Warangal Urban District</div>
-        </div>
-      </footer>
-    </div>
+      </div>
+    </>
   );
 };

@@ -1,277 +1,150 @@
-// server/services/googleDriveService.cjs
-// Native Google Drive API v3 Service for 24-Hour Rolling Backups & Data Restoration
-// Interacts with Service Account credentials & Parent Folder ID
-
 const { google } = require('googleapis');
 const stream = require('stream');
 
-const SCOPES = ['https://www.googleapis.com/auth/drive'];
+async function getGoogleDriveClient() {
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN;
 
-function getDriveClient() {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  // Use OAuth 2.0 User Credentials (No storage quota restrictions on personal Gmail accounts)
+  if (clientId && clientSecret && refreshToken) {
+    const oauth2Client = new google.auth.OAuth2(
+      clientId.trim(),
+      clientSecret.trim()
+    );
+    oauth2Client.setCredentials({ refresh_token: refreshToken.trim() });
+    return google.drive({ version: 'v3', auth: oauth2Client });
+  }
+
+  // Fallback Service Account JWT
+  const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
   let privateKey = process.env.GOOGLE_PRIVATE_KEY;
 
-  if (!email || !privateKey) {
-    console.warn('WARN [GoogleDrive]: Missing GOOGLE_SERVICE_ACCOUNT_EMAIL or GOOGLE_PRIVATE_KEY in environment.');
-    return null;
+  if (!serviceAccountEmail || !privateKey) {
+    throw new Error('Google Drive credentials missing in environment variables. Specify GOOGLE_OAUTH_REFRESH_TOKEN or Service Account details.');
   }
 
-  // Sanitize double-escaped newlines in private key
-  if (privateKey.includes('\\n')) {
-    privateKey = privateKey.replace(/\\n/g, '\n');
-  }
+  privateKey = privateKey.replace(/\\n/g, '\n');
 
-  const auth = new google.auth.JWT(
-    email,
-    null,
-    privateKey,
-    SCOPES
-  );
+  const auth = new google.auth.JWT({
+    email: serviceAccountEmail.trim(),
+    key: privateKey,
+    scopes: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive']
+  });
 
+  await auth.authorize();
   return google.drive({ version: 'v3', auth });
 }
 
-function getParentFolderId() {
-  return process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID || '1BQIGgpPUYq--oN7Wz9xLQ9QRKoZnPz99';
-}
-
-const CATEGORIES = ['Students_Data', 'Teachers_Data', 'Expenditures_Data'];
-const CAMPUSES = ['Erragattugutta_C1', 'Erragattugutta_C2', 'Beemaram_C1', 'Beemaram_C2'];
-
-// Cache folder ID map in memory to reduce Drive API calls
-const folderIdCache = {};
-
-/**
- * Finds or creates a folder inside a parent folder.
- */
-async function getOrCreateFolder(drive, name, parentId) {
-  const cacheKey = `${parentId}:${name}`;
-  if (folderIdCache[cacheKey]) return folderIdCache[cacheKey];
-
-  try {
-    const q = `mimeType='application/vnd.google-apps.folder' and name='${name}' and '${parentId}' in parents and trashed=false`;
-    const res = await drive.files.list({
-      q,
-      fields: 'files(id, name)',
-      spaces: 'drive',
-    });
-
-    if (res.data.files && res.data.files.length > 0) {
-      const folderId = res.data.files[0].id;
-      folderIdCache[cacheKey] = folderId;
-      return folderId;
-    }
-
-    // Create folder
-    const fileMetadata = {
-      name,
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [parentId],
-    };
-
-    const created = await drive.files.create({
-      resource: fileMetadata,
-      fields: 'id',
-    });
-
-    const newId = created.data.id;
-    folderIdCache[cacheKey] = newId;
-    return newId;
-  } catch (err) {
-    console.error(`ERROR [GoogleDrive]: Failed to get/create folder ${name}:`, err.message);
-    throw err;
+function getFolderId() {
+  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID || process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID;
+  if (!folderId) {
+    throw new Error('Google Drive folder ID missing in environment variables.');
   }
+  return folderId.trim();
 }
 
 /**
- * Ensures the full 3 Category x 4 Campus folder hierarchy exists in Google Drive.
+ * Uploads an encrypted backup file to Google Drive
  */
-async function ensureFolderHierarchy(drive) {
-  const parentId = getParentFolderId();
-  const hierarchy = {};
+async function uploadBackupFile(fileName, fileBufferOrString) {
+  const drive = await getGoogleDriveClient();
+  const folderId = getFolderId();
 
-  for (const cat of CATEGORIES) {
-    const catFolderId = await getOrCreateFolder(drive, cat, parentId);
-    hierarchy[cat] = { id: catFolderId, campuses: {} };
-
-    for (const campus of CAMPUSES) {
-      const campusFolderId = await getOrCreateFolder(drive, campus, catFolderId);
-      hierarchy[cat].campuses[campus] = campusFolderId;
-    }
-  }
-
-  return hierarchy;
-}
-
-/**
- * Enforces 2-snapshot rolling retention: Deletes oldest backups in target folder if count > maxSnapshots (default 2).
- */
-async function enforceRollingRetention(drive, folderId, maxSnapshots = 2) {
-  try {
-    const res = await drive.files.list({
-      q: `'${folderId}' in parents and mimeType!='application/vnd.google-apps.folder' and trashed=false`,
-      orderBy: 'createdTime asc',
-      fields: 'files(id, name, createdTime)',
-    });
-
-    const files = res.data.files || [];
-    if (files.length > maxSnapshots) {
-      const filesToDelete = files.slice(0, files.length - maxSnapshots);
-      for (const file of filesToDelete) {
-        console.log(`[GoogleDrive Rolling Retention]: Deleting old backup ${file.name} (${file.id})`);
-        await drive.files.delete({ fileId: file.id }).catch(e => console.warn(`Failed deleting ${file.id}:`, e.message));
-      }
-    }
-  } catch (err) {
-    console.warn(`WARN [GoogleDrive]: Retention enforcement warning in folder ${folderId}:`, err.message);
-  }
-}
-
-/**
- * Uploads a JSON backup payload to Google Drive under specified category & campus folder.
- */
-async function uploadBackupSnapshot(category, campus, payloadData) {
-  const drive = getDriveClient();
-  if (!drive) {
-    throw new Error('Google Drive API client is not configured. Check Service Account credentials in .env.');
-  }
-
-  const normCategory = CATEGORIES.find(c => c.toLowerCase() === category.toLowerCase()) || CATEGORIES[0];
-  const normCampus = CAMPUSES.find(c => c.toLowerCase() === campus.toLowerCase().replace(/\s+/g, '_')) || 'Erragattugutta_C1';
-
-  const hierarchy = await ensureFolderHierarchy(drive);
-  const targetFolderId = hierarchy[normCategory].campuses[normCampus];
-
-  const nowIso = new Date().toISOString().replace(/[:.]/g, '-');
-  const fileName = `backup_${normCategory}_${normCampus}_${nowIso}.json`;
-
-  const jsonString = JSON.stringify(payloadData, null, 2);
+  const buffer = Buffer.isBuffer(fileBufferOrString)
+    ? fileBufferOrString
+    : Buffer.from(fileBufferOrString, 'utf-8');
 
   const bufferStream = new stream.PassThrough();
-  bufferStream.end(Buffer.from(jsonString, 'utf-8'));
+  bufferStream.end(buffer);
 
-  const fileMetadata = {
-    name: fileName,
-    parents: [targetFolderId],
-    description: `Automated 24-hour Inspire ERP backup snapshot for ${normCategory} - ${normCampus}`,
-  };
-
-  const media = {
-    mimeType: 'application/json',
-    body: bufferStream,
-  };
-
-  const file = await drive.files.create({
-    resource: fileMetadata,
-    media,
-    fields: 'id, name, webViewLink, createdTime, size',
+  const response = await drive.files.create({
+    requestBody: {
+      name: fileName,
+      parents: [folderId],
+      mimeType: 'application/octet-stream'
+    },
+    media: {
+      mimeType: 'application/octet-stream',
+      body: bufferStream
+    },
+    supportsAllDrives: true,
+    supportsTeamDrives: true,
+    fields: 'id, name, createdTime, size'
   });
 
-  // Enforce 2-snapshot rolling retention rule in this campus folder
-  await enforceRollingRetention(drive, targetFolderId, 2);
-
-  return {
-    fileId: file.data.id,
-    fileName: file.data.name,
-    category: normCategory,
-    campus: normCampus,
-    createdTime: file.data.createdTime,
-    sizeBytes: file.data.size,
-    driveLink: file.data.webViewLink,
-  };
+  return response.data;
 }
 
 /**
- * Lists all available backup snapshots across all 3 category & 4 campus subfolders.
+ * Lists all backup files in the target Google Drive folder
  */
-async function listAvailableBackups() {
-  const drive = getDriveClient();
-  if (!drive) return null;
+async function listBackupFiles() {
+  const drive = await getGoogleDriveClient();
+  const folderId = getFolderId();
 
-  try {
-    const hierarchy = await ensureFolderHierarchy(drive);
-    const result = {
-      Students_Data: {},
-      Teachers_Data: {},
-      Expenditures_Data: {},
-    };
+  const response = await drive.files.list({
+    q: `'${folderId}' in parents and trashed = false`,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+    fields: 'files(id, name, createdTime, size, mimeType)',
+    orderBy: 'createdTime desc'
+  });
 
-    for (const cat of CATEGORIES) {
-      for (const campus of CAMPUSES) {
-        const folderId = hierarchy[cat].campuses[campus];
-        const res = await drive.files.list({
-          q: `'${folderId}' in parents and mimeType!='application/vnd.google-apps.folder' and trashed=false`,
-          orderBy: 'createdTime desc',
-          fields: 'files(id, name, createdTime, size, webViewLink)',
-        });
-
-        result[cat][campus] = (res.data.files || []).map(f => ({
-          fileId: f.id,
-          fileName: f.name,
-          createdTime: f.createdTime,
-          sizeBytes: f.size,
-          driveLink: f.webViewLink,
-        }));
-      }
-    }
-
-    return result;
-  } catch (err) {
-    console.error('ERROR [GoogleDrive]: Failed to list backups:', err.message);
-    return null;
-  }
+  return response.data.files || [];
 }
 
 /**
- * Downloads content of a specific backup file by fileId.
+ * Downloads a backup file content from Google Drive
  */
-async function downloadBackupContent(fileId) {
-  const drive = getDriveClient();
-  if (!drive) throw new Error('Google Drive API client is not configured.');
-
-  const res = await drive.files.get(
-    { fileId, alt: 'media' },
-    { responseType: 'text' }
+async function downloadBackupFile(fileId) {
+  const drive = await getGoogleDriveClient();
+  const response = await drive.files.get(
+    { fileId, alt: 'media', supportsAllDrives: true },
+    { responseType: 'arraybuffer' }
   );
 
-  return JSON.parse(res.data);
+  return Buffer.from(response.data);
 }
 
 /**
- * Purges all backup files in Google Drive while retaining folder structure.
+ * Deletes a file from Google Drive
  */
-async function purgeAllDriveBackups() {
-  const drive = getDriveClient();
-  if (!drive) throw new Error('Google Drive API client is not configured.');
+async function deleteBackupFile(fileId) {
+  const drive = await getGoogleDriveClient();
+  await drive.files.delete({ fileId, supportsAllDrives: true });
+  return true;
+}
 
-  const hierarchy = await ensureFolderHierarchy(drive);
-  let totalDeleted = 0;
+/**
+ * Cleans up backup files older than retentionHours (default: 24 hours)
+ */
+async function cleanupOldBackups(retentionHours = 24) {
+  try {
+    const files = await listBackupFiles();
+    const cutoffTime = Date.now() - retentionHours * 60 * 60 * 1000;
+    let deletedCount = 0;
 
-  for (const cat of CATEGORIES) {
-    for (const campus of CAMPUSES) {
-      const folderId = hierarchy[cat].campuses[campus];
-      const res = await drive.files.list({
-        q: `'${folderId}' in parents and mimeType!='application/vnd.google-apps.folder' and trashed=false`,
-        fields: 'files(id, name)',
-      });
-
-      const files = res.data.files || [];
-      for (const file of files) {
-        await drive.files.delete({ fileId: file.id }).catch(() => null);
-        totalDeleted++;
+    for (const f of files) {
+      const createdTime = new Date(f.createdTime).getTime();
+      if (createdTime < cutoffTime && f.name.startsWith('inspire-erp-backup-')) {
+        console.log(`🧹 [Drive Cleanup]: Deleting backup older than ${retentionHours}h: ${f.name} (ID: ${f.id})`);
+        await deleteBackupFile(f.id);
+        deletedCount++;
       }
     }
-  }
 
-  return { totalDeleted };
+    return deletedCount;
+  } catch (err) {
+    console.error('⚠️ [Drive Cleanup Notice]:', err.message);
+    return 0;
+  }
 }
 
 module.exports = {
-  getDriveClient,
-  getParentFolderId,
-  uploadBackupSnapshot,
-  listAvailableBackups,
-  downloadBackupContent,
-  purgeAllDriveBackups,
-  ensureFolderHierarchy,
+  uploadBackupFile,
+  listBackupFiles,
+  downloadBackupFile,
+  deleteBackupFile,
+  cleanupOldBackups
 };

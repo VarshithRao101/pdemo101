@@ -1,6 +1,4 @@
 import React, { useState, type ReactNode } from 'react';
-import { InspireLogo } from '../common/InspireLogo';
-import { LiveConnectionIndicator } from '../common/LiveConnectionIndicator';
 import { useNavigation } from '../../context/NavigationContext';
 
 // --- TRNT BEE FLOATING BRAND BADGE (REMOVED) ---
@@ -529,9 +527,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               <h3 style={styles.drawerProfileName}>{displayName}</h3>
               <span style={styles.drawerProfileMeta}>{displayId} &gt;</span>
               <div style={styles.drawerBrandText}>{displayBrand}</div>
-              <div style={{ marginTop: '10px' }}>
-                <LiveConnectionIndicator compact />
-              </div>
+
             </div>
           </div>
 
@@ -676,9 +672,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
             }}>
               {displayBrand}
             </div>
-            <div style={{ marginTop: '10px' }}>
-              <LiveConnectionIndicator compact textColor="#E2E8F0" />
-            </div>
+
           </div>
         </div>
 
