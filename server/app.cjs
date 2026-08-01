@@ -378,15 +378,35 @@ async function authenticateToken(req, res, next) {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
 
-    // Check activeSessionId against database in MongoDB
-    if (decoded.id && decoded.sessionId) {
-      await connectToDatabase();
-      const dbUser = await User.findById(decoded.id).select('activeSessionId status');
+    // Check activeSessionId against database in MongoDB or fallback seed user
+    if (decoded.id || decoded.username) {
+      try {
+        await connectToDatabase();
+      } catch { /* ignore DB connection notice */ }
+
+      let dbUser = null;
+      if (mongoose.connection.readyState === 1) {
+        try {
+          if (mongoose.Types.ObjectId.isValid(decoded.id)) {
+            dbUser = await User.findById(decoded.id).select('activeSessionId status username');
+          }
+          if (!dbUser && decoded.username) {
+            dbUser = await User.findOne({ username: decoded.username }).select('activeSessionId status username');
+          }
+        } catch (dbErr) {
+          console.warn('⚠️ [Auth]: Mongo query notice in authenticateToken:', dbErr.message);
+        }
+      }
+
+      if (!dbUser && decoded.username) {
+        dbUser = await findUserAccount(decoded.username);
+      }
+
       if (!dbUser || dbUser.status === 'disabled') {
         return res.status(401).json({ status: 'error', message: 'User account not found or disabled.' });
       }
 
-      if (!dbUser.activeSessionId || dbUser.activeSessionId !== decoded.sessionId) {
+      if (dbUser.activeSessionId && decoded.sessionId && dbUser.activeSessionId !== decoded.sessionId) {
         return res.status(401).json({
           status: 'error',
           message: 'Your session has ended because this account was logged in elsewhere.'
@@ -522,6 +542,28 @@ function resolveUsername(input) {
 
 
 // --- AUTHENTICATION ROUTES ---
+
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+  try {
+    const user = await findUserAccount(req.user.username);
+    if (!user || user.status === 'disabled') {
+      return res.status(401).json({ status: 'error', message: 'User account not found or disabled.' });
+    }
+
+    return res.json({
+      status: 'success',
+      user: {
+        id: user._id,
+        username: user.username,
+        role: user.role,
+        campus: user.campus,
+        name: user.name
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
+});
 
 app.post('/api/auth/verify-credentials', mongoRateLimiter, async (req, res) => {
   try {
