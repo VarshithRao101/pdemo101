@@ -1,4 +1,4 @@
-﻿/**
+/**
  * useDataFreshness - Lightweight background polling hook
  *
  * Strategy:
@@ -37,10 +37,10 @@ export function useDataFreshness(branch: string | undefined, onRefetch: () => Pr
 
     try {
       const base = getApiBaseUrl();
-      const url = ${base}/system/last-changed?branch=;
+      const url = `${base}/system/last-changed?branch=${encodeURIComponent(currentBranch)}`;
       const res = await fetch(url, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json', 'Authorization': Bearer  },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         credentials: 'include'
       });
 
@@ -83,10 +83,10 @@ export function useDataFreshness(branch: string | undefined, onRefetch: () => Pr
       if (currentBranch && token) {
         try {
           const base = getApiBaseUrl();
-          const url = ${base}/system/last-changed?branch=;
+          const url = `${base}/system/last-changed?branch=${encodeURIComponent(currentBranch)}`;
           const res = await fetch(url, {
             method: 'GET',
-            headers: { 'Content-Type': 'application/json', 'Authorization': Bearer  },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             credentials: 'include'
           });
           const data = await res.json().catch(() => null);
