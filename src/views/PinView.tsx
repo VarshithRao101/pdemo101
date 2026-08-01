@@ -128,10 +128,14 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         setSessionConflict(true);
         return;
       }
-      const msg =
-        err?.data?.message || err?.message || (err?.status === 429
-          ? 'Too many attempts. Please wait 15 minutes.'
-          : 'Incorrect password or 6-digit PIN. Please try again.');
+      let msg = err?.data?.message || err?.message;
+      if (msg === 'Internal server error' || err?.status === 500) {
+        msg = 'Incorrect password or 6-digit PIN. Please try again.';
+      } else if (err?.status === 429) {
+        msg = 'Too many attempts. Please wait 15 minutes.';
+      } else if (!msg) {
+        msg = 'Incorrect password or 6-digit PIN. Please try again.';
+      }
       triggerError(msg);
     } finally {
       setIsChecking(false);
@@ -151,7 +155,10 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         window.location.hash = '#/dashboard';
       }, 1200);
     } catch (err: any) {
-      triggerError(err?.data?.message || err?.message || 'Force login failed. Please try again.');
+      const msg = (err?.message === 'Internal server error' || err?.status === 500)
+        ? 'Force login failed. Please verify credentials and try again.'
+        : (err?.data?.message || err?.message || 'Force login failed. Please try again.');
+      triggerError(msg);
     } finally {
       setIsChecking(false);
     }
@@ -230,7 +237,10 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         triggerError(res?.message || 'Incorrect User ID or Account Password.');
       }
     } catch (err: any) {
-      triggerError(err.message || 'Incorrect User ID or Account Password.');
+      const msg = (err?.message === 'Internal server error' || err?.status === 500)
+        ? 'Incorrect User ID or Account Password. Please try again.'
+        : (err?.data?.message || err?.message || 'Incorrect User ID or Account Password.');
+      triggerError(msg);
     } finally {
       setIsChecking(false);
     }

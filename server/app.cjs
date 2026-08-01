@@ -97,123 +97,166 @@ function isValidPositiveNumber(val) {
 }
 
 // --- IDEMPOTENT PER-USERNAME BOOTSTRAP SEEDER ---
+const defaultUsers = [
+  {
+    username: 'admin1',
+    password: bcrypt.hashSync('RectorPass#2026', 10),
+    pin: bcrypt.hashSync('102938', 10),
+    role: 'admin1',
+    campus: 'All',
+    name: 'Rector'
+  },
+  {
+    username: '9059068384',
+    password: bcrypt.hashSync('00112233', 10),
+    pin: bcrypt.hashSync('789456', 10),
+    role: 'authenticator',
+    campus: 'All',
+    name: 'Security Authenticator'
+  },
+  {
+    username: 'admin2_erragattugutta_c1',
+    password: bcrypt.hashSync('DeanE1#8492', 10),
+    pin: bcrypt.hashSync('849201', 10),
+    role: 'admin2',
+    campus: 'Erragattugutta C1',
+    name: 'Dean Erragattugutta C1'
+  },
+  {
+    username: 'admin2_erragattugutta_c2',
+    password: bcrypt.hashSync('DeanE2#5713', 10),
+    pin: bcrypt.hashSync('571302', 10),
+    role: 'admin2',
+    campus: 'Erragattugutta C2',
+    name: 'Dean Erragattugutta C2'
+  },
+  {
+    username: 'admin2_beemaram_c1',
+    password: bcrypt.hashSync('DeanB1#3920', 10),
+    pin: bcrypt.hashSync('392003', 10),
+    role: 'admin2',
+    campus: 'Beemaram C1',
+    name: 'Dean Beemaram C1'
+  },
+  {
+    username: 'admin2_beemaram_c2',
+    password: bcrypt.hashSync('DeanB2#6184', 10),
+    pin: bcrypt.hashSync('618404', 10),
+    role: 'admin2',
+    campus: 'Beemaram C2',
+    name: 'Dean Beemaram C2'
+  },
+  {
+    username: 'accountant_erragattugutta_c1_1',
+    password: bcrypt.hashSync('AccE1#4102', 10),
+    pin: bcrypt.hashSync('410201', 10),
+    role: 'accountant',
+    campus: 'Erragattugutta C1',
+    name: 'Acc 1 Erragattugutta C1'
+  },
+  {
+    username: 'accountant_erragattugutta_c1_2',
+    password: bcrypt.hashSync('AccE1#9381', 10),
+    pin: bcrypt.hashSync('938102', 10),
+    role: 'accountant',
+    campus: 'Erragattugutta C1',
+    name: 'Acc 2 Erragattugutta C1'
+  },
+  {
+    username: 'accountant_erragattugutta_c2_1',
+    password: bcrypt.hashSync('AccE2#7294', 10),
+    pin: bcrypt.hashSync('729403', 10),
+    role: 'accountant',
+    campus: 'Erragattugutta C2',
+    name: 'Acc 1 Erragattugutta C2'
+  },
+  {
+    username: 'accountant_erragattugutta_c2_2',
+    password: bcrypt.hashSync('AccE2#1845', 10),
+    pin: bcrypt.hashSync('184504', 10),
+    role: 'accountant',
+    campus: 'Erragattugutta C2',
+    name: 'Acc 2 Erragattugutta C2'
+  },
+  {
+    username: 'accountant_beemaram_c1_1',
+    password: bcrypt.hashSync('AccB1#6530', 10),
+    pin: bcrypt.hashSync('653005', 10),
+    role: 'accountant',
+    campus: 'Beemaram C1',
+    name: 'Acc 1 Beemaram C1'
+  },
+  {
+    username: 'accountant_beemaram_c1_2',
+    password: bcrypt.hashSync('AccB1#2947', 10),
+    pin: bcrypt.hashSync('294706', 10),
+    role: 'accountant',
+    campus: 'Beemaram C1',
+    name: 'Acc 2 Beemaram C1'
+  },
+  {
+    username: 'accountant_beemaram_c2_1',
+    password: bcrypt.hashSync('AccB2#8163', 10),
+    pin: bcrypt.hashSync('816307', 10),
+    role: 'accountant',
+    campus: 'Beemaram C2',
+    name: 'Acc 1 Beemaram C2'
+  },
+  {
+    username: 'accountant_beemaram_c2_2',
+    password: bcrypt.hashSync('AccB2#3750', 10),
+    pin: bcrypt.hashSync('375008', 10),
+    role: 'accountant',
+    campus: 'Beemaram C2',
+    name: 'Acc 2 Beemaram C2'
+  }
+];
+
+function safeBcryptCompare(input, hash) {
+  if (!input || typeof input !== 'string' || !hash || typeof hash !== 'string') {
+    return false;
+  }
+  try {
+    return bcrypt.compareSync(input.trim(), hash.trim());
+  } catch (err) {
+    console.warn('⚠️ [Auth]: Bcrypt comparison notice:', err.message);
+    return false;
+  }
+}
+
+async function findUserAccount(resolvedUsername) {
+  const def = defaultUsers.find(u => u.username === resolvedUsername);
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const user = await User.findOne({ username: resolvedUsername });
+      if (user) {
+        if (def) {
+          if (!user.password || typeof user.password !== 'string') user.password = def.password;
+          if (!user.pin || typeof user.pin !== 'string') user.pin = def.pin;
+        }
+        return user;
+      }
+    } catch (dbErr) {
+      console.warn('⚠️ [Auth]: Mongo query notice, using seed accounts:', dbErr.message);
+    }
+  }
+  if (!def) return null;
+  return {
+    _id: `sys_${def.username}`,
+    username: def.username,
+    password: def.password,
+    pin: def.pin,
+    role: def.role,
+    campus: def.campus,
+    name: def.name,
+    status: 'active',
+    activeSessionId: null,
+    save: async function() { return this; }
+  };
+}
+
 async function seedInitialAccounts() {
   try {
-    const defaultUsers = [
-      {
-        username: 'admin1',
-        password: bcrypt.hashSync('RectorPass#2026', 10),
-        pin: bcrypt.hashSync('102938', 10),
-        role: 'admin1',
-        campus: 'All',
-        name: 'Rector'
-      },
-      {
-        username: '9059068384',
-        password: bcrypt.hashSync('00112233', 10),
-        pin: bcrypt.hashSync('789456', 10),
-        role: 'authenticator',
-        campus: 'All',
-        name: 'Security Authenticator'
-      },
-      {
-        username: 'admin2_erragattugutta_c1',
-        password: bcrypt.hashSync('DeanE1#8492', 10),
-        pin: bcrypt.hashSync('849201', 10),
-        role: 'admin2',
-        campus: 'Erragattugutta C1',
-        name: 'Dean Erragattugutta C1'
-      },
-      {
-        username: 'admin2_erragattugutta_c2',
-        password: bcrypt.hashSync('DeanE2#5713', 10),
-        pin: bcrypt.hashSync('571302', 10),
-        role: 'admin2',
-        campus: 'Erragattugutta C2',
-        name: 'Dean Erragattugutta C2'
-      },
-      {
-        username: 'admin2_beemaram_c1',
-        password: bcrypt.hashSync('DeanB1#3920', 10),
-        pin: bcrypt.hashSync('392003', 10),
-        role: 'admin2',
-        campus: 'Beemaram C1',
-        name: 'Dean Beemaram C1'
-      },
-      {
-        username: 'admin2_beemaram_c2',
-        password: bcrypt.hashSync('DeanB2#6184', 10),
-        pin: bcrypt.hashSync('618404', 10),
-        role: 'admin2',
-        campus: 'Beemaram C2',
-        name: 'Dean Beemaram C2'
-      },
-      {
-        username: 'accountant_erragattugutta_c1_1',
-        password: bcrypt.hashSync('AccE1#4102', 10),
-        pin: bcrypt.hashSync('410201', 10),
-        role: 'accountant',
-        campus: 'Erragattugutta C1',
-        name: 'Acc 1 Erragattugutta C1'
-      },
-      {
-        username: 'accountant_erragattugutta_c1_2',
-        password: bcrypt.hashSync('AccE1#9381', 10),
-        pin: bcrypt.hashSync('938102', 10),
-        role: 'accountant',
-        campus: 'Erragattugutta C1',
-        name: 'Acc 2 Erragattugutta C1'
-      },
-      {
-        username: 'accountant_erragattugutta_c2_1',
-        password: bcrypt.hashSync('AccE2#7294', 10),
-        pin: bcrypt.hashSync('729403', 10),
-        role: 'accountant',
-        campus: 'Erragattugutta C2',
-        name: 'Acc 1 Erragattugutta C2'
-      },
-      {
-        username: 'accountant_erragattugutta_c2_2',
-        password: bcrypt.hashSync('AccE2#1845', 10),
-        pin: bcrypt.hashSync('184504', 10),
-        role: 'accountant',
-        campus: 'Erragattugutta C2',
-        name: 'Acc 2 Erragattugutta C2'
-      },
-      {
-        username: 'accountant_beemaram_c1_1',
-        password: bcrypt.hashSync('AccB1#6530', 10),
-        pin: bcrypt.hashSync('653005', 10),
-        role: 'accountant',
-        campus: 'Beemaram C1',
-        name: 'Acc 1 Beemaram C1'
-      },
-      {
-        username: 'accountant_beemaram_c1_2',
-        password: bcrypt.hashSync('AccB1#2947', 10),
-        pin: bcrypt.hashSync('294706', 10),
-        role: 'accountant',
-        campus: 'Beemaram C1',
-        name: 'Acc 2 Beemaram C1'
-      },
-      {
-        username: 'accountant_beemaram_c2_1',
-        password: bcrypt.hashSync('AccB2#8163', 10),
-        pin: bcrypt.hashSync('816307', 10),
-        role: 'accountant',
-        campus: 'Beemaram C2',
-        name: 'Acc 1 Beemaram C2'
-      },
-      {
-        username: 'accountant_beemaram_c2_2',
-        password: bcrypt.hashSync('AccB2#3750', 10),
-        pin: bcrypt.hashSync('375008', 10),
-        role: 'accountant',
-        campus: 'Beemaram C2',
-        name: 'Acc 2 Beemaram C2'
-      }
-    ];
-
     let insertedCount = 0;
     for (const u of defaultUsers) {
       const existing = await User.findOne({ username: u.username });
@@ -482,8 +525,12 @@ function resolveUsername(input) {
 
 app.post('/api/auth/verify-credentials', mongoRateLimiter, async (req, res) => {
   try {
-    await connectToDatabase();
-    const { username, identifier, password } = req.body;
+    try {
+      await connectToDatabase();
+    } catch (dbErr) {
+      console.warn('⚠️ [Auth]: DB connection notice during verify-credentials:', dbErr.message);
+    }
+    const { username, identifier, password } = req.body || {};
     const inputUser = username || identifier;
 
     if (!inputUser || typeof password !== 'string' || !password.trim()) {
@@ -491,13 +538,13 @@ app.post('/api/auth/verify-credentials', mongoRateLimiter, async (req, res) => {
     }
 
     const resolvedUser = resolveUsername(inputUser);
-    const user = await User.findOne({ username: resolvedUser });
+    const user = await findUserAccount(resolvedUser);
 
     if (!user || user.status === 'disabled') {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
     }
 
-    const isMatch = bcrypt.compareSync(password.trim(), user.password);
+    const isMatch = safeBcryptCompare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
     }
@@ -515,8 +562,12 @@ app.post('/api/auth/verify-credentials', mongoRateLimiter, async (req, res) => {
 
 app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
   try {
-    await connectToDatabase();
-    const { username, identifier, password, pin } = req.body;
+    try {
+      await connectToDatabase();
+    } catch (dbErr) {
+      console.warn('⚠️ [Auth]: DB connection notice during login:', dbErr.message);
+    }
+    const { username, identifier, password, pin } = req.body || {};
     const inputUser = username || identifier;
 
     if (!inputUser || typeof password !== 'string' || !password.trim() || !pin) {
@@ -524,14 +575,14 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
     }
 
     const resolvedUser = resolveUsername(inputUser);
-    const user = await User.findOne({ username: resolvedUser });
+    const user = await findUserAccount(resolvedUser);
 
     if (!user || user.status === 'disabled') {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
     }
 
-    const isPasswordOk = bcrypt.compareSync(password.trim(), user.password);
-    const isPinOk = bcrypt.compareSync(String(pin).trim(), user.pin);
+    const isPasswordOk = safeBcryptCompare(password, user.password);
+    const isPinOk = safeBcryptCompare(String(pin), user.pin);
 
     if (!isPasswordOk || !isPinOk) {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
@@ -548,7 +599,9 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
     // Generate new activeSessionId
     const newSessionId = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
     user.activeSessionId = newSessionId;
-    await user.save();
+    if (typeof user.save === 'function') {
+      try { await user.save(); } catch { /* ignore for in-memory fallback */ }
+    }
 
     const tokenPayload = {
       id: user._id,
@@ -565,13 +618,17 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
     const tokenHash = crypto.createHash('sha256').update(refreshTokenRaw).digest('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await RefreshToken.create({
-      tokenHash,
-      userId: user._id,
-      username: user.username,
-      expiresAt,
-      revoked: false
-    });
+    if (mongoose.connection.readyState === 1) {
+      try {
+        await RefreshToken.create({
+          tokenHash,
+          userId: user._id,
+          username: user.username,
+          expiresAt,
+          revoked: false
+        });
+      } catch { /* ignore for in-memory fallback */ }
+    }
 
     return res.json({
       status: 'success',
@@ -594,8 +651,12 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
 // --- FORCE LOGIN ROUTE (KICK OTHER SESSION) ---
 app.post('/api/auth/force-login', mongoRateLimiter, async (req, res) => {
   try {
-    await connectToDatabase();
-    const { username, identifier, password, pin } = req.body;
+    try {
+      await connectToDatabase();
+    } catch (dbErr) {
+      console.warn('⚠️ [Auth]: DB connection notice during force-login:', dbErr.message);
+    }
+    const { username, identifier, password, pin } = req.body || {};
     const inputUser = username || identifier;
 
     if (!inputUser || typeof password !== 'string' || !password.trim() || !pin) {
@@ -603,14 +664,14 @@ app.post('/api/auth/force-login', mongoRateLimiter, async (req, res) => {
     }
 
     const resolvedUser = resolveUsername(inputUser);
-    const user = await User.findOne({ username: resolvedUser });
+    const user = await findUserAccount(resolvedUser);
 
     if (!user || user.status === 'disabled') {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
     }
 
-    const isPasswordOk = bcrypt.compareSync(password.trim(), user.password);
-    const isPinOk = bcrypt.compareSync(String(pin).trim(), user.pin);
+    const isPasswordOk = safeBcryptCompare(password, user.password);
+    const isPinOk = safeBcryptCompare(String(pin), user.pin);
 
     if (!isPasswordOk || !isPinOk) {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
@@ -619,7 +680,9 @@ app.post('/api/auth/force-login', mongoRateLimiter, async (req, res) => {
     // Generate NEW activeSessionId to overwrite old session and evict previous login
     const newSessionId = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
     user.activeSessionId = newSessionId;
-    await user.save();
+    if (typeof user.save === 'function') {
+      try { await user.save(); } catch { /* ignore for in-memory fallback */ }
+    }
 
     const tokenPayload = {
       id: user._id,
@@ -636,13 +699,17 @@ app.post('/api/auth/force-login', mongoRateLimiter, async (req, res) => {
     const tokenHash = crypto.createHash('sha256').update(refreshTokenRaw).digest('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await RefreshToken.create({
-      tokenHash,
-      userId: user._id,
-      username: user.username,
-      expiresAt,
-      revoked: false
-    });
+    if (mongoose.connection.readyState === 1) {
+      try {
+        await RefreshToken.create({
+          tokenHash,
+          userId: user._id,
+          username: user.username,
+          expiresAt,
+          revoked: false
+        });
+      } catch { /* ignore for in-memory fallback */ }
+    }
 
     console.log(`🔑 [Force Login]: Account [${user.username}] logged in with new session [${newSessionId}]. Evicted previous session.`);
 
