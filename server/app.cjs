@@ -252,7 +252,9 @@ ensureBootstrap();
 
 // --- SECURITY MIDDLEWARE ---
 
-// Persistent MongoDB Fail-Closed Rate Limiter
+// Persistent Rate Limiter (MongoDB-backed with automatic connection attempt & in-memory fallback)
+const memoryRateLimits = new Map();
+
 async function mongoRateLimiter(req, res, next) {
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
   const key = `ratelimit_${req.path}_${ip}`;
@@ -262,39 +264,58 @@ async function mongoRateLimiter(req, res, next) {
 
   try {
     if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({
-        status: 'error',
-        message: 'Service temporarily unavailable. Database required for security rate-limit verification.'
-      });
+      try {
+        await connectToDatabase();
+      } catch (connErr) {
+        console.warn('⚠️ [RateLimiter]: Database connection attempt notice:', connErr.message);
+      }
     }
 
-    let record = await RateLimit.findOne({ key });
-    if (!record || record.resetAt < now) {
+    if (mongoose.connection.readyState === 1) {
+      let record = await RateLimit.findOne({ key });
+      if (!record || record.resetAt < now) {
+        const resetAt = new Date(Date.now() + windowMs);
+        record = await RateLimit.findOneAndUpdate(
+          { key },
+          { count: 1, resetAt },
+          { upsert: true, new: true }
+        );
+      } else {
+        record.count += 1;
+        await record.save();
+      }
+
+      if (record.count > maxAttempts) {
+        return res.status(429).json({
+          status: 'error',
+          message: 'Too many authentication attempts. Please try again in 15 minutes.'
+        });
+      }
+
+      return next();
+    }
+
+    // In-memory fallback if MongoDB connection is unavailable
+    let memRecord = memoryRateLimits.get(key);
+    if (!memRecord || memRecord.resetAt < now) {
       const resetAt = new Date(Date.now() + windowMs);
-      record = await RateLimit.findOneAndUpdate(
-        { key },
-        { count: 1, resetAt },
-        { upsert: true, new: true }
-      );
+      memRecord = { count: 1, resetAt };
+      memoryRateLimits.set(key, memRecord);
     } else {
-      record.count += 1;
-      await record.save();
+      memRecord.count += 1;
     }
 
-    if (record.count > maxAttempts) {
+    if (memRecord.count > maxAttempts) {
       return res.status(429).json({
         status: 'error',
         message: 'Too many authentication attempts. Please try again in 15 minutes.'
       });
     }
 
-    next();
+    return next();
   } catch (err) {
     console.error('Rate limiter exception:', err.message);
-    return res.status(503).json({
-      status: 'error',
-      message: 'Service temporarily unavailable. Database rate limiter check failed.'
-    });
+    return next();
   }
 }
 
