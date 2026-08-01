@@ -120,8 +120,8 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       await login(identifier, pinToSubmit, currentMode, passwordInput.trim());
       setIsSuccess(true);
       setTimeout(() => {
-        onComplete();
         window.location.hash = '#/dashboard';
+        onComplete();
       }, 1200);
     } catch (err: any) {
       if (err?.status === 409 || err?.data?.status === 'session_conflict') {
@@ -151,8 +151,8 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       setSessionConflict(false);
       setIsSuccess(true);
       setTimeout(() => {
-        onComplete();
         window.location.hash = '#/dashboard';
+        onComplete();
       }, 1200);
     } catch (err: any) {
       const msg = (err?.message === 'Internal server error' || err?.status === 500)

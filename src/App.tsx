@@ -13,10 +13,15 @@ const AUTHENTICATOR_HASH = '#/sec-auth-sys-9i0j7k8l';
 import { HorizontalProgressBarLoader } from './components/common/HorizontalProgressBarLoader';
 
 const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
-  const { portalRole, checkSession, logout, isAuthenticated, setPortalRole } = useNavigation();
+  const { portalRole, checkSession, logout, isAuthenticated, isAuthLoading, setPortalRole } = useNavigation();
   const [flowStage, setFlowStage] = useState<'portfolio' | 'pin' | 'authenticated'>('portfolio');
   const [currentHash, setCurrentHash] = useState<string>(window.location.hash);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const authStateRef = useRef(isAuthenticated);
+
+  useEffect(() => {
+    authStateRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   // Listen for hash changes
   useEffect(() => {
@@ -45,7 +50,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
         hash.includes('sync_integrity');
 
       if (isInternalDashboardHash) {
-        setFlowStage(isAuthenticated ? 'authenticated' : 'pin');
+        setFlowStage(authStateRef.current ? 'authenticated' : 'pin');
         return;
       }
 
@@ -86,10 +91,10 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       const isAuthGateHash = hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l');
       const isUnivGateHash = hash === UNIVERSAL_HASH || hash.includes('secure-gateway-portal-v2') || hash.includes('v1-portal-gate-x89f2a7b');
 
-      if (isAuthGateHash || isUnivGateHash || hash.includes('login') || hash.includes('portal-gate')) {
-        setFlowStage('pin');
-      } else if (isValid) {
+      if (isValid || authStateRef.current) {
         setFlowStage('authenticated');
+      } else if (isAuthGateHash || isUnivGateHash || hash.includes('login') || hash.includes('portal-gate')) {
+        setFlowStage('pin');
       } else {
         setFlowStage('portfolio');
       }
@@ -113,15 +118,17 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
 
   // Clean transition on logout
   useEffect(() => {
-    if (!isAuthenticated && flowStage === 'authenticated') {
-      const hash = window.location.hash;
-      if (hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l') || hash === UNIVERSAL_HASH || hash.includes('v1-portal-gate-x89f2a7b')) {
-        setFlowStage('pin');
-      } else {
-        setFlowStage('portfolio');
-      }
+    if (isAuthLoading || isAuthenticated || flowStage !== 'authenticated') {
+      return;
     }
-  }, [isAuthenticated, flowStage]);
+
+    const hash = window.location.hash;
+    if (hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l') || hash === UNIVERSAL_HASH || hash.includes('v1-portal-gate-x89f2a7b')) {
+      setFlowStage('pin');
+    } else {
+      setFlowStage('portfolio');
+    }
+  }, [isAuthenticated, isAuthLoading, flowStage]);
 
   useEffect(() => {
     if (flowStage === 'authenticated') {
