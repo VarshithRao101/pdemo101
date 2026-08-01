@@ -1,10 +1,17 @@
-// apiClient.ts
+﻿// apiClient.ts
 // Real Production HTTP Client connecting to Express/MongoDB backend API
 // Manages real JWT auth tokens, refreshToken auto-renewal, headers, rate limit handling, and campus isolation errors.
 
 export const getApiBaseUrl = (): string => {
   if (import.meta.env && import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
+  }
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname.toLowerCase();
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    if (isLocalhost && window.location.port && window.location.port !== '3000') {
+      return 'http://127.0.0.1:3000/api';
+    }
   }
   return '/api';
 };
@@ -273,3 +280,5 @@ export const apiClient = {
     });
   }
 };
+
+

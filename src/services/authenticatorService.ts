@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+﻿import { apiClient } from './apiClient';
 
 export interface SecurityKeyInfo {
   role: 'accountant' | 'admin2' | 'admin1';
@@ -183,3 +183,7 @@ export interface BackupResponse {
   checksum: string;
   lastBackupAt?: string | null;
 }
+
+
+
+

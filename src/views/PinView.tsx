@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import PinEntry from '../components/common/PinEntry';
 import { useNavigation } from '../context/NavigationContext';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -381,6 +381,15 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             </svg>
             <span style={{ color: currentMode === 'authenticator' ? '#FFFFFF' : '#64748B', fontWeight: 800 }}>Authenticator</span>
           </button>
+        </div>
+
+        <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '14px', border: '1.5px solid #E2E8F0', backgroundColor: '#F8FAFC' }}>
+          <div style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B', marginBottom: '8px' }}>
+            Login Help
+          </div>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: '#334155', lineHeight: 1.5 }}>
+            Use the assigned User ID and password from your portal admin. Credentials are kept on the server now.
+          </div>
         </div>
 
         {/* Role Quick Selector Grid (Admin 1, Admin 2, Accountant) */}
@@ -1060,3 +1069,5 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: 'calc(100% - 40px)'
   }
 };
+
+

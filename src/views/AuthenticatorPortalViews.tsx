@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
 import { apiClient } from '../services/apiClient';
@@ -153,7 +153,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Handler: Purge Google Drive (Keep 3 Folders Only)
   const [isPurgingDrive, setIsPurgingDrive] = useState(false);
   const handlePurgeGoogleDrive = async () => {
-    if (!window.confirm('🗑️ Delete all items in Google Drive except the 3 category folders (Students, Teachers, Expenditures)?')) {
+    if (!window.confirm('ðŸ—‘ï¸ Delete all items in Google Drive except the 3 category folders (Students, Teachers, Expenditures)?')) {
       return;
     }
     setIsPurgingDrive(true);
@@ -179,7 +179,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
       return;
     }
 
-    if (!window.confirm('⚠️ WARNING: Are you strictly sure you want to WIPEOUT ALL DATABASE SCHEMAS & RECORDS? This action cannot be undone!')) {
+    if (!window.confirm('âš ï¸ WARNING: Are you strictly sure you want to WIPEOUT ALL DATABASE SCHEMAS & RECORDS? This action cannot be undone!')) {
       return;
     }
 
@@ -330,7 +330,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
       if (data) {
         setKeysData(data);
       }
-      triggerToast('⚡ All 9 Account Security PINs regenerated & activated! Old PINs invalidated.', 'success');
+      triggerToast('âš¡ All 9 Account Security PINs regenerated & activated! Old PINs invalidated.', 'success');
     } catch (err: any) {
       triggerToast(err?.message || 'Failed to regenerate PINs.');
     }
@@ -511,7 +511,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
           </div>
         </header>
 
-        {/* ─── TAB 1: DASHBOARD OVERVIEW (4 KEY METRIC CARDS ONLY) ─── */}
+        {/* â”€â”€â”€ TAB 1: DASHBOARD OVERVIEW (4 KEY METRIC CARDS ONLY) â”€â”€â”€ */}
         {activeTab === 'dashboard' && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* EXACTLY 4 METRIC CARDS */}
@@ -568,7 +568,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div>
                             <div style={{ fontWeight: 900, fontSize: '13px', color: '#0F172A' }}>{session.name}</div>
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', marginTop: '2px' }}>{session.role} — {session.campus}</div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', marginTop: '2px' }}>{session.role} â€” {session.campus}</div>
                           </div>
                           <span style={{ fontSize: '10px', fontWeight: 800, color: '#059669', backgroundColor: '#D1FAE5', padding: '2px 6px', borderRadius: '4px', border: '1px solid #A7F3D0' }}>
                             Active
@@ -599,7 +599,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     <div key={log.transactionId ? `dash-tx-${log.transactionId}-${idx}` : `dash-tx-${idx}`} style={{ padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #CBD5E1', backgroundColor: '#F8FAFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <div style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A' }}>{log.action}</div>
-                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>By {log.performedBy || 'System'} • {log.timestamp}</div>
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>By {log.performedBy || 'System'} â€¢ {log.timestamp}</div>
                       </div>
                       <span style={{
                         fontSize: '10px',
@@ -620,7 +620,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
           </section>
         )}
 
-        {/* ─── TAB 2: 6-DIGIT SECURITY PINs ─── */}
+        {/* â”€â”€â”€ TAB 2: 6-DIGIT SECURITY PINs â”€â”€â”€ */}
         {activeTab === 'keys' && keysData && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Top Action Bar with Manual PIN Regeneration Button */}
@@ -747,7 +747,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
           </section>
         )}
 
-        {/* ─── TAB 3: ACCOUNT CONTROL ─── */}
+        {/* â”€â”€â”€ TAB 3: ACCOUNT CONTROL â”€â”€â”€ */}
         {activeTab === 'accounts' && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -785,7 +785,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
             <div style={styles.accountsGrid}>
               {accounts.map((acc, idx) => {
                 const accId = acc.id || (acc as any)._id || `acc-${acc.username}-${idx}`;
-                const passwordVal = acc.password || (acc as any).passwordRaw || '';
                 const isPassVisible = !!visiblePasswords[accId];
 
                 let roleLabel = 'Accountant';
@@ -844,7 +843,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                             {acc.name || acc.username}
                           </div>
                           <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>
-                            {acc.email || `${acc.username}@inspire.edu`} • {acc.mobile || 'No Mobile'}
+                            {acc.email || `${acc.username}@inspire.edu`} â€¢ {acc.mobile || 'No Mobile'}
                           </div>
                         </div>
                       </div>
@@ -918,10 +917,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
                       {/* Password Row */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', backgroundColor: '#FFFFFF', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #CBD5E1' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '11px', fontWeight: 900, color: '#64748B', textTransform: 'uppercase' }}>Pass:</span>
                           <code style={{ fontSize: '12px', fontWeight: 800, fontFamily: 'monospace', color: '#10B981', backgroundColor: '#D1FAE5', padding: '3px 8px', borderRadius: '6px', border: '1px solid #6EE7B7' }}>
-                            Encrypted (bcrypt)
+                            Stored securely
                           </code>
                         </div>
                       </div>
@@ -988,7 +987,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
           </section>
         )}
 
-        {/* ─── TAB 4: TRANSACTION LEDGER CONSOLE ─── */}
+        {/* â”€â”€â”€ TAB 4: TRANSACTION LEDGER CONSOLE â”€â”€â”€ */}
         {activeTab === 'sync_integrity' && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
@@ -1038,7 +1037,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>{log.action}</div>
                       <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', marginTop: '4px' }}>
-                        ID: {log.transactionId} • Performed By: {log.performedBy || 'System'}
+                        ID: {log.transactionId} â€¢ Performed By: {log.performedBy || 'System'}
                       </div>
                       <div style={{ fontSize: '11px', fontWeight: 600, color: '#475569', marginTop: '4px' }}>
                         {log.details || log.errorDetails || 'Transaction logged'}
@@ -1065,7 +1064,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
           </section>
         )}
 
-        {/* ─── TAB 5: SYSTEM SETTINGS (GOOGLE DRIVE BACKUP & RESTORE ENGINE) ─── */}
+        {/* â”€â”€â”€ TAB 5: SYSTEM SETTINGS (GOOGLE DRIVE BACKUP & RESTORE ENGINE) â”€â”€â”€ */}
         {activeTab === 'settings' && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
@@ -1088,7 +1087,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#F0FDF4', padding: '8px 14px', borderRadius: '10px', border: '1.5px solid #16A34A' }}>
                   <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#22C55E' }}></span>
-                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#15803D' }}>Google Drive Active • 24h Rolling Retention (2 Snapshots/Campus)</span>
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#15803D' }}>Google Drive Active â€¢ 24h Rolling Retention (2 Snapshots/Campus)</span>
                 </div>
               </div>
 
@@ -1135,7 +1134,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     }}
                     className="press-interactive"
                   >
-                    {isCreatingBackup ? 'Backing Up to Drive...' : '⚡ Trigger Immediate Drive Backup'}
+                    {isCreatingBackup ? 'Backing Up to Drive...' : 'âš¡ Trigger Immediate Drive Backup'}
                   </button>
 
                   <button
@@ -1155,7 +1154,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     }}
                     className="press-interactive"
                   >
-                    {isPurgingDrive ? 'Purging Google Drive...' : '🗑️ Purge Drive (Keep 3 Folders Only)'}
+                    {isPurgingDrive ? 'Purging Google Drive...' : 'ðŸ—‘ï¸ Purge Drive (Keep 3 Folders Only)'}
                   </button>
                 </div>
               </div>
@@ -1233,7 +1232,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   }}
                   className="press-interactive"
                 >
-                  {isWipingDb ? 'Wiping Database...' : '🗑️ Wipe Entire Database'}
+                  {isWipingDb ? 'Wiping Database...' : 'ðŸ—‘ï¸ Wipe Entire Database'}
                 </button>
               </div>
 
@@ -1281,7 +1280,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   }}
                   className="press-interactive"
                 >
-                  🎓 Students Data & Fees
+                  ðŸŽ“ Students Data & Fees
                 </button>
 
                 <button
@@ -1303,7 +1302,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   }}
                   className="press-interactive"
                 >
-                  👩‍🏫 Teachers Data & Salaries
+                  ðŸ‘©â€ðŸ« Teachers Data & Salaries
                 </button>
 
                 <button
@@ -1325,17 +1324,17 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   }}
                   className="press-interactive"
                 >
-                  💰 Multi-Branch Expenditures
+                  ðŸ’° Multi-Branch Expenditures
                 </button>
               </div>
 
               {/* 4 Campus Drop Zones for Selected Category */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '18px' }}>
                 {[
-                  { name: 'Erragattugutta C1', icon: '🏛️' },
-                  { name: 'Erragattugutta C2', icon: '🏢' },
-                  { name: 'Beemaram C1', icon: '🏫' },
-                  { name: 'Beemaram C2', icon: '🎓' }
+                  { name: 'Erragattugutta C1', icon: 'ðŸ›ï¸' },
+                  { name: 'Erragattugutta C2', icon: 'ðŸ¢' },
+                  { name: 'Beemaram C1', icon: 'ðŸ«' },
+                  { name: 'Beemaram C2', icon: 'ðŸŽ“' }
                 ].map(camp => {
                   const campBackups = (availableBackups[activeRestoreCategory] && availableBackups[activeRestoreCategory][camp.name]) || [];
 
@@ -1377,7 +1376,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                               <div>
                                 <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A' }}>{bk.fileName}</div>
                                 <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>
-                                  {bk.source} • {new Date(bk.createdAt).toLocaleDateString()}
+                                  {bk.source} â€¢ {new Date(bk.createdAt).toLocaleDateString()}
                                 </div>
                               </div>
                               <button
@@ -1419,7 +1418,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         gap: '4px'
                       }}>
                         <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB' }}>
-                          📁 Drag & Drop or Click to Select Backup (.json / .xlsx)
+                          ðŸ“ Drag & Drop or Click to Select Backup (.json / .xlsx)
                         </span>
                         <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>
                           Restores {activeRestoreCategory.replace('_', ' ')} records into database for {camp.name}
@@ -1445,7 +1444,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
             {restoringCampus && (
               <div style={styles.modalOverlay} className="anim-fade-in">
                 <div style={{ ...styles.modalContent, maxWidth: '480px', backgroundColor: '#0F172A', color: '#FFFFFF', border: '3px solid #3B82F6', textAlign: 'center' }} className="anim-scale-in">
-                  <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔄</div>
+                  <div style={{ fontSize: '36px', marginBottom: '12px' }}>ðŸ”„</div>
                   <h3 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: 900, color: '#FFFFFF' }}>
                     Restoring Data for {restoringCampus}
                   </h3>
@@ -1468,7 +1467,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
         {/* Footer */}
         <footer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '28px 28px 16px', gap: '8px', opacity: 0.85, marginTop: 'auto' }}>
           <span style={{ fontSize: '9px', color: '#64748B', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
-            Inspire ERP Authenticator Portal v2.6.4 • Powered by TRNT BEE Technologies
+            Inspire ERP Authenticator Portal v2.6.4 â€¢ Powered by TRNT BEE Technologies
           </span>
         </footer>
       </main>
@@ -1481,7 +1480,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: '#991B1B' }}>
                 Step 2 Authorization: Confirm Database Wipe
               </h3>
-              <button onClick={() => setShowWipeModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', fontWeight: 900 }}>✕</button>
+              <button onClick={() => setShowWipeModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', fontWeight: 900 }}>âœ•</button>
             </div>
 
             <p style={{ fontSize: '12px', fontWeight: 700, color: '#7F1D1D', marginBottom: '16px', lineHeight: 1.5 }}>
@@ -1560,7 +1559,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: '#0F172A' }}>
                 {editingAccountId ? 'Edit Staff Account' : 'Provision Staff Account'}
               </h3>
-              <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', fontWeight: 900 }}>✕</button>
+              <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', fontWeight: 900 }}>âœ•</button>
             </div>
 
             <form onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -2002,3 +2001,4 @@ const styles = {
     boxShadow: '8px 8px 0px #0F172A'
   }
 };
+

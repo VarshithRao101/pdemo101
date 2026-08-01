@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Inspire ERP System - Foundation Server Skeleton
  * Express + MongoDB Atlas with serverless connection caching, bcrypt security,
  * JWT authentication, persistent fail-closed rate limiting, CORS isolation, and role authorization.
@@ -13,6 +13,8 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 const { connectToDatabase } = require('./db.cjs');
 const User = require('./models/User.cjs');
@@ -98,120 +100,69 @@ function isValidPositiveNumber(val) {
 
 // --- IDEMPOTENT PER-USERNAME BOOTSTRAP SEEDER ---
 const defaultUsers = [
-  {
-    username: 'admin1',
-    password: bcrypt.hashSync('RectorPass#2026', 10),
-    pin: bcrypt.hashSync('102938', 10),
-    role: 'admin1',
-    campus: 'All',
-    name: 'Rector'
-  },
-  {
-    username: '9059068384',
-    password: bcrypt.hashSync('00112233', 10),
-    pin: bcrypt.hashSync('789456', 10),
-    role: 'authenticator',
-    campus: 'All',
-    name: 'Security Authenticator'
-  },
-  {
-    username: 'admin2_erragattugutta_c1',
-    password: bcrypt.hashSync('DeanE1#8492', 10),
-    pin: bcrypt.hashSync('849201', 10),
-    role: 'admin2',
-    campus: 'Erragattugutta C1',
-    name: 'Dean Erragattugutta C1'
-  },
-  {
-    username: 'admin2_erragattugutta_c2',
-    password: bcrypt.hashSync('DeanE2#5713', 10),
-    pin: bcrypt.hashSync('571302', 10),
-    role: 'admin2',
-    campus: 'Erragattugutta C2',
-    name: 'Dean Erragattugutta C2'
-  },
-  {
-    username: 'admin2_beemaram_c1',
-    password: bcrypt.hashSync('DeanB1#3920', 10),
-    pin: bcrypt.hashSync('392003', 10),
-    role: 'admin2',
-    campus: 'Beemaram C1',
-    name: 'Dean Beemaram C1'
-  },
-  {
-    username: 'admin2_beemaram_c2',
-    password: bcrypt.hashSync('DeanB2#6184', 10),
-    pin: bcrypt.hashSync('618404', 10),
-    role: 'admin2',
-    campus: 'Beemaram C2',
-    name: 'Dean Beemaram C2'
-  },
-  {
-    username: 'accountant_erragattugutta_c1_1',
-    password: bcrypt.hashSync('AccE1#4102', 10),
-    pin: bcrypt.hashSync('410201', 10),
-    role: 'accountant',
-    campus: 'Erragattugutta C1',
-    name: 'Acc 1 Erragattugutta C1'
-  },
-  {
-    username: 'accountant_erragattugutta_c1_2',
-    password: bcrypt.hashSync('AccE1#9381', 10),
-    pin: bcrypt.hashSync('938102', 10),
-    role: 'accountant',
-    campus: 'Erragattugutta C1',
-    name: 'Acc 2 Erragattugutta C1'
-  },
-  {
-    username: 'accountant_erragattugutta_c2_1',
-    password: bcrypt.hashSync('AccE2#7294', 10),
-    pin: bcrypt.hashSync('729403', 10),
-    role: 'accountant',
-    campus: 'Erragattugutta C2',
-    name: 'Acc 1 Erragattugutta C2'
-  },
-  {
-    username: 'accountant_erragattugutta_c2_2',
-    password: bcrypt.hashSync('AccE2#1845', 10),
-    pin: bcrypt.hashSync('184504', 10),
-    role: 'accountant',
-    campus: 'Erragattugutta C2',
-    name: 'Acc 2 Erragattugutta C2'
-  },
-  {
-    username: 'accountant_beemaram_c1_1',
-    password: bcrypt.hashSync('AccB1#6530', 10),
-    pin: bcrypt.hashSync('653005', 10),
-    role: 'accountant',
-    campus: 'Beemaram C1',
-    name: 'Acc 1 Beemaram C1'
-  },
-  {
-    username: 'accountant_beemaram_c1_2',
-    password: bcrypt.hashSync('AccB1#2947', 10),
-    pin: bcrypt.hashSync('294706', 10),
-    role: 'accountant',
-    campus: 'Beemaram C1',
-    name: 'Acc 2 Beemaram C1'
-  },
-  {
-    username: 'accountant_beemaram_c2_1',
-    password: bcrypt.hashSync('AccB2#8163', 10),
-    pin: bcrypt.hashSync('816307', 10),
-    role: 'accountant',
-    campus: 'Beemaram C2',
-    name: 'Acc 1 Beemaram C2'
-  },
-  {
-    username: 'accountant_beemaram_c2_2',
-    password: bcrypt.hashSync('AccB2#3750', 10),
-    pin: bcrypt.hashSync('375008', 10),
-    role: 'accountant',
-    campus: 'Beemaram C2',
-    name: 'Acc 2 Beemaram C2'
-  }
+  { username: 'admin1', role: 'admin1', campus: 'All', name: 'Rector' },
+  { username: '9059068384', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
+  { username: 'admin2_erragattugutta_c1', role: 'admin2', campus: 'Erragattugutta C1', name: 'Dean Erragattugutta C1' },
+  { username: 'admin2_erragattugutta_c2', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2' },
+  { username: 'admin2_beemaram_c1', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1' },
+  { username: 'admin2_beemaram_c2', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2' },
+  { username: 'accountant_erragattugutta_c1_1', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1' },
+  { username: 'accountant_erragattugutta_c1_2', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1' },
+  { username: 'accountant_erragattugutta_c2_1', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2' },
+  { username: 'accountant_erragattugutta_c2_2', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 2 Erragattugutta C2' },
+  { username: 'accountant_beemaram_c1_1', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 1 Beemaram C1' },
+  { username: 'accountant_beemaram_c1_2', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1' },
+  { username: 'accountant_beemaram_c2_1', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2' },
+  { username: 'accountant_beemaram_c2_2', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2' }
 ];
 
+const CREDENTIAL_FILE = process.env.PORTAL_CREDENTIALS_FILE
+  ? path.resolve(process.env.PORTAL_CREDENTIALS_FILE)
+  : path.join(__dirname, 'credential-secrets.local.json');
+
+function loadCredentialSeeds() {
+  if (process.env.PORTAL_CREDENTIALS_JSON) {
+    try {
+      return JSON.parse(process.env.PORTAL_CREDENTIALS_JSON);
+    } catch (err) {
+      console.warn('⚠️ [Auth]: Failed to parse PORTAL_CREDENTIALS_JSON:', err.message);
+    }
+  }
+
+  if (fs.existsSync(CREDENTIAL_FILE)) {
+    try {
+      return JSON.parse(fs.readFileSync(CREDENTIAL_FILE, 'utf8'));
+    } catch (err) {
+      console.warn('⚠️ [Auth]: Failed to read credential seed file:', err.message);
+    }
+  }
+
+  return {};
+}
+
+const credentialSeeds = loadCredentialSeeds();
+
+function getCredentialSeed(username) {
+  const seed = credentialSeeds[String(username || '').toLowerCase()];
+  if (!seed || typeof seed.password !== 'string' || typeof seed.pin !== 'string') {
+    return null;
+  }
+  return { password: seed.password, pin: seed.pin };
+}
+
+function materializeDefaultUser(user) {
+  const seed = getCredentialSeed(user.username);
+  if (!seed) return null;
+  return {
+    ...user,
+    password: bcrypt.hashSync(seed.password, 10),
+    pin: bcrypt.hashSync(seed.pin, 10)
+  };
+}
+
+function materializeDefaultUsers() {
+  return defaultUsers.map(materializeDefaultUser).filter(Boolean);
+}
 function safeBcryptCompare(input, hash) {
   if (!input || typeof input !== 'string' || !hash || typeof hash !== 'string') {
     return false;
@@ -219,13 +170,13 @@ function safeBcryptCompare(input, hash) {
   try {
     return bcrypt.compareSync(input.trim(), hash.trim());
   } catch (err) {
-    console.warn('⚠️ [Auth]: Bcrypt comparison notice:', err.message);
+    console.warn('âš ï¸ [Auth]: Bcrypt comparison notice:', err.message);
     return false;
   }
 }
 
 async function findUserAccount(resolvedUsername) {
-  const def = defaultUsers.find(u => u.username === resolvedUsername);
+  const def = materializeDefaultUser(defaultUsers.find(u => u.username === resolvedUsername));
   if (mongoose.connection.readyState === 1) {
     try {
       const user = await User.findOne({ username: resolvedUsername });
@@ -237,7 +188,7 @@ async function findUserAccount(resolvedUsername) {
         return user;
       }
     } catch (dbErr) {
-      console.warn('⚠️ [Auth]: Mongo query notice, using seed accounts:', dbErr.message);
+      console.warn('âš ï¸ [Auth]: Mongo query notice, using seed accounts:', dbErr.message);
     }
   }
   if (!def) return null;
@@ -261,18 +212,21 @@ async function seedInitialAccounts() {
     for (const u of defaultUsers) {
       const existing = await User.findOne({ username: u.username });
       if (!existing) {
-        await User.create(u);
-        insertedCount++;
+        const seededUser = materializeDefaultUser(u);
+        if (seededUser) {
+          await User.create(seededUser);
+          insertedCount++;
+        }
       }
     }
 
     if (insertedCount > 0) {
-      console.log(`✅ [Seeder]: Created ${insertedCount} missing default user account(s).`);
+      console.log(`âœ… [Seeder]: Created ${insertedCount} missing default user account(s).`);
     } else {
-      console.log('ℹ️ [Seeder]: All default user accounts exist. Zero documents modified.');
+      console.log('â„¹ï¸ [Seeder]: All default user accounts exist. Zero documents modified.');
     }
   } catch (err) {
-    console.error('⚠️ [Seeder]: User account seeding notice:', err.message);
+    console.error('âš ï¸ [Seeder]: User account seeding notice:', err.message);
   }
 }
 
@@ -284,7 +238,7 @@ function ensureBootstrap() {
       .then(() => seedInitialAccounts())
       .catch(err => {
         bootstrapPromise = null;
-        console.warn('⚠️ [Boot]: Bootstrap initialization notice:', err.message);
+        console.warn('âš ï¸ [Boot]: Bootstrap initialization notice:', err.message);
       });
   }
   return bootstrapPromise;
@@ -310,7 +264,7 @@ async function mongoRateLimiter(req, res, next) {
       try {
         await connectToDatabase();
       } catch (connErr) {
-        console.warn('⚠️ [RateLimiter]: Database connection attempt notice:', connErr.message);
+        console.warn('âš ï¸ [RateLimiter]: Database connection attempt notice:', connErr.message);
       }
     }
 
@@ -394,7 +348,7 @@ async function authenticateToken(req, res, next) {
             dbUser = await User.findOne({ username: decoded.username }).select('activeSessionId status username');
           }
         } catch (dbErr) {
-          console.warn('⚠️ [Auth]: Mongo query notice in authenticateToken:', dbErr.message);
+          console.warn('âš ï¸ [Auth]: Mongo query notice in authenticateToken:', dbErr.message);
         }
       }
 
@@ -570,7 +524,7 @@ app.post('/api/auth/verify-credentials', mongoRateLimiter, async (req, res) => {
     try {
       await connectToDatabase();
     } catch (dbErr) {
-      console.warn('⚠️ [Auth]: DB connection notice during verify-credentials:', dbErr.message);
+      console.warn('âš ï¸ [Auth]: DB connection notice during verify-credentials:', dbErr.message);
     }
     const { username, identifier, password } = req.body || {};
     const inputUser = username || identifier;
@@ -614,7 +568,7 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
     try {
       await connectToDatabase();
     } catch (dbErr) {
-      console.warn('⚠️ [Auth]: DB connection notice during login:', dbErr.message);
+      console.warn('âš ï¸ [Auth]: DB connection notice during login:', dbErr.message);
     }
     const { username, identifier, password, pin } = req.body || {};
     const inputUser = username || identifier;
@@ -713,7 +667,7 @@ app.post('/api/auth/force-login', mongoRateLimiter, async (req, res) => {
     try {
       await connectToDatabase();
     } catch (dbErr) {
-      console.warn('⚠️ [Auth]: DB connection notice during force-login:', dbErr.message);
+      console.warn('âš ï¸ [Auth]: DB connection notice during force-login:', dbErr.message);
     }
     const { username, identifier, password, pin } = req.body || {};
     const inputUser = username || identifier;
@@ -780,7 +734,7 @@ app.post('/api/auth/force-login', mongoRateLimiter, async (req, res) => {
       } catch { /* ignore for in-memory fallback */ }
     }
 
-    console.log(`🔑 [Force Login]: Account [${user.username}] logged in with new session [${newSessionId}]. Evicted previous session.`);
+    console.log(`ðŸ”‘ [Force Login]: Account [${user.username}] logged in with new session [${newSessionId}]. Evicted previous session.`);
 
     return res.json({
       status: 'success',
@@ -869,7 +823,7 @@ app.post('/api/auth/logout', async (req, res) => {
 
     if (userIdToClear) {
       await User.updateOne({ _id: userIdToClear }, { activeSessionId: null });
-      console.log(`🚪 [Logout]: Cleared activeSessionId for user ID [${userIdToClear}].`);
+      console.log(`ðŸšª [Logout]: Cleared activeSessionId for user ID [${userIdToClear}].`);
     }
 
     return res.json({ status: 'success', message: 'Logged out successfully' });
@@ -1681,7 +1635,7 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
 
     const existingPayment = await Payment.findOne({ idempotencyKey });
     if (existingPayment) {
-      console.log(`ℹ️ [Idempotency Guard]: Fast duplicate submission caught for key [${idempotencyKey}]. Returning existing receipt.`);
+      console.log(`â„¹ï¸ [Idempotency Guard]: Fast duplicate submission caught for key [${idempotencyKey}]. Returning existing receipt.`);
       return res.json({
         status: 'success',
         data: {
@@ -2008,7 +1962,7 @@ app.post('/api/authenticator/accounts', authenticateToken, requireRole('authenti
       mobile: mobile || '',
       department: department || '',
       campus: campus || 'All',
-      backupCode
+      backupCode,
     };
 
     if (mongoose.connection.readyState === 1) {
@@ -2175,10 +2129,10 @@ app.post('/api/authenticator/wipe-database', authenticateToken, requireRole('aut
       return res.status(401).json({ status: 'error', message: 'Invalid authenticator password provided.' });
     }
 
-    console.log(`⚠️ [PRE-WIPE AUTO BACKUP]: Generating mandatory Google Drive backup prior to wipe for [${user.username}]...`);
+    console.log(`âš ï¸ [PRE-WIPE AUTO BACKUP]: Generating mandatory Google Drive backup prior to wipe for [${user.username}]...`);
     const preWipeBackup = await generateAndUploadBackup(`pre_wipe_${user.username}`);
 
-    console.log(`⚠️ [EXECUTING WIPE]: Wiping data collections for [${user.username}]...`);
+    console.log(`âš ï¸ [EXECUTING WIPE]: Wiping data collections for [${user.username}]...`);
     const wipeResult = await wipeDataCollections(user.username);
 
     return res.json({
@@ -2303,7 +2257,7 @@ app.get('/api/system/last-changed', authenticateToken, enforceCampusIsolation, a
 
     const filter = { branch: String(branch).trim() };
 
-    // 6 lightweight indexed queries — each returns at most 1 document (the newest)
+    // 6 lightweight indexed queries â€” each returns at most 1 document (the newest)
     const [latestStudent, latestTeacher, latestFeeSettings, latestExpenditure, latestWorkerPayment, latestPayment] = await Promise.all([
       Student.findOne(filter).sort({ updatedAt: -1 }).select('updatedAt').lean(),
       Teacher.findOne(filter).sort({ updatedAt: -1 }).select('updatedAt').lean(),
@@ -2347,3 +2301,7 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
+
+
+
+
