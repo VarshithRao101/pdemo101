@@ -1410,14 +1410,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     loadPageData();
   }, [activePage, timetableSection, attendanceDate]);
 
-  const triggerToast = (msg: string) => {
-    const isError = msg.toLowerCase().includes('rejected') ||
-                    msg.toLowerCase().includes('failed') ||
-                    msg.toLowerCase().includes('denied') ||
-                    msg.toLowerCase().includes('invalid') ||
-                    msg.toLowerCase().includes('not found') ||
-                    msg.toLowerCase().includes('error') ||
-                    msg.toLowerCase().includes('incorrect');
+  const triggerToast = (msg: string, type?: 'success' | 'error') => {
+    let isError = false;
+    if (type) {
+      isError = type === 'error';
+    } else {
+      const lower = msg.toLowerCase();
+      isError = lower.includes('rejected') ||
+                lower.includes('failed') ||
+                lower.includes('denied') ||
+                (lower.includes('invalid') && !lower.includes('invalidated')) ||
+                lower.includes('not found') ||
+                lower.includes('error') ||
+                lower.includes('incorrect');
+    }
     const symbol = isError ? 'ERROR: ' : 'Success: ';
     setToastMessage(symbol + msg);
     setTimeout(() => setToastMessage(null), 3000);

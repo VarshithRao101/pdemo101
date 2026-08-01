@@ -268,14 +268,20 @@ export const AuthenticatorDashboardView: React.FC = () => {
   };
 
   // Trigger Toast Notification
-  const triggerToast = (msg: string) => {
-    const isError = msg.toLowerCase().includes('rejected') || 
-                    msg.toLowerCase().includes('failed') || 
-                    msg.toLowerCase().includes('denied') || 
-                    msg.toLowerCase().includes('invalid') || 
-                    msg.toLowerCase().includes('not found') || 
-                    msg.toLowerCase().includes('error') ||
-                    msg.toLowerCase().includes('incorrect');
+  const triggerToast = (msg: string, type?: 'success' | 'error') => {
+    let isError = false;
+    if (type) {
+      isError = type === 'error';
+    } else {
+      const lower = msg.toLowerCase();
+      isError = lower.includes('rejected') || 
+                lower.includes('failed') || 
+                lower.includes('denied') || 
+                (lower.includes('invalid') && !lower.includes('invalidated')) || 
+                lower.includes('not found') || 
+                lower.includes('error') ||
+                lower.includes('incorrect');
+    }
     const symbol = isError ? 'ERROR: ' : 'SUCCESS: ';
     setToast(symbol + msg);
   };
@@ -325,7 +331,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
       if (data) {
         setKeysData(data);
       }
-      triggerToast('⚡ All 9 Account Security PINs regenerated & activated! Old PINs invalidated.');
+      triggerToast('⚡ All 9 Account Security PINs regenerated & activated! Old PINs invalidated.', 'success');
     } catch (err: any) {
       triggerToast(err?.message || 'Failed to regenerate PINs.');
     }
