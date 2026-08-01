@@ -6,9 +6,6 @@ import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import collegeLogo from '../assets/college logo.png';
 import { setGlobalSecurityKey } from '../services/apiClient';
 import * as accountantService from '../services/accountantService';
-import { StudentPromotionWizard } from '../components/StudentPromotionWizard';
-import { StudentTimelineView } from '../components/StudentTimelineView';
-import { TeacherSalaryLedger } from '../components/TeacherSalaryLedger';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 
 
@@ -201,6 +198,17 @@ interface Student {
   remainingBalance: number;
   receipts: Receipt[];
   feeAdjustments?: FeeAdjustment[];
+  booksFee?: number;
+  uniformFees?: number;
+  hndFees?: number;
+  internalExamFees?: number;
+  annualExamFees?: number;
+  partyFees?: number;
+  busFees?: number;
+  labFees?: number;
+  handLoan?: number;
+  othersFee?: number;
+  customFeeSlots?: Array<{ id?: string; name: string; amount: number }>;
 }
 
 interface Attendee {
@@ -2271,7 +2279,7 @@ export const AccountantDashboardView: React.FC = () => {
                   {/* Bill Header */}
                   <div style={{
                     display: 'flex',
-                    justify: 'space-between',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                     borderBottom: '1.5px solid #E2E8F0',
                     paddingBottom: '12px'
@@ -2353,7 +2361,7 @@ export const AccountantDashboardView: React.FC = () => {
                           {/* Net Remaining Balance Banner */}
                           <div style={{
                             display: 'flex',
-                            justify: 'space-between',
+                            justifyContent: 'space-between',
                             alignItems: 'center',
                             padding: '12px 14px',
                             borderRadius: '12px',
@@ -3125,7 +3133,7 @@ export const AccountantDashboardView: React.FC = () => {
             backgroundColor: 'rgba(255, 255, 255, 0.85)',
             border: '2px solid rgba(212, 175, 55, 0.35)',
             display: 'flex',
-            justify: 'space-between',
+            justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: '12px',

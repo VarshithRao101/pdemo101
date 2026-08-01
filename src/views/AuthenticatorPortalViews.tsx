@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
-import { InspireLogo } from '../components/common/InspireLogo';
 import { apiClient } from '../services/apiClient';
 import { authenticatorService } from '../services/authenticatorService';
 import type { 
@@ -12,7 +11,7 @@ import type {
 } from '../services/authenticatorService';
 
 export const AuthenticatorDashboardView: React.FC = () => {
-  const { logout, activeTab: globalActiveTab, setActiveTab: setGlobalActiveTab, setIsDrawerOpen } = useNavigation();
+  const { activeTab: globalActiveTab, setActiveTab: setGlobalActiveTab, setIsDrawerOpen } = useNavigation();
   const [toast, setToast] = useState<string | null>(null);
   
   // Tab control
@@ -442,14 +441,14 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Filtered transaction logs
   const filteredSyncLogs = syncLogs.filter(log => {
     if (ledgerFilter === 'success' && log.status !== 'success') return false;
-    if (ledgerFilter === 'failed' && log.status !== 'failed' && log.status !== 'rejected') return false;
+    if (ledgerFilter === 'failed' && log.status !== 'failed' && (log.status as string) !== 'rejected') return false;
     if (ledgerSearch.trim()) {
       const q = ledgerSearch.toLowerCase();
       return (
         log.transactionId.toLowerCase().includes(q) ||
         log.action.toLowerCase().includes(q) ||
-        log.performedBy.toLowerCase().includes(q) ||
-        log.details.toLowerCase().includes(q)
+        (log.performedBy || '').toLowerCase().includes(q) ||
+        (log.details || '').toLowerCase().includes(q)
       );
     }
     return true;
@@ -600,7 +599,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     <div key={log.transactionId ? `dash-tx-${log.transactionId}-${idx}` : `dash-tx-${idx}`} style={{ padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #CBD5E1', backgroundColor: '#F8FAFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <div style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A' }}>{log.action}</div>
-                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>By {log.performedBy} • {log.timestamp}</div>
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>By {log.performedBy || 'System'} • {log.timestamp}</div>
                       </div>
                       <span style={{
                         fontSize: '10px',
@@ -1039,10 +1038,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>{log.action}</div>
                       <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', marginTop: '4px' }}>
-                        ID: {log.transactionId} • Performed By: {log.performedBy}
+                        ID: {log.transactionId} • Performed By: {log.performedBy || 'System'}
                       </div>
                       <div style={{ fontSize: '11px', fontWeight: 600, color: '#475569', marginTop: '4px' }}>
-                        {log.details}
+                        {log.details || log.errorDetails || 'Transaction logged'}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>

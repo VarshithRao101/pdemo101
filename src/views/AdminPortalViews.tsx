@@ -8,11 +8,6 @@ import { admin2Service } from '../services/admin2Service';
 import * as accountantService from '../services/accountantService';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import { AdminDataAnalytics } from '../components/AdminDataAnalytics';
-import { AcademicYearManager } from '../components/AcademicYearManager';
-import { StudentPromotionWizard } from '../components/StudentPromotionWizard';
-import { StudentTimelineView } from '../components/StudentTimelineView';
-import { TeacherSalaryLedger } from '../components/TeacherSalaryLedger';
-import { AuditLogsViewer } from '../components/AuditLogsViewer';
 import collegeLogo from '../assets/college logo.png';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 
@@ -173,6 +168,19 @@ interface Student {
   remainingBalance?: number;
   miscWaiver?: number;
   customFeeSlots?: Array<{ id?: string; name: string; amount: number }>;
+  dob?: string;
+  pastSchool?: string;
+  previousSchool?: string;
+  booksFee?: number;
+  uniformFees?: number;
+  hndFees?: number;
+  internalExamFees?: number;
+  annualExamFees?: number;
+  partyFees?: number;
+  busFees?: number;
+  labFees?: number;
+  handLoan?: number;
+  othersFee?: number;
 }
 
 interface Teacher {
@@ -514,7 +522,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [adminNewSlotAmount, setAdminNewSlotAmount] = useState('');
   const [adminIsAddingSlot, setAdminIsAddingSlot] = useState(false);
 
-  const getAdminActiveFeeSlots = (stu: any, breakdown: any) => {
+  const getAdminActiveFeeSlots = (stu: any, breakdown?: any) => {
     if (!stu && !breakdown) return [];
     if (stu?.customFeeSlots && Array.isArray(stu.customFeeSlots) && stu.customFeeSlots.length > 0) {
       return stu.customFeeSlots.map((c: any, idx: number) => ({
@@ -1280,7 +1288,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const refreshCurrentPage = async (pulseKey: typeof livePulseKey) => {
+  const refreshCurrentPage = async (pulseKey?: any) => {
     setLivePulseKey(pulseKey);
     try {
       if (activePage === 'students' || activePage === 'teachers' || activePage === 'sections' || activePage === 'fee_editor') {
@@ -1677,18 +1685,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         setNewStuHostelStatus('Day Scholar');
         setNewStuTransportStatus('Self Transport');
         setNewStuBusRoute('');
-        setNewStuTuitionFee('');
-        setNewStuBooksFee('');
-        setNewStuUniformFees('');
-        setNewStuHndFees('');
-        setNewStuInternalExamFees('');
-        setNewStuAnnualExamFees('');
-        setNewStuPartyFees('');
-        setNewStuBusFees('');
-        setNewStuLabFees('');
-        setNewStuHandLoan('');
-        setNewStuOthersFee('');
-        setNewStuCustomSlots([]);
         setNewStuCourse('MPC');
         setNewStuYear('1st Year');
         setNewStuFormPage(1);
@@ -2167,7 +2163,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   padding: '16px 24px',
                   borderBottom: '1.5px solid #E2E8F0',
                   display: 'flex',
-                  justify: 'space-between',
+                  justifyContent: 'space-between',
                   alignItems: 'center',
                   backgroundColor: '#F8FAFC',
                   borderTopLeftRadius: '20px',
@@ -3825,7 +3821,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <label style={styles.formLabel}>Campus Branch</label>
                       <select
                         value={newFacBranch}
-                        disabled={role === 'admin2'}
+                        disabled={(role as string) === 'admin2'}
                         onChange={(e) => setNewFacBranch(e.target.value)}
                         style={styles.selectInput}
                       >
@@ -5106,7 +5102,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           miscWaiver: Number(editMiscWaiver) || 0,
           customFeeSlots: updatedCustomSlots,
           totalWaiver: totalWaivers
-        }, targetBranch);
+        } as any, targetBranch);
 
         if (res.status === 'success') {
           const breakdown = await admin2Service.getFeeBreakdown(studentKey, targetBranch);
@@ -5298,7 +5294,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     }}>
                       <div style={{
                         display: 'flex',
-                        justify: 'space-between',
+                        justifyContent: 'space-between',
                         alignItems: 'center',
                         borderBottom: '1.5px solid #E2E8F0',
                         paddingBottom: '10px'
@@ -5331,7 +5327,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           <span>Amount (Rs)</span>
                         </div>
 
-                        {getAdminActiveFeeSlots(selectedFeeStudent, feeBreakdownData).map((slot) => {
+                        {getAdminActiveFeeSlots(selectedFeeStudent, feeBreakdownData).map((slot: any) => {
                           const slotKey = slot.id || slot.name;
                           const waiverAmt = Number(editSlotWaivers[slotKey]) || 0;
                           const netSlotAmt = Math.max(0, slot.amount - waiverAmt);
@@ -5420,7 +5416,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       </p>
                       
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                        {getAdminActiveFeeSlots(selectedFeeStudent, feeBreakdownData).map((slot) => {
+                        {getAdminActiveFeeSlots(selectedFeeStudent, feeBreakdownData).map((slot: any) => {
                           const slotKey = slot.id || slot.name;
                           return (
                             <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

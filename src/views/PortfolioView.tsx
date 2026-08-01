@@ -170,7 +170,6 @@ export const PortfolioView: React.FC = () => {
   const [heroSlide, setHeroSlide] = useState(0);
   const [topperSlide, setTopperSlide] = useState(0);
   const [achieverSlide, setAchieverSlide] = useState(0);
-  const [aboutTab, setAboutTab] = useState<'vision' | 'mission' | 'who'>('vision');
 
   // Portal
   const portalHash = '#/secure-gateway-portal-v2-x9k84m2n7p1q3w5r8z-inspire';

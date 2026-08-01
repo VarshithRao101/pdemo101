@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { GlassCard } from './common/GlassCard';
+import React, { useState } from 'react';
 import { admin1Service } from '../services/admin1Service';
 
 interface StudentPromotionWizardProps {
@@ -20,13 +19,12 @@ export const StudentPromotionWizard: React.FC<StudentPromotionWizardProps> = ({
   // Step 2: Verification
   const [securityPassword, setSecurityPassword] = useState<string>('');
   const [otpInput, setOtpInput] = useState<string>('');
-  const [isVerifying, setIsVerifying] = useState<boolean>(false);
 
   // Step 3: Promotion Config
   const [nextAcademicYear, setNextAcademicYear] = useState<string>('2027-28');
   const [nextCourseYear, setNextCourseYear] = useState<string>('2nd Year');
-  const [hostelStatus, setHostelStatus] = useState<string>(student?.hostelStatus || 'Day Scholar');
-  const [transportStatus, setTransportStatus] = useState<string>(student?.transportStatus || 'Self Transport');
+  const [hostelStatus] = useState<string>(student?.hostelStatus || 'Day Scholar');
+  const [transportStatus] = useState<string>(student?.transportStatus || 'Self Transport');
 
   // Fee Structure
   const [tuitionFee, setTuitionFee] = useState<number>(student?.tuitionFee || 120000);

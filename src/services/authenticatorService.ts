@@ -17,6 +17,7 @@ export interface BackupCodeInfo {
 
 export interface AccountInfo {
   _id: string;
+  id?: string;
   username: string;
   role: 'admin1' | 'admin2' | 'accountant' | 'authenticator';
   backupCode?: string;
@@ -164,7 +165,7 @@ export interface SyncJournalEntry {
   targetNode: string;
   action: string;
   payload: any;
-  status: 'pending' | 'synced' | 'failed' | 'success';
+  status: 'pending' | 'synced' | 'failed' | 'success' | 'rejected' | string;
   acknowledgedClients: string[];
   expectedClientsCount: number;
   createdAt?: string;
@@ -172,6 +173,8 @@ export interface SyncJournalEntry {
   timestamp?: string;
   branch?: string;
   errorDetails?: string;
+  performedBy?: string;
+  details?: string;
 }
 
 export interface BackupResponse {

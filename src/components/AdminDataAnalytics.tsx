@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 
 export interface Student {
   _id?: string;
-  id: string;
+  id?: string;
   name: string;
   admissionNumber: string;
   registrationNumber?: string;

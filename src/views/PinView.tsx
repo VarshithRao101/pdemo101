@@ -17,7 +17,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastKeypadIndex, setLastKeypadIndex] = useState<number | null>(null);
   const [sessionConflict, setSessionConflict] = useState(false);
-  const { isMobile, portalRole, login, forceLogin } = useNavigation();
+  const { login, forceLogin } = useNavigation();
 
   const [portalMode, setPortalMode] = useState<'universal' | 'authenticator'>(() => {
     if (mode) return mode;
