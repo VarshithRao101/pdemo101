@@ -137,6 +137,11 @@ function safeBcryptCompare(input, hash) {
   }
 }
 
+function resolveUsername(inputUser) {
+  if (!inputUser || typeof inputUser !== 'string') return '';
+  return inputUser.trim().toLowerCase();
+}
+
 async function findUserAccount(resolvedUsername) {
   if (mongoose.connection.readyState === 1) {
     try {
