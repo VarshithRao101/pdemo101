@@ -86,22 +86,43 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
     if (sessionChecked.current) return;
     sessionChecked.current = true;
 
-    checkSession().then((isValid) => {
-      const hash = window.location.hash;
-      const isAuthGateHash = hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l');
-      const isUnivGateHash = hash === UNIVERSAL_HASH || hash.includes('secure-gateway-portal-v2') || hash.includes('v1-portal-gate-x89f2a7b');
+    // Safety net: force loading to end after 3s even if checkSession hangs
+    const safetyTimeout = setTimeout(() => {
+      setIsInitialLoading(false);
+    }, 3000);
 
-      if (isValid || authStateRef.current) {
-        setFlowStage('authenticated');
-      } else if (isAuthGateHash || isUnivGateHash || hash.includes('login') || hash.includes('portal-gate')) {
-        setFlowStage('pin');
-      } else {
-        setFlowStage('portfolio');
-      }
-      setTimeout(() => {
-        setIsInitialLoading(false);
-      }, 800);
-    });
+    checkSession()
+      .then((isValid) => {
+        const hash = window.location.hash;
+        const isAuthGateHash = hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l');
+        const isUnivGateHash = hash === UNIVERSAL_HASH || hash.includes('secure-gateway-portal-v2') || hash.includes('v1-portal-gate-x89f2a7b');
+
+        if (isValid || authStateRef.current) {
+          setFlowStage('authenticated');
+        } else if (isAuthGateHash || isUnivGateHash || hash.includes('login') || hash.includes('portal-gate')) {
+          setFlowStage('pin');
+        } else {
+          setFlowStage('portfolio');
+        }
+      })
+      .catch(() => {
+        // Session check failed (network error, server down, etc.)
+        // Fall back gracefully based on the current hash
+        const hash = window.location.hash;
+        const isAuthGateHash = hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l');
+        const isUnivGateHash = hash === UNIVERSAL_HASH || hash.includes('secure-gateway-portal-v2') || hash.includes('v1-portal-gate-x89f2a7b');
+        if (isAuthGateHash || isUnivGateHash || hash.includes('login') || hash.includes('portal-gate')) {
+          setFlowStage('pin');
+        } else {
+          setFlowStage('portfolio');
+        }
+      })
+      .finally(() => {
+        clearTimeout(safetyTimeout);
+        setTimeout(() => {
+          setIsInitialLoading(false);
+        }, 800);
+      });
   }, [checkSession]);
 
   // Wire global logout
