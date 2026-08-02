@@ -153,14 +153,46 @@ async function findUserAccount(resolvedUsername) {
   }
 }
 
+const defaultSeedUsers = [
+  { username: 'admin1', password: 'RectorPass#2026', pin: '346398', role: 'admin1', campus: 'All', name: 'Rector' },
+  { username: '9059068384', password: '00112233', pin: '252823', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
+  { username: 'admin2_erragattugutta_c1', password: 'DeanE1#8492', pin: '118798', role: 'admin2', campus: 'Erragattugutta C1', name: 'Dean Erragattugutta C1' },
+  { username: 'admin2_erragattugutta_c2', password: 'DeanE2#9184', pin: '186995', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2' },
+  { username: 'admin2_beemaram_c1', password: 'DeanB1#2834', pin: '673732', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1' },
+  { username: 'admin2_beemaram_c2', password: 'DeanB2#7194', pin: '422319', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2' },
+  { username: 'accountant_erragattugutta_c1_1', password: 'AccE1#4102', pin: '785482', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1' },
+  { username: 'accountant_erragattugutta_c1_2', password: 'AccE1#9203', pin: '552438', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1' },
+  { username: 'accountant_erragattugutta_c2_1', password: 'AccE2#1924', pin: '934649', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2' },
+  { username: 'accountant_erragattugutta_c2_2', password: 'NewPass#2026', pin: '998877', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 2 Erragattugutta C2' },
+  { username: 'accountant_beemaram_c1_1', password: 'AccB1#5834', pin: '819871', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 1 Beemaram C1' },
+  { username: 'accountant_beemaram_c1_2', password: 'AccB1#2934', pin: '515682', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1' },
+  { username: 'accountant_beemaram_c2_1', password: 'AccB2#1049', pin: '518535', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2' },
+  { username: 'accountant_beemaram_c2_2', password: 'NewPass#2026', pin: '998877', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2' }
+];
+
 async function seedInitialAccounts() {
   try {
-    if (mongoose.connection.readyState === 1) {
-      const count = await User.countDocuments();
-      console.log(`ℹ️ [Seeder]: Active user accounts in database: ${count}`);
+    await connectToDatabase();
+    for (const u of defaultSeedUsers) {
+      const exists = await User.findOne({ username: u.username });
+      if (!exists) {
+        const hashedPassword = bcrypt.hashSync(u.password, 10);
+        const hashedPin = bcrypt.hashSync(u.pin, 10);
+        await User.create({
+          username: u.username,
+          password: hashedPassword,
+          pin: hashedPin,
+          pin_plaintext: u.pin,
+          role: u.role,
+          campus: u.campus,
+          name: u.name,
+          status: 'active'
+        });
+        console.log(`✅ [Seeder]: Seeded missing user [${u.username}] into MongoDB.`);
+      }
     }
   } catch (err) {
-    console.error('⚠️ [Seeder]: User account check notice:', err.message);
+    console.error('⚠️ [Seeder]: User account seed notice:', err.message);
   }
 }
 
