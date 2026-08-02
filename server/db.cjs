@@ -10,8 +10,10 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
+const FALLBACK_MONGODB_URI = 'mongodb+srv://ravindarraodevarneni_db_user:VGm%403007250967@cluster0.q74oac9.mongodb.net/jc_erp_prod?retryWrites=true&w=majority&appName=Cluster0';
+
 async function connectToDatabase() {
-  const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/jc_erp_prod';
+  const MONGODB_URI = process.env.MONGODB_URI || FALLBACK_MONGODB_URI;
 
   if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn;
@@ -33,6 +35,13 @@ async function connectToDatabase() {
         return mongooseInstance.connection;
       })
       .catch((err) => {
+        if (MONGODB_URI !== FALLBACK_MONGODB_URI) {
+          console.warn('⚠️ [Database]: Primary MONGODB_URI failed (' + err.message + '). Retrying with Atlas fallback...');
+          return mongoose.connect(FALLBACK_MONGODB_URI, opts).then((mongooseInstance) => {
+            console.log('✅ [Database]: Connected via Atlas fallback URI.');
+            return mongooseInstance.connection;
+          });
+        }
         cached.promise = null;
         global.mongoose.promise = null;
         console.error('❌ [Database]: MongoDB connection error:', err.message);
