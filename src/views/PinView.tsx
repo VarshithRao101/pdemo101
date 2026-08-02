@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import PinEntry from '../components/common/PinEntry';
 import { useNavigation } from '../context/NavigationContext';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -126,6 +126,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     } catch (err: any) {
       if (err?.status === 409 || err?.data?.status === 'session_conflict') {
         setSessionConflict(true);
+        setPin('');
         return;
       }
       let msg = err?.data?.message || err?.message;
@@ -159,6 +160,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         ? 'Force login failed. Please verify credentials and try again.'
         : (err?.data?.message || err?.message || 'Force login failed. Please try again.');
       triggerError(msg);
+      setPin('');
     } finally {
       setIsChecking(false);
     }
@@ -166,10 +168,10 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
   // Auto-submit when 6-digit PIN is entered
   useEffect(() => {
-    if (step === 'pin' && pin.length === 6 && !isChecking && !isSuccess) {
+    if (step === 'pin' && pin.length === 6 && !isChecking && !isSuccess && !sessionConflict) {
       handleConfirm(pin);
     }
-  }, [pin, step, isChecking, isSuccess]);
+  }, [pin, step, isChecking, isSuccess, sessionConflict]);
 
   // Physical keyboard support for 6-digit PIN
   useEffect(() => {
@@ -201,11 +203,6 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [step, pin, isChecking, isSuccess]);
-
-  const handleResetPin = () => {
-    setPin('');
-    setToastMessage('PIN reset request link sent to your registered mobile number');
-  };
 
   const handleCredentialsFormSubmit = async (e?: React.FormEvent) => {
     if (e) {

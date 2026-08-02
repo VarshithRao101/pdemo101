@@ -563,15 +563,7 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
     }
 
-    // Step 2: Detect session conflict if account is already logged in elsewhere
-    if (user.activeSessionId) {
-      return res.status(409).json({
-        status: 'session_conflict',
-        message: 'This account is already logged in on another device.'
-      });
-    }
-
-    // Generate new activeSessionId
+    // Generate new activeSessionId (evicts previous session automatically on valid password & PIN)
     const newSessionId = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
     user.activeSessionId = newSessionId;
     if (typeof user.save === 'function') {
