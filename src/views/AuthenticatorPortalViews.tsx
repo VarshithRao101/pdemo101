@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
 import { apiClient } from '../services/apiClient';
@@ -932,7 +932,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         onClick={() => {
                           setEditingAccountId(accId);
                           setAccountUsername(acc.username);
-                          setAccountPassword(passwordVal);
+                          setAccountPassword('');
                           setAccountRole(acc.role);
                           setAccountName(acc.name || '');
                           setAccountEmail(acc.email || '');
