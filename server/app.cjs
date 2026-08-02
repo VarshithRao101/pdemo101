@@ -81,11 +81,22 @@ app.use(express.json());
 app.use(morgan('dev'));
 
 // Health Check Endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
+  let dbStatus = 'disconnected';
+  let dbError = null;
+  const hasMongoUri = Boolean(process.env.MONGODB_URI);
+  try {
+    await connectToDatabase();
+    dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'connecting';
+  } catch (err) {
+    dbError = err.message;
+  }
   return res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    database: dbStatus,
+    hasMongoUri,
+    dbError
   });
 });
 
