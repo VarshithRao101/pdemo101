@@ -143,17 +143,14 @@ function resolveUsername(inputUser) {
 }
 
 async function findUserAccount(resolvedUsername) {
-  if (mongoose.connection.readyState === 1) {
-    try {
-      const user = await User.findOne({ username: resolvedUsername });
-      if (user) {
-        return user;
-      }
-    } catch (dbErr) {
-      console.warn('⚠️ [Auth]: Mongo query notice:', dbErr.message);
-    }
+  if (!resolvedUsername) return null;
+  try {
+    await connectToDatabase();
+    return await User.findOne({ username: resolvedUsername });
+  } catch (dbErr) {
+    console.warn('⚠️ [Auth]: Mongo query error during findUserAccount:', dbErr.message);
+    return null;
   }
-  return null;
 }
 
 async function seedInitialAccounts() {
