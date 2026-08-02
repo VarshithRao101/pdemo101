@@ -1,4 +1,4 @@
-﻿import { apiClient } from './apiClient';
+import { apiClient } from './apiClient';
 
 export interface SecurityKeyInfo {
   role: 'accountant' | 'admin2' | 'admin1';
@@ -142,9 +142,9 @@ export const authenticatorService = {
     return res.data;
   },
 
-  // Wipe entire database with Security Passcode (9-0-5-9-0-6-8-3-8-4)
+  // Wipe entire database with Security Passcode
   async wipeEntireDatabase(securityPin: string): Promise<string> {
-    const res = await apiClient.post<{ status: string; message: string }>('/authenticator/wipe-database', { securityPin });
+    const res = await apiClient.post<{ status: string; message: string }>('/authenticator/wipe-database', { password: securityPin, securityPin });
     return res.message;
   },
 

@@ -80,6 +80,15 @@ app.use(cors({
 app.use(express.json());
 app.use(morgan('dev'));
 
+// Health Check Endpoint
+app.get('/api/health', (req, res) => {
+  return res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
+
 const JWT_SECRET = process.env.JWT_SECRET || 'inspire_secure_jwt_secret_64byte_random_hex_key_2026';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'inspire_secure_jwt_refresh_secret_key_2026';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
@@ -116,81 +125,6 @@ const defaultUsers = [
   { username: 'accountant_beemaram_c2_2', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2' }
 ];
 
-const CREDENTIAL_FILE = process.env.PORTAL_CREDENTIALS_FILE
-  ? path.resolve(process.env.PORTAL_CREDENTIALS_FILE)
-  : path.join(__dirname, 'credential-secrets.local.json');
-
-// Built-in fallback credentials (used on production where the local file is gitignored).
-// These are the system-default master credentials. Override via PORTAL_CREDENTIALS_JSON env or credential-secrets.local.json.
-const BUILTIN_CREDENTIAL_FALLBACKS = {
-  'admin1':                         { password: 'RectorPass#2026',  pin: '102938' },
-  '9059068384':                     { password: '00112233',          pin: '789456' },
-  'admin2_erragattugutta_c1':       { password: 'DeanE1#8492',       pin: '849201' },
-  'admin2_erragattugutta_c2':       { password: 'DeanE2#5713',       pin: '571302' },
-  'admin2_beemaram_c1':             { password: 'DeanB1#3920',       pin: '392003' },
-  'admin2_beemaram_c2':             { password: 'DeanB2#6184',       pin: '618404' },
-  'accountant_erragattugutta_c1_1': { password: 'AccE1#4102',        pin: '410201' },
-  'accountant_erragattugutta_c1_2': { password: 'AccE1#9381',        pin: '938102' },
-  'accountant_erragattugutta_c2_1': { password: 'AccE2#7294',        pin: '729403' },
-  'accountant_erragattugutta_c2_2': { password: 'AccE2#1845',        pin: '184504' },
-  'accountant_beemaram_c1_1':       { password: 'AccB1#6530',        pin: '653005' },
-  'accountant_beemaram_c1_2':       { password: 'AccB1#2947',        pin: '294706' },
-  'accountant_beemaram_c2_1':       { password: 'AccB2#8163',        pin: '816307' },
-  'accountant_beemaram_c2_2':       { password: 'AccB2#3750',        pin: '375008' }
-};
-
-function loadCredentialSeeds() {
-  if (process.env.PORTAL_CREDENTIALS_JSON) {
-    try {
-      return JSON.parse(process.env.PORTAL_CREDENTIALS_JSON);
-    } catch (err) {
-      console.warn('⚠️ [Auth]: Failed to parse PORTAL_CREDENTIALS_JSON:', err.message);
-    }
-  }
-
-  if (fs.existsSync(CREDENTIAL_FILE)) {
-    try {
-      return JSON.parse(fs.readFileSync(CREDENTIAL_FILE, 'utf8'));
-    } catch (err) {
-      console.warn('⚠️ [Auth]: Failed to read credential seed file:', err.message);
-    }
-  }
-
-  console.log('ℹ️ [Auth]: No external credential file found. Using built-in fallback credentials.');
-  return {};
-}
-
-const credentialSeeds = loadCredentialSeeds();
-
-function getCredentialSeed(username) {
-  const key = String(username || '').toLowerCase();
-  // Priority: env/file override > built-in fallback
-  const fromFile = credentialSeeds[key];
-  if (fromFile && typeof fromFile.password === 'string' && typeof fromFile.pin === 'string') {
-    return { password: fromFile.password, pin: fromFile.pin };
-  }
-  const builtin = BUILTIN_CREDENTIAL_FALLBACKS[key];
-  if (builtin) {
-    return { password: builtin.password, pin: builtin.pin };
-  }
-  return null;
-}
-
-function materializeDefaultUser(user) {
-  if (!user) return null;
-  const seed = getCredentialSeed(user.username);
-  if (!seed) return null;
-  return {
-    ...user,
-    password: bcrypt.hashSync(seed.password, 10),
-    pin: bcrypt.hashSync(seed.pin, 10)
-  };
-}
-
-function materializeDefaultUsers() {
-  return defaultUsers.map(materializeDefaultUser).filter(Boolean);
-}
-
 function safeBcryptCompare(input, hash) {
   if (!input || typeof input !== 'string' || !hash || typeof hash !== 'string') {
     return false;
@@ -198,63 +132,33 @@ function safeBcryptCompare(input, hash) {
   try {
     return bcrypt.compareSync(input.trim(), hash.trim());
   } catch (err) {
-    console.warn('âš ï¸ [Auth]: Bcrypt comparison notice:', err.message);
+    console.warn('⚠️ [Auth]: Bcrypt comparison notice:', err.message);
     return false;
   }
 }
 
 async function findUserAccount(resolvedUsername) {
-  const def = materializeDefaultUser(defaultUsers.find(u => u.username === resolvedUsername));
   if (mongoose.connection.readyState === 1) {
     try {
       const user = await User.findOne({ username: resolvedUsername });
       if (user) {
-        if (def) {
-          if (!user.password || typeof user.password !== 'string') user.password = def.password;
-          if (!user.pin || typeof user.pin !== 'string') user.pin = def.pin;
-        }
         return user;
       }
     } catch (dbErr) {
-      console.warn('âš ï¸ [Auth]: Mongo query notice, using seed accounts:', dbErr.message);
+      console.warn('⚠️ [Auth]: Mongo query notice:', dbErr.message);
     }
   }
-  if (!def) return null;
-  return {
-    _id: `sys_${def.username}`,
-    username: def.username,
-    password: def.password,
-    pin: def.pin,
-    role: def.role,
-    campus: def.campus,
-    name: def.name,
-    status: 'active',
-    activeSessionId: null,
-    save: async function() { return this; }
-  };
+  return null;
 }
 
 async function seedInitialAccounts() {
   try {
-    let insertedCount = 0;
-    for (const u of defaultUsers) {
-      const existing = await User.findOne({ username: u.username });
-      if (!existing) {
-        const seededUser = materializeDefaultUser(u);
-        if (seededUser) {
-          await User.create(seededUser);
-          insertedCount++;
-        }
-      }
-    }
-
-    if (insertedCount > 0) {
-      console.log(`âœ… [Seeder]: Created ${insertedCount} missing default user account(s).`);
-    } else {
-      console.log('â„¹ï¸ [Seeder]: All default user accounts exist. Zero documents modified.');
+    if (mongoose.connection.readyState === 1) {
+      const count = await User.countDocuments();
+      console.log(`ℹ️ [Seeder]: Active user accounts in database: ${count}`);
     }
   } catch (err) {
-    console.error('âš ï¸ [Seeder]: User account seeding notice:', err.message);
+    console.error('⚠️ [Seeder]: User account check notice:', err.message);
   }
 }
 
@@ -552,7 +456,7 @@ app.post('/api/auth/verify-credentials', mongoRateLimiter, async (req, res) => {
     try {
       await connectToDatabase();
     } catch (dbErr) {
-      console.warn('âš ï¸ [Auth]: DB connection notice during verify-credentials:', dbErr.message);
+      console.warn('⚠️ [Auth]: DB connection notice during verify-credentials:', dbErr.message);
     }
     const { username, identifier, password } = req.body || {};
     const inputUser = username || identifier;
@@ -568,13 +472,7 @@ app.post('/api/auth/verify-credentials', mongoRateLimiter, async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
     }
 
-    const def = defaultUsers.find(u => u.username === user.username);
-    let isMatch = safeBcryptCompare(password, user.password);
-    if (!isMatch && def && safeBcryptCompare(password, def.password)) {
-      isMatch = true;
-      user.password = def.password;
-      if (typeof user.save === 'function') { try { await user.save(); } catch {} }
-    }
+    const isMatch = safeBcryptCompare(password, user.password);
 
     if (!isMatch) {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
@@ -596,7 +494,7 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
     try {
       await connectToDatabase();
     } catch (dbErr) {
-      console.warn('âš ï¸ [Auth]: DB connection notice during login:', dbErr.message);
+      console.warn('⚠️ [Auth]: DB connection notice during login:', dbErr.message);
     }
     const { username, identifier, password, pin } = req.body || {};
     const inputUser = username || identifier;
@@ -612,18 +510,8 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
     }
 
-    const def = materializeDefaultUser(defaultUsers.find(u => u.username === user.username));
-    let isPasswordOk = safeBcryptCompare(password, user.password);
-    // Only fall back to builtin if the user is a sys_ (not in MongoDB / no real password stored)
-    if (!isPasswordOk && def && user._id && String(user._id).startsWith('sys_')) {
-      if (safeBcryptCompare(password, def.password)) isPasswordOk = true;
-    }
-
-    let isPinOk = safeBcryptCompare(String(pin), user.pin);
-    // Only fall back to builtin PIN if user is still using the default (sys_ id means not in MongoDB)
-    if (!isPinOk && def && user._id && String(user._id).startsWith('sys_')) {
-      if (safeBcryptCompare(String(pin), def.pin)) isPinOk = true;
-    }
+    const isPasswordOk = safeBcryptCompare(password, user.password);
+    const isPinOk = safeBcryptCompare(String(pin), user.pin);
 
     if (!isPasswordOk || !isPinOk) {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
@@ -695,7 +583,7 @@ app.post('/api/auth/force-login', mongoRateLimiter, async (req, res) => {
     try {
       await connectToDatabase();
     } catch (dbErr) {
-      console.warn('âš ï¸ [Auth]: DB connection notice during force-login:', dbErr.message);
+      console.warn('⚠️ [Auth]: DB connection notice during force-login:', dbErr.message);
     }
     const { username, identifier, password, pin } = req.body || {};
     const inputUser = username || identifier;
@@ -711,16 +599,8 @@ app.post('/api/auth/force-login', mongoRateLimiter, async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
     }
 
-    const def = materializeDefaultUser(defaultUsers.find(u => u.username === user.username));
-    let isPasswordOk = safeBcryptCompare(password, user.password);
-    if (!isPasswordOk && def && user._id && String(user._id).startsWith('sys_')) {
-      if (safeBcryptCompare(password, def.password)) isPasswordOk = true;
-    }
-
-    let isPinOk = safeBcryptCompare(String(pin), user.pin);
-    if (!isPinOk && def && user._id && String(user._id).startsWith('sys_')) {
-      if (safeBcryptCompare(String(pin), def.pin)) isPinOk = true;
-    }
+    const isPasswordOk = safeBcryptCompare(password, user.password);
+    const isPinOk = safeBcryptCompare(String(pin), user.pin);
 
     if (!isPasswordOk || !isPinOk) {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
@@ -858,34 +738,10 @@ app.post('/api/auth/logout', async (req, res) => {
   }
 });
 
-app.get('/api/auth/me', authenticateToken, async (req, res) => {
-  try {
-    await connectToDatabase();
-    const user = await User.findById(req.user.id).select('-password -pin');
-
-    if (!user || user.status === 'disabled') {
-      return res.status(401).json({ status: 'error', message: 'User not found or disabled' });
-    }
-
-    return res.json({
-      status: 'success',
-      user: {
-        id: user._id,
-        username: user.username,
-        role: user.role,
-        campus: user.campus,
-        name: user.name
-      }
-    });
-  } catch (err) {
-    return res.status(500).json({ status: 'error', message: 'Internal server error' });
-  }
-});
-
 
 // --- STUDENT ROUTES ---
 
-app.get('/api/admin1/students', authenticateToken, requireRole('admin1'), async (req, res) => {
+app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
   try {
     await connectToDatabase();
     const { branch } = req.query;
@@ -895,6 +751,9 @@ app.get('/api/admin1/students', authenticateToken, requireRole('admin1'), async 
         return res.status(400).json({ status: 'error', message: `Invalid campus branch [${branch}]. Must be one of: ${VALID_CAMPUSES.join(', ')}` });
       }
       filter.branch = String(branch).trim();
+    }
+    if ((req.user.role === 'admin2' || req.user.role === 'accountant') && req.user.campus && req.user.campus.toLowerCase() !== 'all') {
+      filter.branch = req.user.campus;
     }
     const students = await Student.find(filter).sort({ createdAt: -1 });
     return res.json({ status: 'success', data: students });
@@ -1015,6 +874,15 @@ app.patch('/api/admin1/students/:id', authenticateToken, requireRole('admin1', '
       if (student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to [${student.branch}].` });
       }
+    }
+
+    const waiverFields = ['tuitionWaiver', 'hostelWaiver', 'transportWaiver', 'miscWaiver'];
+    const hasWaiverAttempt = waiverFields.some(f => req.body[f] !== undefined);
+    if (hasWaiverAttempt) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Waiver fields must be modified via dedicated fee-override endpoint (/api/admin2/students/:studentId/fee-override) with Security PIN.'
+      });
     }
 
     Object.assign(student, req.body);
@@ -1853,8 +1721,7 @@ app.get('/api/authenticator/keys', authenticateToken, requireRole('authenticator
     const trackedUsernames = defaultUsers.map(u => u.username);
     // Try to read current PINs from DB (stored as pin_plaintext if set, else fall back to builtin)
     for (const username of trackedUsernames) {
-      const seed = getCredentialSeed(username);
-      dailyPins[username] = seed ? seed.pin : '------';
+      dailyPins[username] = '------';
     }
     if (mongoose.connection.readyState === 1) {
       try {
@@ -2048,37 +1915,16 @@ app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authe
 
     if (mongoose.connection.readyState === 1) {
       try {
-        let doc = null;
-        if (!id.startsWith('sys_')) {
-          // Real MongoDB ObjectId - update by _id
-          doc = await User.findByIdAndUpdate(id, { $set: updateFields }, { new: true }).select('-password -pin').lean();
-        } else {
-          // sys_ prefixed ID means it's a default user - resolve by username
-          const resolvedUsername = id.replace('sys_', '');
-          const targetUsername = bodyUsername || resolvedUsername;
-          // Upsert: if user exists update, if not create from defaults
-          doc = await User.findOneAndUpdate(
-            { username: targetUsername },
-            { $set: updateFields },
-            { new: true, upsert: false }
-          ).select('-password -pin').lean();
-          if (!doc) {
-            // User not in MongoDB yet - seed them first, then apply update
-            const defUser = defaultUsers.find(u => u.username === targetUsername);
-            if (defUser) {
-              const matUser = materializeDefaultUser(defUser);
-              if (matUser) {
-                try {
-                  const created = await User.create({ ...matUser, ...updateFields });
-                  doc = created.toObject();
-                  delete doc.password;
-                  delete doc.pin;
-                } catch {}
-              }
-            }
-          }
+        const isObjId = mongoose.Types.ObjectId.isValid(id);
+        const targetUsername = bodyUsername || id.replace('sys_', '');
+        const doc = await User.findOneAndUpdate(
+          { $or: [{ _id: isObjId ? id : null }, { username: targetUsername }, { username: id }] },
+          { $set: updateFields },
+          { new: true }
+        ).lean();
+        if (doc) {
+          updated = doc;
         }
-        if (doc) updated = doc;
       } catch (dbErr) {
         console.warn('⚠️ [Auth]: Account update notice:', dbErr.message);
       }
@@ -2371,258 +2217,6 @@ app.get('/api/system/last-changed', authenticateToken, enforceCampusIsolation, a
 // MISSING ROUTES — Admin1, Admin2, Accountant Portals
 // ============================================================
 
-// --- BULLETINS ---
-const Bulletin = mongoose.models.Bulletin || mongoose.model('Bulletin', new mongoose.Schema({
-  category: { type: String, default: 'announcement' },
-  title: { type: String, required: true },
-  content: { type: String, default: '' },
-  date: { type: String, default: '' },
-  branch: { type: String, default: 'All' }
-}, { timestamps: true }));
-
-app.get('/api/admin1/bulletins', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const bulletins = await Bulletin.find({}).sort({ createdAt: -1 }).lean();
-    return res.json({ status: 'success', data: bulletins });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.post('/api/admin1/bulletins', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const doc = await Bulletin.create({ ...req.body });
-    return res.status(201).json({ status: 'success', data: doc });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.patch('/api/admin1/bulletins/:id', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const doc = await Bulletin.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true });
-    if (!doc) return res.status(404).json({ status: 'error', message: 'Bulletin not found.' });
-    return res.json({ status: 'success', data: doc });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.delete('/api/admin1/bulletins/:id', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    await Bulletin.findByIdAndDelete(req.params.id);
-    return res.json({ status: 'success', message: 'Bulletin deleted.' });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-// --- TIMETABLE ---
-const Timetable = mongoose.models.Timetable || mongoose.model('Timetable', new mongoose.Schema({
-  section: { type: String, required: true },
-  day: { type: String, required: true },
-  period: { type: String, required: true },
-  subject: { type: String, required: true },
-  teacher: { type: mongoose.Schema.Types.Mixed, default: null }
-}, { timestamps: true }));
-
-app.get('/api/admin1/timetable', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const { section } = req.query;
-    const filter = section ? { section: String(section) } : {};
-    const entries = await Timetable.find(filter).lean();
-    return res.json({ status: 'success', data: entries });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.post('/api/admin1/timetable', authenticateToken, requireRole('admin1'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const doc = await Timetable.create(req.body);
-    return res.status(201).json({ status: 'success', data: doc });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.patch('/api/admin1/timetable/:id', authenticateToken, requireRole('admin1'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const doc = await Timetable.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true });
-    return res.json({ status: 'success', data: doc });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.delete('/api/admin1/timetable/:id', authenticateToken, requireRole('admin1'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    await Timetable.findByIdAndDelete(req.params.id);
-    return res.json({ status: 'success', message: 'Timetable entry deleted.' });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.post('/api/admin1/timetable/upload', authenticateToken, requireRole('admin1'), async (req, res) => {
-  return res.json({ status: 'success', message: 'Timetable upload received.', data: {} });
-});
-
-// --- SECTIONS ---
-app.get('/api/admin1/sections', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const [students, teachers] = await Promise.all([
-      Student.find({}).select('section branch').lean(),
-      Teacher.find({}).select('id name subject assignedSections assignedSubjects branch').lean()
-    ]);
-    const sectionSet = new Set(students.map(s => s.section).filter(Boolean));
-    ['I-A', 'I-B', 'I-C', 'II-A', 'II-B', 'II-C', 'III-A', 'III-B', 'III-C'].forEach(s => sectionSet.add(s));
-    return res.json({ status: 'success', data: { sections: [...sectionSet].sort(), teachers } });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.post('/api/admin1/sections', authenticateToken, requireRole('admin1'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const { type, studentIds, section, teacherId, assignedSections, assignedSubjects } = req.body || {};
-    if (type === 'student' && studentIds && section) {
-      await Student.updateMany({ _id: { $in: studentIds } }, { $set: { section } });
-      return res.json({ status: 'success', message: `${studentIds.length} students assigned to section ${section}.` });
-    }
-    if (type === 'teacher' && teacherId) {
-      await Teacher.findOneAndUpdate({ $or: [{ id: teacherId }, { _id: mongoose.Types.ObjectId.isValid(teacherId) ? teacherId : null }] }, { $set: { assignedSections, assignedSubjects } });
-      return res.json({ status: 'success', message: 'Teacher duty allocated.' });
-    }
-    return res.status(400).json({ status: 'error', message: 'Invalid section allocation request.' });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-// --- ATTENDANCE SUMMARY ---
-app.get('/api/admin1/attendance-summary', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const students = await Student.find({}).select('name admissionNumber section branch status').lean();
-    const summary = students.map(s => ({ ...s, present: 0, absent: 0, percentage: 100 }));
-    return res.json({ status: 'success', data: summary });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-// --- REPORTS ---
-app.get('/api/admin1/reports', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const [students, teachers, payments] = await Promise.all([
-      Student.countDocuments(),
-      Teacher.countDocuments(),
-      Payment.find({}).select('amount paidAt').lean()
-    ]);
-    const totalCollected = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
-    return res.json({ status: 'success', data: { totalStudents: students, totalTeachers: teachers, totalCollected, payments } });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-// --- EXAMS ---
-const Exam = mongoose.models.Exam || mongoose.model('Exam', new mongoose.Schema({
-  name: { type: String, required: true },
-  date: { type: String, required: true },
-  class: { type: String, default: 'All' },
-  status: { type: String, default: 'Scheduled' },
-  resultsPublished: { type: Boolean, default: false }
-}, { timestamps: true }));
-
-app.get('/api/admin1/exams', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const exams = await Exam.find({}).sort({ createdAt: -1 }).lean();
-    return res.json({ status: 'success', data: exams });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.post('/api/admin1/exams', authenticateToken, requireRole('admin1'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const doc = await Exam.create(req.body);
-    return res.status(201).json({ status: 'success', data: doc });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.post('/api/admin1/exams/upload', authenticateToken, requireRole('admin1'), async (req, res) => {
-  return res.json({ status: 'success', message: 'Exam results upload received.', data: {} });
-});
-
-// --- ACADEMIC YEARS ---
-const AcademicYear = mongoose.models.AcademicYear || mongoose.model('AcademicYear', new mongoose.Schema({
-  yearId: { type: String, required: true, unique: true },
-  label: { type: String, required: true },
-  startDate: { type: String, default: '' },
-  endDate: { type: String, default: '' },
-  status: { type: String, default: 'active' }
-}, { timestamps: true }));
-
-app.get('/api/admin1/academic-years', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    let years = await AcademicYear.find({}).sort({ createdAt: -1 }).lean();
-    if (!years.length) {
-      years = [{ yearId: '2026-2027', label: '2026-2027', status: 'active' }];
-    }
-    const activeYear = (years.find(y => y.status === 'active') || years[0])?.yearId || '2026-2027';
-    return res.json({ status: 'success', data: { activeYear, academicYears: years } });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.post('/api/admin1/academic-years', authenticateToken, requireRole('admin1'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const doc = await AcademicYear.findOneAndUpdate(
-      { yearId: req.body.yearId },
-      { $set: req.body },
-      { upsert: true, new: true }
-    );
-    return res.status(201).json({ status: 'success', data: doc });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.patch('/api/admin1/academic-years/:yearId/status', authenticateToken, requireRole('admin1'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const { status } = req.body;
-    const doc = await AcademicYear.findOneAndUpdate({ yearId: req.params.yearId }, { $set: { status } }, { new: true });
-    return res.json({ status: 'success', data: doc });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-// --- STUDENT PROMOTION ---
-app.post('/api/students/:id/promote', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
-    const student = await Student.findOne({ $or: [{ _id: isObjId ? id : null }, { studentId: id }, { admissionNumber: id }] });
-    if (!student) return res.status(404).json({ status: 'error', message: 'Student not found.' });
-    const { nextAcademicYear, nextCourseYear, hostelStatus, transportStatus, newFeeStructure, waivers } = req.body || {};
-    if (nextAcademicYear) student.academicYear = nextAcademicYear;
-    if (nextCourseYear) student.course = nextCourseYear;
-    if (hostelStatus) student.hostelStatus = hostelStatus;
-    if (transportStatus) student.transportStatus = transportStatus;
-    if (newFeeStructure) {
-      if (newFeeStructure.tuitionFee !== undefined) student.tuitionFee = Number(newFeeStructure.tuitionFee);
-      if (newFeeStructure.hostelFee !== undefined) student.hostelFee = Number(newFeeStructure.hostelFee);
-      if (newFeeStructure.transportFee !== undefined) student.transportFee = Number(newFeeStructure.transportFee);
-      if (newFeeStructure.miscellaneousFee !== undefined) student.miscellaneousFee = Number(newFeeStructure.miscellaneousFee);
-    }
-    if (waivers) {
-      if (waivers.tuitionWaiver !== undefined) student.tuitionWaiver = Number(waivers.tuitionWaiver);
-      if (waivers.hostelWaiver !== undefined) student.hostelWaiver = Number(waivers.hostelWaiver);
-      if (waivers.miscWaiver !== undefined) student.miscWaiver = Number(waivers.miscWaiver);
-    }
-    student.totalPaid = 0;
-    const gross = Number(student.tuitionFee || 0) + Number(student.hostelFee || 0) + Number(student.transportFee || 0) + Number(student.miscellaneousFee || 0) + Number(student.previousPending || 0);
-    const waiverTotal = Number(student.tuitionWaiver || 0) + Number(student.hostelWaiver || 0) + Number(student.transportWaiver || 0) + Number(student.miscWaiver || 0);
-    student.remainingBalance = Math.max(0, gross - waiverTotal);
-    await student.save();
-    return res.json({ status: 'success', message: 'Student promoted successfully.', data: student });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-// --- AUDIT LOGS ---
-app.get('/api/admin/audit-logs', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', data: [] });
-});
-
 // --- TEACHER MONTHLY SALARY ---
 app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
   try {
@@ -2692,99 +2286,7 @@ app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRol
   } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
 });
 
-// --- ENROLLMENT STATS ---
-app.get('/api/admin2/enrollment-stats', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const students = await Student.find({}).select('branch section course status academicYear').lean();
-    return res.json({ status: 'success', data: students });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
 
-// --- LATE FEES & SCHOLARSHIPS (admin2) ---
-app.get('/api/admin2/late-fees-settings', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
-  return res.json({ status: 'success', data: { lateFeeRules: '' } });
-});
-
-app.get('/api/admin2/scholarships', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
-  return res.json({ status: 'success', data: { scholarshipRules: '' } });
-});
-
-// --- ACCOUNTANT STUDENT UPDATE/DELETE ---
-app.patch('/api/accountant/students/:id', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
-    const student = await Student.findOne({ $or: [{ _id: isObjId ? id : null }, { studentId: id }, { admissionNumber: id }] });
-    if (!student) return res.status(404).json({ status: 'error', message: 'Student not found.' });
-    Object.assign(student, req.body);
-    await student.save();
-    return res.json({ status: 'success', data: student });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1'), verifySecurityOtp, async (req, res) => {
-  try {
-    await connectToDatabase();
-    const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
-    await Student.deleteOne({ $or: [{ _id: isObjId ? id : null }, { studentId: id }, { admissionNumber: id }] });
-    return res.json({ status: 'success', message: 'Student deleted.' });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-
-// --- ACCOUNTANT LATE FEES & SCHOLARSHIPS ---
-app.get('/api/accountant/late-fees-settings', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', data: { lateFeeRules: '' } });
-});
-app.patch('/api/accountant/late-fees-settings', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', data: req.body });
-});
-app.get('/api/accountant/scholarships', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', data: { scholarshipRules: '' } });
-});
-app.patch('/api/accountant/scholarships', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', data: req.body });
-});
-
-// --- ACCOUNTANT DASHBOARD SUMMARY ---
-app.get('/api/accountant/dashboard-summary', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const today = new Date().toISOString().split('T')[0];
-    const [payments, students] = await Promise.all([
-      Payment.find({ paidAt: { $regex: today } }).lean(),
-      Student.countDocuments({ remainingBalance: { $gt: 0 } })
-    ]);
-    const collectionToday = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
-    return res.json({ status: 'success', data: { collectionToday, pendingCount: students, pendingAmount: 0, absentCount: 0 } });
-  } catch (err) { return res.json({ status: 'success', data: { collectionToday: 0, pendingCount: 0, pendingAmount: 0, absentCount: 0 } }); }
-});
-
-// --- ACCOUNTANT ATTENDANCE ---
-app.get('/api/accountant/attendance', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  try {
-    await connectToDatabase();
-    const students = await Student.find({}).select('name admissionNumber section branch').lean();
-    const records = students.map(s => ({ ...s, status: 'Present' }));
-    return res.json({ status: 'success', data: records });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
-});
-app.post('/api/accountant/attendance', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', message: 'Attendance saved.' });
-});
-
-// --- ACCOUNTANT HOSTEL ---
-app.get('/api/accountant/hostel', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', data: { blocks: { BlockA: { name: 'Block A', capacity: 60, occupied: 0 }, BlockB: { name: 'Block B', capacity: 60, occupied: 0 }, BlockC: { name: 'Block C', capacity: 60, occupied: 0 } }, rooms: [] } });
-});
-app.patch('/api/accountant/hostel/:roomId', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', data: {} });
-});
-app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', data: {} });
-});
 
 // --- ENQUIRY UPDATE ---
 app.patch('/api/enquiries/:id', authenticateToken, async (req, res) => {
