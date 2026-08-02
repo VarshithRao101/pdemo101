@@ -230,11 +230,12 @@ ensureBootstrap();
 const memoryRateLimits = new Map();
 
 async function mongoRateLimiter(req, res, next) {
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+  const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+  const ip = String(rawIp).split(',')[0].trim();
   const key = `ratelimit_${req.path}_${ip}`;
   const now = new Date();
   const windowMs = 15 * 60 * 1000;
-  const maxAttempts = 30;
+  const maxAttempts = 100;
 
   try {
     if (mongoose.connection.readyState !== 1) {

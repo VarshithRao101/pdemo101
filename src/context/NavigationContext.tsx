@@ -81,8 +81,10 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       }
 
       return userData;
-    } catch (error) {
-      console.error('Login action failed:', error);
+    } catch (error: any) {
+      if (error?.status !== 409 && error?.data?.status !== 'session_conflict') {
+        console.error('Login action failed:', error);
+      }
       throw error;
     } finally {
       setIsAuthLoading(false);
