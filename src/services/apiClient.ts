@@ -1,4 +1,4 @@
-﻿// apiClient.ts
+// apiClient.ts
 // Real Production HTTP Client connecting to Express/MongoDB backend API
 // Manages real JWT auth tokens, refreshToken auto-renewal, headers, rate limit handling, and campus isolation errors.
 
@@ -224,7 +224,7 @@ export const apiClient = {
 
       if (!response.ok) {
         // Intercept 401 Access Token Expiration & Silently Refresh Token
-        if (response.status === 401 && !cleanPath.includes('/auth/login') && !cleanPath.includes('/auth/refresh')) {
+        if (response.status === 401 && !cleanPath.startsWith('/auth/')) {
           const refreshToken = sessionStorage.getItem('refresh_token');
           if (refreshToken) {
             try {
