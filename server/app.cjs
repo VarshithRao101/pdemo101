@@ -166,7 +166,7 @@ async function findUserAccount(resolvedUsername) {
 
 const defaultSeedUsers = [
   { username: 'admin1', password: 'RectorPass#2026', pin: '346398', role: 'admin1', campus: 'All', name: 'Rector' },
-  { username: '9059068384', password: '00112233', pin: '252823', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
+  { username: '9059068384', password: '00112233', pin: '789456', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
   { username: 'admin2_erragattugutta_c1', password: 'DeanE1#8492', pin: '118798', role: 'admin2', campus: 'Erragattugutta C1', name: 'Dean Erragattugutta C1' },
   { username: 'admin2_erragattugutta_c2', password: 'DeanE2#9184', pin: '186995', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2' },
   { username: 'admin2_beemaram_c1', password: 'DeanB1#2834', pin: '673732', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1' },
