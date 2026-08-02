@@ -339,8 +339,10 @@ export const AccountantDashboardView: React.FC = () => {
 
   // New Student & Delete Student Modals
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
+  const [newStuFormPage, setNewStuFormPage] = useState<1 | 2 | 3>(1);
   const [isDeleteConfirmModalOpen, setIsDeleteConfirmModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [deleteOtpInput, setDeleteOtpInput] = useState('');
   const [registryPage, setRegistryPage] = useState(1);
   const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
   const [regStuOtpInput, setRegStuOtpInput] = useState('');
@@ -351,22 +353,21 @@ export const AccountantDashboardView: React.FC = () => {
   const initialNewStudent = {
     admissionNumber: '',
     name: '',
-    fatherName: '',
-    motherName: '',
     mobile: '',
-    parentMobile: '',
-    email: '',
-    address: '',
-    residentialAddress: '',
-    hostelStatus: 'Day Scholar' as const,
-    transportStatus: 'Self Transport' as const,
     course: 'MPC',
     section: 'MPC-A',
     branch: loggedInCampus,
-    tuitionFee: 120000,
+    fatherName: '',
+    motherName: '',
+    dob: '',
+    parentMobile: '',
+    previousSchool: '',
+    previousBoard: 'State Board',
+    address: '',
+    tuitionFee: 0,
     hostelFee: 0,
     transportFee: 0,
-    miscellaneousFee: 5000,
+    miscellaneousFee: 0,
     previousPending: 0
   };
   const [newStudentData, setNewStudentData] = useState(initialNewStudent);
@@ -691,8 +692,8 @@ export const AccountantDashboardView: React.FC = () => {
       triggerToast('Student Name and Admission Number are required.');
       return;
     }
-    setGlobalSecurityKey('784920');
-    handleCreateStudent();
+    setRegStuOtpInput('');
+    setIsRegStuOtpModalOpen(true);
   };
 
   const submitStudentRegistrationWithOtp = async () => {
@@ -735,22 +736,26 @@ export const AccountantDashboardView: React.FC = () => {
 
   const handleDeleteStudentConfirm = async () => {
     if (!studentToDelete) return;
+    if (!deleteOtpInput.trim()) {
+      triggerToast('Please enter a valid 6-digit Security OTP (PIN).');
+      return;
+    }
     const targetId = studentToDelete._id || studentToDelete.studentId || studentToDelete.admissionNumber;
     setIsLoading(true);
     try {
-      await accountantService.deleteStudent(targetId);
+      await accountantService.deleteStudent(targetId, deleteOtpInput.trim());
       triggerToast(`Student ${studentToDelete.name} permanently deleted from database.`);
       setIsDeleteConfirmModalOpen(false);
       setStudentToDelete(null);
+      setDeleteOtpInput('');
       if (selectedStudent && (selectedStudent._id === targetId || selectedStudent.studentId === targetId || selectedStudent.admissionNumber === targetId)) {
         setIsStudentModalOpen(false);
         setSelectedStudent(null);
         setEditStudent(null);
       }
-      // Refetch from server immediately after delete
       await triggerFreshnessRefetch();
     } catch (err: any) {
-      triggerToast(err.message || 'Failed to delete student.');
+      triggerToast(err.message || 'Failed to delete student. Verify Security OTP.');
     } finally {
       setIsLoading(false);
     }
@@ -1269,7 +1274,7 @@ export const AccountantDashboardView: React.FC = () => {
                 <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Student Name</span><strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>{selectedStudent.name || 'N/A'}</strong></div>
                 <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Adm Number</span><strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>{selectedStudent.admissionNumber || 'N/A'}</strong></div>
                 <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Campus</span><strong style={{ fontSize: '13px', color: '#059669' }}>{loggedInCampus}</strong></div>
-                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Gross Total Fee</span><strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>Rs.{(((editStudent.tuitionFee || 0) + (editStudent.booksFee || 0) + (editStudent.uniformFees || 0) + (editStudent.hndFees || 0) + (editStudent.internalExamFees || 0) + (editStudent.annualExamFees || 0) + (editStudent.partyFees || 0) + (editStudent.busFees || 0) + (editStudent.labFees || 0) + (editStudent.handLoan || 0) + (editStudent.othersFee || 0) + (editStudent.hostelFee || 0) + (editStudent.transportFee || 0) + (editStudent.miscellaneousFee || 0))).toLocaleString('en-IN')}</strong></div>
+                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Gross Total Fee</span><strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>Rs.{((editStudent.tuitionFee || 0) + (editStudent.hostelFee || 0) + (editStudent.transportFee || 0) + (editStudent.miscellaneousFee || 0) + (editStudent.previousPending || 0) + ((editStudent.customFeeSlots || []).reduce((sum: number, s: any) => sum + (Number(s.amount) || 0), 0))).toLocaleString('en-IN')}</strong></div>
                 <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Total Paid</span><strong style={{ fontSize: '13px', color: '#059669' }}>Rs.{(selectedStudent.totalPaid || 0).toLocaleString('en-IN')}</strong></div>
                 <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Remaining Balance</span><strong style={{ fontSize: '13px', color: selectedStudent.remainingBalance > 0 ? '#DC2626' : '#059669' }}>Rs.{(selectedStudent.remainingBalance || 0).toLocaleString('en-IN')}</strong></div>
               </div>
@@ -1416,7 +1421,7 @@ export const AccountantDashboardView: React.FC = () => {
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <button
-                  onClick={() => handleStudentSave(editStudent, '784920')}
+                  onClick={() => { setStuOtpInput(''); setIsStuOtpModalOpen(true); }}
                   style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0, backgroundColor: '#10B981', color: '#fff', fontWeight: 800 }}
                   className="press-interactive"
                 >
@@ -1480,236 +1485,352 @@ export const AccountantDashboardView: React.FC = () => {
       {/* REGISTER NEW STUDENT MODAL OVERLAY */}
       {isAddStudentModalOpen && (
         <div style={{ ...styles.overlayOverlay, zIndex: 1200 }}>
-          <div style={{ ...styles.overlaySheet, maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '10px' }}>
+          <div style={{ ...styles.overlaySheet, maxWidth: '920px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1.5px solid #E2E8F0', paddingBottom: '10px' }}>
               <div>
-                <h3 style={styles.modalTitle}>Register New Student</h3>
-                <p style={{ fontSize: '11px', color: '#64748B', margin: 0 }}>Campus: <strong>{loggedInCampus}</strong></p>
+                <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  INSPIRE JUNIOR COLLEGE • ACCOUNTANT STUDENT ADMISSION
+                </span>
+                <h3 style={{ margin: '2px 0 0', fontSize: '17px', fontWeight: 900, color: '#0F172A' }}>
+                  {newStuFormPage === 1 ? 'Screen 1 of 3: Basic Academic Information' : newStuFormPage === 2 ? 'Screen 2 of 3: Personal & Family Information' : 'Screen 3 of 3: Fee Structure & Bill Format'}
+                </h3>
               </div>
-              <button onClick={() => { setIsAddStudentModalOpen(false); setNewStudentAdmissionError(''); }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 800, backgroundColor: newStuFormPage === 1 ? '#0F172A' : '#E2E8F0', color: newStuFormPage === 1 ? '#FFFFFF' : '#475569' }}>1. Basic Info</span>
+                  <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 800, backgroundColor: newStuFormPage === 2 ? '#0F172A' : '#E2E8F0', color: newStuFormPage === 2 ? '#FFFFFF' : '#475569' }}>2. Personal & Family</span>
+                  <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 800, backgroundColor: newStuFormPage === 3 ? '#0F172A' : '#E2E8F0', color: newStuFormPage === 3 ? '#FFFFFF' : '#475569' }}>3. Fee Structure</span>
+                </div>
+                <button onClick={() => { setIsAddStudentModalOpen(false); setNewStudentAdmissionError(''); }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Admission Number *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 2400101"
-                    value={newStudentData.admissionNumber}
-                    onChange={(e) => { setNewStudentData({ ...newStudentData, admissionNumber: e.target.value }); setNewStudentAdmissionError(''); }}
-                    style={{ ...styles.textInputBox, borderColor: newStudentAdmissionError ? '#EF4444' : undefined }}
-                  />
-                  {newStudentAdmissionError && <span style={{ color: '#DC2626', fontSize: '11px', fontWeight: 700 }}>{newStudentAdmissionError}</span>}
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Student Full Name *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Rahul Sharma"
-                    value={newStudentData.name}
-                    onChange={(e) => setNewStudentData({ ...newStudentData, name: e.target.value })}
-                    style={styles.textInputBox}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Father Name</label>
-                  <input type="text" value={newStudentData.fatherName} onChange={(e) => setNewStudentData({ ...newStudentData, fatherName: e.target.value })} style={styles.textInputBox} />
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Mother Name</label>
-                  <input type="text" value={newStudentData.motherName} onChange={(e) => setNewStudentData({ ...newStudentData, motherName: e.target.value })} style={styles.textInputBox} />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Mobile Number</label>
-                  <input type="text" value={newStudentData.mobile} onChange={(e) => setNewStudentData({ ...newStudentData, mobile: e.target.value })} style={styles.textInputBox} />
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Parent Contact</label>
-                  <input type="text" value={newStudentData.parentMobile} onChange={(e) => setNewStudentData({ ...newStudentData, parentMobile: e.target.value })} style={styles.textInputBox} />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Course</label>
-                  <input type="text" value={newStudentData.course} onChange={(e) => setNewStudentData({ ...newStudentData, course: e.target.value })} style={styles.textInputBox} />
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Section</label>
-                  <input type="text" value={newStudentData.section} onChange={(e) => setNewStudentData({ ...newStudentData, section: e.target.value })} style={styles.textInputBox} />
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Hostel</label>
-                  <select value={newStudentData.hostelStatus} onChange={(e) => setNewStudentData({ ...newStudentData, hostelStatus: e.target.value as any })} style={styles.selectInput}>
-                    <option value="Day Scholar">Day Scholar</option>
-                    <option value="Resident">Resident</option>
-                  </select>
-                </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Transport</label>
-                  <select value={newStudentData.transportStatus} onChange={(e) => setNewStudentData({ ...newStudentData, transportStatus: e.target.value as any })} style={styles.selectInput}>
-                    <option value="Self Transport">Self Transport</option>
-                    <option value="College Bus">College Bus</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Bill Format Fee Structure Card */}
-              <div style={{
-                background: '#FFFFFF',
-                border: '1.5px solid #CBD5E1',
-                borderRadius: '16px',
-                padding: '18px',
-                boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-                marginTop: '6px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #E2E8F0', paddingBottom: '10px' }}>
-                  <div>
-                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      INSPIRE JUNIOR COLLEGE
-                    </span>
-                    <h4 style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>
-                      Fee Structure & Bill Format
-                    </h4>
-                  </div>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#059669', backgroundColor: '#ECFDF5', padding: '4px 12px', borderRadius: '6px', border: '1px solid #A7F3D0' }}>
-                    Gross Base Fee: Rs.{(
-                      (Number(newStudentData.tuitionFee) || 0) +
-                      (Number(newStudentData.hostelFee) || 0) +
-                      (Number(newStudentData.miscellaneousFee) || 0) +
-                      newStuCustomSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
-                    ).toLocaleString('en-IN')}
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <label style={styles.formLabel}>Tuition Fee (Rs)</label>
-                    <input type="number" value={newStudentData.tuitionFee} onChange={(e) => setNewStudentData({ ...newStudentData, tuitionFee: Number(e.target.value) })} style={styles.textInputBox} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <label style={styles.formLabel}>Hostel Fee (Rs)</label>
-                    <input type="number" value={newStudentData.hostelFee} onChange={(e) => setNewStudentData({ ...newStudentData, hostelFee: Number(e.target.value) })} style={styles.textInputBox} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <label style={styles.formLabel}>Misc Fee (Rs)</label>
-                    <input type="number" value={newStudentData.miscellaneousFee} onChange={(e) => setNewStudentData({ ...newStudentData, miscellaneousFee: Number(e.target.value) })} style={styles.textInputBox} />
-                  </div>
-
-                  {/* Render Custom Section Slots */}
-                  {newStuCustomSlots.map((slot) => (
-                    <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <label style={styles.formLabel}>
-                          {slot.name} <span style={{ fontSize: '9px', color: 'var(--royal-gold)', fontWeight: 800 }}>(Custom)</span>
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveNewStuCustomSlot(slot.id)}
-                          style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '11px', padding: '0 2px' }}
-                          title="Remove section slot"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      <input
-                        type="number"
-                        value={slot.amount}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setNewStuCustomSlots(prev => prev.map(s => s.id === slot.id ? { ...s, amount: val } : s));
-                        }}
-                        style={styles.textInputBox}
-                      />
+            <div style={{ padding: '10px 4px' }}>
+              {newStuFormPage === 1 ? (
+                <div>
+                  {/* Screen 1: Basic Information */}
+                  <div style={{ marginBottom: '18px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px', marginBottom: '12px' }}>
+                      1. Basic Academic Information
                     </div>
-                  ))}
-                </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                      <div>
+                        <label style={styles.formLabel}>Admission Number *</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 2400101"
+                          value={newStudentData.admissionNumber}
+                          onChange={(e) => { setNewStudentData({ ...newStudentData, admissionNumber: e.target.value }); setNewStudentAdmissionError(''); }}
+                          style={{ ...styles.textInputBox, borderColor: newStudentAdmissionError ? '#EF4444' : undefined }}
+                        />
+                        {newStudentAdmissionError && <span style={{ color: '#DC2626', fontSize: '11px', fontWeight: 700 }}>{newStudentAdmissionError}</span>}
+                      </div>
+                      <div>
+                        <label style={styles.formLabel}>Student Full Name *</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Rahul Sharma"
+                          value={newStudentData.name}
+                          onChange={(e) => setNewStudentData({ ...newStudentData, name: e.target.value })}
+                          style={styles.textInputBox}
+                        />
+                      </div>
+                      <div>
+                        <label style={styles.formLabel}>Student Mobile Number *</label>
+                        <input
+                          type="text"
+                          placeholder="10-digit mobile"
+                          value={newStudentData.mobile}
+                          onChange={(e) => setNewStudentData({ ...newStudentData, mobile: e.target.value })}
+                          style={styles.textInputBox}
+                        />
+                      </div>
+                      <div>
+                        <label style={styles.formLabel}>Campus / Branch (Locked)</label>
+                        <input
+                          type="text"
+                          value={loggedInCampus}
+                          disabled
+                          style={{ ...styles.textInputBox, backgroundColor: '#F1F5F9', color: '#475569', fontWeight: 800, cursor: 'not-allowed' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={styles.formLabel}>Course *</label>
+                        <select
+                          value={newStudentData.course}
+                          onChange={(e) => setNewStudentData({ ...newStudentData, course: e.target.value })}
+                          style={styles.selectInput}
+                        >
+                          <option value="MPC">MPC (Maths, Physics, Chem)</option>
+                          <option value="BiPC">BiPC (Biology, Phys, Chem)</option>
+                          <option value="CEC">CEC (Civics, Econ, Commerce)</option>
+                          <option value="MEC">MEC (Maths, Econ, Commerce)</option>
+                          <option value="HEC">HEC (Hist, Econ, Civics)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={styles.formLabel}>Section *</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. MPC-A"
+                          value={newStudentData.section}
+                          onChange={(e) => setNewStudentData({ ...newStudentData, section: e.target.value })}
+                          style={styles.textInputBox}
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-                {/* Inline Add Custom Slot */}
-                {newStuIsAddingSlot ? (
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px', padding: '10px', backgroundColor: '#F8FAFC', borderRadius: '10px', border: '1px dashed #CBD5E1' }}>
-                    <input
-                      type="text"
-                      placeholder="Fee Section Description (e.g. Lab Fee)"
-                      value={newStuSlotName}
-                      onChange={(e) => setNewStuSlotName(e.target.value)}
-                      style={{ ...styles.textInputBox, flex: 2, fontSize: '12px' }}
-                    />
-                    <input
-                      type="number"
-                      placeholder="Amount (Rs)"
-                      value={newStuSlotAmount}
-                      onChange={(e) => setNewStuSlotAmount(e.target.value)}
-                      style={{ ...styles.textInputBox, flex: 1, fontSize: '12px' }}
-                    />
+                  <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #E2E8F0', paddingTop: '14px' }}>
                     <button
                       type="button"
-                      onClick={handleAddNewStuCustomSlot}
-                      style={{ ...styles.actionItemBtn, backgroundColor: '#059669', color: '#fff', border: 'none', padding: '6px 12px' }}
-                      className="press-interactive"
-                    >
-                      Add
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setNewStuIsAddingSlot(false); setNewStuSlotName(''); setNewStuSlotAmount(''); }}
-                      style={{ ...styles.actionItemBtn, backgroundColor: '#E2E8F0', color: '#475569', border: 'none', padding: '6px 10px' }}
+                      onClick={() => setIsAddStudentModalOpen(false)}
+                      style={{ ...styles.actionItemBtn, backgroundColor: '#E2E8F0', color: '#475569', padding: '10px 20px', border: 'none' }}
                       className="press-interactive"
                     >
                       Cancel
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newStudentData.name.trim() || !newStudentData.admissionNumber.trim() || !newStudentData.mobile.trim()) {
+                          setNewStudentAdmissionError('Admission Number, Name, and Mobile are required.');
+                          triggerToast('Please fill in Admission Number, Student Name, and Mobile Number.');
+                          return;
+                        }
+                        setNewStuFormPage(2);
+                      }}
+                      style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: '#0F172A', color: '#FFFFFF', fontWeight: 800 }}
+                      className="press-interactive"
+                    >
+                      Next: Personal & Family Info (Screen 2 of 3) →
+                    </button>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setNewStuIsAddingSlot(true)}
-                    style={{
-                      marginTop: '4px',
-                      alignSelf: 'flex-start',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '6px 12px',
-                      borderRadius: '8px',
-                      border: '1px dashed var(--royal-gold)',
-                      backgroundColor: '#FFFDF5',
-                      color: '#7C5A00',
-                      fontSize: '11.5px',
-                      fontWeight: 800,
-                      cursor: 'pointer'
-                    }}
-                    className="press-interactive"
-                  >
-                    + Add Fee Section Slot
-                  </button>
-                )}
-              </div>
+                </div>
+              ) : newStuFormPage === 2 ? (
+                <div>
+                  {/* Screen 2: Personal & Family Information */}
+                  <div style={{ marginBottom: '18px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px', marginBottom: '12px' }}>
+                      2. Personal & Family Information
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                      <div>
+                        <label style={styles.formLabel}>Father's Name</label>
+                        <input type="text" placeholder="e.g. Ramesh Sharma" value={newStudentData.fatherName} onChange={(e) => setNewStudentData({ ...newStudentData, fatherName: e.target.value })} style={styles.textInputBox} />
+                      </div>
+                      <div>
+                        <label style={styles.formLabel}>Mother's Name</label>
+                        <input type="text" placeholder="e.g. Sunitha Sharma" value={newStudentData.motherName} onChange={(e) => setNewStudentData({ ...newStudentData, motherName: e.target.value })} style={styles.textInputBox} />
+                      </div>
+                      <div>
+                        <label style={styles.formLabel}>Date of Birth</label>
+                        <input type="date" value={newStudentData.dob} onChange={(e) => setNewStudentData({ ...newStudentData, dob: e.target.value })} style={styles.textInputBox} />
+                      </div>
+                      <div>
+                        <label style={styles.formLabel}>Parent Contact Mobile</label>
+                        <input type="text" placeholder="e.g. 9876543210" value={newStudentData.parentMobile} onChange={(e) => setNewStudentData({ ...newStudentData, parentMobile: e.target.value })} style={styles.textInputBox} />
+                      </div>
+                      <div>
+                        <label style={styles.formLabel}>Previous School</label>
+                        <input type="text" placeholder="e.g. ZPHS / St. Johns High School" value={newStudentData.previousSchool} onChange={(e) => setNewStudentData({ ...newStudentData, previousSchool: e.target.value })} style={styles.textInputBox} />
+                      </div>
+                      <div>
+                        <label style={styles.formLabel}>Previous School Board</label>
+                        <select value={newStudentData.previousBoard} onChange={(e) => setNewStudentData({ ...newStudentData, previousBoard: e.target.value })} style={styles.selectInput}>
+                          <option value="State Board">State Board (SSC)</option>
+                          <option value="CBSE">CBSE</option>
+                          <option value="ICSE">ICSE</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <label style={styles.formLabel}>Permanent Address</label>
+                        <input type="text" placeholder="H.No., Street, Village/Mandal, District" value={newStudentData.address} onChange={(e) => setNewStudentData({ ...newStudentData, address: e.target.value })} style={styles.textInputBox} />
+                      </div>
+                    </div>
+                  </div>
 
-              <button
-                onClick={() => {
-                  if (!newStudentData.admissionNumber || !newStudentData.name) {
-                    setNewStudentAdmissionError('Admission Number and Full Name are required.');
-                    triggerToast('Please fill in Admission Number and Full Name.');
-                    return;
-                  }
-                  setIsAddStudentModalOpen(false);
-                  setIsRegStuOtpModalOpen(true);
-                }}
-                style={{ ...styles.saveSubmitBtn, marginTop: '14px', backgroundColor: '#10B981', color: '#FFFFFF', fontWeight: 800 }}
-                className="press-interactive"
-              >
-                 Proceed to Security OTP & Register Student
-              </button>
+                  <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #E2E8F0', paddingTop: '14px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setNewStuFormPage(1)}
+                      style={{ ...styles.actionItemBtn, backgroundColor: '#E2E8F0', color: '#1E293B', padding: '10px 18px', fontWeight: 800 }}
+                      className="press-interactive"
+                    >
+                      ← Back to Basic Info (Screen 1)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewStuFormPage(3)}
+                      style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: '#0F172A', color: '#FFFFFF', fontWeight: 800 }}
+                      className="press-interactive"
+                    >
+                      Next: Fee Structure & Bill Format (Screen 3 of 3) →
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  {/* Screen 3: Fee Structure */}
+                  <div style={{
+                    background: '#FFFFFF',
+                    border: '1.5px solid #CBD5E1',
+                    borderRadius: '16px',
+                    padding: '18px',
+                    boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #E2E8F0', paddingBottom: '10px' }}>
+                      <div>
+                        <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                          INSPIRE JUNIOR COLLEGE
+                        </span>
+                        <h4 style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>
+                          Fee Structure & Bill Format
+                        </h4>
+                      </div>
+                      <div style={{ fontSize: '12px', fontWeight: 900, color: '#059669', backgroundColor: '#ECFDF5', padding: '4px 12px', borderRadius: '6px', border: '1px solid #A7F3D0' }}>
+                        Gross Base Fee: Rs.{(
+                          (Number(newStudentData.tuitionFee) || 0) +
+                          (Number(newStudentData.hostelFee) || 0) +
+                          (Number(newStudentData.miscellaneousFee) || 0) +
+                          newStuCustomSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
+                        ).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <label style={styles.formLabel}>Tuition Fee (Rs)</label>
+                        <input type="number" value={newStudentData.tuitionFee} onChange={(e) => setNewStudentData({ ...newStudentData, tuitionFee: Number(e.target.value) })} style={styles.textInputBox} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <label style={styles.formLabel}>Hostel Fee (Rs)</label>
+                        <input type="number" value={newStudentData.hostelFee} onChange={(e) => setNewStudentData({ ...newStudentData, hostelFee: Number(e.target.value) })} style={styles.textInputBox} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <label style={styles.formLabel}>Misc Fee (Rs)</label>
+                        <input type="number" value={newStudentData.miscellaneousFee} onChange={(e) => setNewStudentData({ ...newStudentData, miscellaneousFee: Number(e.target.value) })} style={styles.textInputBox} />
+                      </div>
+
+                      {newStuCustomSlots.map((slot) => (
+                        <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <label style={styles.formLabel}>
+                              {slot.name} <span style={{ fontSize: '9px', color: 'var(--royal-gold)', fontWeight: 800 }}>(Custom)</span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveNewStuCustomSlot(slot.id)}
+                              style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '11px', padding: '0 2px' }}
+                              title="Remove section slot"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <input
+                            type="number"
+                            value={slot.amount}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setNewStuCustomSlots(prev => prev.map(s => s.id === slot.id ? { ...s, amount: val } : s));
+                            }}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    {newStuIsAddingSlot ? (
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '6px', padding: '10px', backgroundColor: '#F8FAFC', borderRadius: '10px', border: '1px dashed #CBD5E1' }}>
+                        <input
+                          type="text"
+                          placeholder="Fee Section Description"
+                          value={newStuSlotName}
+                          onChange={(e) => setNewStuSlotName(e.target.value)}
+                          style={{ ...styles.textInputBox, flex: 2, fontSize: '12px' }}
+                        />
+                        <input
+                          type="number"
+                          placeholder="Amount (Rs)"
+                          value={newStuSlotAmount}
+                          onChange={(e) => setNewStuSlotAmount(e.target.value)}
+                          style={{ ...styles.textInputBox, flex: 1, fontSize: '12px' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddNewStuCustomSlot}
+                          style={{ ...styles.actionItemBtn, backgroundColor: '#059669', color: '#fff', border: 'none', padding: '6px 12px' }}
+                          className="press-interactive"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setNewStuIsAddingSlot(false); setNewStuSlotName(''); setNewStuSlotAmount(''); }}
+                          style={{ ...styles.actionItemBtn, backgroundColor: '#E2E8F0', color: '#475569', border: 'none', padding: '6px 10px' }}
+                          className="press-interactive"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setNewStuIsAddingSlot(true)}
+                        style={{
+                          marginTop: '4px',
+                          alignSelf: 'flex-start',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          border: '1px dashed var(--royal-gold)',
+                          backgroundColor: '#FFFDF5',
+                          color: '#7C5A00',
+                          fontSize: '11.5px',
+                          fontWeight: 800,
+                          cursor: 'pointer'
+                        }}
+                        className="press-interactive"
+                      >
+                        + Add Fee Section Slot
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => setNewStuFormPage(2)}
+                      style={{ ...styles.actionItemBtn, backgroundColor: '#E2E8F0', color: '#1E293B', padding: '10px 18px', fontWeight: 800 }}
+                      className="press-interactive"
+                    >
+                      ← Back to Personal & Family Info (Screen 2)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newStudentData.admissionNumber || !newStudentData.name || !newStudentData.mobile) {
+                          setNewStudentAdmissionError('Admission Number, Student Name, and Mobile are required.');
+                          triggerToast('Please fill in Admission Number, Student Name, and Mobile.');
+                          return;
+                        }
+                        setIsAddStudentModalOpen(false);
+                        setIsRegStuOtpModalOpen(true);
+                      }}
+                      style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: '#10B981', color: '#FFFFFF', fontWeight: 800 }}
+                      className="press-interactive"
+                    >
+                      Proceed to Security OTP & Register Student
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1754,19 +1875,33 @@ export const AccountantDashboardView: React.FC = () => {
         <div style={{ ...styles.overlayOverlay, zIndex: 1300 }}>
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid #DC2626' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ ...styles.modalTitle, color: '#DC2626' }}>️ Delete Student Permanently</h3>
-              <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
+              <h3 style={{ ...styles.modalTitle, color: '#DC2626' }}> Delete Student Permanently</h3>
+              <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); setDeleteOtpInput(''); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
-            <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5, marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5, marginBottom: '14px' }}>
               Permanently delete student <strong>{studentToDelete.name}</strong> (Adm No: <strong>{studentToDelete.admissionNumber || studentToDelete.studentId}</strong>)?
               <br /><br />
               <span style={{ color: '#DC2626', fontWeight: 700 }}>
                 Purges all receipts, attendance, and login credentials. Cannot be undone.
               </span>
             </p>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 800, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                ENTER 6-DIGIT SECURITY OTP (PIN) *
+              </label>
+              <input
+                type="password"
+                placeholder="Enter Security OTP..."
+                value={deleteOtpInput}
+                onChange={(e) => setDeleteOtpInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && deleteOtpInput.trim()) handleDeleteStudentConfirm(); }}
+                style={{ ...styles.textInputBox, borderColor: '#DC2626', fontFamily: 'monospace', letterSpacing: '0.1em', fontWeight: 800 }}
+                autoFocus
+              />
+            </div>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); }} style={{ flex: 1, padding: '10px', border: '1px solid #CBD5E1', backgroundColor: '#F8FAFC', color: '#475569', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleDeleteStudentConfirm} style={{ flex: 1.5, padding: '10px', border: 'none', backgroundColor: '#DC2626', color: '#FFFFFF', borderRadius: '10px', fontWeight: 900, cursor: 'pointer' }} className="press-interactive">️ Permanently Delete</button>
+              <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); setDeleteOtpInput(''); }} style={{ flex: 1, padding: '10px', border: '1px solid #CBD5E1', backgroundColor: '#F8FAFC', color: '#475569', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleDeleteStudentConfirm} disabled={!deleteOtpInput.trim()} style={{ flex: 1.5, padding: '10px', border: 'none', backgroundColor: '#DC2626', color: '#FFFFFF', borderRadius: '10px', fontWeight: 900, cursor: 'pointer', opacity: deleteOtpInput.trim() ? 1 : 0.4 }} className="press-interactive"> Permanently Delete</button>
             </div>
           </div>
         </div>
@@ -1793,7 +1928,8 @@ export const AccountantDashboardView: React.FC = () => {
               onClick={() => {
                 setNewStudentData({ ...initialNewStudent, branch: loggedInCampus });
                 setNewStudentAdmissionError('');
-                openStudentRegOtpModal();
+                setNewStuFormPage(1);
+                setIsAddStudentModalOpen(true);
               }}
               style={{
                 ...styles.actionItemBtn,
@@ -1818,95 +1954,6 @@ export const AccountantDashboardView: React.FC = () => {
 
         <main style={styles.content}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }}>
-            {/* Quick Register Horizontal Bar */}
-            <div style={{ padding: '16px 20px', borderRadius: '16px', backgroundColor: 'rgba(255,255,255,0.85)', border: '2px solid rgba(16, 185, 129, 0.3)', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: '#047857', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
-                  ➕ Quick Admission & Student Registration
-                </h4>
-                <span style={{ fontSize: '11px', fontWeight: 800, color: '#059669', backgroundColor: 'rgba(16,185,129,0.1)', padding: '4px 10px', borderRadius: '8px' }}>
-                  Campus: {loggedInCampus}
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', alignItems: 'flex-end' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Admission Number *</label>
-                  <input
-                    type="text"
-                    placeholder={`e.g. ADM2400${students.length + 1}`}
-                    value={newStudentData.admissionNumber}
-                    onChange={(e) => { setNewStudentData({ ...newStudentData, admissionNumber: e.target.value }); setNewStudentAdmissionError(''); }}
-                    style={{ ...styles.textInputBox, borderColor: newStudentAdmissionError ? '#EF4444' : undefined }}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Student Name *</label>
-                  <input
-                    type="text"
-                    placeholder="Full Student Name"
-                    value={newStudentData.name}
-                    onChange={(e) => setNewStudentData({ ...newStudentData, name: e.target.value })}
-                    style={styles.textInputBox}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Mobile Number *</label>
-                  <input
-                    type="text"
-                    placeholder="Mobile Number"
-                    value={newStudentData.mobile}
-                    onChange={(e) => setNewStudentData({ ...newStudentData, mobile: e.target.value })}
-                    style={styles.textInputBox}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Campus / Branch</label>
-                  <input
-                    type="text"
-                    value={loggedInCampus}
-                    disabled
-                    style={{ ...styles.textInputBox, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed' }}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Course</label>
-                  <select
-                    value={newStudentData.course}
-                    onChange={(e) => setNewStudentData({ ...newStudentData, course: e.target.value })}
-                    style={styles.selectInput}
-                  >
-                    <option value="MPC">MPC</option>
-                    <option value="BiPC">BiPC</option>
-                    <option value="CEC">CEC</option>
-                    <option value="HEC">HEC</option>
-                    <option value="MEC">MEC</option>
-                  </select>
-                </div>
-              </div>
-
-              {newStudentAdmissionError && (
-                <div style={{ marginTop: '10px', padding: '8px 12px', borderRadius: '8px', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', fontSize: '11px', fontWeight: 700 }}>
-                  {newStudentAdmissionError}
-                </div>
-              )}
-
-              <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'flex-start' }}>
-                <button
-                  onClick={() => {
-                    if (!newStudentData.admissionNumber || !newStudentData.name) {
-                      setNewStudentAdmissionError('Admission Number and Student Name are required.');
-                      triggerToast('Please fill in Admission Number and Student Name.');
-                      return;
-                    }
-                    openStudentRegOtpModal();
-                  }}
-                  style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 24px', backgroundColor: '#10B981', color: '#FFFFFF', fontWeight: 800, fontSize: '12px' }}
-                  className="press-interactive"
-                >
-                  Submit & Create Student Profile
-                </button>
-              </div>
-            </div>
 
             {/* Search & Filter Bar */}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -2441,14 +2488,14 @@ export const AccountantDashboardView: React.FC = () => {
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
                         <button
-                          onClick={() => handleFeePayment('partial', '784920')}
+                          onClick={() => { setPendingPayType('partial'); setPayOtpInput(''); setIsPayOtpModalOpen(true); }}
                           style={{ ...styles.sheetBtn, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
                           className="press-interactive"
                         >
                           Partial Pay (50%)
                         </button>
                         <button
-                          onClick={() => handleFeePayment('full', '784920')}
+                          onClick={() => { setPendingPayType('full'); setPayOtpInput(''); setIsPayOtpModalOpen(true); }}
                           style={{ ...styles.sheetBtn, backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #D4AF37' }}
                           className="press-interactive"
                         >
@@ -2462,7 +2509,9 @@ export const AccountantDashboardView: React.FC = () => {
                             triggerToast('Please enter a valid payment amount.');
                             return;
                           }
-                          handleFeePayment('collect', '784920');
+                          setPendingPayType('collect');
+                          setPayOtpInput('');
+                          setIsPayOtpModalOpen(true);
                         }}
                         style={{ ...styles.saveSubmitBtn, marginTop: '8px' }}
                         className="press-interactive"

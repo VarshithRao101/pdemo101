@@ -276,43 +276,24 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [editStudent, setEditStudent] = useState<Student | null>(null);
   const [registryPage, setRegistryPage] = useState(1);
 
-  // Students Registry States
+  // Students Registry States (3-Screen Reduced Field List)
   const [isStudentHoverModalOpen, setIsStudentHoverModalOpen] = useState(false);
-  const [newStuFormPage, setNewStuFormPage] = useState<1 | 2>(1);
+  const [newStuFormPage, setNewStuFormPage] = useState<1 | 2 | 3>(1);
   const [newStuName, setNewStuName] = useState('');
   const [newStuAdmissionNumber, setNewStuAdmissionNumber] = useState('');
-  const [newStuCourse, setNewStuCourse] = useState('MPC');
-  const [newStuYear, setNewStuYear] = useState<'1st Year' | '2nd Year' | 'Short Term'>('1st Year');
   const [newStuBranch, setNewStuBranch] = useState(loggedInCampus);
   const [newStuMobile, setNewStuMobile] = useState('');
+  const [newStuCourse, setNewStuCourse] = useState('MPC');
+  const [newStuSection, setNewStuSection] = useState('MPC-A');
+
+  // Screen 2: Personal & Family Information
   const [newStuFatherName, setNewStuFatherName] = useState('');
-  const [newStuFatherOccupation, setNewStuFatherOccupation] = useState('');
-  const [newStuParentMobile, setNewStuParentMobile] = useState('');
   const [newStuMotherName, setNewStuMotherName] = useState('');
-  const [newStuMotherOccupation, setNewStuMotherOccupation] = useState('');
-  const [newStuGuardianName, setNewStuGuardianName] = useState('');
-  const [newStuPastSchool, setNewStuPastSchool] = useState('');
-  const [newStuPreviousSchool, setNewStuPreviousSchool] = useState('');
   const [newStuDob, setNewStuDob] = useState('');
-  const [newStuGender, setNewStuGender] = useState('Male');
-  const [newStuBloodGroup, setNewStuBloodGroup] = useState('O+');
-  const [newStuCategory, setNewStuCategory] = useState('OC');
-  const [newStuAadhaar, setNewStuAadhaar] = useState('');
-  const [newStuPenNumber, setNewStuPenNumber] = useState('');
-  const [newStuReligion, setNewStuReligion] = useState('Hindu');
-  const [newStuMotherTongue, setNewStuMotherTongue] = useState('Telugu');
+  const [newStuParentMobile, setNewStuParentMobile] = useState('');
+  const [newStuPreviousSchool, setNewStuPreviousSchool] = useState('');
+  const [newStuPreviousBoard, setNewStuPreviousBoard] = useState('State Board');
   const [newStuAddress, setNewStuAddress] = useState('');
-  const [newStuMandal, setNewStuMandal] = useState('');
-  const [newStuDistrict, setNewStuDistrict] = useState('');
-  const [newStuState, setNewStuState] = useState('Telangana');
-  const [newStuPincode, setNewStuPincode] = useState('');
-  const [newStuSscHallTicket, setNewStuSscHallTicket] = useState('');
-  const [newStuSscBoard, setNewStuSscBoard] = useState('Telangana State SSC');
-  const [newStuSscGpa, setNewStuSscGpa] = useState('');
-  const [newStuMedium, setNewStuMedium] = useState('English');
-  const [newStuHostelStatus, setNewStuHostelStatus] = useState<'Resident' | 'Day Scholar'>('Day Scholar');
-  const [newStuTransportStatus, setNewStuTransportStatus] = useState<'College Bus' | 'Self Transport'>('Self Transport');
-  const [newStuBusRoute, setNewStuBusRoute] = useState('');
 
   // Itemized Fee Breakdown & Slots for New Student Registration
   const INITIAL_REG_FEE_SLOTS = [
@@ -363,11 +344,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [regStuError, setRegStuError] = useState('');
   const [isSubmittingStudent, setIsSubmittingStudent] = useState(false);
 
-  // Faculty Management States
+  // Faculty Management & 12-Month Ledger States
   const [searchFac, setSearchFac] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [editTeacher, setEditTeacher] = useState<Teacher | null>(null);
   const [facultyPage, setFacultyPage] = useState(1);
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState('2026-2027');
+  const [employeeTab, setEmployeeTab] = useState<'employees' | 'history'>('employees');
+  const [workerPaymentsHistory, setWorkerPaymentsHistory] = useState<any[]>([]);
+  const [pendingDeleteTeacherId, setPendingDeleteTeacherId] = useState<string | null>(null);
 
   const [newFacName, setNewFacName] = useState('');
   const [newFacSub, setNewFacSub] = useState('');
@@ -379,7 +364,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [filterFacSubject, setFilterFacSubject] = useState('All');
   const [isFacOtpModalOpen, setIsFacOtpModalOpen] = useState(false);
   const [facOtpInput, setFacOtpInput] = useState('');
-  const [facActionType, setFacActionType] = useState<'add' | 'edit'>('edit');
+  const [facActionType, setFacActionType] = useState<'add' | 'edit' | 'delete' | 'salary_payment'>('edit');
   const [isAddTeacherModalOpen, setIsAddTeacherModalOpen] = useState(false);
   const [assignClass, setAssignClass] = useState('Junior MPC');
   const [assignSec, setAssignSec] = useState('Section A');
@@ -604,8 +589,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [isWorkerOtpOpen, setIsWorkerOtpOpen] = useState(false);
   const [workerOtpInput, setWorkerOtpInput] = useState('');
   const [workerPendingAction, setWorkerPendingAction] = useState<any>(null);
-
-  const [pendingDeleteTeacherId, setPendingDeleteTeacherId] = useState<string | null>(null);
 
   const [otpCountdown, setOtpCountdown] = useState('');
   useEffect(() => {
@@ -1230,18 +1213,36 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const fetchSections = async () => {
+  const fetchTeachers = async () => {
     try {
-      const data = await admin1Service.getSections();
-      if (data && data.teachers) {
-        setTeachers(data.teachers);
+      const branchParam = role === 'admin2' ? loggedInCampus : (filterFacCampus !== 'All' ? filterFacCampus : undefined);
+      const data = await admin1Service.getTeachers(branchParam);
+      if (Array.isArray(data)) {
+        const uniqueMap = new Map();
+        data.forEach((t: any) => {
+          const key = String(t._id || t.id);
+          uniqueMap.set(key, t);
+        });
+        setTeachers(Array.from(uniqueMap.values()));
       }
     } catch (err: any) {
-      triggerToast(err.message || 'Failed to load sections and teachers.');
+      console.error('Failed to load teachers from backend:', err);
     }
   };
 
-  const fetchTeachers = fetchSections;
+  const fetchWorkerPaymentsHistory = async () => {
+    try {
+      const data = await admin2Service.getWorkerPayments();
+      if (Array.isArray(data)) {
+        const filtered = data.filter((item: any) => role === 'admin2' ? item.branch === loggedInCampus : true);
+        setWorkerPaymentsHistory(filtered);
+      }
+    } catch (err: any) {
+      console.error('Failed to load worker payments history:', err);
+    }
+  };
+
+  const fetchSections = fetchTeachers;
 
   const fetchAttendanceSummary = async () => {
     try {
@@ -1523,14 +1524,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const handleTeacherSave = async (updated: Teacher) => {
     setEditTeacher({ ...updated });
-    setGlobalSecurityKey('784920');
-    try {
-      await admin1Service.updateTeacher(updated.id || updated._id!, updated);
-      triggerToast(`Faculty profile for ${updated.name} updated successfully.`);
-      fetchTeachers();
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to save faculty details.');
-    }
+    setFacActionType('save');
+    setFacOtpInput('');
+    setIsFacOtpModalOpen(true);
   };
 
   const openStudentRegOtpModal = () => {
@@ -1538,8 +1534,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       triggerToast('Please complete Name, Admission Number, Mobile, Course, and Campus.');
       return;
     }
-    setGlobalSecurityKey('784920');
-    handleRegisterStudent();
+    setRegStuOtpInput('');
+    setIsRegStuOtpModalOpen(true);
   };
 
   const submitStudentRegistrationWithOtp = async () => {
@@ -1563,20 +1559,23 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const handleRegisterStudent = async () => {
     if (!newStuName.trim() || !newStuAdmissionNumber.trim() || !newStuMobile.trim() || !newStuCourse.trim() || !newStuBranch.trim()) {
-      triggerToast('Please complete Name, Admission Number, Mobile, Course, and Campus.');
+      triggerToast('Please complete Student Name, Admission Number, Mobile, Course, and Campus.');
       return;
     }
-    const newAdm = newStuAdmissionNumber.trim() || `ADM2400${students.length + 1}`;
+    const newAdm = newStuAdmissionNumber.trim();
 
     const activeSlots = newStuFeeSlots.filter(s => Number(s.amount) > 0);
     const grossFeeTotal = activeSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
 
-    const finalCustomSlots = activeSlots.map(s => ({
-      id: s.id,
-      key: s.key,
-      name: s.name,
-      amount: Number(s.amount) || 0
-    }));
+    const stdKeys = ['tuitionFee', 'hostelFee', 'transportFee', 'miscellaneousFee', 'previousPending'];
+    const finalCustomSlots = activeSlots
+      .filter(s => s.isCustom || (!stdKeys.includes(s.id) && !stdKeys.includes(s.key)))
+      .map(s => ({
+        id: s.id,
+        key: s.key,
+        name: s.name,
+        amount: Number(s.amount) || 0
+      }));
 
     const getSlotAmt = (k: string) => {
       const found = activeSlots.find(s => s.key === k);
@@ -1586,46 +1585,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     const newStu: any = {
       admissionNumber: newAdm,
       studentId: newAdm,
-      qrId: `QR-8${Math.floor(Math.random() * 9000 + 1000)}`,
-      registrationNumber: newAdm,
-      name: newStuName,
-      fatherName: newStuFatherName,
-      fatherOccupation: newStuFatherOccupation,
-      motherName: newStuMotherName,
-      motherOccupation: newStuMotherOccupation,
-      guardianName: newStuGuardianName,
-      pastSchool: newStuPastSchool,
-      previousSchool: newStuPreviousSchool,
-      dob: newStuDob,
-      gender: newStuGender,
-      bloodGroup: newStuBloodGroup,
-      category: newStuCategory,
-      aadhaar: newStuAadhaar,
-      penNumber: newStuPenNumber,
-      religion: newStuReligion,
-      motherTongue: newStuMotherTongue,
-      mobile: newStuMobile,
-      parentMobile: newStuParentMobile || newStuMobile,
-      email: '',
-      address: newStuAddress,
-      mandal: newStuMandal,
-      district: newStuDistrict,
-      state: newStuState,
-      pincode: newStuPincode,
-      sscHallTicket: newStuSscHallTicket,
-      sscBoard: newStuSscBoard,
-      sscGpa: newStuSscGpa,
-      medium: newStuMedium,
-      hostelStatus: newStuHostelStatus,
-      transportStatus: newStuTransportStatus,
-      busRoute: newStuBusRoute,
-      course: newStuCourse,
-      year: newStuYear,
-      section: '',
+      name: newStuName.trim(),
       branch: newStuBranch,
-      rollNumber: '',
+      mobile: newStuMobile.trim(),
+      course: newStuCourse.trim(),
+      section: newStuSection.trim(),
+      fatherName: newStuFatherName.trim(),
+      motherName: newStuMotherName.trim(),
+      dob: newStuDob,
+      parentMobile: newStuParentMobile.trim(),
+      previousSchool: newStuPreviousSchool.trim(),
+      previousBoard: newStuPreviousBoard.trim(),
+      address: newStuAddress.trim(),
       status: 'Active',
-      documents: [],
       tuitionFee: getSlotAmt('tuitionFee'),
       booksFee: getSlotAmt('booksFee'),
       uniformFees: getSlotAmt('uniformFees'),
@@ -1647,9 +1619,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     };
 
     try {
-      const response = await apiClient.post('/admin/students', newStu);
-      if (response && response.status === 'success') {
-        const pin = response.credential?.pin || '784920';
+      const response = await apiClient.post('/admin1/students', newStu);
+      if (response && (response.status === 'success' || response.data)) {
+        const pin = response.credential?.pin || '';
         newStu.tempPassword = pin;
         setStudents(prev => [...prev, newStu]);
         setSelectedStudent(newStu);
@@ -1657,42 +1629,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         setNewStuName('');
         setNewStuAdmissionNumber('');
         setNewStuMobile('');
-        setNewStuFatherName('');
-        setNewStuFatherOccupation('');
-        setNewStuParentMobile('');
-        setNewStuMotherName('');
-        setNewStuMotherOccupation('');
-        setNewStuGuardianName('');
-        setNewStuPastSchool('');
-        setNewStuPreviousSchool('');
-        setNewStuDob('');
-        setNewStuGender('Male');
-        setNewStuBloodGroup('O+');
-        setNewStuCategory('OC');
-        setNewStuAadhaar('');
-        setNewStuPenNumber('');
-        setNewStuReligion('Hindu');
-        setNewStuMotherTongue('Telugu');
-        setNewStuAddress('');
-        setNewStuMandal('');
-        setNewStuDistrict('');
-        setNewStuState('Telangana');
-        setNewStuPincode('');
-        setNewStuSscHallTicket('');
-        setNewStuSscBoard('Telangana State SSC');
-        setNewStuSscGpa('');
-        setNewStuMedium('English');
-        setNewStuHostelStatus('Day Scholar');
-        setNewStuTransportStatus('Self Transport');
-        setNewStuBusRoute('');
         setNewStuCourse('MPC');
-        setNewStuYear('1st Year');
+        setNewStuSection('MPC-A');
+        setNewStuFatherName('');
+        setNewStuMotherName('');
+        setNewStuDob('');
+        setNewStuParentMobile('');
+        setNewStuPreviousSchool('');
+        setNewStuPreviousBoard('State Board');
+        setNewStuAddress('');
         setNewStuFormPage(1);
         setIsStudentHoverModalOpen(false);
         setNewStuBranch(loggedInCampus);
         setRegistryPage(1);
-        triggerToast(`Student ${newStu.name} created directly in database! ID: ${newAdm} (PIN: ${pin})`);
-        // Refetch from server immediately so the list reflects true DB state
+        triggerToast(`Student ${newStu.name} registered successfully! ID: ${newAdm}`);
         await triggerFreshnessRefetch();
       } else {
         triggerToast(response?.message || 'Failed to register student.');
@@ -1722,31 +1672,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     try {
       setGlobalSecurityKey(facOtpInput.trim());
       if (facActionType === 'add') {
-        const newId = `FAC-20${teachers.length + 1}`;
+        const newId = `FAC-20${Math.floor(1000 + Math.random() * 9000)}`;
         const teacherPayload = {
           id: newId,
           name: newFacName,
-          subject: newFacSub,
+          subject: newFacSub || 'Faculty',
           email: newFacEmail,
           salary: parseFloat(newFacSal) || 50000,
           mobile: newFacMobile,
-          branch: newFacBranch
+          branch: role === 'admin2' ? loggedInCampus : newFacBranch
         };
-        const saved = await admin1Service.createTeacher(teacherPayload as any);
-        const newTeacherObj = (saved && (saved.id || saved._id)) ? saved : {
-          _id: `fac_${Date.now()}`,
-          id: newId,
-          name: newFacName,
-          subject: newFacSub,
-          email: newFacEmail,
-          salary: parseFloat(newFacSal) || 50000,
-          mobile: newFacMobile,
-          branch: newFacBranch,
-          status: 'Active',
-          salaryStatus: 'pending',
-          assignedSections: ['Section A']
-        };
-        setTeachers(prev => [...prev, newTeacherObj]);
+        await admin1Service.createTeacher(teacherPayload as any);
         setNewFacName('');
         setNewFacEmail('');
         setNewFacSal('');
@@ -1755,29 +1691,47 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         setIsAddTeacherModalOpen(false);
         setIsFacOtpModalOpen(false);
         setFacOtpInput('');
-        triggerToast(` Faculty member ${newFacName} registered successfully for ${newFacBranch}!`);
-        await triggerFreshnessRefetch();
+        triggerToast(`Faculty member ${teacherPayload.name} registered successfully!`);
+        await fetchTeachers();
       } else if (facActionType === 'edit' && editTeacher) {
-        const targetId = editTeacher.id || editTeacher._id || '';
-        const saved = await admin1Service.updateTeacher(targetId, editTeacher);
-        const updatedObj = (saved && (saved.id || saved._id)) ? saved : editTeacher;
-        setTeachers(prev => prev.map(t => (t.id === targetId || t._id === targetId) ? { ...t, ...updatedObj } : t));
+        const targetId = editTeacher._id || editTeacher.id || '';
+        await admin1Service.updateTeacher(targetId, editTeacher);
         setSelectedTeacher(null);
         setEditTeacher(null);
         setIsFacOtpModalOpen(false);
         setFacOtpInput('');
-        triggerToast(` Faculty credentials for ${editTeacher.name} saved successfully.`);
-        await triggerFreshnessRefetch();
-      } else if (facActionType === ('delete' as any) && pendingDeleteTeacherId) {
+        triggerToast(`Faculty credentials for ${editTeacher.name} saved successfully.`);
+        await fetchTeachers();
+      } else if (facActionType === 'delete' && pendingDeleteTeacherId) {
         await admin1Service.deleteTeacher(pendingDeleteTeacherId, facOtpInput.trim());
-        setTeachers(prev => prev.filter(t => t.id !== pendingDeleteTeacherId && t._id !== pendingDeleteTeacherId));
         setSelectedTeacher(null);
         setEditTeacher(null);
         setPendingDeleteTeacherId(null);
         setIsFacOtpModalOpen(false);
         setFacOtpInput('');
-        triggerToast(' Faculty record permanently deleted.');
-        await triggerFreshnessRefetch();
+        triggerToast('Faculty record permanently deleted.');
+        await fetchTeachers();
+      } else if (facActionType === 'salary_payment' && (editTeacher || selectedTeacher) && selectedStaffMonthForEdit) {
+        const targetObj = editTeacher || selectedTeacher;
+        const targetId = targetObj._id || targetObj.id || '';
+        const res = await admin1Service.payTeacherSalary(targetId, {
+          academicYear: selectedAcademicYear,
+          month: selectedStaffMonthForEdit,
+          amountPaid: Number(staffMonthAmount || targetObj.salary || 0),
+          paymentMode: staffMonthMode || 'Bank Transfer',
+          note: staffMonthNote || ''
+        }, facOtpInput.trim());
+
+        if (res && res.data) {
+          setEditTeacher(res.data);
+          setSelectedTeacher(res.data);
+        }
+        setIsFacOtpModalOpen(false);
+        setFacOtpInput('');
+        setSelectedStaffMonthForEdit(null);
+        triggerToast(`Salary payment recorded for ${selectedStaffMonthForEdit} (${selectedAcademicYear}).`);
+        await fetchTeachers();
+        await fetchWorkerPaymentsHistory();
       }
     } catch (err: any) {
       triggerToast(err.message || 'Verification failed.');
@@ -1955,7 +1909,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   };
 
   const handleUnlockFees = () => {
-    handleConfirmUnlockFees('784920');
+    setUnlockFeeOtpInput('');
+    setIsUnlockFeeOtpOpen(true);
   };
 
   const handleConfirmUnlockFees = async (otpToUse: string) => {
@@ -2174,10 +2129,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 }}>
                   <div>
                     <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      INSPIRE JUNIOR COLLEGE • TELANGANA ADMISSION HOVER
+                      INSPIRE JUNIOR COLLEGE • STUDENT ADMISSION REGISTRATION
                     </span>
                     <h3 style={{ margin: '2px 0 0', fontSize: '17px', fontWeight: 900, color: '#0F172A' }}>
-                      {newStuFormPage === 1 ? 'Page 1 of 2: Detailed Telangana Student Profile' : 'Page 2 of 2: Refactored Fee Structure & Bill Format'}
+                      {newStuFormPage === 1 ? 'Screen 1 of 3: Basic Academic Information' : newStuFormPage === 2 ? 'Screen 2 of 3: Personal & Family Information' : 'Screen 3 of 3: Fee Structure & Bill Format'}
                     </h3>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -2190,7 +2145,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         backgroundColor: newStuFormPage === 1 ? '#0F172A' : '#E2E8F0',
                         color: newStuFormPage === 1 ? '#FFFFFF' : '#475569'
                       }}>
-                        1. Profile Details
+                        1. Basic Info
                       </span>
                       <span style={{
                         padding: '4px 10px',
@@ -2200,7 +2155,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         backgroundColor: newStuFormPage === 2 ? '#0F172A' : '#E2E8F0',
                         color: newStuFormPage === 2 ? '#FFFFFF' : '#475569'
                       }}>
-                        2. Fee Structure
+                        2. Personal & Family
+                      </span>
+                      <span style={{
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        backgroundColor: newStuFormPage === 3 ? '#0F172A' : '#E2E8F0',
+                        color: newStuFormPage === 3 ? '#FFFFFF' : '#475569'
+                      }}>
+                        3. Fee Structure
                       </span>
                     </div>
                     <button
@@ -2229,23 +2194,23 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <div style={{ padding: '20px 24px' }}>
                   {newStuFormPage === 1 ? (
                     <div>
-                      {/* Section 1: Academic & Primary Info */}
+                      {/* Screen 1: Basic Information */}
                       <div style={{ marginBottom: '18px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px', marginBottom: '10px' }}>
-                          1. Primary & Academic Information
+                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px', marginBottom: '12px' }}>
+                          1. Basic Academic Information
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
                           <div>
                             <label style={styles.formLabel}>Admission Number *</label>
-                            <input type="text" value={newStuAdmissionNumber} onChange={(e) => setNewStuAdmissionNumber(e.target.value)} style={styles.textInputBox} />
+                            <input type="text" placeholder="e.g. 2400101" value={newStuAdmissionNumber} onChange={(e) => setNewStuAdmissionNumber(e.target.value)} style={styles.textInputBox} />
                           </div>
                           <div>
                             <label style={styles.formLabel}>Student Full Name *</label>
-                            <input type="text" value={newStuName} onChange={(e) => setNewStuName(e.target.value)} style={styles.textInputBox} />
+                            <input type="text" placeholder="e.g. Rahul Sharma" value={newStuName} onChange={(e) => setNewStuName(e.target.value)} style={styles.textInputBox} />
                           </div>
                           <div>
-                            <label style={styles.formLabel}>Mobile Number *</label>
-                            <input type="text" value={newStuMobile} onChange={(e) => setNewStuMobile(e.target.value)} style={styles.textInputBox} />
+                            <label style={styles.formLabel}>Student Mobile Number *</label>
+                            <input type="text" placeholder="10-digit mobile" value={newStuMobile} onChange={(e) => setNewStuMobile(e.target.value)} style={styles.textInputBox} />
                           </div>
                           <div>
                             <label style={styles.formLabel}>Campus / Branch *</label>
@@ -2267,215 +2232,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                             </select>
                           </div>
                           <div>
-                            <label style={styles.formLabel}>Academic Year *</label>
-                            <select value={newStuYear} onChange={(e) => setNewStuYear(e.target.value as any)} style={styles.selectInput}>
-                              <option value="1st Year">1st Year (Junior)</option>
-                              <option value="2nd Year">2nd Year (Senior)</option>
-                              <option value="Short Term">Short Term Coaching</option>
-                            </select>
+                            <label style={styles.formLabel}>Section *</label>
+                            <input type="text" placeholder="e.g. MPC-A" value={newStuSection} onChange={(e) => setNewStuSection(e.target.value)} style={styles.textInputBox} />
                           </div>
-                        </div>
-                      </div>
-
-                      {/* Section 2: Parents & Guardian Details */}
-                      <div style={{ marginBottom: '18px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px', marginBottom: '10px' }}>
-                          2. Parent & Guardian Details
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-                          <div>
-                            <label style={styles.formLabel}>Father's Name</label>
-                            <input type="text" placeholder="e.g. Ramesh Sharma" value={newStuFatherName} onChange={(e) => setNewStuFatherName(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Father's Occupation</label>
-                            <input type="text" placeholder="e.g. Agriculture / Govt. Employee" value={newStuFatherOccupation} onChange={(e) => setNewStuFatherOccupation(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Parent Mobile Number</label>
-                            <input type="text" placeholder="e.g. 9876543210" value={newStuParentMobile} onChange={(e) => setNewStuParentMobile(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Mother's Name</label>
-                            <input type="text" placeholder="e.g. Sunitha Sharma" value={newStuMotherName} onChange={(e) => setNewStuMotherName(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Mother's Occupation</label>
-                            <input type="text" placeholder="e.g. Homemaker" value={newStuMotherOccupation} onChange={(e) => setNewStuMotherOccupation(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Local Guardian Name (Optional)</label>
-                            <input type="text" placeholder="Guardian Full Name" value={newStuGuardianName} onChange={(e) => setNewStuGuardianName(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Section 3: Personal Demographics & Government IDs */}
-                      <div style={{ marginBottom: '18px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px', marginBottom: '10px' }}>
-                          3. Personal Demographics & Government IDs
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-                          <div>
-                            <label style={styles.formLabel}>Date of Birth</label>
-                            <input type="date" value={newStuDob} onChange={(e) => setNewStuDob(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Gender</label>
-                            <select value={newStuGender} onChange={(e) => setNewStuGender(e.target.value)} style={styles.selectInput}>
-                              <option value="Male">Male</option>
-                              <option value="Female">Female</option>
-                              <option value="Other">Other</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Blood Group</label>
-                            <select value={newStuBloodGroup} onChange={(e) => setNewStuBloodGroup(e.target.value)} style={styles.selectInput}>
-                              <option value="O+">O+</option>
-                              <option value="O-">O-</option>
-                              <option value="A+">A+</option>
-                              <option value="A-">A-</option>
-                              <option value="B+">B+</option>
-                              <option value="B-">B-</option>
-                              <option value="AB+">AB+</option>
-                              <option value="AB-">AB-</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Category / Caste</label>
-                            <select value={newStuCategory} onChange={(e) => setNewStuCategory(e.target.value)} style={styles.selectInput}>
-                              <option value="OC">OC (Open Category)</option>
-                              <option value="BC-A">BC-A</option>
-                              <option value="BC-B">BC-B</option>
-                              <option value="BC-C">BC-C</option>
-                              <option value="BC-D">BC-D</option>
-                              <option value="BC-E">BC-E</option>
-                              <option value="SC">SC</option>
-                              <option value="ST">ST</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Aadhaar Card Number</label>
-                            <input type="text" placeholder="12-digit Aadhaar No." value={newStuAadhaar} onChange={(e) => setNewStuAadhaar(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>APAAR ID / PEN Number</label>
-                            <input type="text" placeholder="Permanent Education No." value={newStuPenNumber} onChange={(e) => setNewStuPenNumber(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Religion</label>
-                            <select value={newStuReligion} onChange={(e) => setNewStuReligion(e.target.value)} style={styles.selectInput}>
-                              <option value="Hindu">Hindu</option>
-                              <option value="Muslim">Muslim</option>
-                              <option value="Christian">Christian</option>
-                              <option value="Other">Other</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Mother Tongue</label>
-                            <select value={newStuMotherTongue} onChange={(e) => setNewStuMotherTongue(e.target.value)} style={styles.selectInput}>
-                              <option value="Telugu">Telugu</option>
-                              <option value="English">English</option>
-                              <option value="Urdu">Urdu</option>
-                              <option value="Hindi">Hindi</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Section 4: Address & Location */}
-                      <div style={{ marginBottom: '18px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px', marginBottom: '10px' }}>
-                          4. Permanent Address & Location
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-                          <div style={{ gridColumn: 'span 2' }}>
-                            <label style={styles.formLabel}>Street Address / H.No.</label>
-                            <input type="text" placeholder="H.No., Street, Colony" value={newStuAddress} onChange={(e) => setNewStuAddress(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Village / Mandal</label>
-                            <input type="text" placeholder="e.g. Hanamkonda" value={newStuMandal} onChange={(e) => setNewStuMandal(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>District</label>
-                            <input type="text" placeholder="e.g. Warangal Urban" value={newStuDistrict} onChange={(e) => setNewStuDistrict(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>State</label>
-                            <input type="text" value={newStuState} onChange={(e) => setNewStuState(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Pincode</label>
-                            <input type="text" placeholder="6-digit Pincode" value={newStuPincode} onChange={(e) => setNewStuPincode(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Section 5: Academic Background */}
-                      <div style={{ marginBottom: '18px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px', marginBottom: '10px' }}>
-                          5. Academic Background (10th Class / SSC)
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-                          <div>
-                            <label style={styles.formLabel}>Previous School Name</label>
-                            <input type="text" placeholder="e.g. ZPHS / St. Johns High School" value={newStuPastSchool} onChange={(e) => setNewStuPastSchool(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>SSC / 10th Hall Ticket No.</label>
-                            <input type="text" placeholder="10th Hall Ticket Number" value={newStuSscHallTicket} onChange={(e) => setNewStuSscHallTicket(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>SSC Board</label>
-                            <select value={newStuSscBoard} onChange={(e) => setNewStuSscBoard(e.target.value)} style={styles.selectInput}>
-                              <option value="Telangana State SSC">Telangana State Board (SSC)</option>
-                              <option value="CBSE">CBSE</option>
-                              <option value="ICSE">ICSE</option>
-                              <option value="AP Board">AP Board</option>
-                              <option value="Other">Other</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>SSC GPA / Marks Percentage</label>
-                            <input type="text" placeholder="e.g. 10.0 GPA or 95%" value={newStuSscGpa} onChange={(e) => setNewStuSscGpa(e.target.value)} style={styles.textInputBox} />
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Medium of Instruction</label>
-                            <select value={newStuMedium} onChange={(e) => setNewStuMedium(e.target.value)} style={styles.selectInput}>
-                              <option value="English">English Medium</option>
-                              <option value="Telugu">Telugu Medium</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Section 6: Facilities & Accommodation */}
-                      <div style={{ marginBottom: '18px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px', marginBottom: '10px' }}>
-                          6. Campus Accommodation & Transport Facilities
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-                          <div>
-                            <label style={styles.formLabel}>Accommodation Status</label>
-                            <select value={newStuHostelStatus} onChange={(e) => setNewStuHostelStatus(e.target.value as any)} style={styles.selectInput}>
-                              <option value="Day Scholar">Day Scholar</option>
-                              <option value="Resident">Residential Hostel</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label style={styles.formLabel}>Transport Facility</label>
-                            <select value={newStuTransportStatus} onChange={(e) => setNewStuTransportStatus(e.target.value as any)} style={styles.selectInput}>
-                              <option value="Self Transport">Self Transport</option>
-                              <option value="College Bus">College Bus Service</option>
-                            </select>
-                          </div>
-                          {newStuTransportStatus === 'College Bus' && (
-                            <div>
-                              <label style={styles.formLabel}>Bus Route / Stop Name</label>
-                              <input type="text" placeholder="e.g. Kazipet / Hanamkonda Circle" value={newStuBusRoute} onChange={(e) => setNewStuBusRoute(e.target.value)} style={styles.textInputBox} />
-                            </div>
-                          )}
                         </div>
                       </div>
 
@@ -2491,8 +2250,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         <button
                           type="button"
                           onClick={() => {
-                            if (!newStuName.trim() || !newStuMobile.trim()) {
-                              triggerToast('Please provide Student Name and Mobile Number.');
+                            if (!newStuName.trim() || !newStuAdmissionNumber.trim() || !newStuMobile.trim()) {
+                              triggerToast('Please provide Student Name, Admission Number, and Mobile Number.');
                               return;
                             }
                             setNewStuFormPage(2);
@@ -2500,13 +2259,76 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: '#0F172A', color: '#FFFFFF', fontWeight: 800 }}
                           className="press-interactive"
                         >
-                          Next: Fee Structure & Bill Format (Page 2 of 2) →
+                          Next: Personal & Family Info (Screen 2 of 3) →
+                        </button>
+                      </div>
+                    </div>
+                  ) : newStuFormPage === 2 ? (
+                    <div>
+                      {/* Screen 2: Personal & Family Information */}
+                      <div style={{ marginBottom: '18px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px', marginBottom: '12px' }}>
+                          2. Personal & Family Information
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                          <div>
+                            <label style={styles.formLabel}>Father's Name</label>
+                            <input type="text" placeholder="e.g. Ramesh Sharma" value={newStuFatherName} onChange={(e) => setNewStuFatherName(e.target.value)} style={styles.textInputBox} />
+                          </div>
+                          <div>
+                            <label style={styles.formLabel}>Mother's Name</label>
+                            <input type="text" placeholder="e.g. Sunitha Sharma" value={newStuMotherName} onChange={(e) => setNewStuMotherName(e.target.value)} style={styles.textInputBox} />
+                          </div>
+                          <div>
+                            <label style={styles.formLabel}>Date of Birth</label>
+                            <input type="date" value={newStuDob} onChange={(e) => setNewStuDob(e.target.value)} style={styles.textInputBox} />
+                          </div>
+                          <div>
+                            <label style={styles.formLabel}>Parent Contact Mobile</label>
+                            <input type="text" placeholder="e.g. 9876543210" value={newStuParentMobile} onChange={(e) => setNewStuParentMobile(e.target.value)} style={styles.textInputBox} />
+                          </div>
+                          <div>
+                            <label style={styles.formLabel}>Previous School</label>
+                            <input type="text" placeholder="e.g. ZPHS / St. Johns High School" value={newStuPreviousSchool} onChange={(e) => setNewStuPreviousSchool(e.target.value)} style={styles.textInputBox} />
+                          </div>
+                          <div>
+                            <label style={styles.formLabel}>Previous School Board</label>
+                            <select value={newStuPreviousBoard} onChange={(e) => setNewStuPreviousBoard(e.target.value)} style={styles.selectInput}>
+                              <option value="State Board">State Board (SSC)</option>
+                              <option value="CBSE">CBSE</option>
+                              <option value="ICSE">ICSE</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+                          <div style={{ gridColumn: 'span 2' }}>
+                            <label style={styles.formLabel}>Permanent Address</label>
+                            <input type="text" placeholder="H.No., Street, Village/Mandal, District" value={newStuAddress} onChange={(e) => setNewStuAddress(e.target.value)} style={styles.textInputBox} />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #E2E8F0', paddingTop: '14px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setNewStuFormPage(1)}
+                          style={{ ...styles.actionItemBtn, backgroundColor: '#E2E8F0', color: '#1E293B', padding: '10px 18px', fontWeight: 800 }}
+                          className="press-interactive"
+                        >
+                          ← Back to Basic Info (Screen 1)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNewStuFormPage(3)}
+                          style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: '#0F172A', color: '#FFFFFF', fontWeight: 800 }}
+                          className="press-interactive"
+                        >
+                          Next: Fee Structure & Bill Format (Screen 3 of 3) →
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div>
-                      {/* Page 2: Compact Refactored Bill Format Fee Structure */}
+                      {/* Screen 3: Fee Structure */}
                       <div style={{
                         backgroundColor: '#FFFFFF',
                         border: '1.5px solid #CBD5E1',
@@ -2516,7 +2338,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         flexDirection: 'column',
                         gap: '8px'
                       }}>
-                        {/* Header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #E2E8F0', paddingBottom: '8px', marginBottom: '4px' }}>
                           <div>
                             <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -2534,7 +2355,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           </div>
                         </div>
 
-                        {/* Table Header */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 32px', gap: '8px', paddingBottom: '4px', borderBottom: '1px solid #CBD5E1' }}>
                           <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>
                             Fee Section Description
@@ -2545,8 +2365,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           <span></span>
                         </div>
 
-                        {/* Compact Dynamic Rows */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '380px', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '320px', overflowY: 'auto' }}>
                           {newStuFeeSlots.length === 0 ? (
                             <div style={{ padding: '16px', textAlign: 'center', color: '#64748B', fontSize: '12px', fontStyle: 'italic' }}>
                               All fee slots removed. Click "+ Add Fee Section Slot" below to add slots.
@@ -2583,19 +2402,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           )}
                         </div>
 
-                        {/* Add Custom Slot Control */}
                         {newStuIsAddingSlot ? (
                           <div style={{ display: 'flex', gap: '8px', padding: '8px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px dashed #CBD5E1', marginTop: '4px' }}>
                             <input
                               type="text"
-                              placeholder="Fee Section Description (Left)"
+                              placeholder="Fee Section Description"
                               value={newStuSlotName}
                               onChange={(e) => setNewStuSlotName(e.target.value)}
                               style={{ ...styles.textInputBox, flex: 2, fontSize: '12px' }}
                             />
                             <input
                               type="number"
-                              placeholder="Amount (Right)"
+                              placeholder="Amount (Rs)"
                               value={newStuSlotAmount}
                               onChange={(e) => setNewStuSlotAmount(e.target.value)}
                               style={{ ...styles.textInputBox, flex: 1, textAlign: 'right', fontSize: '12px' }}
@@ -2637,7 +2455,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           </button>
                         )}
 
-                        {/* Horizontal Bar separating fees from total */}
                         <div style={{ borderTop: '2px solid #0F172A', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>
                             GROSS BASE FEES TOTAL:
@@ -2648,15 +2465,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         </div>
                       </div>
 
-                      {/* Bottom Controls */}
                       <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <button
                           type="button"
-                          onClick={() => setNewStuFormPage(1)}
+                          onClick={() => setNewStuFormPage(2)}
                           style={{ ...styles.actionItemBtn, backgroundColor: '#E2E8F0', color: '#1E293B', padding: '10px 18px', fontWeight: 800 }}
                           className="press-interactive"
                         >
-                          ← Back to Profile Details (Page 1)
+                          ← Back to Personal & Family Info (Screen 2)
                         </button>
                         <button
                           type="button"
@@ -3016,15 +2832,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   {/* Actions Bar */}
                   <div style={{ display: 'flex', gap: '12px', marginTop: '14px', borderTop: '1px solid #E2E8F0', paddingTop: '14px' }}>
                     <button
-                      onClick={() => handleStudentSave(editStudent, '784920')}
+                      onClick={() => { setOtpInput(''); setIsOtpModalOpen(true); }}
                       style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0 }}
                       className="press-interactive"
                     >
                       Submit & Save Complete Profile
                     </button>
-                    {role === 'admin1' && (
+                    {(role === 'admin1' || role === 'admin2' || role === 'accountant') && (
                       <button
-                        onClick={() => handleConfirmDeleteStudent('784920')}
+                        onClick={() => { setDeleteStuOtpInput(''); setIsDeleteStuOtpOpen(true); }}
                         style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#DC2626', color: '#fff', border: 'none' }}
                         className="press-interactive"
                       >
@@ -3128,9 +2944,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     );
   }
 
-  //  SUBPAGE 2: STAFF & FACULTY REGISTRY (WITH 12-MONTH SALARY LEDGER)
+  // SUBPAGE 2: STAFF & FACULTY REGISTRY (WITH 12-MONTH SALARY LEDGER)
   if (activePage === 'teachers') {
-    const monthsList = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthsList = ["June", "July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May"];
     const currentMonth = "July";
 
     const filteredStaff = teachers.filter(t => {
@@ -3181,39 +2997,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
     const handleSaveStaffMonthPayment = async () => {
       if (!editTeacher || !selectedStaffMonthForEdit) return;
-      const mName = selectedStaffMonthForEdit;
-      const baseSal = Number(editTeacher.salary || 0);
-      const paidAmt = Number(staffMonthAmount || (staffMonthStatus === 'Paid' ? baseSal : 0));
-
-      const updatedMonthlySalaries = {
-        ...(editTeacher.monthlySalaries || {}),
-        [mName]: {
-          month: mName,
-          status: staffMonthStatus,
-          amountPaid: paidAmt,
-          paymentDate: staffMonthDate || new Date().toISOString().split('T')[0],
-          paymentMode: staffMonthMode || 'Bank Transfer',
-          note: staffMonthNote || ''
-        }
-      };
-
-      const updatedTeacher = {
-        ...editTeacher,
-        monthlySalaries: updatedMonthlySalaries
-      };
-
-      try {
-        await apiClient.patch(`/admin1/teachers/${updatedTeacher.id || updatedTeacher._id}`, {
-          monthlySalaries: updatedMonthlySalaries
-        });
-        setEditTeacher(updatedTeacher);
-        setSelectedTeacher(updatedTeacher);
-        setTeachers(prev => prev.map(t => (t.id === updatedTeacher.id || t._id === updatedTeacher._id) ? updatedTeacher : t));
-        triggerToast(`Salary record for ${mName} updated successfully.`);
-        setSelectedStaffMonthForEdit(null);
-      } catch (err: any) {
-        triggerToast(err.message || 'Failed to update monthly salary record.');
-      }
+      setFacActionType('salary_payment');
+      setFacOtpInput('');
+      setIsFacOtpModalOpen(true);
     };
 
     const handleSaveNewStaffMember = async () => {
@@ -3269,6 +3055,103 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         <main style={styles.content}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
             
+            {/* Top Level Employee Tabs */}
+            <div style={{ display: 'flex', gap: '10px', backgroundColor: 'rgba(255,255,255,0.7)', padding: '6px', borderRadius: '12px', border: '1.5px solid var(--card-border)' }}>
+              <button
+                onClick={() => setEmployeeTab('employees')}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  fontWeight: 900,
+                  fontSize: '12px',
+                  backgroundColor: employeeTab === 'employees' ? '#0F172A' : 'transparent',
+                  color: employeeTab === 'employees' ? '#FFFFFF' : '#475569',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                className="press-interactive"
+              >
+                👥 Active Employees Roster & Management
+              </button>
+              <button
+                onClick={() => { setEmployeeTab('history'); fetchWorkerPaymentsHistory(); }}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  fontWeight: 900,
+                  fontSize: '12px',
+                  backgroundColor: employeeTab === 'history' ? '#0F172A' : 'transparent',
+                  color: employeeTab === 'history' ? '#FFFFFF' : '#475569',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                className="press-interactive"
+              >
+                📜 Disbursement Payment History Log ({role === 'admin2' ? loggedInCampus : 'All Campuses'})
+              </button>
+            </div>
+
+            {employeeTab === 'history' ? (
+              <GlassCard style={{ padding: '20px', borderRadius: '16px', border: '1.5px solid var(--card-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 900, color: 'var(--dark-charcoal)' }}>
+                      Staff & Worker Payment History Log ({role === 'admin2' ? loggedInCampus : 'All Campuses'})
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                      Read-only audit log of salary payments disbursed to employees
+                    </div>
+                  </div>
+                  <button onClick={fetchWorkerPaymentsHistory} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '11px', backgroundColor: '#0F172A', color: '#fff' }} className="press-interactive">
+                    🔄 Refresh Log
+                  </button>
+                </div>
+
+                {workerPaymentsHistory.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '36px', color: 'var(--muted-gray)', fontSize: '13px', fontWeight: 700 }}>
+                    No payment history records found for {role === 'admin2' ? loggedInCampus : 'selected campus'}.
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '2px solid #E2E8F0', textAlign: 'left' }}>
+                          <th style={{ padding: '10px', fontWeight: 900 }}>Disbursement Date</th>
+                          <th style={{ padding: '10px', fontWeight: 900 }}>Employee Name</th>
+                          <th style={{ padding: '10px', fontWeight: 900 }}>Role / Designation</th>
+                          <th style={{ padding: '10px', fontWeight: 900 }}>Amount Disbursed</th>
+                          <th style={{ padding: '10px', fontWeight: 900 }}>Period / Month</th>
+                          <th style={{ padding: '10px', fontWeight: 900 }}>Campus Branch</th>
+                          <th style={{ padding: '10px', fontWeight: 900 }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {workerPaymentsHistory.map((item: any, idx: number) => (
+                          <tr key={item._id || item.id || idx} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                            <td style={{ padding: '10px', fontWeight: 700 }}>{new Date(item.createdAt || Date.now()).toLocaleDateString('en-IN')}</td>
+                            <td style={{ padding: '10px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{item.workerName || item.name}</td>
+                            <td style={{ padding: '10px' }}>{item.role}</td>
+                            <td style={{ padding: '10px', fontWeight: 900, color: '#059669' }}>₹{Number(item.amount || 0).toLocaleString('en-IN')}</td>
+                            <td style={{ padding: '10px' }}>{item.monthPeriod}</td>
+                            <td style={{ padding: '10px' }}>{item.branch}</td>
+                            <td style={{ padding: '10px' }}>
+                              <span style={{ backgroundColor: '#D1FAE5', color: '#065F46', padding: '3px 8px', borderRadius: '6px', fontWeight: 900, fontSize: '10px' }}>
+                                DISBURSED
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </GlassCard>
+            ) : (
+              <>
             {/* Top Metrics Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
               <GlassCard style={{ padding: '16px', borderRadius: '16px', border: '1.5px solid var(--card-border)' }}>
@@ -3492,7 +3375,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 Next Page
               </button>
             </div>
-          </div>
+          </>
+          )}
+        </div>
 
           {/* 12-MONTH STAFF LEDGER & DETAILS MODAL */}
           {selectedTeacher && editTeacher && (
@@ -3604,17 +3489,32 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 {/* 12-MONTH SALARY GRID */}
                 <div style={{ marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ fontSize: '13px', fontWeight: 900, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
-                      12-Month Salary Disbursement Ledger (2026)
+                      12-Month Academic Year Salary Disbursement Ledger
                     </div>
+
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Academic Year:</span>
+                      <select
+                        value={selectedAcademicYear}
+                        onChange={(e) => setSelectedAcademicYear(e.target.value)}
+                        style={{ ...styles.selectInput, width: 'auto', padding: '4px 10px', fontSize: '11px', fontWeight: 800 }}
+                      >
+                        <option value="2026-2027">2026-2027 (June to May)</option>
+                        <option value="2027-2028">2027-2028 (Year Lock Enforced)</option>
+                        <option value="2028-2029">2028-2029 (Year Lock Enforced)</option>
+                      </select>
+                    </div>
+
                     <div style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 700 }}>Click any month to view/update payment details</div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px' }}>
                     {monthsList.map(mName => {
-                      const mRec = (editTeacher.monthlySalaries as any)?.[mName] || { status: 'Unpaid', amountPaid: 0, paymentDate: '—', paymentMode: '—' };
-                      const isPaid = mRec.status === 'Paid';
+                      const ledgerObj = (editTeacher.salaryLedger as any)?.[selectedAcademicYear] || {};
+                      const mRec = ledgerObj[mName] || (editTeacher.monthlySalaries as any)?.[mName] || { status: 'Unpaid', amountPaid: 0, paymentDate: '—', paymentMode: '—' };
+                      const isPaid = mRec.status === 'Paid' || mRec.paid === true;
                       const amtPaid = Number(mRec.amountPaid || (isPaid ? editTeacher.salary || 0 : 0));
                       const isSelectedForEdit = selectedStaffMonthForEdit === mName;
 
@@ -3779,11 +3679,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     </button>
                   </div>
 
-                  {role === 'admin1' && (
+                  {(role === 'admin1' || role === 'admin2') && (
                     <button
                       onClick={() => {
                         setFacActionType('delete' as any);
-                        setPendingDeleteTeacherId(editTeacher.id || editTeacher._id || null);
+                        setPendingDeleteTeacherId(editTeacher._id || editTeacher.id || null);
                         setFacOtpInput('');
                         setIsFacOtpModalOpen(true);
                       }}
@@ -3800,7 +3700,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           )}
 
           {/* REGISTER NEW STAFF MEMBER MODAL */}
-          {isAddTeacherModalOpen && role !== 'admin2' && (
+          {isAddTeacherModalOpen && (
             <div style={styles.overlayOverlay}>
               <div style={{ ...styles.overlaySheet, maxWidth: '580px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -4663,7 +4563,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </button>
               ) : (
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <button onClick={() => handleSaveAcademicFees('784920')} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1 }} className="press-interactive">
+                  <button onClick={() => { setAcadFeeOtpInput(''); setIsAcadFeeOtpOpen(true); }} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1 }} className="press-interactive">
                     Submit Changes
                   </button>
                   <button onClick={() => { setIsEditingFees(false); fetchFeeSettings(); }} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
@@ -5443,7 +5343,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         })}
                       </div>
 
-                      <button onClick={() => handleApplyWaivers('784920')} style={{ ...styles.saveSubmitBtn, marginTop: '16px' }} className="press-interactive">
+                      <button onClick={() => { setFeeOtpInput(''); setIsFeeOtpModalOpen(true); }} style={{ ...styles.saveSubmitBtn, marginTop: '16px' }} className="press-interactive">
                         Submit Fee Override Changes
                       </button>
                     </div>
@@ -5553,12 +5453,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       } catch (err: any) { triggerToast(err.message || 'Failed to log expenditure.'); }
     };
 
-        const handleDeleteExpenditure = async (exp: ExpenditureItem, otpKey: string) => {
-      if (role !== 'admin1') { triggerToast('Only the Rector (Admin 1) can delete expenditure entries.'); return; }
+    const handleDeleteExpenditure = async (exp: ExpenditureItem, otpKey: string) => {
       const id = exp._id || exp.id;
       if (!id) return;
       try {
-        await admin2Service.deleteExpenditure(id, exp.branch || selectedExpBranch, otpKey);
+        setGlobalSecurityKey(otpKey.trim());
+        await admin2Service.deleteExpenditure(id, exp.branch || (role === 'admin1' ? selectedExpBranch : loggedInCampus), otpKey.trim());
         triggerToast('Expenditure entry deleted.');
         setPendingExpDelete(null);
         setIsExpDeleteOtpOpen(false);
@@ -5844,7 +5744,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <input type="text" value={newExpDesc} onChange={(e) => setNewExpDesc(e.target.value)} style={styles.textInputBox} placeholder="Brief description of the expense" />
               </div>
             </div>
-            <button onClick={() => handleLogExpenditure('784920')} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">
+            <button onClick={() => { if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; } setIsExpOtpOpen(true); }} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">
               Log Expenditure
             </button>
           </GlassCard>
@@ -5886,9 +5786,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                       <strong style={{ fontSize: '14px', color: '#EF4444' }}>Rs.{exp.amount.toLocaleString('en-IN')}</strong>
                       <button onClick={() => handleDownloadBill(exp)} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(212,175,55,0.4)', backgroundColor: 'rgba(212,175,55,0.06)', color: 'var(--royal-gold)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }} title="Download Bill">Bill</button>
-                      {role === 'admin1' && (
-                        <button onClick={() => handleDeleteExpenditure(exp, '784920')} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
-                      )}
+                      <button onClick={() => { setPendingExpDelete(exp); setIsExpDeleteOtpOpen(true); }} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
                     </div>
                   </div>
                 ))
@@ -6184,29 +6082,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     const workerCurrentPage = Math.min(workerPage, workerTotalPages);
     const workerPaginatedList = filteredWorkers.slice((workerCurrentPage - 1) * WORKER_PER_PAGE, workerCurrentPage * WORKER_PER_PAGE);
 
-    const triggerWorkerAction = async (actionType: 'toggle' | 'delete', data: any) => {
-      try {
-        setGlobalSecurityKey('784920');
-        if (actionType === 'toggle') {
-          const targetId = data._id || data.id;
-          const updated = await admin2Service.updateWorkerPayment(targetId, {
-            paid: data.paid,
-            amountPaid: data.amountPaid
-          });
-          setWorkers(prev => prev.map(ww => (ww._id === targetId || ww.id === targetId)
-            ? { ...ww, ...updated, name: updated.workerName || updated.name || ww.name, salary: updated.amount || updated.salary || ww.salary, paid: data.paid, amountPaid: data.amountPaid }
-            : ww
-          ));
-          triggerToast(`${data.workerName || data.name} marked ${data.paid ? 'Paid' : 'Unpaid'}.`);
-        } else if (actionType === 'delete') {
-          const targetId = data._id || data.id;
-          await admin2Service.deleteWorkerPayment(targetId);
-          setWorkers(prev => prev.filter(ww => (ww._id || ww.id) !== targetId));
-          triggerToast('Worker entry deleted.');
-        }
-      } catch (err: any) {
-        triggerToast(err.message || 'Action failed.');
-      }
+    const triggerWorkerAction = (actionType: 'toggle' | 'delete', data: any) => {
+      setWorkerPendingAction({ actionType, data });
+      setWorkerOtpInput('');
+      setIsWorkerOtpOpen(true);
     };
 
     const confirmWorkerAction = async () => {};

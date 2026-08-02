@@ -66,9 +66,14 @@ export const updateStudent = async (id: string, fields: Partial<StudentProfile>,
 };
 
 export const deleteStudent = async (id: string, securityKey?: string): Promise<void> => {
+  const headers: Record<string, string> = {};
+  if (securityKey) {
+    headers['X-Security-OTP'] = securityKey;
+    headers['x-security-key'] = securityKey;
+  }
   await apiClient.delete(
     `/accountant/students/${id}`,
-    securityKey ? { headers: { 'x-security-key': securityKey } } : {}
+    { headers }
   );
 };
 

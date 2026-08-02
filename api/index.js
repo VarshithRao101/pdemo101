@@ -16,11 +16,7 @@ const { connectToDatabase } = require(dbPath);
 
 export default async function handler(req, res) {
   try {
-    try {
-      await connectToDatabase();
-    } catch (dbErr) {
-      console.warn('MongoDB connection fallback notice:', dbErr.message);
-    }
+    await connectToDatabase();
 
     const app = typeof expressApp === 'function' ? expressApp : (expressApp && expressApp.default) || expressApp;
     if (typeof app !== 'function') {

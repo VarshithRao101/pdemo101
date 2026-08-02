@@ -41,6 +41,14 @@ const teacherSchema = new mongoose.Schema({
     type: String,
     enum: ['Active', 'Inactive'],
     default: 'Active'
+  },
+  salaryLedger: {
+    type: Object,
+    default: {}
+  },
+  monthlySalaries: {
+    type: Object,
+    default: {}
   }
 }, {
   timestamps: true

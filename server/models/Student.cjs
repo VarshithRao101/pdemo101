@@ -45,6 +45,8 @@ const studentSchema = new mongoose.Schema({
     default: 'Active'
   },
   dob: { type: String, default: '' },
+  previousSchool: { type: String, default: '', trim: true },
+  previousBoard: { type: String, default: '', trim: true },
   address: { type: String, default: '' },
   hostelStatus: {
     type: String,
@@ -71,6 +73,17 @@ const studentSchema = new mongoose.Schema({
   miscWaiver: { type: Number, default: 0 },
   // Custom Fee Slots
   customFeeSlots: [customFeeSlotSchema],
+  // Compact receipt summaries for quick UI display
+  receipts: [{
+    receiptNumber: { type: String },
+    date: { type: Date },
+    category: { type: String },
+    installment: { type: String },
+    amount: { type: Number },
+    balance: { type: Number },
+    mode: { type: String },
+    cashier: { type: String }
+  }],
   academicYear: { type: String, default: '2026-2027' }
 }, {
   timestamps: true

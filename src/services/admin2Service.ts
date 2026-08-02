@@ -157,7 +157,33 @@ export const admin2Service = {
     return res;
   },
 
-  // 5. Staff Salaries status
+  // 5. Staff Salaries status & Employee Management
+  async getTeachers(): Promise<any[]> {
+    const res = await apiClient.get<{ status: string; data: any[] }>('/admin2/teachers');
+    return res.data;
+  },
+
+  async createTeacher(teacherData: { id: string; name: string; subject: string; salary: number; mobile?: string; branch?: string }): Promise<any> {
+    const res = await apiClient.post<any>('/admin2/teachers', teacherData);
+    return res.data;
+  },
+
+  async deleteTeacher(id: string, securityKey?: string): Promise<any> {
+    const headers: Record<string, string> = {};
+    if (securityKey) {
+      headers['x-security-key'] = securityKey;
+      headers['X-Security-OTP'] = securityKey;
+    }
+    const res = await apiClient.request<any>(`/admin2/teachers/${id}`, { method: 'DELETE', headers });
+    return res;
+  },
+
+  async payTeacherSalary(id: string, payload: { academicYear: string; month: string; amountPaid?: number; paymentMode?: string; note?: string }, securityKey: string): Promise<any> {
+    const headers: Record<string, string> = { 'x-security-key': securityKey, 'X-Security-OTP': securityKey };
+    const res = await apiClient.request<any>(`/admin2/teachers/${id}/salary-month`, { method: 'POST', body: JSON.stringify(payload), headers });
+    return res;
+  },
+
   async getStaffSalaries(): Promise<StaffSalaryItem[]> {
     const res = await apiClient.get<{ status: string; data: StaffSalaryItem[] }>('/admin2/staff-salaries');
     return res.data;

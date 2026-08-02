@@ -72,7 +72,13 @@ export const admin1Service = {
   },
 
   // Faculty Management
-  async createTeacher(teacherData: { id: string; name: string; subject: string; salary: number; mobile?: string }): Promise<any> {
+  async getTeachers(branch?: string): Promise<any[]> {
+    const url = branch ? `/admin1/teachers?branch=${encodeURIComponent(branch)}` : '/admin1/teachers';
+    const res = await apiClient.get<{ status: string; data: any[] }>(url);
+    return res.data;
+  },
+
+  async createTeacher(teacherData: { id: string; name: string; subject: string; salary: number; mobile?: string; branch?: string }): Promise<any> {
     const res = await apiClient.post<any>('/admin1/teachers', teacherData);
     return res.data;
   },
@@ -86,6 +92,12 @@ export const admin1Service = {
     const headers: Record<string, string> = {};
     if (otpKey) headers['X-Security-OTP'] = otpKey;
     const res = await apiClient.request<{ status: string; message: string }>(`/admin1/teachers/${id}`, { method: 'DELETE', headers });
+    return res;
+  },
+
+  async payTeacherSalary(id: string, payload: { academicYear: string; month: string; amountPaid?: number; paymentMode?: string; note?: string }, otpKey: string): Promise<any> {
+    const headers: Record<string, string> = { 'X-Security-OTP': otpKey };
+    const res = await apiClient.request<any>(`/admin1/teachers/${id}/salary-month`, { method: 'POST', body: JSON.stringify(payload), headers });
     return res;
   },
 

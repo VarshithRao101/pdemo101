@@ -10,7 +10,7 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
-const FALLBACK_MONGODB_URI = 'mongodb+srv://ravindarraodevarneni_db_user:VGm%403007250967@cluster0.q74oac9.mongodb.net/jc_erp_prod?retryWrites=true&w=majority&appName=Cluster0';
+const FALLBACK_MONGODB_URI = 'mongodb+srv://inspirehead:7gPAF4kPW13lwETe@cluster0.aw1u47g.mongodb.net/jc_erp_prod?retryWrites=true&w=majority&appName=Cluster0';
 
 async function connectToDatabase() {
   const MONGODB_URI = process.env.MONGODB_URI || FALLBACK_MONGODB_URI;

@@ -805,7 +805,7 @@ const createStudentHandler = async (req, res) => {
     await connectToDatabase();
     const body = req.body || {};
     const {
-      name, admissionNumber, course, section, branch, mobile, fatherName, motherName, parentMobile, dob, address, hostelStatus, transportStatus,
+      name, admissionNumber, course, section, branch, mobile, fatherName, motherName, parentMobile, dob, address, previousSchool, previousBoard,
       tuitionFee = 0, hostelFee = 0, transportFee = 0, miscellaneousFee = 0, previousPending = 0, customFeeSlots = [], academicYear = '2026-2027'
     } = body;
 
@@ -839,7 +839,15 @@ const createStudentHandler = async (req, res) => {
       });
     }
 
-    const totalCustomFees = (Array.isArray(customFeeSlots) ? customFeeSlots : []).reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
+    const standardKeys = ['tuitionfee', 'hostelfee', 'transportfee', 'miscellaneousfee', 'previouspending', 'tuition', 'hostel', 'transport', 'misc'];
+    const cleanedCustomSlots = (Array.isArray(customFeeSlots) ? customFeeSlots : []).filter(slot => {
+      if (!slot) return false;
+      const k = String(slot.key || slot.id || '').toLowerCase().trim();
+      const n = String(slot.name || '').toLowerCase().trim();
+      return !standardKeys.includes(k) && !['tuition fee', 'hostel fee', 'transport fee', 'miscellaneous fee', 'previous pending'].includes(n);
+    });
+
+    const totalCustomFees = cleanedCustomSlots.reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
     const grossFees = Number(tuitionFee) + Number(hostelFee) + Number(transportFee) + Number(miscellaneousFee) + Number(previousPending) + totalCustomFees;
     const remainingBalance = Math.max(0, grossFees);
 
@@ -861,9 +869,11 @@ const createStudentHandler = async (req, res) => {
       rollNumber: body.rollNumber || '',
       status: 'Active',
       dob: dob || '',
+      previousSchool: previousSchool || '',
+      previousBoard: previousBoard || '',
       address: address || '',
-      hostelStatus: hostelStatus || 'Day Scholar',
-      transportStatus: transportStatus || 'Self Transport',
+      hostelStatus: body.hostelStatus || 'Day Scholar',
+      transportStatus: body.transportStatus || 'Self Transport',
       tuitionFee: Number(tuitionFee),
       hostelFee: Number(hostelFee),
       transportFee: Number(transportFee),
@@ -875,7 +885,7 @@ const createStudentHandler = async (req, res) => {
       hostelWaiver: 0,
       transportWaiver: 0,
       miscWaiver: 0,
-      customFeeSlots: Array.isArray(customFeeSlots) ? customFeeSlots : [],
+      customFeeSlots: cleanedCustomSlots,
       academicYear
     });
 
@@ -932,28 +942,43 @@ app.patch('/api/admin1/students/:id', authenticateToken, requireRole('admin1', '
   }
 });
 
-app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1'), verifySecurityOtp, mongoRateLimiter, async (req, res) => {
+const deleteStudentHandler = async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
     const isObjId = mongoose.Types.ObjectId.isValid(id);
     const query = { $or: [{ _id: isObjId ? id : null }, { studentId: id }, { admissionNumber: id }] };
 
-    const result = await Student.deleteOne(query);
-    if (result.deletedCount === 0) {
+    const student = await Student.findOne(query);
+    if (!student) {
       return res.status(404).json({ status: 'error', message: 'Student record not found.' });
     }
 
-    const verifySearch = await Student.findOne(query);
+    if ((req.user.role === 'accountant' || req.user.role === 'admin2') && req.user.campus !== 'All') {
+      if (student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
+        return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
+      }
+    }
+
+    const result = await Student.deleteOne({ _id: student._id });
+    if (result.deletedCount === 0) {
+      return res.status(500).json({ status: 'error', message: 'Failed to delete student record.' });
+    }
+
+    const verifySearch = await Student.findOne({ _id: student._id });
     if (verifySearch) {
       return res.status(500).json({ status: 'error', message: 'Verification failed. Student record still exists in database.' });
     }
 
-    return res.json({ status: 'success', message: 'Student record permanently deleted.' });
+    return res.json({ status: 'success', message: `Student ${student.name} (${student.admissionNumber}) permanently deleted.` });
   } catch (err) {
     return res.status(500).json({ status: 'error', message: err.message });
   }
-});
+};
+
+app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), verifySecurityOtp, mongoRateLimiter, deleteStudentHandler);
+app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), verifySecurityOtp, mongoRateLimiter, deleteStudentHandler);
+app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), verifySecurityOtp, mongoRateLimiter, deleteStudentHandler);
 
 
 // --- FEE WAIVER ROUTE ---
@@ -986,10 +1011,19 @@ app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, req
     student.transportWaiver = Number(transportWaiver);
     student.miscWaiver = Number(miscWaiver);
 
-    const totalCustomFees = (student.customFeeSlots || []).reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
+    const standardKeys = ['tuitionfee', 'hostelfee', 'transportfee', 'miscellaneousfee', 'previouspending', 'tuition', 'hostel', 'transport', 'misc'];
+    const cleanedSlots = (student.customFeeSlots || []).filter(slot => {
+      if (!slot) return false;
+      const k = String(slot.key || slot.id || '').toLowerCase().trim();
+      const n = String(slot.name || '').toLowerCase().trim();
+      return !standardKeys.includes(k) && !['tuition fee', 'hostel fee', 'transport fee', 'miscellaneous fee', 'previous pending'].includes(n);
+    });
+
+    const totalCustomFees = cleanedSlots.reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
     const grossFees = Number(student.tuitionFee || 0) + Number(student.hostelFee || 0) + Number(student.transportFee || 0) + Number(student.miscellaneousFee || 0) + Number(student.previousPending || 0) + totalCustomFees;
     const totalWaivers = student.tuitionWaiver + student.hostelWaiver + student.transportWaiver + student.miscWaiver;
 
+    student.customFeeSlots = cleanedSlots;
     student.remainingBalance = Math.max(0, grossFees - totalWaivers - Number(student.totalPaid || 0));
     await student.save();
 
@@ -1013,16 +1047,21 @@ app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, req
 
 // --- FACULTY / TEACHER ROUTES ---
 
-app.get('/api/admin1/teachers', authenticateToken, requireRole('admin1'), async (req, res) => {
+// GET Teachers list (Admin1 sees all or filtered by branch; Admin2 sees only their assigned campus)
+app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
   try {
     await connectToDatabase();
-    const { branch } = req.query;
     let filter = {};
-    if (branch && String(branch).toLowerCase() !== 'all') {
-      if (!isValidCampus(branch)) {
-        return res.status(400).json({ status: 'error', message: `Invalid campus branch [${branch}]. Must be one of: ${VALID_CAMPUSES.join(', ')}` });
+    if (req.user.role === 'admin2') {
+      filter.branch = req.user.campus;
+    } else {
+      const { branch } = req.query;
+      if (branch && String(branch).toLowerCase() !== 'all') {
+        if (!isValidCampus(branch)) {
+          return res.status(400).json({ status: 'error', message: `Invalid campus branch [${branch}]. Must be one of: ${VALID_CAMPUSES.join(', ')}` });
+        }
+        filter.branch = String(branch).trim();
       }
-      filter.branch = String(branch).trim();
     }
     const teachers = await Teacher.find(filter).sort({ createdAt: -1 });
     return res.json({ status: 'success', data: teachers });
@@ -1031,10 +1070,15 @@ app.get('/api/admin1/teachers', authenticateToken, requireRole('admin1'), async 
   }
 });
 
-app.post('/api/admin1/teachers', authenticateToken, requireRole('admin1'), mongoRateLimiter, async (req, res) => {
+// CREATE Teacher (Admin1 or Admin2; Requires Security OTP for Admin2 or optional; Admin2 campus locked)
+app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, async (req, res) => {
   try {
     await connectToDatabase();
-    const { id, name, subject, salary = 0, mobile, email, branch, classification = 'Teaching', role = 'Senior Lecturer' } = req.body || {};
+    let { id, name, subject, salary = 0, mobile, email, branch, classification = 'Teaching', role = 'Senior Lecturer' } = req.body || {};
+
+    if (req.user.role === 'admin2') {
+      branch = req.user.campus; // Lock campus to admin2's assigned campus
+    }
 
     if (!id || !name || !subject || !branch) {
       return res.status(400).json({ status: 'error', message: 'Teacher ID, name, subject, and campus branch are required.' });
@@ -1063,7 +1107,8 @@ app.post('/api/admin1/teachers', authenticateToken, requireRole('admin1'), mongo
       branch,
       classification,
       role,
-      status: 'Active'
+      status: 'Active',
+      salaryLedger: {}
     });
 
     return res.status(201).json({ status: 'success', data: teacher });
@@ -1072,7 +1117,8 @@ app.post('/api/admin1/teachers', authenticateToken, requireRole('admin1'), mongo
   }
 });
 
-app.patch('/api/admin1/teachers/:id', authenticateToken, requireRole('admin1'), async (req, res) => {
+// UPDATE Teacher
+app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -1081,6 +1127,10 @@ app.patch('/api/admin1/teachers/:id', authenticateToken, requireRole('admin1'), 
 
     if (!teacher) {
       return res.status(404).json({ status: 'error', message: 'Teacher record not found.' });
+    }
+
+    if (req.user.role === 'admin2' && teacher.branch !== req.user.campus) {
+      return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot modify staff at [${teacher.branch}].` });
     }
 
     Object.assign(teacher, req.body);
@@ -1092,12 +1142,22 @@ app.patch('/api/admin1/teachers/:id', authenticateToken, requireRole('admin1'), 
   }
 });
 
-app.delete('/api/admin1/teachers/:id', authenticateToken, requireRole('admin1'), verifySecurityOtp, mongoRateLimiter, async (req, res) => {
+// DELETE Teacher (Requires Security OTP; Campus Isolation for Admin2)
+app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
     const isObjId = mongoose.Types.ObjectId.isValid(id);
     const query = { $or: [{ _id: isObjId ? id : null }, { id }] };
+
+    const teacher = await Teacher.findOne(query);
+    if (!teacher) {
+      return res.status(404).json({ status: 'error', message: 'Teacher record not found.' });
+    }
+
+    if (req.user.role === 'admin2' && teacher.branch !== req.user.campus) {
+      return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot delete staff at [${teacher.branch}].` });
+    }
 
     const result = await Teacher.deleteOne(query);
     if (result.deletedCount === 0) {
@@ -1109,7 +1169,97 @@ app.delete('/api/admin1/teachers/:id', authenticateToken, requireRole('admin1'),
       return res.status(500).json({ status: 'error', message: 'Verification failed. Teacher record still exists in database.' });
     }
 
-    return res.json({ status: 'success', message: 'Teacher record permanently deleted.' });
+    return res.json({ status: 'success', message: `Teacher ${teacher.name} permanently deleted.` });
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+// 12-MONTH SALARY LEDGER & YEAR-LOCK PAYMENTS ROUTE
+app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { id } = req.params;
+    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const teacher = await Teacher.findOne({ $or: [{ _id: isObjId ? id : null }, { id }] });
+
+    if (!teacher) {
+      return res.status(404).json({ status: 'error', message: 'Teacher not found.' });
+    }
+
+    if (req.user.role === 'admin2' && teacher.branch !== req.user.campus) {
+      return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot process salary payments for staff at [${teacher.branch}].` });
+    }
+
+    const { academicYear = '2026-2027', month, amountPaid, paymentMode = 'Bank Transfer', note = '' } = req.body || {};
+
+    if (!month) {
+      return res.status(400).json({ status: 'error', message: 'Month description is required.' });
+    }
+
+    const validMonths = ['June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May'];
+    if (!validMonths.includes(month)) {
+      return res.status(400).json({ status: 'error', message: `Invalid month [${month}]. Must be one of: ${validMonths.join(', ')}` });
+    }
+
+    // SERVER-ENFORCED YEAR LOCK LOGIC
+    const startYear = parseInt(academicYear.split('-')[0], 10);
+    if (isNaN(startYear)) {
+      return res.status(400).json({ status: 'error', message: `Invalid academic year format [${academicYear}]. Example format: "2026-2027"` });
+    }
+
+    // Base academic year is 2026-2027. If requested year is 2027-2028 or later, check prior year.
+    if (startYear > 2026) {
+      const prevAcademicYear = `${startYear - 1}-${startYear}`;
+      const ledger = teacher.salaryLedger || {};
+      const prevYearLedger = ledger[prevAcademicYear] || {};
+      
+      let paidCount = 0;
+      for (const m of validMonths) {
+        if (prevYearLedger[m] && (prevYearLedger[m].status === 'Paid' || prevYearLedger[m].paid === true)) {
+          paidCount++;
+        }
+      }
+
+      if (paidCount < 12) {
+        return res.status(403).json({
+          status: 'error',
+          message: `Year Lock Active: Academic year [${academicYear}] is locked. Prior year [${prevAcademicYear}] has only ${paidCount} of 12 months completed.`
+        });
+      }
+    }
+
+    // Prepare ledger data structure
+    if (!teacher.salaryLedger) teacher.salaryLedger = {};
+    if (!teacher.salaryLedger[academicYear]) teacher.salaryLedger[academicYear] = {};
+
+    const amt = Number(amountPaid) || Number(teacher.salary) || 0;
+    const pDate = new Date().toISOString().split('T')[0];
+
+    teacher.salaryLedger[academicYear][month] = {
+      status: 'Paid',
+      amountPaid: amt,
+      paymentDate: pDate,
+      paymentMode,
+      note
+    };
+
+    // Mark Mongoose mixed object modified
+    teacher.markModified('salaryLedger');
+    await teacher.save();
+
+    // Create a WorkerPayment log for History tab tracking
+    await WorkerPayment.create({
+      id: `PAY-FAC-${Date.now()}`,
+      workerName: teacher.name,
+      role: teacher.role || teacher.subject || 'Faculty',
+      amount: amt,
+      monthPeriod: `${month} (${academicYear})`,
+      paid: true,
+      branch: teacher.branch
+    });
+
+    return res.json({ status: 'success', message: `Salary payment recorded for ${teacher.name} - ${month} (${academicYear})`, data: teacher });
   } catch (err) {
     return res.status(500).json({ status: 'error', message: err.message });
   }
@@ -1567,7 +1717,7 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
 
     const existingPayment = await Payment.findOne({ idempotencyKey });
     if (existingPayment) {
-      console.log(`â„¹ï¸ [Idempotency Guard]: Fast duplicate submission caught for key [${idempotencyKey}]. Returning existing receipt.`);
+      console.log(`[Idempotency Guard]: Fast duplicate submission caught for key [${idempotencyKey}]. Returning existing receipt.`);
       return res.json({
         status: 'success',
         data: {
@@ -1577,7 +1727,7 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
             studentId: existingPayment.studentId,
             amount: existingPayment.amount,
             category: existingPayment.category,
-            paymentMode: existingPayment.paymentMode,
+            mode: existingPayment.paymentMode,
             cashier: existingPayment.cashier,
             date: existingPayment.date
           },
@@ -1618,30 +1768,60 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
       { new: true }
     );
 
-    const totalCustomFees = (updatedStudent.customFeeSlots || []).reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
+    const standardKeys = ['tuitionfee', 'hostelfee', 'transportfee', 'miscellaneousfee', 'previouspending', 'tuition', 'hostel', 'transport', 'misc'];
+    const cleanedSlots = (updatedStudent.customFeeSlots || []).filter(slot => {
+      if (!slot) return false;
+      const k = String(slot.key || slot.id || '').toLowerCase().trim();
+      const n = String(slot.name || '').toLowerCase().trim();
+      return !standardKeys.includes(k) && !['tuition fee', 'hostel fee', 'transport fee', 'miscellaneous fee', 'previous pending'].includes(n);
+    });
+
+    const totalCustomFees = cleanedSlots.reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
     const grossFees = Number(updatedStudent.tuitionFee || 0) + Number(updatedStudent.hostelFee || 0) + Number(updatedStudent.transportFee || 0) + Number(updatedStudent.miscellaneousFee || 0) + Number(updatedStudent.previousPending || 0) + totalCustomFees;
     const totalWaivers = Number(updatedStudent.tuitionWaiver || 0) + Number(updatedStudent.hostelWaiver || 0) + Number(updatedStudent.transportWaiver || 0) + Number(updatedStudent.miscWaiver || 0);
 
+    updatedStudent.customFeeSlots = cleanedSlots;
     updatedStudent.remainingBalance = Math.max(0, Math.round((grossFees - totalWaivers - updatedStudent.totalPaid) * 100) / 100);
+
+    // Append a compact receipt summary into student document for UI compatibility
+    const receiptSummary = {
+      receiptNumber,
+      date: newPayment.date,
+      category: newPayment.category,
+      installment: newPayment.installment,
+      amount: newPayment.amount,
+      balance: updatedStudent.remainingBalance,
+      mode: newPayment.paymentMode,
+      cashier: newPayment.cashier
+    };
+    updatedStudent.receipts = Array.isArray(updatedStudent.receipts) ? updatedStudent.receipts : [];
+    updatedStudent.receipts.push(receiptSummary);
+
     await updatedStudent.save();
 
+    // Build a normalized payment object for frontend compatibility (uses `mode` key)
+    const paymentResponse = {
+      _id: newPayment._id,
+      receiptNumber: newPayment.receiptNumber,
+      studentId: newPayment.studentId,
+      amount: newPayment.amount,
+      category: newPayment.category,
+      installment: newPayment.installment,
+      mode: newPayment.paymentMode,
+      cashier: newPayment.cashier,
+      date: newPayment.date
+    };
+
+    // Return the freshly-updated student values to ensure frontend reflects DB
     return res.status(201).json({
       status: 'success',
       data: {
-        payment: {
-          _id: newPayment._id,
-          receiptNumber: newPayment.receiptNumber,
-          studentId: newPayment.studentId,
-          amount: newPayment.amount,
-          category: newPayment.category,
-          paymentMode: newPayment.paymentMode,
-          cashier: newPayment.cashier,
-          date: newPayment.date
-        },
+        payment: paymentResponse,
         student: {
-          studentId: student.studentId,
-          remainingBalance: student.remainingBalance,
-          totalPaid: student.totalPaid
+          studentId: updatedStudent.studentId,
+          remainingBalance: updatedStudent.remainingBalance,
+          totalPaid: updatedStudent.totalPaid,
+          receipts: updatedStudent.receipts || []
         }
       }
     });
@@ -1656,7 +1836,7 @@ app.get('/api/accountant/students/:studentId/payments', authenticateToken, requi
     await connectToDatabase();
     const { studentId } = req.params;
     const isObjId = mongoose.Types.ObjectId.isValid(studentId);
-    const student = await Student.findOne({ $or: [{ _id: isObjId ? id : null }, { studentId }, { admissionNumber: studentId }] });
+    const student = await Student.findOne({ $or: [{ _id: isObjId ? studentId : null }, { studentId }, { admissionNumber: studentId }] });
 
     if (!student) {
       return res.status(404).json({ status: 'error', message: 'Student record not found.' });
@@ -2292,12 +2472,43 @@ app.get('/api/admin2/students/:studentId/fee-breakdown', authenticateToken, requ
     const hostelWaiver = Number(student.hostelWaiver || 0);
     const transportWaiver = Number(student.transportWaiver || 0);
     const miscWaiver = Number(student.miscWaiver || 0);
-    const totalPaid = Number(student.totalPaid || 0);
-    const customFees = (student.customFeeSlots || []).reduce((s, sl) => s + Number(sl.amount || 0), 0);
+    const standardKeys = ['tuitionfee', 'hostelfee', 'transportfee', 'miscellaneousfee', 'previouspending', 'tuition', 'hostel', 'transport', 'misc'];
+    const cleanedSlots = (student.customFeeSlots || []).filter(slot => {
+      if (!slot) return false;
+      const k = String(slot.key || slot.id || '').toLowerCase().trim();
+      const n = String(slot.name || '').toLowerCase().trim();
+      return !standardKeys.includes(k) && !['tuition fee', 'hostel fee', 'transport fee', 'miscellaneous fee', 'previous pending'].includes(n);
+    });
+    const customFees = cleanedSlots.reduce((s, sl) => s + Number(sl.amount || 0), 0);
     const gross = tuitionFee + hostelFee + transportFee + miscFee + previousPending + customFees;
     const totalWaivers = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
-    const remainingBalance = Math.max(0, gross - totalWaivers - totalPaid);
-    return res.json({ status: 'success', data: { baseFee: gross, tuitionFee, hostelFee, transportFee, miscFee, previousPending, scholarshipCategory: 'None', scholarshipPct: 0, scholarshipDeduction: 0, individualOverrideDeduction: 0, tuitionWaiver, hostelWaiver, transportWaiver, miscWaiver, totalPaid, remainingBalance } });
+    const netFeeOwed = Math.max(0, gross - totalWaivers);
+    const remainingBalance = Math.max(0, netFeeOwed - totalPaid);
+
+    return res.json({
+      status: 'success',
+      data: {
+        baseFee: gross,
+        grossFee: gross,
+        totalWaivers,
+        netFeeOwed,
+        tuitionFee,
+        hostelFee,
+        transportFee,
+        miscFee,
+        previousPending,
+        scholarshipCategory: 'None',
+        scholarshipPct: 0,
+        scholarshipDeduction: totalWaivers,
+        individualOverrideDeduction: totalWaivers,
+        tuitionWaiver,
+        hostelWaiver,
+        transportWaiver,
+        miscWaiver,
+        totalPaid,
+        remainingBalance
+      }
+    });
   } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
 });
 
