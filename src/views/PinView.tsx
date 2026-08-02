@@ -63,6 +63,14 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [focusedField, setFocusedField] = useState<'userId' | 'password' | null>(null);
 
+  // Reset the entered 6-digit PIN (clear all digits)
+  const handleResetPin = () => {
+    setPin('');
+    setLastKeypadIndex(null);
+    setIsError(false);
+    setToastMessage(null);
+  };
+
   // Clear toast after 3.5 seconds
   useEffect(() => {
     if (toastMessage) {
