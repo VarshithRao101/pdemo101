@@ -335,7 +335,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#FAFCFF;color:#0F172A
   .mob-btn{display:flex!important}.ic{padding:0 16px}
 }
 @media(max-width:640px){
-  .hero-h{height:clamp(260px,46vh,360px)!important}
+  .hero-h{height:clamp(220px,55vw,360px)!important}
   .section-pad{padding:36px 12px!important}
   .clips-grid{grid-template-columns:repeat(1,1fr)!important;gap:14px!important}
   .stat-val{font-size:24px!important}
@@ -554,7 +554,7 @@ export const PortfolioView: React.FC = () => {
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             HERO — DYNAMIC BIG IMAGE SHOWCASE
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <section id="hero" className="hero-h" style={{ position: 'relative', height: 'clamp(280px, 48vh, 520px)', overflow: 'hidden', background: '#0F172A' }}>
+        <section id="hero" className="hero-h" style={{ position: 'relative', height: 640, overflow: 'hidden', background: '#0F172A' }}>
           {/* Full hero image — clear, responsive, animated scale */}
           <img src={heroImg} alt="Inspire Junior College Campus" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', animation: 'heroCrazyZoom 14s ease-in-out infinite' }} />
           {/* Light vignette around edges */}
