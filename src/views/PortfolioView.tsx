@@ -10,6 +10,12 @@ import clip5 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM 
 import clip6 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM.jpeg';
 import clip7 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.04 PM.jpeg';
 
+import mpcLab from '../assets/generated/mpc_lab.png';
+import bipcLab from '../assets/generated/bipc_lab.png';
+import mecHall from '../assets/generated/mec_hall.png';
+import mentorshipImg from '../assets/generated/mentorship.png';
+import campusImg from '../assets/generated/campus.png';
+
 /* ═══════════════════════════════════════════════════════════════
    INSPIRE JUNIOR COLLEGE — Premium Institutional Portfolio
    Peak-Level Animations · Decorative Borders · Scroll Reveals
@@ -33,6 +39,7 @@ const PROGRAM_CARDS = [
     body: 'Integrated 2-year coaching combining rigorous IPE Board curriculum with JEE Mains & Advanced preparation through daily mock tests, error analysis, and individual mentorship.',
     gradA: '#0F172A', gradB: '#1E3A8A', accent: '#3B82F6',
     tag: 'Engineering Focus',
+    img: mpcLab,
     highlights: ['Specialized Physics & Math Desks', 'Daily JEE Pattern Mock Tests', 'Personal Rank Mentor Assigned', 'Weekly Performance Analytics'],
   },
   {
@@ -41,6 +48,7 @@ const PROGRAM_CARDS = [
     body: 'Comprehensive medical entrance coaching with NCERT line-by-line coverage, daily NEET pattern practice, biology lab sessions, and one-on-one doubt resolution.',
     gradA: '#052E16', gradB: '#065F46', accent: '#10B981',
     tag: 'Medical Focus',
+    img: bipcLab,
     highlights: ['Botany & Zoology Expert Faculty', 'Daily NCERT Line-by-Line Tests', 'Biology Diagnostic Lab Sessions', 'AIIMS Pattern Simulations'],
   },
   {
@@ -49,6 +57,7 @@ const PROGRAM_CARDS = [
     body: 'Commerce and Humanities integrated program with CA Foundation modules, analytical economics workshops, and a strong aptitude base for Civil Services aspirants.',
     gradA: '#431407', gradB: '#7C2D12', accent: '#F59E0B',
     tag: 'Commerce & Civils',
+    img: mecHall,
     highlights: ['CPT / CA Foundation Modules', 'Analytical Economics Workshops', 'Civils Aptitude Foundation', 'Current Affairs & GK Integration'],
   },
 ];
@@ -645,19 +654,20 @@ export const PortfolioView: React.FC = () => {
                 <div key={idx} className={`ch reveal d${(idx+1)*200} ${streamsRef.visible ? 'visible' : ''}`}
                   style={{ background: '#fff', borderRadius: 22, overflow: 'hidden', border: '1.5px solid #E2E8F0', boxShadow: '0 8px 28px rgba(15,23,42,0.06)', display: 'flex', flexDirection: 'column' }}>
 
-                  {/* Header gradient */}
-                  <div style={{ padding: '30px 28px', background: `linear-gradient(160deg,${prog.gradA},${prog.gradB})`, color: '#fff', position: 'relative', overflow: 'hidden' }}>
-                    {/* Decorative circle patterns */}
-                    <div style={{ position: 'absolute', top: -24, right: -24, width: 120, height: 120, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.12)' }} />
-                    <div style={{ position: 'absolute', top: -10, right: -10, width: 80, height: 80, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.08)' }} />
-                    <div style={{ position: 'absolute', bottom: -30, left: -20, width: 100, height: 100, borderRadius: '50%', background: `${prog.accent}22` }} />
-
-                    <span style={{ background: `${prog.accent}30`, border: `1px solid ${prog.accent}60`, padding: '4px 12px', borderRadius: 20, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#fff' }}>
+                  {/* Top generated stream photo */}
+                  <div className="clip-wrap" style={{ height: 190, overflow: 'hidden', position: 'relative', background: '#0F172A' }}>
+                    <img src={prog.img} alt={prog.title} className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, ${prog.gradA} 0%, transparent 80%)` }} />
+                    <span style={{ position: 'absolute', bottom: 12, left: 16, background: prog.accent, color: '#fff', padding: '4px 12px', borderRadius: 20, fontSize: 10.5, fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
                       {prog.tag}
                     </span>
-                    <h3 style={{ fontSize: 24, fontWeight: 900, margin: '14px 0 4px', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{prog.title}</h3>
+                  </div>
+
+                  {/* Header content */}
+                  <div style={{ padding: '24px 28px 20px', background: `linear-gradient(160deg,${prog.gradA},${prog.gradB})`, color: '#fff', position: 'relative', overflow: 'hidden' }}>
+                    <h3 style={{ fontSize: 23, fontWeight: 900, margin: '0 0 4px', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{prog.title}</h3>
                     <div style={{ fontSize: 13, fontWeight: 800, color: prog.accent, marginBottom: 10, letterSpacing: '0.03em' }}>{prog.subtitle}</div>
-                    <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.82)', lineHeight: 1.65 }}>{prog.body}</p>
+                    <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.85)', lineHeight: 1.65, margin: 0 }}>{prog.body}</p>
                   </div>
 
                   {/* Highlights */}
@@ -728,33 +738,44 @@ export const PortfolioView: React.FC = () => {
                 </a>
               </div>
 
-              {/* Right: dark panel with stats */}
-              <div className={`reveal-right ${aboutRef.visible ? 'visible' : ''}`}>
-                <div className="ch" style={{ background: 'linear-gradient(160deg,#0F172A 0%,#1E3A8A 100%)', borderRadius: 24, padding: '40px 36px', color: '#fff', boxShadow: '0 20px 48px rgba(15,23,42,0.22)', position: 'relative', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
+              {/* Right: photo + dark panel with stats */}
+              <div className={`reveal-right ${aboutRef.visible ? 'visible' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+                {/* Mentorship Photo Showcase */}
+                <div className="ch clip-wrap" style={{ borderRadius: 24, overflow: 'hidden', height: 230, position: 'relative', boxShadow: '0 12px 32px rgba(15,23,42,0.12)', border: '1.5px solid #E2E8F0' }}>
+                  <img src={mentorshipImg} alt="Individual Mentorship & Tutors" className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,23,42,0.85) 0%, transparent 60%)' }} />
+                  <div style={{ position: 'absolute', bottom: 16, left: 20, right: 20, color: '#fff' }}>
+                    <span style={{ background: ACCENT_GOLD, color: '#0F172A', padding: '3px 10px', borderRadius: 12, fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      1-on-1 Guidance Desk
+                    </span>
+                    <div style={{ fontSize: 16, fontWeight: 800, marginTop: 4, textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>Dedicated Subject Mentors</div>
+                  </div>
+                </div>
+
+                <div className="ch" style={{ background: 'linear-gradient(160deg,#0F172A 0%,#1E3A8A 100%)', borderRadius: 24, padding: '32px 30px', color: '#fff', boxShadow: '0 20px 48px rgba(15,23,42,0.22)', position: 'relative', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
                   {/* Decorative orbs */}
                   <div style={{ position: 'absolute', top: -30, right: -30, width: 150, height: 150, borderRadius: '50%', background: 'radial-gradient(circle,rgba(245,158,11,0.18),transparent)', animation: 'orbPulse 4s ease-in-out infinite' }} />
                   <div style={{ position: 'absolute', bottom: -40, left: -20, width: 130, height: 130, borderRadius: '50%', background: 'radial-gradient(circle,rgba(37,99,235,0.2),transparent)', animation: 'orbPulse 4s ease-in-out infinite 1.5s' }} />
 
-                  <div style={{ fontSize: 11, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Institutional Excellence</div>
-                  <h3 style={{ fontSize: 26, fontWeight: 900, marginBottom: 14, fontFamily: "'Merriweather',serif", lineHeight: 1.3, position: 'relative' }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Institutional Excellence</div>
+                  <h3 style={{ fontSize: 22, fontWeight: 900, marginBottom: 10, fontFamily: "'Merriweather',serif", lineHeight: 1.3, position: 'relative' }}>
                     Empowering Young Minds in Hanumakonda
                   </h3>
-                  <p style={{ fontSize: 14, color: '#94A3B8', lineHeight: 1.8, marginBottom: 28, position: 'relative' }}>
-                    Proven track record of academic excellence in Intermediate board exams and national competitive engineering &amp; medical entrance tests — backed by structured mentorship.
+                  <p style={{ fontSize: 13.5, color: '#94A3B8', lineHeight: 1.7, marginBottom: 22, position: 'relative' }}>
+                    Proven track record of academic excellence in Intermediate board exams and national entrance tests.
                   </p>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, position: 'relative' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, position: 'relative' }}>
                     {[
                       { val: '100%', sub: 'Doubt Assistance', c: ACCENT_GOLD },
                       { val: 'Top AIR', sub: 'Competitive Ranks', c: '#38BDF8' },
                       { val: '4', sub: 'Premium Campuses', c: '#34D399' },
                       { val: '1500+', sub: 'Alumni &amp; Counting', c: '#C084FC' },
                     ].map((s, i) => (
-                      <div key={i} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.08)', transition: 'background 0.2s, transform 0.2s' }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.transform = ''; }}>
-                        <div style={{ fontSize: 22, fontWeight: 900, color: s.c, marginBottom: 4 }} dangerouslySetInnerHTML={{ __html: s.val }} />
-                        <div style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 700 }} dangerouslySetInnerHTML={{ __html: s.sub }} />
+                      <div key={i} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '14px 16px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <div style={{ fontSize: 20, fontWeight: 900, color: s.c, marginBottom: 2 }} dangerouslySetInnerHTML={{ __html: s.val }} />
+                        <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700 }} dangerouslySetInnerHTML={{ __html: s.sub }} />
                       </div>
                     ))}
                   </div>
@@ -781,6 +802,26 @@ export const PortfolioView: React.FC = () => {
             </div>
             <div className={`dec-divider reveal d200 ${campusesRef.visible ? 'visible' : ''}`} style={{ marginTop: 28 }}>
               <div className="dec-divider-line" /><div className="dec-divider-gem" /><div className="dec-divider-line" />
+            </div>
+
+            {/* Campus Feature Banner Photo */}
+            <div className={`ch clip-wrap reveal d300 ${campusesRef.visible ? 'visible' : ''}`} style={{ borderRadius: 24, overflow: 'hidden', height: 260, position: 'relative', marginBottom: 36, border: '1.5px solid #E2E8F0', boxShadow: '0 12px 36px rgba(15,23,42,0.08)' }}>
+              <img src={campusImg} alt="Inspire Junior College Infrastructure" className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,23,42,0.85) 0%, transparent 60%)' }} />
+              <div style={{ position: 'absolute', bottom: 20, left: 24, right: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 14, color: '#fff' }}>
+                <div>
+                  <span style={{ background: ACCENT_GOLD, color: '#0F172A', padding: '4px 12px', borderRadius: 20, fontSize: 10.5, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    State-of-the-Art Facilities
+                  </span>
+                  <h3 style={{ fontSize: 'clamp(20px,2.5vw,28px)', fontWeight: 900, margin: '6px 0 2px', fontFamily: "'Merriweather',serif" }}>
+                    Modern Classrooms &amp; Science Labs
+                  </h3>
+                  <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Designed for maximum focus, comfort, and competitive exam preparation</p>
+                </div>
+                <a href="#enquiry" className="btn-gold" style={{ padding: '10px 20px', fontSize: 13 }}>
+                  Schedule Campus Tour
+                </a>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(270px,1fr))', gap: 22 }}>
