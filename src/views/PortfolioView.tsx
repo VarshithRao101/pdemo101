@@ -694,9 +694,9 @@ export const PortfolioView: React.FC = () => {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Preferred Location / State</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Preferred Campus / Location</label>
                     <select value={stuCampus} onChange={e => setStuCampus(e.target.value)} style={inputStyle}>
-                      {['Hyderabad','Warangal / Hanamkonda','Vijayawada','Chennai','Bangalore','Mumbai','Delhi','Jaipur','Pune'].map(c => <option key={c}>{c}</option>)}
+                      {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2', 'Warangal / Hanamkonda', 'Hyderabad', 'Vijayawada', 'Chennai', 'Bangalore'].map(c => <option key={c}>{c}</option>)}
                     </select>
                   </div>
 

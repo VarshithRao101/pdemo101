@@ -4724,10 +4724,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               style={{ ...styles.selectInput, flex: 1, minWidth: '140px' }}
             >
               <option value="All">All Statuses</option>
-              <option value="New">New</option>
+              <option value="Pending">Pending</option>
               <option value="Contacted">Contacted</option>
               <option value="Enrolled">Enrolled</option>
-              <option value="Archived">Archived</option>
+              <option value="Closed">Closed</option>
             </select>
 
             <button
@@ -4743,16 +4743,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px', zIndex: 1 }}>
             {filteredEnquiries.map(enq => {
               const statusColorMap: Record<string, { bg: string; text: string; border: string }> = {
+                Pending: { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
                 New: { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
                 Contacted: { bg: '#EFF6FF', text: '#1E40AF', border: '#3B82F6' },
                 Enrolled: { bg: '#ECFDF5', text: '#065F46', border: '#10B981' },
+                Closed: { bg: '#F1F5F9', text: '#475569', border: '#94A3B8' },
                 Archived: { bg: '#F1F5F9', text: '#475569', border: '#94A3B8' }
               };
-              const badgeStyle = statusColorMap[enq.status] || statusColorMap.New;
+              const badgeStyle = statusColorMap[enq.status] || statusColorMap.Pending;
 
               return (
                 <div
-                  key={enq.id || enq.referenceCode}
+                  key={enq._id || enq.id || enq.referenceCode}
                   style={{
                     padding: '16px',
                     borderRadius: '16px',
@@ -4831,13 +4833,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted-gray)' }}>Status:</span>
                       <select
                         value={enq.status}
-                        onChange={(e) => handleUpdateStatus(enq.id || enq.referenceCode, e.target.value)}
+                        onChange={(e) => handleUpdateStatus(enq._id || enq.id || enq.referenceCode, e.target.value)}
                         style={{ ...styles.selectInput, padding: '3px 8px', fontSize: '10px', width: 'auto' }}
                       >
-                        <option value="New">New</option>
+                        <option value="Pending">Pending</option>
                         <option value="Contacted">Contacted</option>
                         <option value="Enrolled">Enrolled</option>
-                        <option value="Archived">Archived</option>
+                        <option value="Closed">Closed</option>
                       </select>
                     </div>
                   </div>

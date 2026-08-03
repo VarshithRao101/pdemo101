@@ -65,7 +65,7 @@ app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
     const normOrigin = origin.toLowerCase().trim();
-    if (allowedOrigins.includes(normOrigin) || allowedOrigins.includes('*')) {
+    if (allowedOrigins.includes(normOrigin) || allowedOrigins.includes('*') || normOrigin.includes('localhost') || normOrigin.includes('127.0.0.1')) {
       return callback(null, true);
     }
     const err = new Error('Not allowed by CORS policy');
@@ -2360,8 +2360,8 @@ app.post('/api/enquiries', async (req, res) => {
 app.get('/api/enquiries', authenticateToken, async (req, res) => {
   try {
     await connectToDatabase();
-    const campus = req.query.branch || req.user.campus;
-    const filter = (campus && campus !== 'All') ? { preferredCampus: campus } : {};
+    const campus = req.query.branch || (req.user.role === 'admin1' ? 'All' : req.user.campus);
+    const filter = (!campus || campus === 'All') ? {} : { preferredCampus: new RegExp(campus.split(' ')[0], 'i') };
     const enquiries = await Enquiry.find(filter).sort({ createdAt: -1 }).lean();
     return res.json({ status: 'success', data: enquiries });
   } catch (err) {
@@ -2532,9 +2532,20 @@ app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRol
 app.patch('/api/enquiries/:id', authenticateToken, async (req, res) => {
   try {
     await connectToDatabase();
-    const doc = await Enquiry.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true });
+    const { id } = req.params;
+    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const doc = await Enquiry.findOneAndUpdate(
+      { $or: [{ _id: isObjId ? id : null }, { referenceCode: id }] },
+      { $set: req.body },
+      { new: true }
+    );
+    if (!doc) {
+      return res.status(404).json({ status: 'error', message: 'Enquiry record not found.' });
+    }
     return res.json({ status: 'success', data: doc });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
 });
 
 // Centralized error handler
