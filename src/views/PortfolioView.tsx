@@ -12,11 +12,11 @@ import clip7 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.04 PM.
 
 /* ─────────────────────────────────────────────────────────────
    INSPIRE JUNIOR COLLEGE — Official Institutional Portfolio
-   Enhanced with PC Smooth Animations, Glassmorphism, Dynamic
-   Hovers, Paper Clips Lightbox, and Mobile Responsive Polish.
+   Big Hero Image Showcase & Paper Clips Gallery Only.
+   All extraneous photos removed from other sections per spec.
 ─────────────────────────────────────────────────────────────── */
 
-// ── Paper Clips Data ──────────────────────────────────────────
+// ── Paper Clips Data (ONLY Photos on Page along with Hero) ───
 const PAPER_CLIPS = [
   { id: 1, src: clip1, title: 'Press Coverage — Top State Ranks in Entrance Exams', subtitle: 'Inspire Junior College students shine with top AIR & State ranks in JEE & NEET entrance exams.' },
   { id: 2, src: clip2, title: 'Achievers Announcement — Board Exam Records', subtitle: 'State record-breaking marks scored by Inspire Junior College students.' },
@@ -27,28 +27,31 @@ const PAPER_CLIPS = [
   { id: 7, src: clip7, title: 'Inspire Junior College Annual Results Highlight', subtitle: 'Comprehensive newspaper feature showcasing our stellar rankers and campus achievements.' },
 ];
 
-// ── Program Cards Data ─────────────────────────────────────────
+// ── Program Cards Data (Clean UI Cards - No Extraneous Photos) ─
 const PROGRAM_CARDS = [
   {
     title: 'Intermediate + MPC (JEE)',
     subtitle: 'Integrated 2-year preparation for IIT-JEE Mains & Advanced alongside IPE Board Exam.',
     gradFrom: '#1E3A8A', gradTo: '#2563EB',
     tag: 'Engineering Focus',
-    clip: clip6
+    icon: '⚡',
+    highlights: ['Specialized Physics & Math Desks', 'Daily JEE Pattern Mock Tests', 'Personal Rank Mentor']
   },
   {
     title: 'Intermediate + BiPC (NEET)',
     subtitle: 'Comprehensive coaching for NEET Medical & AIIMS entrance exams with daily practice tests.',
     gradFrom: '#065F46', gradTo: '#10B981',
     tag: 'Medical Focus',
-    clip: clip5
+    icon: '🧬',
+    highlights: ['Botany & Zoology Expert Guidance', 'Daily NCERT Line-by-Line Tests', 'Biology Diagnostic Lab']
   },
   {
     title: 'Intermediate + MEC / CEC',
     subtitle: 'Foundation for CA, CS, CMA, and Civils with strong emphasis on Commerce & Economics.',
     gradFrom: '#7C2D12', gradTo: '#D97706',
     tag: 'Commerce & Civils',
-    clip: clip4
+    icon: '📊',
+    highlights: ['CPT / CA Foundation Modules', 'Analytical Economics Workshops', 'Civils Aptitude Foundation']
   },
 ];
 
@@ -61,10 +64,10 @@ const STAT_CARDS = [
 ];
 
 const CAMPUSES_LIST = [
-  { name: 'Erragattugutta Campus 1', desc: 'State-of-the-art academic block & modern laboratory facilities.', clip: clip1 },
-  { name: 'Erragattugutta Campus 2', desc: 'Spacious classrooms with integrated digital learning tools.', clip: clip2 },
-  { name: 'Bheemaram Campus 1', desc: 'Dedicated coaching center with specialized exam simulation halls.', clip: clip3 },
-  { name: 'Bheemaram Campus 2', desc: 'Tranquil residential atmosphere with 24/7 study supervision.', clip: clip7 },
+  { name: 'Erragattugutta Campus 1', code: 'C1', desc: 'State-of-the-art academic block & modern laboratory facilities.', bg: '#EFF6FF', border: '#3B82F6' },
+  { name: 'Erragattugutta Campus 2', code: 'C2', desc: 'Spacious classrooms with integrated digital learning tools.', bg: '#ECFDF5', border: '#10B981' },
+  { name: 'Bheemaram Campus 1', code: 'B1', desc: 'Dedicated coaching center with specialized exam simulation halls.', bg: '#FFFBEB', border: '#F59E0B' },
+  { name: 'Bheemaram Campus 2', code: 'B2', desc: 'Tranquil residential atmosphere with 24/7 study supervision.', bg: '#F5F3FF', border: '#8B5CF6' },
 ];
 
 // ── Theme Colors ───────────────────────────────────────────────
@@ -82,9 +85,9 @@ const CSS = `
 html { scroll-behavior: smooth; }
 body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; color: #1E293B; overflow-x: hidden; }
 
-/* CSS Keyframes */
+/* Keyframe Animations */
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(28px); }
+  from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -92,11 +95,6 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; color: #1
   0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45); }
   70% { box-shadow: 0 0 0 14px rgba(245, 158, 11, 0); }
   100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-}
-
-@keyframes floatSlow {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
 }
 
 @keyframes modalZoomIn {
@@ -118,8 +116,8 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; color: #1
   will-change: transform, box-shadow;
 }
 .inspire-card-hover:hover {
-  transform: translateY(-8px) scale(1.01);
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15) !important;
+  transform: translateY(-6px);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12) !important;
 }
 
 /* Paper Clips Image Animations */
@@ -128,19 +126,15 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; color: #1
   position: relative;
 }
 .inspire-clip-container:hover .inspire-clip-img {
-  transform: scale(1.06) rotate(0.5deg);
-  filter: brightness(1.06);
+  transform: scale(1.05);
+  filter: brightness(1.04);
 }
 .inspire-clip-img {
-  transition: transform 0.45s cubic-bezier(0.25, 0.8, 0.25, 1), filter 0.35s ease;
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), filter 0.3s ease;
 }
 
 .inspire-btn-pulse {
   animation: pulseGlow 2.5s infinite;
-}
-
-.inspire-float {
-  animation: floatSlow 4s ease-in-out infinite;
 }
 
 /* Navigation Link Underline Hover Effect */
@@ -215,10 +209,8 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; color: #1
 }
 
 @media (max-width: 640px) {
-  .inspire-section-pad { padding: 48px 14px !important; }
-  .inspire-hero-box { height: 460px !important; }
-  .inspire-hero-title { font-size: 26px !important; }
-  .inspire-hero-desc { font-size: 14px !important; margin-bottom: 20px !important; }
+  .inspire-section-pad { padding: 44px 14px !important; }
+  .inspire-hero-box { height: 420px !important; }
   .inspire-stat-box { min-width: 130px !important; padding: 12px 14px !important; }
   .inspire-stat-val { font-size: 24px !important; }
   .inspire-form-box { padding: 22px 16px !important; border-radius: 18px !important; }
@@ -243,7 +235,7 @@ export const PortfolioView: React.FC = () => {
   const [enquiryRef, setEnquiryRef] = useState('');
   const [enquiryError, setEnquiryError] = useState('');
 
-  // Lightbox Modal state for paper clips
+  // Lightbox Modal state for paper clips ONLY
   const [selectedClip, setSelectedClip] = useState<typeof PAPER_CLIPS[0] | null>(null);
 
   // Mobile menu state
@@ -416,48 +408,39 @@ export const PortfolioView: React.FC = () => {
         </nav>
 
         {/* ══════════════════════════════════════════
-            CONSTANT HERO BANNER
+            CLEAN BIG HERO IMAGE SHOWCASE SECTION
         ══════════════════════════════════════════ */}
-        <section id="hero" className="inspire-hero-box" style={{ position: 'relative', overflow: 'hidden', height: 540, background: '#0F172A' }}>
-          {/* Constant Background Hero Image */}
+        <section id="hero" className="inspire-hero-box" style={{ position: 'relative', overflow: 'hidden', height: '620px', background: '#0F172A' }}>
+          {/* Big Size Hero Image — Clean, Crisp Showcase */}
           <div style={{ position: 'absolute', inset: 0 }}>
             <img
               src={heroImg}
-              alt="Inspire Junior College Campus"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.52)' }}
+              alt="Inspire Junior College Main Campus Showcase"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           </div>
 
-          {/* Gradient Overlay */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.35) 0%, rgba(15,23,42,0.88) 100%)' }} />
+          {/* Subtle Subtle Bottom Gradient for Hero Contrast */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.15) 0%, rgba(15,23,42,0.7) 100%)' }} />
 
-          {/* Constant Hero Banner Text Content */}
-          <div className="anim-fade-up" style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', textAlign: 'center', padding: '0 20px' }}>
-            <div className="inspire-float" style={{ background: 'rgba(245,158,11,0.22)', border: '1.5px solid rgba(245,158,11,0.7)', backdropFilter: 'blur(10px)', borderRadius: 32, padding: '6px 20px', fontSize: 13, fontWeight: 800, color: ACCENT_GOLD, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
-              Admissions Open for Academic Year 2026-27
-            </div>
-            
-            <h1 className="inspire-hero-title" style={{ fontSize: 'clamp(28px, 4.5vw, 56px)', fontWeight: 900, lineHeight: 1.2, maxWidth: 960, fontFamily: "'Merriweather', serif", margin: '0 0 16px', textShadow: '0 4px 16px rgba(0,0,0,0.6)' }}>
-              Inspire Junior College
-            </h1>
+          {/* Clean Overlay Banner Title */}
+          <div style={{ position: 'absolute', bottom: 32, left: 0, right: 0 }}>
+            <div className="inspire-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
+              <div>
+                <div style={{ background: ACCENT_GOLD, color: '#0F172A', display: 'inline-block', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                  Inspire Junior College HQ
+                </div>
+                <h1 style={{ fontSize: 'clamp(26px, 4vw, 48px)', fontWeight: 900, color: '#FFFFFF', fontFamily: "'Merriweather', serif", textShadow: '0 4px 12px rgba(0,0,0,0.6)', margin: 0 }}>
+                  Inspire Junior College
+                </h1>
+              </div>
 
-            <p className="inspire-hero-desc" style={{ fontSize: 'clamp(14px, 2vw, 19px)', fontWeight: 500, color: '#F1F5F9', maxWidth: 780, lineHeight: 1.6, margin: '0 0 28px' }}>
-              Hanumakonda’s Premier Institution for IIT-JEE, NEET &amp; Intermediate Board Excellence with Individual Doubt Clarification &amp; Personal Mentorship.
-            </p>
-
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
               <a
                 href="#enquiry"
-                className="inspire-card-hover inspire-btn-pulse"
-                style={{ background: ACCENT_GOLD, color: '#0F172A', padding: '14px 32px', fontWeight: 900, fontSize: 15, textDecoration: 'none', borderRadius: 10, boxShadow: '0 4px 20px rgba(245,158,11,0.4)' }}
+                className="inspire-btn-pulse"
+                style={{ background: ACCENT_GOLD, color: '#0F172A', padding: '14px 32px', fontWeight: 900, fontSize: 15, textDecoration: 'none', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}
               >
-                Apply for Admission 2026
-              </a>
-              <a
-                href="#paper-clips"
-                style={{ background: 'rgba(255,255,255,0.15)', color: '#FFFFFF', border: '1.5px solid rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)', padding: '14px 28px', fontWeight: 700, fontSize: 15, textDecoration: 'none', borderRadius: 10, transition: 'all 0.25s' }}
-              >
-                View News &amp; Rank Clippings
+                Apply for Admission 2026 &rarr;
               </a>
             </div>
           </div>
@@ -467,7 +450,7 @@ export const PortfolioView: React.FC = () => {
             HIGHLIGHT STATS BAR
         ══════════════════════════════════════════ */}
         <section style={{ background: LIGHT_BG, padding: '0 16px' }}>
-          <div className="inspire-container" style={{ position: 'relative', marginTop: -36, paddingBottom: 40 }}>
+          <div className="inspire-container" style={{ position: 'relative', marginTop: -28, paddingBottom: 40 }}>
             <div style={{ background: '#FFFFFF', borderRadius: 22, padding: 14, boxShadow: '0 10px 40px rgba(15,23,42,0.12)', border: '1.5px solid #E2E8F0' }}>
               <div style={{ display: 'flex', gap: 14, flexWrap: 'nowrap', overflowX: 'auto' }}>
                 {STAT_CARDS.map((stat, idx) => (
@@ -484,14 +467,15 @@ export const PortfolioView: React.FC = () => {
         </section>
 
         {/* ══════════════════════════════════════════
-            ACHIEVEMENTS & PAPER CLIPS GALLERY
+            MEDIA PRESS & PAPER CLIPS GALLERY
+            (ONLY Section with Student/News Photos)
         ══════════════════════════════════════════ */}
         <section id="paper-clips" className="inspire-section-pad" style={{ padding: '70px 16px', background: BODY_WHITE }}>
           <div className="inspire-container">
             
             <div style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 48px' }}>
               <span style={{ fontSize: 12, fontWeight: 800, color: '#2563EB', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                Media Press &amp; Rank Clippings
+                Official Media Releases &amp; Ranks
               </span>
               <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather', serif", margin: '8px 0 14px' }}>
                 Our Paper Clips &amp; Rank Achievements
@@ -556,6 +540,7 @@ export const PortfolioView: React.FC = () => {
 
         {/* ══════════════════════════════════════════
             ACADEMIC STREAMS OFFERED
+            (Clean UI Cards - NO Extraneous Photos)
         ══════════════════════════════════════════ */}
         <section id="streams" className="inspire-section-pad" style={{ padding: '80px 16px', background: LIGHT_BG }}>
           <div className="inspire-container">
@@ -587,11 +572,15 @@ export const PortfolioView: React.FC = () => {
                     flexDirection: 'column'
                   }}
                 >
-                  <div style={{ padding: '24px 28px', background: `linear-gradient(135deg, ${prog.gradFrom} 0%, ${prog.gradTo} 100%)`, color: '#FFF' }}>
-                    <span style={{ background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 800, letterSpacing: '0.04em' }}>
-                      {prog.tag}
-                    </span>
-                    <h3 style={{ fontSize: 22, fontWeight: 900, margin: '14px 0 8px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  <div style={{ padding: '28px', background: `linear-gradient(135deg, ${prog.gradFrom} 0%, ${prog.gradTo} 100%)`, color: '#FFF' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                      <span style={{ background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 800, letterSpacing: '0.04em' }}>
+                        {prog.tag}
+                      </span>
+                      <span style={{ fontSize: 28 }}>{prog.icon}</span>
+                    </div>
+
+                    <h3 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                       {prog.title}
                     </h3>
                     <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.9)', lineHeight: 1.6 }}>
@@ -599,14 +588,21 @@ export const PortfolioView: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Program Paper Clip Snippet */}
-                  <div style={{ height: 190, overflow: 'hidden', position: 'relative' }}>
-                    <img src={prog.clip} alt={prog.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
+                  <div style={{ padding: '24px 28px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 20 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Program Highlights:</div>
+                      {prog.highlights.map((h, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 700, color: DARK_TEXT }}>
+                          <span style={{ color: '#10B981', fontWeight: 900 }}>✓</span>
+                          <span>{h}</span>
+                        </div>
+                      ))}
+                    </div>
 
-                  <div style={{ padding: '20px 28px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#64748B' }}>Duration: 2 Academic Years</span>
-                    <a href="#enquiry" style={{ color: '#2563EB', fontWeight: 800, fontSize: 14, textDecoration: 'none' }}>Apply Stream &rarr;</a>
+                    <div style={{ paddingTop: 16, borderTop: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#64748B' }}>Duration: 2 Academic Years</span>
+                      <a href="#enquiry" style={{ color: '#2563EB', fontWeight: 800, fontSize: 14, textDecoration: 'none' }}>Apply Stream &rarr;</a>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -617,6 +613,7 @@ export const PortfolioView: React.FC = () => {
 
         {/* ══════════════════════════════════════════
             ABOUT INSPIRE JUNIOR COLLEGE & MENTORSHIP
+            (Clean UI Layout - NO Extraneous Photos)
         ══════════════════════════════════════════ */}
         <section id="about" id-sec="mentorship" className="inspire-section-pad" style={{ padding: '80px 16px', background: BODY_WHITE }}>
           <div className="inspire-container">
@@ -652,12 +649,26 @@ export const PortfolioView: React.FC = () => {
                 </a>
               </div>
 
-              {/* Featured Paper Clip Newspaper Snapshot */}
-              <div className="inspire-card-hover" style={{ borderRadius: 22, overflow: 'hidden', boxShadow: '0 12px 36px rgba(15,23,42,0.12)', border: '2px solid #E2E8F0' }}>
-                <img src={clip7} alt="Inspire Junior College Media Release" style={{ width: '100%', height: 'auto', display: 'block' }} />
-                <div style={{ padding: '18px 22px', background: '#F8FAFC', borderTop: '1.5px solid #E2E8F0' }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase' }}>Official Media Press Feature</div>
-                  <div style={{ fontSize: 14.5, fontWeight: 800, color: DARK_TEXT, marginTop: 4 }}>Inspire Junior College Students Dominate State Level Competitive Ranks</div>
+              {/* Clean Feature Box (No Photo) */}
+              <div className="inspire-card-hover" style={{ borderRadius: 22, background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)', padding: '36px', color: '#FFFFFF', boxShadow: '0 12px 36px rgba(15,23,42,0.16)' }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+                  Institutional Excellence
+                </div>
+                <h3 style={{ fontSize: 24, fontWeight: 900, marginBottom: 14, fontFamily: "'Merriweather', serif" }}>
+                  Empowering Young Minds in Hanumakonda
+                </h3>
+                <p style={{ fontSize: 14.5, color: '#94A3B8', lineHeight: 1.75, marginBottom: 24 }}>
+                  Proven track record of success in intermediate board exams and national competitive engineering &amp; medical entrance tests with personal guidance.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.12)' }}>
+                  <div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: ACCENT_GOLD }}>100%</div>
+                    <div style={{ fontSize: 12, color: '#CBD5E1', fontWeight: 600 }}>Doubt Assistance</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: '#38BDF8' }}>Top AIR</div>
+                    <div style={{ fontSize: 12, color: '#CBD5E1', fontWeight: 600 }}>Competitive Ranks</div>
+                  </div>
                 </div>
               </div>
 
@@ -667,6 +678,7 @@ export const PortfolioView: React.FC = () => {
 
         {/* ══════════════════════════════════════════
             OUR 4 CAMPUSES SECTION
+            (Clean UI Cards - NO Extraneous Photos)
         ══════════════════════════════════════════ */}
         <section id="campuses" className="inspire-section-pad" style={{ padding: '80px 16px', background: LIGHT_BG }}>
           <div className="inspire-container">
@@ -690,25 +702,34 @@ export const PortfolioView: React.FC = () => {
                   className="inspire-card-hover"
                   style={{
                     background: '#FFFFFF',
-                    borderRadius: 18,
-                    overflow: 'hidden',
-                    border: '1.5px solid #E2E8F0',
-                    boxShadow: '0 4px 16px rgba(15,23,42,0.06)'
+                    borderRadius: 20,
+                    padding: '28px 24px',
+                    border: `1.5px solid ${campus.border}`,
+                    boxShadow: '0 4px 16px rgba(15,23,42,0.06)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justify: 'space-between',
+                    gap: 16
                   }}
                 >
-                  <div style={{ height: 180, overflow: 'hidden' }}>
-                    <img src={campus.clip} alt={campus.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                  <div style={{ padding: '20px' }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: '#2563EB', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  <div>
+                    <div style={{ display: 'inline-flex', width: 44, height: 44, borderRadius: 12, background: campus.bg, color: campus.border, fontWeight: 900, fontSize: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                      {campus.code}
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#2563EB', letterSpacing: '0.05em', textTransform: 'uppercase', display: 'block' }}>
                       Campus Branch
                     </span>
-                    <h3 style={{ fontSize: 18, fontWeight: 800, color: DARK_TEXT, margin: '6px 0 8px' }}>
+                    <h3 style={{ fontSize: 19, fontWeight: 900, color: DARK_TEXT, margin: '4px 0 8px' }}>
                       {campus.name}
                     </h3>
-                    <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6 }}>
+                    <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.6 }}>
                       {campus.desc}
                     </p>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 800, color: campus.border }}>
+                    <span>Explore Campus Facilities</span>
+                    <span>&rarr;</span>
                   </div>
                 </div>
               ))}
@@ -841,7 +862,7 @@ export const PortfolioView: React.FC = () => {
         </section>
 
         {/* ══════════════════════════════════════════
-            LIGHTBOX MODAL FOR ENLARGING PAPER CLIPS
+            LIGHTBOX MODAL FOR ENLARGING PAPER CLIPS ONLY
         ══════════════════════════════════════════ */}
         {selectedClip && (
           <div
