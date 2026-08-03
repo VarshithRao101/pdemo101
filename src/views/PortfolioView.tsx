@@ -12,19 +12,19 @@ import clip7 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.04 PM.
 
 /* ─────────────────────────────────────────────────────────────
    INSPIRE JUNIOR COLLEGE — Official Institutional Portfolio
-   Featuring Paper Clips News Gallery, Constant Hero Banner,
-   Campus Locations, and Public Admission Enquiry Desk.
+   Enhanced with PC Smooth Animations, Glassmorphism, Dynamic
+   Hovers, Paper Clips Lightbox, and Mobile Responsive Polish.
 ─────────────────────────────────────────────────────────────── */
 
 // ── Paper Clips Data ──────────────────────────────────────────
 const PAPER_CLIPS = [
-  { id: 1, src: clip1, title: 'Press Coverage — Top State Ranks in Competitive Exams', subtitle: 'Inspire Junior College students shine with top AIR & State ranks in JEE & NEET entrance exams.' },
-  { id: 2, src: clip2, title: 'Achievers Announcement — Outstanding Intermediate Board Results', subtitle: 'State record-breaking marks scored by Inspire Junior College students.' },
-  { id: 3, src: clip3, title: 'National Talent Felicitation — Media Feature', subtitle: 'Felicitation ceremony honoring state toppers and national rank holders.' },
-  { id: 4, src: clip4, title: 'Special Academic Excellence Award', subtitle: 'Inspire Junior College recognized for individual mentorship and specialized doubt clarification.' },
+  { id: 1, src: clip1, title: 'Press Coverage — Top State Ranks in Entrance Exams', subtitle: 'Inspire Junior College students shine with top AIR & State ranks in JEE & NEET entrance exams.' },
+  { id: 2, src: clip2, title: 'Achievers Announcement — Board Exam Records', subtitle: 'State record-breaking marks scored by Inspire Junior College students.' },
+  { id: 3, src: clip3, title: 'National Talent Felicitation Media Release', subtitle: 'Grand felicitation ceremony honoring state toppers and national rank holders.' },
+  { id: 4, src: clip4, title: 'Academic Excellence & Mentorship Award', subtitle: 'Inspire Junior College recognized for individual mentorship and specialized doubt clarification.' },
   { id: 5, src: clip5, title: 'NEET Medical Entrance Record Ranks', subtitle: 'Highest selection percentage in NEET Medical entrance across Warangal & Hanamkonda.' },
   { id: 6, src: clip6, title: 'IIT-JEE Mains & Advanced Top Scorers', subtitle: 'Students secure 99+ percentile in JEE Mains with top rank admissions into IITs & NITs.' },
-  { id: 7, src: clip7, title: 'Inspire Junior College Annual Results Feature', subtitle: 'Comprehensive newspaper highlight showcasing our stellar rankers and campus achievements.' },
+  { id: 7, src: clip7, title: 'Inspire Junior College Annual Results Highlight', subtitle: 'Comprehensive newspaper feature showcasing our stellar rankers and campus achievements.' },
 ];
 
 // ── Program Cards Data ─────────────────────────────────────────
@@ -53,11 +53,11 @@ const PROGRAM_CARDS = [
 ];
 
 const STAT_CARDS = [
-  { value: '100%', label: 'Dedicated Mentorship', bg: '#1E3A8A' },
-  { value: '4', label: 'Campuses in Hanamkonda', bg: '#0D9488' },
-  { value: '99%+', label: 'Top Percentile Performers', bg: '#D97706' },
-  { value: '24/7', label: 'Doubt Clarification', bg: '#4C1D95' },
-  { value: '1500+', label: 'Successful Admissions', bg: '#0284C7' },
+  { value: '100%', label: 'Dedicated Mentorship', bg: 'linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%)' },
+  { value: '4', label: 'Campuses in Hanamkonda', bg: 'linear-gradient(135deg, #0D9488 0%, #14B8A6 100%)' },
+  { value: '99%+', label: 'Top Percentile Performers', bg: 'linear-gradient(135deg, #D97706 0%, #F59E0B 100%)' },
+  { value: '24/7', label: 'Doubt Clarification', bg: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)' },
+  { value: '1500+', label: 'Successful Admissions', bg: 'linear-gradient(135deg, #0284C7 0%, #38BDF8 100%)' },
 ];
 
 const CAMPUSES_LIST = [
@@ -76,22 +76,152 @@ const LIGHT_BG = '#F8FAFC';
 
 // ── Stylesheet ─────────────────────────────────────────────────
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Merriweather:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400&display=swap');
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; color: #1E293B; }
-.inspire-container { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
-.inspire-card-hover { transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease; }
-.inspire-card-hover:hover { transform: translateY(-6px); box-shadow: 0 12px 32px rgba(15,23,42,0.14); }
-.inspire-clip-img { transition: transform 0.4s ease, filter 0.3s ease; }
-.inspire-clip-container:hover .inspire-clip-img { transform: scale(1.04); filter: brightness(1.05); }
-.inspire-nav-link { font-size: 14px; font-weight: 600; color: #E2E8F0; text-decoration: none; white-space: nowrap; transition: color 0.2s; }
-.inspire-nav-link:hover { color: ${ACCENT_GOLD}; }
-.inspire-top-link { font-size: 13.5px; font-weight: 600; color: ${DARK_TEXT}; text-decoration: none; transition: color 0.2s; }
-.inspire-top-link:hover { color: #2563EB; }
+html { scroll-behavior: smooth; }
+body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; color: #1E293B; overflow-x: hidden; }
+
+/* CSS Keyframes */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45); }
+  70% { box-shadow: 0 0 0 14px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes modalZoomIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Container */
+.inspire-container { max-width: 1280px; margin: 0 auto; padding: 0 20px; }
+
+/* Dynamic Card Hover Effects */
+.inspire-card-hover {
+  transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+  will-change: transform, box-shadow;
+}
+.inspire-card-hover:hover {
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15) !important;
+}
+
+/* Paper Clips Image Animations */
+.inspire-clip-container {
+  transition: all 0.35s ease;
+  position: relative;
+}
+.inspire-clip-container:hover .inspire-clip-img {
+  transform: scale(1.06) rotate(0.5deg);
+  filter: brightness(1.06);
+}
+.inspire-clip-img {
+  transition: transform 0.45s cubic-bezier(0.25, 0.8, 0.25, 1), filter 0.35s ease;
+}
+
+.inspire-btn-pulse {
+  animation: pulseGlow 2.5s infinite;
+}
+
+.inspire-float {
+  animation: floatSlow 4s ease-in-out infinite;
+}
+
+/* Navigation Link Underline Hover Effect */
+.inspire-nav-link {
+  font-size: 14px;
+  font-weight: 700;
+  color: #CBD5E1;
+  text-decoration: none;
+  white-space: nowrap;
+  position: relative;
+  padding: 4px 0;
+  transition: color 0.25s ease;
+}
+.inspire-nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2.5px;
+  background: #F59E0B;
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+.inspire-nav-link:hover {
+  color: #FFFFFF;
+}
+.inspire-nav-link:hover::after {
+  width: 100%;
+}
+
+.inspire-top-link {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #334155;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+.inspire-top-link:hover {
+  color: #2563EB;
+  transform: translateY(-1px);
+}
+
+/* Form Input Active Glow */
+.inspire-input-focus {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.inspire-input-focus:focus {
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.15) !important;
+  background: #FFFFFF !important;
+}
+
+.anim-fade-up {
+  animation: fadeInUp 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) both;
+}
+
+.anim-modal-zoom {
+  animation: modalZoomIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) both;
+}
+
+.anim-slide-down {
+  animation: slideDown 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) both;
+}
+
+/* Responsive Breakpoints Optimization */
 @media (max-width: 1024px) {
   .inspire-desktop-nav { display: none !important; }
   .inspire-desktop-top { display: none !important; }
   .inspire-mobile-btn { display: flex !important; }
+  .inspire-container { padding: 0 16px; }
+}
+
+@media (max-width: 640px) {
+  .inspire-section-pad { padding: 48px 14px !important; }
+  .inspire-hero-box { height: 460px !important; }
+  .inspire-hero-title { font-size: 26px !important; }
+  .inspire-hero-desc { font-size: 14px !important; margin-bottom: 20px !important; }
+  .inspire-stat-box { min-width: 130px !important; padding: 12px 14px !important; }
+  .inspire-stat-val { font-size: 24px !important; }
+  .inspire-form-box { padding: 22px 16px !important; border-radius: 18px !important; }
 }
 `;
 
@@ -164,7 +294,7 @@ export const PortfolioView: React.FC = () => {
   };
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '12px 14px', background: '#F8FAFC',
+    width: '100%', padding: '13px 15px', background: '#F8FAFC',
     border: '1.5px solid #CBD5E1', borderRadius: 10, color: DARK_TEXT,
     fontSize: 14, outline: 'none', fontFamily: 'Plus Jakarta Sans, sans-serif',
   };
@@ -206,9 +336,10 @@ export const PortfolioView: React.FC = () => {
               <a href="#about" className="inspire-top-link">About College</a>
             </div>
 
-            {/* Call to Action Button */}
+            {/* Call to Action Button with Pulse Glow */}
             <a
               href="#enquiry"
+              className="inspire-btn-pulse"
               style={{
                 background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
                 color: '#FFFFFF',
@@ -220,7 +351,8 @@ export const PortfolioView: React.FC = () => {
                 boxShadow: '0 4px 14px rgba(217,119,6,0.25)',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 8
+                gap: 8,
+                transition: 'transform 0.2s'
               }}
             >
               <span>Enquire Now</span>
@@ -256,11 +388,11 @@ export const PortfolioView: React.FC = () => {
               ))}
             </div>
 
-            {/* Mobile Hamburger Toggle */}
+            {/* Mobile Hamburger Toggle (44px touch target) */}
             <button
               className="inspire-mobile-btn"
               onClick={() => setMobileOpen(o => !o)}
-              style={{ display: 'none', background: 'none', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 6, padding: '6px 10px', color: '#fff', cursor: 'pointer' }}
+              style={{ display: 'none', background: 'none', border: '1.5px solid rgba(255,255,255,0.3)', borderRadius: 8, padding: '8px 12px', color: '#fff', cursor: 'pointer', minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
             >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
@@ -268,7 +400,7 @@ export const PortfolioView: React.FC = () => {
 
           {/* Mobile Navigation Dropdown */}
           {mobileOpen && (
-            <div style={{ background: NAVBAR_NAVY, borderTop: '1px solid rgba(255,255,255,0.15)', padding: '16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="anim-slide-down" style={{ background: NAVBAR_NAVY, borderTop: '1px solid rgba(255,255,255,0.15)', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
               {[
                 { href: '#about', label: 'About College' },
                 { href: '#streams', label: 'Academic Streams' },
@@ -276,9 +408,9 @@ export const PortfolioView: React.FC = () => {
                 { href: '#campuses', label: 'Our 4 Campuses' },
                 { href: '#enquiry', label: 'Admission Form' }
               ].map(link => (
-                <a key={link.label} href={link.href} onClick={() => setMobileOpen(false)} style={{ color: '#fff', fontSize: 15, fontWeight: 600, textDecoration: 'none' }}>{link.label}</a>
+                <a key={link.label} href={link.href} onClick={() => setMobileOpen(false)} style={{ color: '#F8FAFC', fontSize: 15, fontWeight: 700, textDecoration: 'none', padding: '6px 0' }}>{link.label}</a>
               ))}
-              <a href="#enquiry" onClick={() => setMobileOpen(false)} style={{ background: ACCENT_GOLD, color: '#000', padding: '10px 20px', fontWeight: 800, textDecoration: 'none', textAlign: 'center', borderRadius: 8 }}>Enquire Now</a>
+              <a href="#enquiry" onClick={() => setMobileOpen(false)} style={{ background: ACCENT_GOLD, color: '#000', padding: '12px 20px', fontWeight: 800, textDecoration: 'none', textAlign: 'center', borderRadius: 8, marginTop: 4 }}>Enquire Now</a>
             </div>
           )}
         </nav>
@@ -286,44 +418,44 @@ export const PortfolioView: React.FC = () => {
         {/* ══════════════════════════════════════════
             CONSTANT HERO BANNER
         ══════════════════════════════════════════ */}
-        <section id="hero" style={{ position: 'relative', overflow: 'hidden', height: 540, background: '#0F172A' }}>
+        <section id="hero" className="inspire-hero-box" style={{ position: 'relative', overflow: 'hidden', height: 540, background: '#0F172A' }}>
           {/* Constant Background Hero Image */}
           <div style={{ position: 'absolute', inset: 0 }}>
             <img
               src={heroImg}
               alt="Inspire Junior College Campus"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.55)' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.52)' }}
             />
           </div>
 
           {/* Gradient Overlay */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.4) 0%, rgba(15,23,42,0.85) 100%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.35) 0%, rgba(15,23,42,0.88) 100%)' }} />
 
           {/* Constant Hero Banner Text Content */}
-          <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', textAlign: 'center', padding: '0 20px' }}>
-            <div style={{ background: 'rgba(245,158,11,0.2)', border: '1.5px solid rgba(245,158,11,0.6)', backdropFilter: 'blur(8px)', borderRadius: 32, padding: '6px 20px', fontSize: 13, fontWeight: 800, color: ACCENT_GOLD, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
+          <div className="anim-fade-up" style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', textAlign: 'center', padding: '0 20px' }}>
+            <div className="inspire-float" style={{ background: 'rgba(245,158,11,0.22)', border: '1.5px solid rgba(245,158,11,0.7)', backdropFilter: 'blur(10px)', borderRadius: 32, padding: '6px 20px', fontSize: 13, fontWeight: 800, color: ACCENT_GOLD, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>
               Admissions Open for Academic Year 2026-27
             </div>
             
-            <h1 style={{ fontSize: 'clamp(28px, 4.5vw, 56px)', fontWeight: 900, lineHeight: 1.2, maxWidth: 960, fontFamily: "'Merriweather', serif", margin: '0 0 16px', textShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
+            <h1 className="inspire-hero-title" style={{ fontSize: 'clamp(28px, 4.5vw, 56px)', fontWeight: 900, lineHeight: 1.2, maxWidth: 960, fontFamily: "'Merriweather', serif", margin: '0 0 16px', textShadow: '0 4px 16px rgba(0,0,0,0.6)' }}>
               Inspire Junior College
             </h1>
 
-            <p style={{ fontSize: 'clamp(15px, 2vw, 20px)', fontWeight: 500, color: '#F1F5F9', maxWidth: 780, lineHeight: 1.6, margin: '0 0 28px' }}>
+            <p className="inspire-hero-desc" style={{ fontSize: 'clamp(14px, 2vw, 19px)', fontWeight: 500, color: '#F1F5F9', maxWidth: 780, lineHeight: 1.6, margin: '0 0 28px' }}>
               Hanumakonda’s Premier Institution for IIT-JEE, NEET &amp; Intermediate Board Excellence with Individual Doubt Clarification &amp; Personal Mentorship.
             </p>
 
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
               <a
                 href="#enquiry"
-                style={{ background: ACCENT_GOLD, color: '#0F172A', padding: '14px 32px', fontWeight: 900, fontSize: 15, textDecoration: 'none', borderRadius: 10, boxShadow: '0 4px 20px rgba(245,158,11,0.4)', transition: 'transform 0.2s' }}
-                className="inspire-card-hover"
+                className="inspire-card-hover inspire-btn-pulse"
+                style={{ background: ACCENT_GOLD, color: '#0F172A', padding: '14px 32px', fontWeight: 900, fontSize: 15, textDecoration: 'none', borderRadius: 10, boxShadow: '0 4px 20px rgba(245,158,11,0.4)' }}
               >
                 Apply for Admission 2026
               </a>
               <a
                 href="#paper-clips"
-                style={{ background: 'rgba(255,255,255,0.15)', color: '#FFFFFF', border: '1.5px solid rgba(255,255,255,0.4)', backdropFilter: 'blur(6px)', padding: '14px 28px', fontWeight: 700, fontSize: 15, textDecoration: 'none', borderRadius: 10 }}
+                style={{ background: 'rgba(255,255,255,0.15)', color: '#FFFFFF', border: '1.5px solid rgba(255,255,255,0.4)', backdropFilter: 'blur(8px)', padding: '14px 28px', fontWeight: 700, fontSize: 15, textDecoration: 'none', borderRadius: 10, transition: 'all 0.25s' }}
               >
                 View News &amp; Rank Clippings
               </a>
@@ -336,11 +468,11 @@ export const PortfolioView: React.FC = () => {
         ══════════════════════════════════════════ */}
         <section style={{ background: LIGHT_BG, padding: '0 16px' }}>
           <div className="inspire-container" style={{ position: 'relative', marginTop: -36, paddingBottom: 40 }}>
-            <div style={{ background: '#FFFFFF', borderRadius: 20, padding: 14, boxShadow: '0 10px 40px rgba(15,23,42,0.12)', border: '1px solid #E2E8F0' }}>
+            <div style={{ background: '#FFFFFF', borderRadius: 22, padding: 14, boxShadow: '0 10px 40px rgba(15,23,42,0.12)', border: '1.5px solid #E2E8F0' }}>
               <div style={{ display: 'flex', gap: 14, flexWrap: 'nowrap', overflowX: 'auto' }}>
                 {STAT_CARDS.map((stat, idx) => (
-                  <div key={idx} style={{ background: stat.bg, borderRadius: 14, padding: '16px 20px', flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <div style={{ fontSize: 'clamp(24px,2.5vw,36px)', fontWeight: 900, color: '#FFF', fontFamily: "'Merriweather', serif" }}>
+                  <div key={idx} className="inspire-stat-box inspire-card-hover" style={{ background: stat.bg, borderRadius: 16, padding: '16px 20px', flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div className="inspire-stat-val" style={{ fontSize: 'clamp(24px,2.5vw,36px)', fontWeight: 900, color: '#FFF', fontFamily: "'Merriweather', serif" }}>
                       {stat.value}
                     </div>
                     <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.92)', fontWeight: 700 }}>{stat.label}</p>
@@ -354,7 +486,7 @@ export const PortfolioView: React.FC = () => {
         {/* ══════════════════════════════════════════
             ACHIEVEMENTS & PAPER CLIPS GALLERY
         ══════════════════════════════════════════ */}
-        <section id="paper-clips" style={{ padding: '70px 16px', background: BODY_WHITE }}>
+        <section id="paper-clips" className="inspire-section-pad" style={{ padding: '70px 16px', background: BODY_WHITE }}>
           <div className="inspire-container">
             
             <div style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 48px' }}>
@@ -378,7 +510,7 @@ export const PortfolioView: React.FC = () => {
                   className="inspire-card-hover inspire-clip-container"
                   style={{
                     background: '#FFFFFF',
-                    borderRadius: 16,
+                    borderRadius: 18,
                     overflow: 'hidden',
                     border: '1.5px solid #E2E8F0',
                     cursor: 'pointer',
@@ -394,13 +526,13 @@ export const PortfolioView: React.FC = () => {
                       className="inspire-clip-img"
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
-                    <div style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(15,23,42,0.75)', color: '#FFF', padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <div style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(15,23,42,0.75)', color: '#FFF', padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                       <span>Click to Enlarge</span>
                     </div>
                   </div>
 
-                  <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
                       <h4 style={{ fontSize: 16, fontWeight: 800, color: DARK_TEXT, marginBottom: 6, lineHeight: 1.4 }}>
                         {clip.title}
@@ -410,7 +542,7 @@ export const PortfolioView: React.FC = () => {
                       </p>
                     </div>
                     
-                    <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 6, color: '#2563EB', fontSize: 13, fontWeight: 800 }}>
+                    <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 6, color: '#2563EB', fontSize: 13, fontWeight: 800 }}>
                       <span>View News Clipping</span>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                     </div>
@@ -425,7 +557,7 @@ export const PortfolioView: React.FC = () => {
         {/* ══════════════════════════════════════════
             ACADEMIC STREAMS OFFERED
         ══════════════════════════════════════════ */}
-        <section id="streams" style={{ padding: '80px 16px', background: LIGHT_BG }}>
+        <section id="streams" className="inspire-section-pad" style={{ padding: '80px 16px', background: LIGHT_BG }}>
           <div className="inspire-container">
             
             <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 56px' }}>
@@ -440,14 +572,14 @@ export const PortfolioView: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 24 }}>
               {PROGRAM_CARDS.map((prog, idx) => (
                 <div
                   key={idx}
                   className="inspire-card-hover"
                   style={{
                     background: '#FFFFFF',
-                    borderRadius: 20,
+                    borderRadius: 22,
                     overflow: 'hidden',
                     border: '1.5px solid #E2E8F0',
                     boxShadow: '0 8px 24px rgba(15,23,42,0.06)',
@@ -468,7 +600,7 @@ export const PortfolioView: React.FC = () => {
                   </div>
 
                   {/* Program Paper Clip Snippet */}
-                  <div style={{ height: 180, overflow: 'hidden', position: 'relative' }}>
+                  <div style={{ height: 190, overflow: 'hidden', position: 'relative' }}>
                     <img src={prog.clip} alt={prog.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
 
@@ -486,9 +618,9 @@ export const PortfolioView: React.FC = () => {
         {/* ══════════════════════════════════════════
             ABOUT INSPIRE JUNIOR COLLEGE & MENTORSHIP
         ══════════════════════════════════════════ */}
-        <section id="about" style={{ padding: '80px 16px', background: BODY_WHITE }}>
+        <section id="about" id-sec="mentorship" className="inspire-section-pad" style={{ padding: '80px 16px', background: BODY_WHITE }}>
           <div className="inspire-container">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 40, alignItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', gap: 40, alignItems: 'center' }}>
               
               <div>
                 <span style={{ fontSize: 12, fontWeight: 800, color: '#2563EB', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
@@ -515,17 +647,17 @@ export const PortfolioView: React.FC = () => {
                   ))}
                 </div>
 
-                <a href="#enquiry" style={{ background: NAVBAR_NAVY, color: '#FFF', padding: '12px 28px', borderRadius: 8, fontWeight: 800, textDecoration: 'none', fontSize: 14, display: 'inline-block' }}>
+                <a href="#enquiry" style={{ background: NAVBAR_NAVY, color: '#FFF', padding: '14px 30px', borderRadius: 10, fontWeight: 800, textDecoration: 'none', fontSize: 14, display: 'inline-block' }}>
                   Schedule a Campus Visit &rarr;
                 </a>
               </div>
 
               {/* Featured Paper Clip Newspaper Snapshot */}
-              <div className="inspire-card-hover" style={{ borderRadius: 20, overflow: 'hidden', boxShadow: '0 12px 36px rgba(15,23,42,0.12)', border: '2px solid #E2E8F0' }}>
+              <div className="inspire-card-hover" style={{ borderRadius: 22, overflow: 'hidden', boxShadow: '0 12px 36px rgba(15,23,42,0.12)', border: '2px solid #E2E8F0' }}>
                 <img src={clip7} alt="Inspire Junior College Media Release" style={{ width: '100%', height: 'auto', display: 'block' }} />
-                <div style={{ padding: '16px 20px', background: '#F8FAFC', borderTop: '1px solid #E2E8F0' }}>
+                <div style={{ padding: '18px 22px', background: '#F8FAFC', borderTop: '1.5px solid #E2E8F0' }}>
                   <div style={{ fontSize: 12, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase' }}>Official Media Press Feature</div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: DARK_TEXT, marginTop: 4 }}>Inspire Junior College Students Dominate State Level Competitive Ranks</div>
+                  <div style={{ fontSize: 14.5, fontWeight: 800, color: DARK_TEXT, marginTop: 4 }}>Inspire Junior College Students Dominate State Level Competitive Ranks</div>
                 </div>
               </div>
 
@@ -536,7 +668,7 @@ export const PortfolioView: React.FC = () => {
         {/* ══════════════════════════════════════════
             OUR 4 CAMPUSES SECTION
         ══════════════════════════════════════════ */}
-        <section id="campuses" style={{ padding: '80px 16px', background: LIGHT_BG }}>
+        <section id="campuses" className="inspire-section-pad" style={{ padding: '80px 16px', background: LIGHT_BG }}>
           <div className="inspire-container">
             
             <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 48px' }}>
@@ -558,7 +690,7 @@ export const PortfolioView: React.FC = () => {
                   className="inspire-card-hover"
                   style={{
                     background: '#FFFFFF',
-                    borderRadius: 16,
+                    borderRadius: 18,
                     overflow: 'hidden',
                     border: '1.5px solid #E2E8F0',
                     boxShadow: '0 4px 16px rgba(15,23,42,0.06)'
@@ -588,7 +720,7 @@ export const PortfolioView: React.FC = () => {
         {/* ══════════════════════════════════════════
             ADMISSION ENQUIRY FORM
         ══════════════════════════════════════════ */}
-        <section id="enquiry" style={{ padding: '80px 16px', background: BODY_WHITE }}>
+        <section id="enquiry" className="inspire-section-pad" style={{ padding: '80px 16px', background: BODY_WHITE }}>
           <div className="inspire-container" style={{ maxWidth: 880 }}>
             
             <div style={{ textAlign: 'center', marginBottom: 40 }}>
@@ -603,7 +735,7 @@ export const PortfolioView: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ background: '#FFFFFF', borderRadius: 24, padding: '36px', boxShadow: '0 12px 48px rgba(15,23,42,0.10)', border: '1.5px solid #E2E8F0' }}>
+            <div className="inspire-form-box" style={{ background: '#FFFFFF', borderRadius: 24, padding: '36px', boxShadow: '0 12px 48px rgba(15,23,42,0.10)', border: '1.5px solid #E2E8F0' }}>
               {enquirySuccess ? (
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
                   <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#DEF7EC', border: '2px solid #03543F', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: '#03543F' }}>
@@ -641,13 +773,13 @@ export const PortfolioView: React.FC = () => {
                   ].map(f => (
                     <div key={f.label}>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>{f.label}</label>
-                      <input type={f.type} required={f.label.includes('*')} placeholder={f.placeholder} value={f.val} onChange={e => f.set(e.target.value)} style={inputStyle} />
+                      <input type={f.type} required={f.label.includes('*')} placeholder={f.placeholder} value={f.val} onChange={e => f.set(e.target.value)} className="inspire-input-focus" style={inputStyle} />
                     </div>
                   ))}
 
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Academic Stream Preference</label>
-                    <select value={stuStream} onChange={e => setStuStream(e.target.value)} style={inputStyle}>
+                    <select value={stuStream} onChange={e => setStuStream(e.target.value)} className="inspire-input-focus" style={inputStyle}>
                       <option>MPC (JEE Mains &amp; Advanced)</option>
                       <option>BiPC (NEET Medical)</option>
                       <option>MEC &amp; CEC (CA Foundation / Civils)</option>
@@ -657,14 +789,14 @@ export const PortfolioView: React.FC = () => {
 
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Preferred Campus Location</label>
-                    <select value={stuCampus} onChange={e => setStuCampus(e.target.value)} style={inputStyle}>
+                    <select value={stuCampus} onChange={e => setStuCampus(e.target.value)} className="inspire-input-focus" style={inputStyle}>
                       {['Erragattugutta Campus 1', 'Erragattugutta Campus 2', 'Bheemaram Campus 1', 'Bheemaram Campus 2'].map(c => <option key={c}>{c}</option>)}
                     </select>
                   </div>
 
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Current Grade / Qualification</label>
-                    <select value={stuGrade} onChange={e => setStuGrade(e.target.value)} style={inputStyle}>
+                    <select value={stuGrade} onChange={e => setStuGrade(e.target.value)} className="inspire-input-focus" style={inputStyle}>
                       <option>Grade 10 (Completed)</option>
                       <option>Grade 12 / Intermediate (Completed)</option>
                       <option>Appearing Grade 10</option>
@@ -674,13 +806,14 @@ export const PortfolioView: React.FC = () => {
 
                   <div style={{ gridColumn: '1/-1' }}>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Message / Specific Requirements</label>
-                    <textarea rows={3} placeholder="Scholarship queries, hostel facilities, mentorship requirements..." value={stuNotes} onChange={e => setStuNotes(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
+                    <textarea rows={3} placeholder="Scholarship queries, hostel facilities, mentorship requirements..." value={stuNotes} onChange={e => setStuNotes(e.target.value)} className="inspire-input-focus" style={{ ...inputStyle, resize: 'vertical' }} />
                   </div>
 
                   <div style={{ gridColumn: '1/-1' }}>
                     <button
                       type="submit"
                       disabled={isSubmitting}
+                      className="inspire-btn-pulse"
                       style={{
                         width: '100%',
                         padding: '16px',
@@ -717,24 +850,25 @@ export const PortfolioView: React.FC = () => {
               position: 'fixed',
               inset: 0,
               zIndex: 1000,
-              backgroundColor: 'rgba(15, 23, 42, 0.88)',
-              backdropFilter: 'blur(8px)',
+              backgroundColor: 'rgba(15, 23, 42, 0.90)',
+              backdropFilter: 'blur(10px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: 24,
+              padding: 20,
               cursor: 'zoom-out'
             }}
           >
             <div
+              className="anim-modal-zoom"
               onClick={e => e.stopPropagation()}
               style={{
                 position: 'relative',
-                maxWidth: 900,
-                maxHeight: '90vh',
+                maxWidth: 920,
+                maxHeight: '92vh',
                 width: '100%',
                 background: '#FFFFFF',
-                borderRadius: 20,
+                borderRadius: 22,
                 overflow: 'hidden',
                 boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
                 display: 'flex',
@@ -746,7 +880,7 @@ export const PortfolioView: React.FC = () => {
                 <h3 style={{ fontSize: 16, fontWeight: 800 }}>{selectedClip.title}</h3>
                 <button
                   onClick={() => setSelectedClip(null)}
-                  style={{ background: 'none', border: 'none', color: '#FFF', fontSize: 24, cursor: 'pointer', fontWeight: 900 }}
+                  style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#FFF', width: 34, height: 34, borderRadius: '50%', fontSize: 18, cursor: 'pointer', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                   ✕
                 </button>
@@ -756,7 +890,7 @@ export const PortfolioView: React.FC = () => {
                 <img
                   src={selectedClip.src}
                   alt={selectedClip.title}
-                  style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8, border: '1px solid #CBD5E1' }}
+                  style={{ maxWidth: '100%', maxHeight: '72vh', objectFit: 'contain', borderRadius: 10, border: '1.5px solid #CBD5E1', boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}
                 />
                 <p style={{ marginTop: 16, fontSize: 14, color: '#475569', fontWeight: 600 }}>
                   {selectedClip.subtitle}
@@ -769,7 +903,7 @@ export const PortfolioView: React.FC = () => {
         {/* ══════════════════════════════════════════
             FOOTER
         ══════════════════════════════════════════ */}
-        <footer style={{ background: NAVBAR_NAVY, color: '#FFFFFF', padding: '60px 16px 32px' }}>
+        <footer id="contact" style={{ background: NAVBAR_NAVY, color: '#FFFFFF', padding: '60px 16px 32px' }}>
           <div className="inspire-container">
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 40, marginBottom: 40 }}>
