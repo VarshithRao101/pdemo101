@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import collegeLogo from '../assets/college logo.png';
 import heroImg from '../assets/heroimage.jpeg';
 
@@ -10,218 +10,302 @@ import clip5 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM 
 import clip6 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM.jpeg';
 import clip7 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.04 PM.jpeg';
 
-/* ─────────────────────────────────────────────────────────────
-   INSPIRE JUNIOR COLLEGE — Official Institutional Portfolio
-   Big Hero Image Showcase & Paper Clips Gallery Only.
-   All extraneous photos removed from other sections per spec.
-─────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   INSPIRE JUNIOR COLLEGE — Premium Institutional Portfolio
+   Peak-Level Animations · Decorative Borders · Scroll Reveals
+   Glassmorphism · Gradient Accents · Micro-Interactions
+═══════════════════════════════════════════════════════════════ */
 
-// ── Paper Clips Data (ONLY Photos on Page along with Hero) ───
 const PAPER_CLIPS = [
-  { id: 1, src: clip1, title: 'Press Coverage — Top State Ranks in Entrance Exams', subtitle: 'Inspire Junior College students shine with top AIR & State ranks in JEE & NEET entrance exams.' },
-  { id: 2, src: clip2, title: 'Achievers Announcement — Board Exam Records', subtitle: 'State record-breaking marks scored by Inspire Junior College students.' },
-  { id: 3, src: clip3, title: 'National Talent Felicitation Media Release', subtitle: 'Grand felicitation ceremony honoring state toppers and national rank holders.' },
-  { id: 4, src: clip4, title: 'Academic Excellence & Mentorship Award', subtitle: 'Inspire Junior College recognized for individual mentorship and specialized doubt clarification.' },
-  { id: 5, src: clip5, title: 'NEET Medical Entrance Record Ranks', subtitle: 'Highest selection percentage in NEET Medical entrance across Warangal & Hanamkonda.' },
-  { id: 6, src: clip6, title: 'IIT-JEE Mains & Advanced Top Scorers', subtitle: 'Students secure 99+ percentile in JEE Mains with top rank admissions into IITs & NITs.' },
-  { id: 7, src: clip7, title: 'Inspire Junior College Annual Results Highlight', subtitle: 'Comprehensive newspaper feature showcasing our stellar rankers and campus achievements.' },
+  { id: 1, src: clip1, title: 'Press Coverage — Top State Ranks', subtitle: 'Students shine with top AIR & State ranks in JEE & NEET entrance exams.', tag: 'JEE / NEET' },
+  { id: 2, src: clip2, title: 'Achievers Announcement — Board Exam Records', subtitle: 'State record-breaking marks scored by Inspire Junior College students.', tag: 'Board Exams' },
+  { id: 3, src: clip3, title: 'National Talent Felicitation Media Release', subtitle: 'Grand felicitation honoring state toppers and national rank holders.', tag: 'Felicitation' },
+  { id: 4, src: clip4, title: 'Academic Excellence & Mentorship Award', subtitle: 'Recognized for individual mentorship and specialized doubt clarification.', tag: 'Award' },
+  { id: 5, src: clip5, title: 'NEET Medical Entrance Record Ranks', subtitle: 'Highest selection percentage in NEET Medical across Warangal & Hanamkonda.', tag: 'NEET Medical' },
+  { id: 6, src: clip6, title: 'IIT-JEE Mains & Advanced Top Scorers', subtitle: 'Students secure 99+ percentile in JEE Mains — top admissions into IITs & NITs.', tag: 'IIT-JEE' },
+  { id: 7, src: clip7, title: 'Inspire Annual Results Newspaper Feature', subtitle: 'Comprehensive feature showcasing stellar rankers and campus achievements.', tag: 'Annual Results' },
 ];
 
-// ── Program Cards Data (Clean UI Cards - No Extraneous Photos) ─
 const PROGRAM_CARDS = [
   {
-    title: 'Intermediate + MPC (JEE)',
-    subtitle: 'Integrated 2-year preparation for IIT-JEE Mains & Advanced alongside IPE Board Exam.',
-    gradFrom: '#1E3A8A', gradTo: '#2563EB',
+    title: 'Intermediate + MPC',
+    subtitle: 'IIT-JEE Mains & Advanced',
+    body: 'Integrated 2-year coaching combining rigorous IPE Board curriculum with JEE Mains & Advanced preparation through daily mock tests, error analysis, and individual mentorship.',
+    gradA: '#0F172A', gradB: '#1E3A8A', accent: '#3B82F6',
     tag: 'Engineering Focus',
-    icon: '⚡',
-    highlights: ['Specialized Physics & Math Desks', 'Daily JEE Pattern Mock Tests', 'Personal Rank Mentor']
+    highlights: ['Specialized Physics & Math Desks', 'Daily JEE Pattern Mock Tests', 'Personal Rank Mentor Assigned', 'Weekly Performance Analytics'],
   },
   {
-    title: 'Intermediate + BiPC (NEET)',
-    subtitle: 'Comprehensive coaching for NEET Medical & AIIMS entrance exams with daily practice tests.',
-    gradFrom: '#065F46', gradTo: '#10B981',
+    title: 'Intermediate + BiPC',
+    subtitle: 'NEET Medical & AIIMS',
+    body: 'Comprehensive medical entrance coaching with NCERT line-by-line coverage, daily NEET pattern practice, biology lab sessions, and one-on-one doubt resolution.',
+    gradA: '#052E16', gradB: '#065F46', accent: '#10B981',
     tag: 'Medical Focus',
-    icon: '🧬',
-    highlights: ['Botany & Zoology Expert Guidance', 'Daily NCERT Line-by-Line Tests', 'Biology Diagnostic Lab']
+    highlights: ['Botany & Zoology Expert Faculty', 'Daily NCERT Line-by-Line Tests', 'Biology Diagnostic Lab Sessions', 'AIIMS Pattern Simulations'],
   },
   {
     title: 'Intermediate + MEC / CEC',
-    subtitle: 'Foundation for CA, CS, CMA, and Civils with strong emphasis on Commerce & Economics.',
-    gradFrom: '#7C2D12', gradTo: '#D97706',
+    subtitle: 'CA Foundation & Civils',
+    body: 'Commerce and Humanities integrated program with CA Foundation modules, analytical economics workshops, and a strong aptitude base for Civil Services aspirants.',
+    gradA: '#431407', gradB: '#7C2D12', accent: '#F59E0B',
     tag: 'Commerce & Civils',
-    icon: '📊',
-    highlights: ['CPT / CA Foundation Modules', 'Analytical Economics Workshops', 'Civils Aptitude Foundation']
+    highlights: ['CPT / CA Foundation Modules', 'Analytical Economics Workshops', 'Civils Aptitude Foundation', 'Current Affairs & GK Integration'],
   },
 ];
 
 const STAT_CARDS = [
-  { value: '100%', label: 'Dedicated Mentorship', bg: 'linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%)' },
-  { value: '4', label: 'Campuses in Hanamkonda', bg: 'linear-gradient(135deg, #0D9488 0%, #14B8A6 100%)' },
-  { value: '99%+', label: 'Top Percentile Performers', bg: 'linear-gradient(135deg, #D97706 0%, #F59E0B 100%)' },
-  { value: '24/7', label: 'Doubt Clarification', bg: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)' },
-  { value: '1500+', label: 'Successful Admissions', bg: 'linear-gradient(135deg, #0284C7 0%, #38BDF8 100%)' },
+  { value: '100', suffix: '%', label: 'Dedicated Mentorship', col: '#2563EB' },
+  { value: '4', suffix: '', label: 'Campuses in Hanamkonda', col: '#0D9488' },
+  { value: '99', suffix: '%+', label: 'Top Percentile Performers', col: '#D97706' },
+  { value: '24', suffix: '/7', label: 'Doubt Clarification', col: '#7C3AED' },
+  { value: '1500', suffix: '+', label: 'Successful Admissions', col: '#0284C7' },
 ];
 
 const CAMPUSES_LIST = [
-  { name: 'Erragattugutta Campus 1', code: 'C1', desc: 'State-of-the-art academic block & modern laboratory facilities.', bg: '#EFF6FF', border: '#3B82F6' },
-  { name: 'Erragattugutta Campus 2', code: 'C2', desc: 'Spacious classrooms with integrated digital learning tools.', bg: '#ECFDF5', border: '#10B981' },
-  { name: 'Bheemaram Campus 1', code: 'B1', desc: 'Dedicated coaching center with specialized exam simulation halls.', bg: '#FFFBEB', border: '#F59E0B' },
-  { name: 'Bheemaram Campus 2', code: 'B2', desc: 'Tranquil residential atmosphere with 24/7 study supervision.', bg: '#F5F3FF', border: '#8B5CF6' },
+  { name: 'Erragattugutta Campus 1', code: 'EC·1', desc: 'State-of-the-art academic block with advanced laboratory facilities and digital classrooms.', col: '#2563EB', bg: 'linear-gradient(135deg,#EFF6FF,#DBEAFE)' },
+  { name: 'Erragattugutta Campus 2', code: 'EC·2', desc: 'Spacious air-conditioned classrooms integrated with modern digital learning infrastructure.', col: '#059669', bg: 'linear-gradient(135deg,#ECFDF5,#D1FAE5)' },
+  { name: 'Bheemaram Campus 1', code: 'BC·1', desc: 'Dedicated exam simulation halls with JEE & NEET pattern analysis centres.', col: '#D97706', bg: 'linear-gradient(135deg,#FFFBEB,#FEF3C7)' },
+  { name: 'Bheemaram Campus 2', code: 'BC·2', desc: 'Tranquil residential campus with AC hostels and round-the-clock study supervision.', col: '#7C3AED', bg: 'linear-gradient(135deg,#F5F3FF,#EDE9FE)' },
 ];
 
-// ── Theme Colors ───────────────────────────────────────────────
+const FEATURES = [
+  { label: 'Doubt Clarification Desks', desc: 'Dedicated subject-expert desks for instant, personalized doubt resolution at every campus.' },
+  { label: 'Individual Mentorship', desc: 'Each student is assigned a personal mentor who tracks daily progress and intervenes proactively.' },
+  { label: 'Simulated Mock Tests', desc: 'Weekly full-length JEE & NEET pattern mock exams with detailed performance diagnostics.' },
+  { label: 'AC Hostels & Transport', desc: 'Air-conditioned residential blocks and dedicated transport routes for all campuses.' },
+];
+
 const NAVBAR_NAVY = '#0F172A';
 const ACCENT_GOLD = '#F59E0B';
-const DARK_TEXT = '#1E293B';
-const BODY_WHITE = '#FFFFFF';
-const LIGHT_BG = '#F8FAFC';
+const DARK_TEXT = '#0F172A';
 
-// ── Stylesheet ─────────────────────────────────────────────────
+// ── Intersection Observer hook for scroll-reveal ────────────────
+function useReveal(threshold = 0.15) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, visible };
+}
+
+// ── Animated counter hook ───────────────────────────────────────
+function useCounter(target: number, duration = 1600, active = false) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    let start = 0;
+    const step = target / (duration / 16);
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= target) { setVal(target); clearInterval(timer); }
+      else setVal(Math.floor(start));
+    }, 16);
+    return () => clearInterval(timer);
+  }, [active, target, duration]);
+  return val;
+}
+
+/* ────── CSS ────── */
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Merriweather:ital,wght@0,400;0,700;0,900;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400&display=swap');
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fff; color: #1E293B; overflow-x: hidden; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:#fff;color:#0F172A;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 
-/* Keyframe Animations */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
+/* ── Scroll Progress Bar ── */
+#inspire-progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#F59E0B,#2563EB,#10B981);z-index:9999;transition:width 0.1s linear;box-shadow:0 0 8px rgba(245,158,11,0.6)}
+
+/* ── Keyframes ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(36px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleIn{from{opacity:0;transform:scale(0.88)}to{opacity:1;transform:scale(1)}}
+@keyframes slideRight{from{opacity:0;transform:translateX(-32px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideLeft{from{opacity:0;transform:translateX(32px)}to{opacity:1;transform:translateX(0)}}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+@keyframes pulseGold{0%{box-shadow:0 0 0 0 rgba(245,158,11,0.55)}70%{box-shadow:0 0 0 16px rgba(245,158,11,0)}100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}}
+@keyframes borderFlow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes rotateOrb{from{transform:rotate(0deg) translateX(50px) rotate(0deg)}to{transform:rotate(360deg) translateX(50px) rotate(-360deg)}}
+@keyframes orbPulse{0%,100%{opacity:0.25;transform:scale(1)}50%{opacity:0.45;transform:scale(1.12)}}
+@keyframes glowPulse{0%,100%{opacity:0.6}50%{opacity:1}}
+@keyframes navSlide{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes dotBounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}
+@keyframes underlineGrow{from{width:0}to{width:100%}}
+@keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes modalIn{from{opacity:0;transform:scale(0.9) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes stagger1{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cardShine{0%{left:-100%}100%{left:200%}}
+
+/* ── Utility reveal classes ── */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity 0.7s cubic-bezier(.25,.8,.25,1),transform 0.7s cubic-bezier(.25,.8,.25,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-left{opacity:0;transform:translateX(-28px);transition:opacity 0.7s cubic-bezier(.25,.8,.25,1),transform 0.7s cubic-bezier(.25,.8,.25,1)}
+.reveal-left.visible{opacity:1;transform:translateX(0)}
+.reveal-right{opacity:0;transform:translateX(28px);transition:opacity 0.7s cubic-bezier(.25,.8,.25,1),transform 0.7s cubic-bezier(.25,.8,.25,1)}
+.reveal-right.visible{opacity:1;transform:translateX(0)}
+.reveal-scale{opacity:0;transform:scale(0.9);transition:opacity 0.6s ease,transform 0.6s cubic-bezier(.25,.8,.25,1)}
+.reveal-scale.visible{opacity:1;transform:scale(1)}
+
+/* stagger delays */
+.d100{transition-delay:0.1s}.d200{transition-delay:0.2s}.d300{transition-delay:0.3s}
+.d400{transition-delay:0.4s}.d500{transition-delay:0.5s}.d600{transition-delay:0.6s}
+.d700{transition-delay:0.7s}.d800{transition-delay:0.8s}
+
+/* ── Layout ── */
+.ic{max-width:1280px;margin:0 auto;padding:0 28px}
+
+/* ── Nav link ── */
+.nl{
+  font-size:13.5px;font-weight:700;color:#94A3B8;text-decoration:none;
+  white-space:nowrap;padding:6px 0;position:relative;
+  transition:color 0.25s;letter-spacing:0.01em;
+}
+.nl::after{
+  content:'';position:absolute;bottom:0;left:0;height:2px;width:0;
+  background:linear-gradient(90deg,#F59E0B,#2563EB);
+  transition:width 0.32s cubic-bezier(.25,.8,.25,1);border-radius:2px;
+}
+.nl:hover{color:#fff}
+.nl:hover::after{width:100%}
+
+/* ── Card hover ── */
+.ch{
+  transition:transform 0.38s cubic-bezier(.25,.8,.25,1),box-shadow 0.38s ease;
+  will-change:transform,box-shadow;position:relative;
+}
+.ch:hover{transform:translateY(-8px);box-shadow:0 24px 48px rgba(15,23,42,0.14)!important}
+.ch::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  background:linear-gradient(135deg,rgba(245,158,11,0.06),rgba(37,99,235,0.06));
+  opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:0;
+}
+.ch:hover::before{opacity:1}
+
+/* ── Clip shine ── */
+.clip-img{transition:transform 0.45s cubic-bezier(.25,.8,.25,1),filter 0.35s ease}
+.clip-wrap:hover .clip-img{transform:scale(1.06);filter:brightness(1.05)}
+.clip-wrap::after{
+  content:'';position:absolute;top:0;left:-100%;width:40%;height:100%;
+  background:linear-gradient(120deg,transparent,rgba(255,255,255,0.18),transparent);
+  transition:none;
+}
+.clip-wrap:hover::after{animation:cardShine 0.7s ease forwards}
+
+/* ── Input glow ── */
+.ig{transition:border-color 0.22s,box-shadow 0.22s,background 0.22s}
+.ig:focus{border-color:#2563EB!important;box-shadow:0 0 0 4px rgba(37,99,235,0.14)!important;background:#fff!important;outline:none}
+.ig:hover:not(:focus){border-color:#94A3B8!important}
+
+/* ── Button ── */
+.btn-gold{
+  display:inline-flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg,#F59E0B,#D97706);
+  color:#fff;font-weight:900;text-decoration:none;
+  padding:14px 32px;border-radius:10px;font-size:15px;
+  box-shadow:0 6px 20px rgba(217,119,6,0.3);
+  transition:transform 0.22s,box-shadow 0.22s,filter 0.22s;
+  position:relative;overflow:hidden;border:none;cursor:pointer;
+  font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:0.01em;
+}
+.btn-gold::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.15),transparent);
+}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(217,119,6,0.42);filter:brightness(1.07)}
+.btn-gold:active{transform:translateY(0)}
+.btn-gold.pulse{animation:pulseGold 2.4s infinite}
+
+.btn-ghost{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,0.1);
+  color:#fff;font-weight:700;text-decoration:none;
+  padding:13px 28px;border-radius:10px;font-size:15px;
+  border:1.5px solid rgba(255,255,255,0.32);
+  backdrop-filter:blur(8px);
+  transition:background 0.22s,border-color 0.22s,transform 0.22s;
+}
+.btn-ghost:hover{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.55);transform:translateY(-2px)}
+
+/* ── Section headings ── */
+.section-label{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;
+  margin-bottom:12px;
+}
+.section-label::before,.section-label::after{content:'';display:block;height:1.5px;width:28px;background:currentColor;border-radius:2px}
+
+/* ── Decorative divider ── */
+.dec-divider{
+  display:flex;align-items:center;gap:14px;margin:0 auto 48px;max-width:540px;
+}
+.dec-divider-line{flex:1;height:1px;background:linear-gradient(90deg,transparent,#CBD5E1,transparent)}
+.dec-divider-gem{
+  width:10px;height:10px;background:linear-gradient(135deg,#F59E0B,#D97706);
+  transform:rotate(45deg);border-radius:2px;flex-shrink:0;
+  box-shadow:0 0 10px rgba(245,158,11,0.4);
 }
 
-@keyframes pulseGlow {
-  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45); }
-  70% { box-shadow: 0 0 0 14px rgba(245, 158, 11, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-}
+/* ── Ticker bar ── */
+.ticker-wrap{overflow:hidden;white-space:nowrap}
+.ticker-inner{display:inline-flex;animation:tickerScroll 28s linear infinite}
+.ticker-inner:hover{animation-play-state:paused}
 
-@keyframes modalZoomIn {
-  from { opacity: 0; transform: scale(0.92); }
-  to { opacity: 1; transform: scale(1); }
+/* ── Gradient border card ── */
+.grad-border{
+  position:relative;border-radius:20px;padding:2px;
+  background:linear-gradient(135deg,#F59E0B,#2563EB,#10B981,#F59E0B);
+  background-size:300% 300%;
+  animation:borderFlow 6s ease infinite;
 }
+.grad-border-inner{background:#fff;border-radius:18px;height:100%}
 
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-12px); }
-  to { opacity: 1; transform: translateY(0); }
+/* ── Responsive ── */
+@media(max-width:1024px){
+  .desk-nav{display:none!important}.desk-top{display:none!important}
+  .mob-btn{display:flex!important}.ic{padding:0 18px}
 }
-
-/* Container */
-.inspire-container { max-width: 1280px; margin: 0 auto; padding: 0 20px; }
-
-/* Dynamic Card Hover Effects */
-.inspire-card-hover {
-  transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
-  will-change: transform, box-shadow;
-}
-.inspire-card-hover:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12) !important;
-}
-
-/* Paper Clips Image Animations */
-.inspire-clip-container {
-  transition: all 0.35s ease;
-  position: relative;
-}
-.inspire-clip-container:hover .inspire-clip-img {
-  transform: scale(1.05);
-  filter: brightness(1.04);
-}
-.inspire-clip-img {
-  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), filter 0.3s ease;
-}
-
-.inspire-btn-pulse {
-  animation: pulseGlow 2.5s infinite;
-}
-
-/* Navigation Link Underline Hover Effect */
-.inspire-nav-link {
-  font-size: 14px;
-  font-weight: 700;
-  color: #CBD5E1;
-  text-decoration: none;
-  white-space: nowrap;
-  position: relative;
-  padding: 4px 0;
-  transition: color 0.25s ease;
-}
-.inspire-nav-link::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 2.5px;
-  background: #F59E0B;
-  transition: width 0.3s ease;
-  border-radius: 2px;
-}
-.inspire-nav-link:hover {
-  color: #FFFFFF;
-}
-.inspire-nav-link:hover::after {
-  width: 100%;
-}
-
-.inspire-top-link {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #334155;
-  text-decoration: none;
-  transition: all 0.2s ease;
-}
-.inspire-top-link:hover {
-  color: #2563EB;
-  transform: translateY(-1px);
-}
-
-/* Form Input Active Glow */
-.inspire-input-focus {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-}
-.inspire-input-focus:focus {
-  border-color: #2563EB !important;
-  box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.15) !important;
-  background: #FFFFFF !important;
-}
-
-.anim-fade-up {
-  animation: fadeInUp 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) both;
-}
-
-.anim-modal-zoom {
-  animation: modalZoomIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) both;
-}
-
-.anim-slide-down {
-  animation: slideDown 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) both;
-}
-
-/* Responsive Breakpoints Optimization */
-@media (max-width: 1024px) {
-  .inspire-desktop-nav { display: none !important; }
-  .inspire-desktop-top { display: none !important; }
-  .inspire-mobile-btn { display: flex !important; }
-  .inspire-container { padding: 0 16px; }
-}
-
-@media (max-width: 640px) {
-  .inspire-section-pad { padding: 44px 14px !important; }
-  .inspire-hero-box { height: 420px !important; }
-  .inspire-stat-box { min-width: 130px !important; padding: 12px 14px !important; }
-  .inspire-stat-val { font-size: 24px !important; }
-  .inspire-form-box { padding: 22px 16px !important; border-radius: 18px !important; }
+@media(max-width:640px){
+  .hero-h{height:420px!important}
+  .section-pad{padding:52px 14px!important}
+  .stat-val{font-size:26px!important}
+  .form-box{padding:22px 16px!important;border-radius:18px!important}
+  .h1-hero{font-size:26px!important}
 }
 `;
 
-// ══════════════════════════════════════════════════════════════
-//  MAIN COMPONENT
-// ══════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════
+   STAT COUNTER CARD
+═══════════════════════════════════════════════════════════════ */
+function StatCard({ stat, active }: { stat: typeof STAT_CARDS[0]; active: boolean }) {
+  const numTarget = parseInt(stat.value.replace(/\D/g, ''));
+  const count = useCounter(numTarget, 1800, active);
+  return (
+    <div className="ch" style={{ background: '#fff', borderRadius: 18, padding: '22px 20px', flex: 1, minWidth: 160, border: `1.5px solid ${stat.col}22`, boxShadow: `0 4px 20px ${stat.col}18`, position: 'relative', overflow: 'hidden' }}>
+      {/* Corner accent */}
+      <div style={{ position: 'absolute', top: 0, right: 0, width: 60, height: 60, background: `${stat.col}12`, borderRadius: '0 0 0 60px' }} />
+      <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: stat.col, boxShadow: `0 0 8px ${stat.col}` }} />
+      <div className="stat-val" style={{ fontSize: 'clamp(26px,2.8vw,40px)', fontWeight: 900, color: stat.col, fontFamily: "'Merriweather',serif", lineHeight: 1, marginBottom: 6 }}>
+        {active ? count : 0}{stat.suffix}
+      </div>
+      <div style={{ fontSize: 12.5, color: '#64748B', fontWeight: 700, lineHeight: 1.4 }}>{stat.label}</div>
+      <div style={{ position: 'absolute', bottom: 0, left: 0, height: 3, width: '100%', background: `linear-gradient(90deg,${stat.col},${stat.col}44)`, borderRadius: '0 0 18px 18px' }} />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+═══════════════════════════════════════════════════════════════ */
 export const PortfolioView: React.FC = () => {
-  // Enquiry form state
   const [stuName, setStuName] = useState('');
   const [parentName, setParentName] = useState('');
   const [stuMobile, setStuMobile] = useState('');
@@ -234,231 +318,220 @@ export const PortfolioView: React.FC = () => {
   const [enquirySuccess, setEnquirySuccess] = useState(false);
   const [enquiryRef, setEnquiryRef] = useState('');
   const [enquiryError, setEnquiryError] = useState('');
-
-  // Lightbox Modal state for paper clips ONLY
   const [selectedClip, setSelectedClip] = useState<typeof PAPER_CLIPS[0] | null>(null);
-
-  // Mobile menu state
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrollPct, setScrollPct] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
 
-  // Portal gateway path
+  // Reveal refs
+  const statsRef = useReveal(0.2);
+  const clipsRef = useReveal(0.1);
+  const streamsRef = useReveal(0.1);
+  const aboutRef = useReveal(0.1);
+  const campusesRef = useReveal(0.1);
+  const enquiryReveal = useReveal(0.1);
+
+  // Scroll progress
+  useEffect(() => {
+    const onScroll = () => {
+      const el = document.documentElement;
+      const pct = (el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100;
+      setScrollPct(pct);
+      setScrolled(el.scrollTop > 60);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const portalHash = '#/v1-portal-gate-x89f2a7b';
   const orgPhone = '+91 97043 80320';
   const orgEmail = 'admissions@inspirejuniorcollege.edu.in';
 
-  // Enquiry submit handler
   const handleEnquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stuName.trim() || !stuMobile.trim()) {
-      setEnquiryError('Please enter Student Name and Contact Mobile Number.');
-      return;
-    }
-    setIsSubmitting(true);
-    setEnquiryError('');
+    if (!stuName.trim() || !stuMobile.trim()) { setEnquiryError('Please enter Student Name and Contact Mobile Number.'); return; }
+    setIsSubmitting(true); setEnquiryError('');
     try {
       const res = await fetch('/api/enquiries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          studentName: stuName.trim(),
-          parentName: parentName.trim(),
-          mobile: stuMobile.trim(),
-          email: stuEmail.trim(),
-          stream: stuStream,
-          preferredCampus: stuCampus,
-          currentGrade: stuGrade,
-          notes: stuNotes.trim()
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentName: stuName.trim(), parentName: parentName.trim(), mobile: stuMobile.trim(), email: stuEmail.trim(), stream: stuStream, preferredCampus: stuCampus, currentGrade: stuGrade, notes: stuNotes.trim() }),
       });
       const data = await res.json();
-      if (data?.status === 'success') {
-        setEnquiryRef(data.referenceCode || `ENQ-2026-${Math.floor(1000 + Math.random() * 9000)}`);
-        setEnquirySuccess(true);
-      } else {
-        setEnquiryError(data.message || 'Failed to submit. Please try again.');
-      }
+      if (data?.status === 'success') { setEnquiryRef(data.referenceCode || `ENQ-2026-${Math.floor(1000 + Math.random() * 9000)}`); setEnquirySuccess(true); }
+      else setEnquiryError(data.message || 'Failed to submit. Please try again.');
     } catch {
-      setEnquiryRef(`ENQ-2026-${Math.floor(1000 + Math.random() * 9000)}`);
-      setEnquirySuccess(true);
-    } finally {
-      setIsSubmitting(false);
-    }
+      setEnquiryRef(`ENQ-2026-${Math.floor(1000 + Math.random() * 9000)}`); setEnquirySuccess(true);
+    } finally { setIsSubmitting(false); }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '13px 15px', background: '#F8FAFC',
-    border: '1.5px solid #CBD5E1', borderRadius: 10, color: DARK_TEXT,
-    fontSize: 14, outline: 'none', fontFamily: 'Plus Jakarta Sans, sans-serif',
+  const inputSt: React.CSSProperties = {
+    width: '100%', padding: '13px 16px', background: '#F8FAFC',
+    border: '1.5px solid #E2E8F0', borderRadius: 10, color: DARK_TEXT,
+    fontSize: 14, fontFamily: "'Plus Jakarta Sans',sans-serif",
   };
+
+  const tickerItems = [
+    'Inspire Junior College — Admissions Open 2026-27',
+    'IIT-JEE Mains & Advanced · NEET Medical · Intermediate Board',
+    '4 Premium Campuses across Hanamkonda & Warangal',
+    'Individual Mentorship · Doubt Clarification Desks · AC Hostels',
+    '99%+ Percentile Performers · 1500+ Successful Admissions',
+  ];
 
   return (
     <>
       <style>{CSS}</style>
 
-      <div style={{ background: BODY_WHITE, minHeight: '100vh' }}>
+      {/* Scroll progress bar */}
+      <div id="inspire-progress" style={{ width: `${scrollPct}%` }} />
 
-        {/* ══════════════════════════════════════════
-            TOP UTILITY HEADER BAR
-        ══════════════════════════════════════════ */}
-        <div className="inspire-desktop-top" style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', padding: '10px 0' }}>
-          <div className="inspire-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            
-            {/* Institution Brand & Logo */}
+      <div style={{ background: '#FFFFFF', minHeight: '100vh' }}>
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            ANNOUNCEMENT TICKER
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <div style={{ background: 'linear-gradient(90deg,#0F172A,#1E3A8A)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '8px 0', overflow: 'hidden' }}>
+          <div className="ticker-wrap">
+            <div className="ticker-inner">
+              {[...tickerItems, ...tickerItems].map((t, i) => (
+                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 20, marginRight: 48, fontSize: 12, fontWeight: 700, color: '#CBD5E1', letterSpacing: '0.03em' }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: ACCENT_GOLD, display: 'inline-block', flexShrink: 0 }} />
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            TOP UTILITY BAR
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <div className="desk-top" style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', padding: '11px 0' }}>
+          <div className="ic" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <a href="#hero" style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none' }}>
-              <img
-                src={collegeLogo}
-                alt="Inspire Junior College Logo"
-                style={{ height: 46, width: 'auto', objectFit: 'contain' }}
-              />
+              <img src={collegeLogo} alt="Inspire Junior College Logo" style={{ height: 46, width: 'auto', objectFit: 'contain' }} />
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: NAVBAR_NAVY, fontFamily: "'Merriweather', serif", letterSpacing: '-0.02em' }}>
-                  Inspire Junior College
-                </div>
-                <div style={{ fontSize: 11, color: '#64748B', fontWeight: 700, letterSpacing: '0.04em' }}>
-                  HANUMAKONDA, TELANGANA · IIT-JEE | NEET | INTERMEDIATE
-                </div>
+                <div style={{ fontSize: 19, fontWeight: 900, color: NAVBAR_NAVY, fontFamily: "'Merriweather',serif", letterSpacing: '-0.02em' }}>Inspire Junior College</div>
+                <div style={{ fontSize: 10.5, color: '#64748B', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase' }}>Hanumakonda, Telangana · IIT-JEE | NEET | Intermediate</div>
               </div>
             </a>
-
-            {/* Utility Quick Links */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-              <a href={portalHash} className="inspire-top-link">Portal Gateway</a>
-              <a href="#enquiry" className="inspire-top-link">Admissions 2026</a>
-              <a href="#paper-clips" className="inspire-top-link">News &amp; Media</a>
-              <a href="#about" className="inspire-top-link">About College</a>
+              {[['#enquiry','Admissions 2026'],['#paper-clips','News & Media'],['#about','About'],['#contact','Contact']].map(([h,l]) => (
+                <a key={h} href={h} style={{ fontSize: 13, fontWeight: 700, color: '#475569', textDecoration: 'none', transition: 'color 0.2s' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#2563EB')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#475569')}>{l}</a>
+              ))}
             </div>
-
-            {/* Call to Action Button with Pulse Glow */}
-            <a
-              href="#enquiry"
-              className="inspire-btn-pulse"
-              style={{
-                background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-                color: '#FFFFFF',
-                padding: '10px 24px',
-                fontWeight: 800,
-                fontSize: 14,
-                textDecoration: 'none',
-                borderRadius: 8,
-                boxShadow: '0 4px 14px rgba(217,119,6,0.25)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                transition: 'transform 0.2s'
-              }}
-            >
-              <span>Enquire Now</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            <a href="#enquiry" className="btn-gold pulse" style={{ padding: '9px 22px', fontSize: 13 }}>
+              Enquire Now
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </a>
           </div>
         </div>
 
-        {/* ══════════════════════════════════════════
-            MAIN NAVIGATION BAR (Sticky Navy)
-        ══════════════════════════════════════════ */}
-        <nav style={{ background: NAVBAR_NAVY, position: 'sticky', top: 0, zIndex: 200, boxShadow: '0 4px 20px rgba(15,23,42,0.18)' }}>
-          <div className="inspire-container" style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-
-            {/* Mobile Header Logo */}
-            <a href="#hero" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }} className="inspire-mobile-btn">
-              <img src={collegeLogo} alt="Logo" style={{ height: 36, width: 'auto', background: '#fff', padding: 2, borderRadius: 6 }} />
-              <span style={{ color: '#fff', fontWeight: 800, fontSize: 16, fontFamily: "'Merriweather', serif" }}>Inspire Junior College</span>
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            STICKY NAV
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <nav style={{
+          background: scrolled ? 'rgba(15,23,42,0.97)' : NAVBAR_NAVY,
+          backdropFilter: scrolled ? 'blur(12px)' : 'none',
+          position: 'sticky', top: 0, zIndex: 200,
+          boxShadow: scrolled ? '0 4px 24px rgba(15,23,42,0.28)' : '0 2px 12px rgba(15,23,42,0.12)',
+          transition: 'background 0.35s, box-shadow 0.35s, backdrop-filter 0.35s',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <div className="ic" style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Mobile brand */}
+            <a href="#hero" className="mob-btn" style={{ display: 'none', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+              <img src={collegeLogo} alt="Logo" style={{ height: 34, background: '#fff', padding: '2px 4px', borderRadius: 6 }} />
+              <span style={{ color: '#fff', fontWeight: 900, fontSize: 15, fontFamily: "'Merriweather',serif" }}>Inspire Junior College</span>
             </a>
-
-            {/* Desktop Navigation Links */}
-            <div className="inspire-desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: 28, width: '100%', justifyContent: 'center' }}>
-              {[
-                { href: '#about', label: 'About College' },
-                { href: '#streams', label: 'Academic Streams' },
-                { href: '#paper-clips', label: 'Achievements & Media' },
-                { href: '#campuses', label: 'Our 4 Campuses' },
-                { href: '#mentorship', label: 'Individual Mentorship' },
-                { href: '#enquiry', label: 'Admission Form' },
-                { href: '#contact', label: 'Contact Us' },
-              ].map(link => (
-                <a key={link.href} href={link.href} className="inspire-nav-link">{link.label}</a>
+            {/* Desktop links */}
+            <div className="desk-nav" style={{ display: 'flex', alignItems: 'center', gap: 32, width: '100%', justifyContent: 'center' }}>
+              {[['#about','About College'],['#streams','Academic Streams'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#mentorship','Mentorship'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
+                <a key={h} href={h} className="nl">{l}</a>
               ))}
             </div>
-
-            {/* Mobile Hamburger Toggle (44px touch target) */}
-            <button
-              className="inspire-mobile-btn"
-              onClick={() => setMobileOpen(o => !o)}
-              style={{ display: 'none', background: 'none', border: '1.5px solid rgba(255,255,255,0.3)', borderRadius: 8, padding: '8px 12px', color: '#fff', cursor: 'pointer', minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            {/* Mobile menu toggle */}
+            <button className="mob-btn" onClick={() => setMobileOpen(o => !o)}
+              style={{ display: 'none', background: 'none', border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: 8, padding: '8px 12px', color: '#fff', cursor: 'pointer', alignItems: 'center', gap: 6, minWidth: 44, minHeight: 44, justifyContent: 'center', transition: 'border-color 0.2s' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                {mobileOpen ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></> : <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>}
+              </svg>
             </button>
           </div>
-
-          {/* Mobile Navigation Dropdown */}
+          {/* Mobile dropdown */}
           {mobileOpen && (
-            <div className="anim-slide-down" style={{ background: NAVBAR_NAVY, borderTop: '1px solid rgba(255,255,255,0.15)', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {[
-                { href: '#about', label: 'About College' },
-                { href: '#streams', label: 'Academic Streams' },
-                { href: '#paper-clips', label: 'Achievements & Media' },
-                { href: '#campuses', label: 'Our 4 Campuses' },
-                { href: '#enquiry', label: 'Admission Form' }
-              ].map(link => (
-                <a key={link.label} href={link.href} onClick={() => setMobileOpen(false)} style={{ color: '#F8FAFC', fontSize: 15, fontWeight: 700, textDecoration: 'none', padding: '6px 0' }}>{link.label}</a>
+            <div style={{ background: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.1)', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 4, animation: 'navSlide 0.28s ease both' }}>
+              {[['#about','About College'],['#streams','Academic Streams'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
+                <a key={h} href={h} onClick={() => setMobileOpen(false)} style={{ color: '#CBD5E1', fontSize: 15, fontWeight: 700, textDecoration: 'none', padding: '10px 12px', borderRadius: 8, transition: 'background 0.2s, color 0.2s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#CBD5E1'; }}
+                >{l}</a>
               ))}
-              <a href="#enquiry" onClick={() => setMobileOpen(false)} style={{ background: ACCENT_GOLD, color: '#000', padding: '12px 20px', fontWeight: 800, textDecoration: 'none', textAlign: 'center', borderRadius: 8, marginTop: 4 }}>Enquire Now</a>
+              <a href="#enquiry" onClick={() => setMobileOpen(false)} className="btn-gold" style={{ marginTop: 8, textAlign: 'center', justifyContent: 'center' }}>Enquire Now</a>
             </div>
           )}
         </nav>
 
-        {/* ══════════════════════════════════════════
-            CLEAN BIG HERO IMAGE SHOWCASE SECTION
-        ══════════════════════════════════════════ */}
-        <section id="hero" className="inspire-hero-box" style={{ position: 'relative', overflow: 'hidden', height: '620px', background: '#0F172A' }}>
-          {/* Big Size Hero Image — Clean, Crisp Showcase */}
-          <div style={{ position: 'absolute', inset: 0 }}>
-            <img
-              src={heroImg}
-              alt="Inspire Junior College Main Campus Showcase"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          </div>
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            HERO — CLEAN BIG IMAGE SHOWCASE
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section id="hero" className="hero-h" style={{ position: 'relative', height: 640, overflow: 'hidden', background: '#0F172A' }}>
+          {/* Full hero image */}
+          <img src={heroImg} alt="Inspire Junior College Campus" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.78)' }} />
+          {/* Multi-stop gradient overlay */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg, rgba(15,23,42,0.25) 0%, transparent 40%, rgba(15,23,42,0.82) 100%)' }} />
 
-          {/* Subtle Subtle Bottom Gradient for Hero Contrast */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.15) 0%, rgba(15,23,42,0.7) 100%)' }} />
+          {/* Decorative corner ornaments */}
+          <div style={{ position: 'absolute', top: 28, left: 28, width: 64, height: 64, border: '2px solid rgba(245,158,11,0.5)', borderRadius: 6, transform: 'rotate(12deg)', animation: 'floatY 5s ease-in-out infinite' }} />
+          <div style={{ position: 'absolute', top: 36, left: 36, width: 64, height: 64, border: '2px solid rgba(37,99,235,0.35)', borderRadius: 6, transform: 'rotate(-4deg)' }} />
+          <div style={{ position: 'absolute', bottom: 80, right: 40, width: 48, height: 48, border: '2px solid rgba(245,158,11,0.4)', borderRadius: '50%', animation: 'floatY 6s ease-in-out infinite 1s' }} />
 
-          {/* Clean Overlay Banner Title */}
-          <div style={{ position: 'absolute', bottom: 32, left: 0, right: 0 }}>
-            <div className="inspire-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
-              <div>
-                <div style={{ background: ACCENT_GOLD, color: '#0F172A', display: 'inline-block', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                  Inspire Junior College HQ
+          {/* Bottom info bar */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+            {/* Thin gold accent line above bar */}
+            <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #F59E0B 30%, #2563EB 70%, transparent)' }} />
+            <div style={{ background: 'linear-gradient(90deg, rgba(15,23,42,0.96), rgba(15,23,42,0.88))', backdropFilter: 'blur(12px)', padding: '20px 28px' }}>
+              <div className="ic" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+                <div style={{ animation: 'fadeUp 0.8s ease both 0.3s' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                    <div style={{ width: 28, height: 3, background: 'linear-gradient(90deg,#F59E0B,#D97706)', borderRadius: 2 }} />
+                    <span style={{ fontSize: 11, fontWeight: 800, color: ACCENT_GOLD, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Established &amp; Accredited</span>
+                    <div style={{ width: 28, height: 3, background: 'linear-gradient(90deg,#D97706,#F59E0B)', borderRadius: 2 }} />
+                  </div>
+                  <h1 className="h1-hero" style={{ fontSize: 'clamp(26px,3.8vw,46px)', fontWeight: 900, color: '#FFFFFF', fontFamily: "'Merriweather',serif", textShadow: '0 4px 14px rgba(0,0,0,0.5)', margin: '0 0 4px', lineHeight: 1.2 }}>
+                    Inspire Junior College
+                  </h1>
+                  <p style={{ fontSize: 14, color: '#94A3B8', fontWeight: 600 }}>Hanumakonda, Telangana · IIT-JEE · NEET · Intermediate</p>
                 </div>
-                <h1 style={{ fontSize: 'clamp(26px, 4vw, 48px)', fontWeight: 900, color: '#FFFFFF', fontFamily: "'Merriweather', serif", textShadow: '0 4px 12px rgba(0,0,0,0.6)', margin: 0 }}>
-                  Inspire Junior College
-                </h1>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', animation: 'fadeUp 0.8s ease both 0.5s' }}>
+                  <a href="#enquiry" className="btn-gold pulse">
+                    Apply for Admission 2026
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                  </a>
+                  <a href="#paper-clips" className="btn-ghost">
+                    View Rank Clippings
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+                  </a>
+                </div>
               </div>
-
-              <a
-                href="#enquiry"
-                className="inspire-btn-pulse"
-                style={{ background: ACCENT_GOLD, color: '#0F172A', padding: '14px 32px', fontWeight: 900, fontSize: 15, textDecoration: 'none', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}
-              >
-                Apply for Admission 2026 &rarr;
-              </a>
             </div>
           </div>
         </section>
 
-        {/* ══════════════════════════════════════════
-            HIGHLIGHT STATS BAR
-        ══════════════════════════════════════════ */}
-        <section style={{ background: LIGHT_BG, padding: '0 16px' }}>
-          <div className="inspire-container" style={{ position: 'relative', marginTop: -28, paddingBottom: 40 }}>
-            <div style={{ background: '#FFFFFF', borderRadius: 22, padding: 14, boxShadow: '0 10px 40px rgba(15,23,42,0.12)', border: '1.5px solid #E2E8F0' }}>
-              <div style={{ display: 'flex', gap: 14, flexWrap: 'nowrap', overflowX: 'auto' }}>
-                {STAT_CARDS.map((stat, idx) => (
-                  <div key={idx} className="inspire-stat-box inspire-card-hover" style={{ background: stat.bg, borderRadius: 16, padding: '16px 20px', flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <div className="inspire-stat-val" style={{ fontSize: 'clamp(24px,2.5vw,36px)', fontWeight: 900, color: '#FFF', fontFamily: "'Merriweather', serif" }}>
-                      {stat.value}
-                    </div>
-                    <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.92)', fontWeight: 700 }}>{stat.label}</p>
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            ANIMATED STATS BAR
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section style={{ background: '#F8FAFC', padding: '0 16px' }}>
+          <div ref={statsRef.ref} className="ic" style={{ position: 'relative', marginTop: -30, paddingBottom: 44 }}>
+            <div style={{ background: '#fff', borderRadius: 24, padding: 16, boxShadow: '0 12px 48px rgba(15,23,42,0.11)', border: '1.5px solid #E2E8F0', position: 'relative', overflow: 'hidden' }}>
+              {/* Shimmer top accent */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#1E3A8A,#F59E0B,#10B981,#7C3AED,#0284C7)', borderRadius: '24px 24px 0 0' }} />
+              <div style={{ display: 'flex', gap: 14, flexWrap: 'nowrap', overflowX: 'auto', paddingTop: 8 }}>
+                {STAT_CARDS.map((s, i) => (
+                  <div key={i} className={`reveal d${(i+1)*100}`} style={{ flex: 1, minWidth: 160, ...(statsRef.visible ? {} : {}) }}>
+                    <StatCard stat={s} active={statsRef.visible} />
                   </div>
                 ))}
               </div>
@@ -466,208 +539,213 @@ export const PortfolioView: React.FC = () => {
           </div>
         </section>
 
-        {/* ══════════════════════════════════════════
-            MEDIA PRESS & PAPER CLIPS GALLERY
-            (ONLY Section with Student/News Photos)
-        ══════════════════════════════════════════ */}
-        <section id="paper-clips" className="inspire-section-pad" style={{ padding: '70px 16px', background: BODY_WHITE }}>
-          <div className="inspire-container">
-            
-            <div style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 48px' }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: '#2563EB', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                Official Media Releases &amp; Ranks
-              </span>
-              <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather', serif", margin: '8px 0 14px' }}>
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            PAPER CLIPS & MEDIA GALLERY
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section id="paper-clips" className="section-pad" style={{ padding: '88px 16px', background: '#FFFFFF' }}>
+          <div ref={clipsRef.ref} className="ic">
+
+            {/* Section heading */}
+            <div className={`reveal ${clipsRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto' }}>
+              <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Media Press &amp; Rank Clippings</div>
+              <h2 style={{ fontSize: 'clamp(26px,3.5vw,44px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 16px', lineHeight: 1.2 }}>
                 Our Paper Clips &amp; Rank Achievements
               </h2>
-              <p style={{ fontSize: 15, color: '#64748B', lineHeight: 1.75 }}>
-                Real newspaper releases, press coverage, and rank celebrations highlighting Inspire Junior College students dominating national and state entrance exams. Click any clipping to enlarge.
+              <p style={{ fontSize: 15.5, color: '#64748B', lineHeight: 1.8, maxWidth: 620, margin: '0 auto' }}>
+                Authentic newspaper releases, press coverage, and rank felicitation highlights — Inspire Junior College students dominating national and state competitive entrance exams.
               </p>
             </div>
 
-            {/* Grid of 7 Paper Clip Images */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
-              {PAPER_CLIPS.map((clip) => (
+            <div className={`dec-divider reveal ${clipsRef.visible ? 'visible' : ''} d200`} style={{ marginTop: 32 }}>
+              <div className="dec-divider-line" />
+              <div className="dec-divider-gem" />
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>CLICK ANY CLIPPING TO ENLARGE</div>
+              <div className="dec-divider-gem" />
+              <div className="dec-divider-line" />
+            </div>
+
+            {/* 7-image clippings grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 22 }}>
+              {PAPER_CLIPS.map((clip, i) => (
                 <div
                   key={clip.id}
                   onClick={() => setSelectedClip(clip)}
-                  className="inspire-card-hover inspire-clip-container"
-                  style={{
-                    background: '#FFFFFF',
-                    borderRadius: 18,
-                    overflow: 'hidden',
-                    border: '1.5px solid #E2E8F0',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 16px rgba(15,23,42,0.06)',
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}
+                  className={`ch clip-wrap reveal d${Math.min((i%4+1)*100,400)} ${clipsRef.visible ? 'visible' : ''}`}
+                  style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', border: '1.5px solid #E2E8F0', cursor: 'pointer', boxShadow: '0 4px 18px rgba(15,23,42,0.06)', display: 'flex', flexDirection: 'column', position: 'relative' }}
                 >
-                  <div style={{ height: 260, backgroundColor: '#F1F5F9', overflow: 'hidden', position: 'relative' }}>
-                    <img
-                      src={clip.src}
-                      alt={clip.title}
-                      className="inspire-clip-img"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                    <div style={{ position: 'absolute', top: 12, right: 12, background: 'rgba(15,23,42,0.75)', color: '#FFF', padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                      <span>Click to Enlarge</span>
+                  {/* Image */}
+                  <div style={{ height: 260, overflow: 'hidden', position: 'relative', background: '#F1F5F9' }}>
+                    <img src={clip.src} alt={clip.title} className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    {/* Gradient overlay at bottom of image */}
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top,rgba(15,23,42,0.65),transparent)' }} />
+                    {/* Tag badge */}
+                    <div style={{ position: 'absolute', bottom: 12, left: 14, background: ACCENT_GOLD, color: '#0F172A', padding: '4px 10px', borderRadius: 20, fontSize: 10.5, fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      {clip.tag}
+                    </div>
+                    {/* Zoom icon */}
+                    <div style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: '50%', background: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     </div>
                   </div>
 
-                  <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <div>
-                      <h4 style={{ fontSize: 16, fontWeight: 800, color: DARK_TEXT, marginBottom: 6, lineHeight: 1.4 }}>
-                        {clip.title}
-                      </h4>
-                      <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6 }}>
-                        {clip.subtitle}
-                      </p>
-                    </div>
-                    
-                    <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 6, color: '#2563EB', fontSize: 13, fontWeight: 800 }}>
-                      <span>View News Clipping</span>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  {/* Card body */}
+                  <div style={{ padding: '20px 22px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10 }}>
+                    <h4 style={{ fontSize: 15.5, fontWeight: 800, color: DARK_TEXT, lineHeight: 1.4, margin: 0 }}>{clip.title}</h4>
+                    <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.65, margin: 0 }}>{clip.subtitle}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#2563EB', fontSize: 12.5, fontWeight: 800, marginTop: 4, paddingTop: 12, borderTop: '1px solid #F1F5F9' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                      View Full Clipping
                     </div>
                   </div>
+
+                  {/* Bottom border accent */}
+                  <div style={{ height: 3, background: 'linear-gradient(90deg,#F59E0B,#2563EB)', borderRadius: '0 0 20px 20px' }} />
                 </div>
               ))}
             </div>
-
           </div>
         </section>
 
-        {/* ══════════════════════════════════════════
-            ACADEMIC STREAMS OFFERED
-            (Clean UI Cards - NO Extraneous Photos)
-        ══════════════════════════════════════════ */}
-        <section id="streams" className="inspire-section-pad" style={{ padding: '80px 16px', background: LIGHT_BG }}>
-          <div className="inspire-container">
-            
-            <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 56px' }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: ACCENT_GOLD, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                Future-Ready Education
-              </span>
-              <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather', serif", margin: '8px 0 14px' }}>
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            ACADEMIC STREAMS
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section id="streams" className="section-pad" style={{ padding: '88px 16px', background: '#F8FAFC', position: 'relative', overflow: 'hidden' }}>
+          {/* Decorative background geometry */}
+          <div style={{ position: 'absolute', top: -80, right: -80, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle,rgba(37,99,235,0.06),transparent 70%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: -60, left: -60, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle,rgba(245,158,11,0.07),transparent 70%)', pointerEvents: 'none' }} />
+
+          <div ref={streamsRef.ref} className="ic">
+            <div className={`reveal ${streamsRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 20px' }}>
+              <div className="section-label" style={{ color: ACCENT_GOLD, justifyContent: 'center' }}>Future-Ready Education</div>
+              <h2 style={{ fontSize: 'clamp(26px,3.5vw,44px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 16px', lineHeight: 1.2 }}>
                 Academic Programs Offered
               </h2>
-              <p style={{ fontSize: 15, color: '#64748B', lineHeight: 1.75 }}>
-                Inspire Junior College provides specialized 2-year integrated Intermediate courses combining rigorous Board curriculum with targeted competitive exam preparation.
+              <p style={{ fontSize: 15.5, color: '#64748B', lineHeight: 1.8 }}>
+                Specialized 2-year Intermediate programs combining rigorous Board curriculum with targeted competitive exam coaching — personalized for every student.
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 24 }}>
-              {PROGRAM_CARDS.map((prog, idx) => (
-                <div
-                  key={idx}
-                  className="inspire-card-hover"
-                  style={{
-                    background: '#FFFFFF',
-                    borderRadius: 22,
-                    overflow: 'hidden',
-                    border: '1.5px solid #E2E8F0',
-                    boxShadow: '0 8px 24px rgba(15,23,42,0.06)',
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}
-                >
-                  <div style={{ padding: '28px', background: `linear-gradient(135deg, ${prog.gradFrom} 0%, ${prog.gradTo} 100%)`, color: '#FFF' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                      <span style={{ background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 800, letterSpacing: '0.04em' }}>
-                        {prog.tag}
-                      </span>
-                      <span style={{ fontSize: 28 }}>{prog.icon}</span>
-                    </div>
+            <div className={`dec-divider reveal ${streamsRef.visible ? 'visible' : ''} d200`} style={{ marginTop: 28 }}>
+              <div className="dec-divider-line" /><div className="dec-divider-gem" /><div className="dec-divider-line" />
+            </div>
 
-                    <h3 style={{ fontSize: 22, fontWeight: 900, marginBottom: 8, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                      {prog.title}
-                    </h3>
-                    <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.9)', lineHeight: 1.6 }}>
-                      {prog.subtitle}
-                    </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 24 }}>
+              {PROGRAM_CARDS.map((prog, idx) => (
+                <div key={idx} className={`ch reveal d${(idx+1)*200} ${streamsRef.visible ? 'visible' : ''}`}
+                  style={{ background: '#fff', borderRadius: 22, overflow: 'hidden', border: '1.5px solid #E2E8F0', boxShadow: '0 8px 28px rgba(15,23,42,0.06)', display: 'flex', flexDirection: 'column' }}>
+
+                  {/* Header gradient */}
+                  <div style={{ padding: '30px 28px', background: `linear-gradient(160deg,${prog.gradA},${prog.gradB})`, color: '#fff', position: 'relative', overflow: 'hidden' }}>
+                    {/* Decorative circle patterns */}
+                    <div style={{ position: 'absolute', top: -24, right: -24, width: 120, height: 120, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.12)' }} />
+                    <div style={{ position: 'absolute', top: -10, right: -10, width: 80, height: 80, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.08)' }} />
+                    <div style={{ position: 'absolute', bottom: -30, left: -20, width: 100, height: 100, borderRadius: '50%', background: `${prog.accent}22` }} />
+
+                    <span style={{ background: `${prog.accent}30`, border: `1px solid ${prog.accent}60`, padding: '4px 12px', borderRadius: 20, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: '#fff' }}>
+                      {prog.tag}
+                    </span>
+                    <h3 style={{ fontSize: 24, fontWeight: 900, margin: '14px 0 4px', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{prog.title}</h3>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: prog.accent, marginBottom: 10, letterSpacing: '0.03em' }}>{prog.subtitle}</div>
+                    <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.82)', lineHeight: 1.65 }}>{prog.body}</p>
                   </div>
 
-                  <div style={{ padding: '24px 28px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 20 }}>
+                  {/* Highlights */}
+                  <div style={{ padding: '22px 28px', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Program Highlights</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Program Highlights:</div>
                       {prog.highlights.map((h, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 700, color: DARK_TEXT }}>
-                          <span style={{ color: '#10B981', fontWeight: 900 }}>✓</span>
-                          <span>{h}</span>
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 20, height: 20, borderRadius: 6, background: `${prog.accent}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={prog.accent} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                          <span style={{ fontSize: 13.5, fontWeight: 700, color: DARK_TEXT }}>{h}</span>
                         </div>
                       ))}
                     </div>
-
-                    <div style={{ paddingTop: 16, borderTop: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#64748B' }}>Duration: 2 Academic Years</span>
-                      <a href="#enquiry" style={{ color: '#2563EB', fontWeight: 800, fontSize: 14, textDecoration: 'none' }}>Apply Stream &rarr;</a>
+                    <div style={{ paddingTop: 16, borderTop: '1px dashed #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#94A3B8' }}>Duration: 2 Academic Years</span>
+                      <a href="#enquiry" style={{ color: prog.accent, fontWeight: 900, fontSize: 13.5, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, transition: 'gap 0.2s' }}
+                        onMouseEnter={e => (e.currentTarget.style.gap = '8px')} onMouseLeave={e => (e.currentTarget.style.gap = '4px')}>
+                        Apply Stream
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                      </a>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-
           </div>
         </section>
 
-        {/* ══════════════════════════════════════════
-            ABOUT INSPIRE JUNIOR COLLEGE & MENTORSHIP
-            (Clean UI Layout - NO Extraneous Photos)
-        ══════════════════════════════════════════ */}
-        <section id="about" id-sec="mentorship" className="inspire-section-pad" style={{ padding: '80px 16px', background: BODY_WHITE }}>
-          <div className="inspire-container">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', gap: 40, alignItems: 'center' }}>
-              
-              <div>
-                <span style={{ fontSize: 12, fontWeight: 800, color: '#2563EB', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                  Why Choose Inspire Junior College
-                </span>
-                <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather', serif", margin: '10px 0 18px', lineHeight: 1.3 }}>
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            ABOUT & MENTORSHIP
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section id="about" style={{ padding: '88px 16px', background: '#fff', position: 'relative' }}>
+          <div ref={aboutRef.ref} className="ic">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 48, alignItems: 'center' }}>
+
+              {/* Left text */}
+              <div className={`reveal-left ${aboutRef.visible ? 'visible' : ''}`}>
+                <div className="section-label" style={{ color: '#2563EB' }}>Why Choose Inspire Junior College</div>
+                <h2 id="mentorship" style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '12px 0 20px', lineHeight: 1.3 }}>
                   Individual Mentorship &amp; Specialized Doubt Clarification
                 </h2>
-                <p style={{ fontSize: 15, color: '#475569', lineHeight: 1.8, marginBottom: 20 }}>
-                  At <strong>Inspire Junior College</strong>, we believe every student possesses unique academic potential. Our signature approach combines experienced senior faculty, daily error analysis sessions, personalized doubt clarification, and individual performance tracking.
+                <p style={{ fontSize: 15, color: '#475569', lineHeight: 1.85, marginBottom: 28 }}>
+                  At <strong style={{ color: DARK_TEXT }}>Inspire Junior College</strong>, every student receives a personal mentor who tracks daily progress, error patterns, and academic growth — ensuring no student is left behind.
                 </p>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28 }}>
-                  {[
-                    'Specialized Doubt Clarification Desks with Dedicated Subject Experts',
-                    'Individual Mentorship & Daily Progress Monitoring for Every Student',
-                    'Weekly IIT-JEE & NEET Simulated Pattern Examinations',
-                    'Air-Conditioned Classrooms & Modern Digital Learning Aids'
-                  ].map((feat, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#DEF7EC', color: '#03543F', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 900, fontSize: 12 }}>✓</div>
-                      <span style={{ fontSize: 14.5, fontWeight: 700, color: DARK_TEXT }}>{feat}</span>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {FEATURES.map((f, i) => (
+                    <div key={i} className={`d${(i+1)*100} reveal ${aboutRef.visible ? 'visible' : ''}`}
+                      style={{ display: 'flex', gap: 16, padding: '16px 0', borderBottom: i < FEATURES.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#EFF6FF,#DBEAFE)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1.5px solid #BFDBFE' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14.5, fontWeight: 800, color: DARK_TEXT, marginBottom: 3 }}>{f.label}</div>
+                        <div style={{ fontSize: 13, color: '#64748B', lineHeight: 1.65 }}>{f.desc}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
 
-                <a href="#enquiry" style={{ background: NAVBAR_NAVY, color: '#FFF', padding: '14px 30px', borderRadius: 10, fontWeight: 800, textDecoration: 'none', fontSize: 14, display: 'inline-block' }}>
-                  Schedule a Campus Visit &rarr;
+                <a href="#enquiry" style={{ marginTop: 28, display: 'inline-flex', alignItems: 'center', gap: 10, background: NAVBAR_NAVY, color: '#fff', padding: '14px 30px', borderRadius: 10, fontWeight: 800, textDecoration: 'none', fontSize: 14, transition: 'transform 0.22s, box-shadow 0.22s', boxShadow: '0 4px 16px rgba(15,23,42,0.18)' }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(15,23,42,0.24)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 16px rgba(15,23,42,0.18)'; }}>
+                  Schedule a Campus Visit
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                 </a>
               </div>
 
-              {/* Clean Feature Box (No Photo) */}
-              <div className="inspire-card-hover" style={{ borderRadius: 22, background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)', padding: '36px', color: '#FFFFFF', boxShadow: '0 12px 36px rgba(15,23,42,0.16)' }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
-                  Institutional Excellence
-                </div>
-                <h3 style={{ fontSize: 24, fontWeight: 900, marginBottom: 14, fontFamily: "'Merriweather', serif" }}>
-                  Empowering Young Minds in Hanumakonda
-                </h3>
-                <p style={{ fontSize: 14.5, color: '#94A3B8', lineHeight: 1.75, marginBottom: 24 }}>
-                  Proven track record of success in intermediate board exams and national competitive engineering &amp; medical entrance tests with personal guidance.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.12)' }}>
-                  <div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: ACCENT_GOLD }}>100%</div>
-                    <div style={{ fontSize: 12, color: '#CBD5E1', fontWeight: 600 }}>Doubt Assistance</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: '#38BDF8' }}>Top AIR</div>
-                    <div style={{ fontSize: 12, color: '#CBD5E1', fontWeight: 600 }}>Competitive Ranks</div>
+              {/* Right: dark panel with stats */}
+              <div className={`reveal-right ${aboutRef.visible ? 'visible' : ''}`}>
+                <div className="ch" style={{ background: 'linear-gradient(160deg,#0F172A 0%,#1E3A8A 100%)', borderRadius: 24, padding: '40px 36px', color: '#fff', boxShadow: '0 20px 48px rgba(15,23,42,0.22)', position: 'relative', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  {/* Decorative orbs */}
+                  <div style={{ position: 'absolute', top: -30, right: -30, width: 150, height: 150, borderRadius: '50%', background: 'radial-gradient(circle,rgba(245,158,11,0.18),transparent)', animation: 'orbPulse 4s ease-in-out infinite' }} />
+                  <div style={{ position: 'absolute', bottom: -40, left: -20, width: 130, height: 130, borderRadius: '50%', background: 'radial-gradient(circle,rgba(37,99,235,0.2),transparent)', animation: 'orbPulse 4s ease-in-out infinite 1.5s' }} />
+
+                  <div style={{ fontSize: 11, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Institutional Excellence</div>
+                  <h3 style={{ fontSize: 26, fontWeight: 900, marginBottom: 14, fontFamily: "'Merriweather',serif", lineHeight: 1.3, position: 'relative' }}>
+                    Empowering Young Minds in Hanumakonda
+                  </h3>
+                  <p style={{ fontSize: 14, color: '#94A3B8', lineHeight: 1.8, marginBottom: 28, position: 'relative' }}>
+                    Proven track record of academic excellence in Intermediate board exams and national competitive engineering &amp; medical entrance tests — backed by structured mentorship.
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, position: 'relative' }}>
+                    {[
+                      { val: '100%', sub: 'Doubt Assistance', c: ACCENT_GOLD },
+                      { val: 'Top AIR', sub: 'Competitive Ranks', c: '#38BDF8' },
+                      { val: '4', sub: 'Premium Campuses', c: '#34D399' },
+                      { val: '1500+', sub: 'Alumni &amp; Counting', c: '#C084FC' },
+                    ].map((s, i) => (
+                      <div key={i} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.08)', transition: 'background 0.2s, transform 0.2s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.transform = ''; }}>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: s.c, marginBottom: 4 }} dangerouslySetInnerHTML={{ __html: s.val }} />
+                        <div style={{ fontSize: 11.5, color: '#94A3B8', fontWeight: 700 }} dangerouslySetInnerHTML={{ __html: s.sub }} />
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -676,112 +754,98 @@ export const PortfolioView: React.FC = () => {
           </div>
         </section>
 
-        {/* ══════════════════════════════════════════
-            OUR 4 CAMPUSES SECTION
-            (Clean UI Cards - NO Extraneous Photos)
-        ══════════════════════════════════════════ */}
-        <section id="campuses" className="inspire-section-pad" style={{ padding: '80px 16px', background: LIGHT_BG }}>
-          <div className="inspire-container">
-            
-            <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 48px' }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: '#2563EB', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                Infrastructure &amp; Locations
-              </span>
-              <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather', serif", margin: '8px 0 14px' }}>
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            OUR 4 CAMPUSES
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section id="campuses" className="section-pad" style={{ padding: '88px 16px', background: '#F8FAFC' }}>
+          <div ref={campusesRef.ref} className="ic">
+            <div className={`reveal ${campusesRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 20px' }}>
+              <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Infrastructure &amp; Locations</div>
+              <h2 style={{ fontSize: 'clamp(26px,3.5vw,44px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 16px', lineHeight: 1.2 }}>
                 Our 4 Premium Campuses
               </h2>
-              <p style={{ fontSize: 15, color: '#64748B', lineHeight: 1.75 }}>
-                Located in prime educational hubs across Hanamkonda &amp; Warangal, equipped with secure residential blocks, digital libraries, and academic desks.
+              <p style={{ fontSize: 15.5, color: '#64748B', lineHeight: 1.8 }}>
+                Located across Hanamkonda &amp; Warangal — each campus equipped with digital classrooms, AC hostels, dedicated transport, and round-the-clock security.
               </p>
             </div>
+            <div className={`dec-divider reveal d200 ${campusesRef.visible ? 'visible' : ''}`} style={{ marginTop: 28 }}>
+              <div className="dec-divider-line" /><div className="dec-divider-gem" /><div className="dec-divider-line" />
+            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
-              {CAMPUSES_LIST.map((campus, i) => (
-                <div
-                  key={i}
-                  className="inspire-card-hover"
-                  style={{
-                    background: '#FFFFFF',
-                    borderRadius: 20,
-                    padding: '28px 24px',
-                    border: `1.5px solid ${campus.border}`,
-                    boxShadow: '0 4px 16px rgba(15,23,42,0.06)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justify: 'space-between',
-                    gap: 16
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'inline-flex', width: 44, height: 44, borderRadius: 12, background: campus.bg, color: campus.border, fontWeight: 900, fontSize: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                      {campus.code}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(270px,1fr))', gap: 22 }}>
+              {CAMPUSES_LIST.map((c, i) => (
+                <div key={i} className={`ch reveal d${(i+1)*150} ${campusesRef.visible ? 'visible' : ''}`}
+                  style={{ background: '#fff', borderRadius: 20, border: `1.5px solid ${c.col}30`, boxShadow: '0 4px 18px rgba(15,23,42,0.06)', overflow: 'hidden' }}>
+                  {/* Top color bar */}
+                  <div style={{ height: 4, background: c.col }} />
+                  <div style={{ padding: '24px 22px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+                      <div style={{ width: 48, height: 48, borderRadius: 14, background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13, color: c.col, letterSpacing: '0.02em', border: `1.5px solid ${c.col}30`, flexShrink: 0 }}>
+                        {c.code}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10.5, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>Campus Branch</div>
+                        <h3 style={{ fontSize: 17.5, fontWeight: 900, color: DARK_TEXT, margin: 0 }}>{c.name}</h3>
+                      </div>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: '#2563EB', letterSpacing: '0.05em', textTransform: 'uppercase', display: 'block' }}>
-                      Campus Branch
-                    </span>
-                    <h3 style={{ fontSize: 19, fontWeight: 900, color: DARK_TEXT, margin: '4px 0 8px' }}>
-                      {campus.name}
-                    </h3>
-                    <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.6 }}>
-                      {campus.desc}
-                    </p>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 800, color: campus.border }}>
-                    <span>Explore Campus Facilities</span>
-                    <span>&rarr;</span>
+                    <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.7, margin: '0 0 18px' }}>{c.desc}</p>
+                    <div style={{ paddingTop: 14, borderTop: `1px dashed ${c.col}30`, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 800, color: c.col, transition: 'gap 0.2s', cursor: 'pointer' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      Explore Campus Facilities
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-
           </div>
         </section>
 
-        {/* ══════════════════════════════════════════
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             ADMISSION ENQUIRY FORM
-        ══════════════════════════════════════════ */}
-        <section id="enquiry" className="inspire-section-pad" style={{ padding: '80px 16px', background: BODY_WHITE }}>
-          <div className="inspire-container" style={{ maxWidth: 880 }}>
-            
-            <div style={{ textAlign: 'center', marginBottom: 40 }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: '#2563EB', letterSpacing: '.08em', textTransform: 'uppercase' }}>
-                Admission Enquiry Desk 2026-27
-              </span>
-              <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 42px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather', serif", margin: '10px 0 14px' }}>
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section id="enquiry" className="section-pad" style={{ padding: '88px 16px', background: '#fff', position: 'relative', overflow: 'hidden' }}>
+          {/* Background radial */}
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle,rgba(37,99,235,0.04),transparent 70%)', pointerEvents: 'none' }} />
+          <div ref={enquiryReveal.ref} className="ic" style={{ maxWidth: 900 }}>
+
+            <div className={`reveal ${enquiryReveal.visible ? 'visible' : ''}`} style={{ textAlign: 'center', marginBottom: 44 }}>
+              <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Admission Enquiry Desk 2026-27</div>
+              <h2 style={{ fontSize: 'clamp(26px,3.5vw,44px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 16px', lineHeight: 1.2 }}>
                 Enquire for Admission
               </h2>
-              <p style={{ fontSize: 15, color: '#64748B', lineHeight: 1.75 }}>
-                Submit the prospective student form below to connect directly with Inspire Junior College admission counselors.
+              <p style={{ fontSize: 15.5, color: '#64748B', lineHeight: 1.8 }}>
+                Fill in the form below and our dedicated admissions counselor will reach out within 24 hours with personalized guidance for stream &amp; campus selection.
               </p>
             </div>
 
-            <div className="inspire-form-box" style={{ background: '#FFFFFF', borderRadius: 24, padding: '36px', boxShadow: '0 12px 48px rgba(15,23,42,0.10)', border: '1.5px solid #E2E8F0' }}>
+            <div className={`form-box reveal d200 ${enquiryReveal.visible ? 'visible' : ''}`}
+              style={{ background: '#fff', borderRadius: 26, padding: '40px', boxShadow: '0 16px 56px rgba(15,23,42,0.10)', border: '1.5px solid #E2E8F0', position: 'relative', overflow: 'hidden' }}>
+              {/* Decorative top gradient band */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg,#1E3A8A,#F59E0B,#10B981)' }} />
+
               {enquirySuccess ? (
-                <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                  <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#DEF7EC', border: '2px solid #03543F', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: '#03543F' }}>
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                <div style={{ textAlign: 'center', padding: '36px 0', animation: 'scaleIn 0.5s ease both' }}>
+                  <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg,#DEF7EC,#A7F3D0)', border: '2.5px solid #10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 0 0 8px rgba(16,185,129,0.1)' }}>
+                    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                   </div>
-                  <h3 style={{ fontSize: 24, fontWeight: 900, color: DARK_TEXT, marginBottom: 8 }}>Enquiry Submitted Successfully!</h3>
-                  <p style={{ fontSize: 14, color: '#64748B', marginBottom: 20 }}>Our admission counselor will reach out on your registered contact number shortly.</p>
-                  
-                  <div style={{ display: 'inline-block', padding: '14px 32px', background: '#EFF6FF', border: '2px solid #2563EB', borderRadius: 12, color: '#1E3A8A', fontWeight: 900, fontSize: 18, marginBottom: 24, letterSpacing: '.04em' }}>
+                  <h3 style={{ fontSize: 26, fontWeight: 900, color: DARK_TEXT, marginBottom: 10 }}>Enquiry Submitted Successfully!</h3>
+                  <p style={{ fontSize: 14.5, color: '#64748B', marginBottom: 24, lineHeight: 1.7 }}>Our admissions counselor will reach out on your registered mobile number within 24 hours.</p>
+                  <div style={{ display: 'inline-block', padding: '16px 36px', background: 'linear-gradient(135deg,#EFF6FF,#DBEAFE)', border: '2px solid #2563EB', borderRadius: 14, color: '#1E3A8A', fontWeight: 900, fontSize: 19, marginBottom: 24, letterSpacing: '0.04em', boxShadow: '0 4px 16px rgba(37,99,235,0.15)' }}>
                     REFERENCE CODE: {enquiryRef}
                   </div>
-                  
                   <p style={{ fontSize: 13.5, color: '#64748B' }}>For instant assistance, call admissions desk: <strong style={{ color: '#D97706' }}>{orgPhone}</strong></p>
-                  
-                  <button
-                    onClick={() => { setEnquirySuccess(false); setStuName(''); setStuMobile(''); setEnquiryRef(''); }}
-                    style={{ marginTop: 24, padding: '12px 28px', background: NAVBAR_NAVY, color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-                  >
+                  <button onClick={() => { setEnquirySuccess(false); setStuName(''); setStuMobile(''); setEnquiryRef(''); }}
+                    style={{ marginTop: 24, padding: '12px 28px', background: NAVBAR_NAVY, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'transform 0.2s' }}
+                    onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-1px)')}
+                    onMouseLeave={e => (e.currentTarget.style.transform = '')}>
                     Submit Another Enquiry
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleEnquirySubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+                <form onSubmit={handleEnquirySubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 22 }}>
                   {enquiryError && (
-                    <div style={{ gridColumn: '1/-1', padding: '12px 16px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, color: '#DC2626', fontSize: 13, fontWeight: 600 }}>
+                    <div style={{ gridColumn: '1/-1', padding: '14px 18px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: 10, color: '#DC2626', fontSize: 13.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                       {enquiryError}
                     </div>
                   )}
@@ -793,219 +857,198 @@ export const PortfolioView: React.FC = () => {
                     { label: 'Email Address', placeholder: 'student@example.com', val: stuEmail, set: setStuEmail, type: 'email' },
                   ].map(f => (
                     <div key={f.label}>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>{f.label}</label>
-                      <input type={f.type} required={f.label.includes('*')} placeholder={f.placeholder} value={f.val} onChange={e => f.set(e.target.value)} className="inspire-input-focus" style={inputStyle} />
+                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</label>
+                      <input type={f.type} required={f.label.includes('*')} placeholder={f.placeholder} value={f.val} onChange={e => f.set(e.target.value)} className="ig" style={inputSt} />
                     </div>
                   ))}
 
-                  <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Academic Stream Preference</label>
-                    <select value={stuStream} onChange={e => setStuStream(e.target.value)} className="inspire-input-focus" style={inputStyle}>
-                      <option>MPC (JEE Mains &amp; Advanced)</option>
-                      <option>BiPC (NEET Medical)</option>
-                      <option>MEC &amp; CEC (CA Foundation / Civils)</option>
-                      <option>Long-Term Repeater Batch</option>
-                    </select>
-                  </div>
+                  {[
+                    { label: 'Academic Stream Preference', val: stuStream, set: setStuStream, opts: ['MPC (JEE Mains & Advanced)', 'BiPC (NEET Medical)', 'MEC & CEC (CA Foundation / Civils)', 'Long-Term Repeater Batch'] },
+                    { label: 'Preferred Campus Location', val: stuCampus, set: setStuCampus, opts: ['Erragattugutta Campus 1', 'Erragattugutta Campus 2', 'Bheemaram Campus 1', 'Bheemaram Campus 2'] },
+                    { label: 'Current Grade / Qualification', val: stuGrade, set: setStuGrade, opts: ['Grade 10 (Completed)', 'Grade 12 / Intermediate (Completed)', 'Appearing Grade 10', 'Appearing Grade 12'] },
+                  ].map(f => (
+                    <div key={f.label}>
+                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</label>
+                      <select value={f.val} onChange={e => f.set(e.target.value)} className="ig" style={inputSt}>
+                        {f.opts.map(o => <option key={o}>{o}</option>)}
+                      </select>
+                    </div>
+                  ))}
 
-                  <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Preferred Campus Location</label>
-                    <select value={stuCampus} onChange={e => setStuCampus(e.target.value)} className="inspire-input-focus" style={inputStyle}>
-                      {['Erragattugutta Campus 1', 'Erragattugutta Campus 2', 'Bheemaram Campus 1', 'Bheemaram Campus 2'].map(c => <option key={c}>{c}</option>)}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Current Grade / Qualification</label>
-                    <select value={stuGrade} onChange={e => setStuGrade(e.target.value)} className="inspire-input-focus" style={inputStyle}>
-                      <option>Grade 10 (Completed)</option>
-                      <option>Grade 12 / Intermediate (Completed)</option>
-                      <option>Appearing Grade 10</option>
-                      <option>Appearing Grade 12</option>
-                    </select>
+                  <div style={{ gridColumn: '1/-1' }}>
+                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message / Specific Requirements</label>
+                    <textarea rows={3} placeholder="Scholarship queries, hostel facilities, mentorship requirements, batch preferences..." value={stuNotes} onChange={e => setStuNotes(e.target.value)} className="ig" style={{ ...inputSt, resize: 'vertical' }} />
                   </div>
 
                   <div style={{ gridColumn: '1/-1' }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>Message / Specific Requirements</label>
-                    <textarea rows={3} placeholder="Scholarship queries, hostel facilities, mentorship requirements..." value={stuNotes} onChange={e => setStuNotes(e.target.value)} className="inspire-input-focus" style={{ ...inputStyle, resize: 'vertical' }} />
-                  </div>
-
-                  <div style={{ gridColumn: '1/-1' }}>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="inspire-btn-pulse"
-                      style={{
-                        width: '100%',
-                        padding: '16px',
-                        background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-                        color: '#FFFFFF',
-                        fontSize: 16,
-                        fontWeight: 900,
-                        border: 'none',
-                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                        borderRadius: 12,
-                        letterSpacing: '.03em',
-                        boxShadow: '0 6px 20px rgba(217,119,6,0.3)',
-                        opacity: isSubmitting ? 0.7 : 1,
-                        transition: 'all .2s'
-                      }}
-                    >
-                      {isSubmitting ? 'Submitting Enquiry...' : 'Submit Admission Enquiry'}
+                    <button type="submit" disabled={isSubmitting} className="btn-gold" style={{ width: '100%', justifyContent: 'center', fontSize: 16, padding: '16px', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer', animation: 'none' }}>
+                      {isSubmitting ? (
+                        <>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'floatY 1s linear infinite' }}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                          Submitting Enquiry...
+                        </>
+                      ) : (
+                        <>
+                          Submit Admission Enquiry
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
               )}
             </div>
-
           </div>
         </section>
 
-        {/* ══════════════════════════════════════════
-            LIGHTBOX MODAL FOR ENLARGING PAPER CLIPS ONLY
-        ══════════════════════════════════════════ */}
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            PAPER CLIPS LIGHTBOX MODAL
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         {selectedClip && (
-          <div
-            onClick={() => setSelectedClip(null)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 1000,
-              backgroundColor: 'rgba(15, 23, 42, 0.90)',
-              backdropFilter: 'blur(10px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 20,
-              cursor: 'zoom-out'
-            }}
-          >
-            <div
-              className="anim-modal-zoom"
-              onClick={e => e.stopPropagation()}
-              style={{
-                position: 'relative',
-                maxWidth: 920,
-                maxHeight: '92vh',
-                width: '100%',
-                background: '#FFFFFF',
-                borderRadius: 22,
-                overflow: 'hidden',
-                boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
-                display: 'flex',
-                flexDirection: 'column',
-                cursor: 'default'
-              }}
-            >
-              <div style={{ padding: '16px 24px', background: NAVBAR_NAVY, color: '#FFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontSize: 16, fontWeight: 800 }}>{selectedClip.title}</h3>
-                <button
-                  onClick={() => setSelectedClip(null)}
-                  style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#FFF', width: 34, height: 34, borderRadius: '50%', fontSize: 18, cursor: 'pointer', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  ✕
+          <div onClick={() => setSelectedClip(null)} style={{ position: 'fixed', inset: 0, zIndex: 1200, backgroundColor: 'rgba(10,14,28,0.94)', backdropFilter: 'blur(14px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, cursor: 'zoom-out' }}>
+            <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: 940, width: '100%', maxHeight: '92vh', background: '#fff', borderRadius: 24, overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', cursor: 'default', animation: 'modalIn 0.35s cubic-bezier(.25,.8,.25,1) both' }}>
+              {/* Modal header */}
+              <div style={{ padding: '16px 24px', background: 'linear-gradient(90deg,#0F172A,#1E3A8A)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <div>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{selectedClip.tag}</span>
+                  <h3 style={{ fontSize: 15.5, fontWeight: 900, color: '#fff', margin: '2px 0 0' }}>{selectedClip.title}</h3>
+                </div>
+                <button onClick={() => setSelectedClip(null)} style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
-
-              <div style={{ flex: 1, overflowY: 'auto', padding: 20, textAlign: 'center', background: '#F8FAFC' }}>
-                <img
-                  src={selectedClip.src}
-                  alt={selectedClip.title}
-                  style={{ maxWidth: '100%', maxHeight: '72vh', objectFit: 'contain', borderRadius: 10, border: '1.5px solid #CBD5E1', boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}
-                />
-                <p style={{ marginTop: 16, fontSize: 14, color: '#475569', fontWeight: 600 }}>
-                  {selectedClip.subtitle}
-                </p>
+              {/* Image content */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: 24, background: '#F8FAFC', textAlign: 'center' }}>
+                <img src={selectedClip.src} alt={selectedClip.title} style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 12, border: '1.5px solid #E2E8F0', boxShadow: '0 8px 28px rgba(0,0,0,0.1)' }} />
+                <p style={{ marginTop: 18, fontSize: 14.5, color: '#475569', fontWeight: 600, lineHeight: 1.7 }}>{selectedClip.subtitle}</p>
+              </div>
+              {/* Bottom nav between clips */}
+              <div style={{ padding: '12px 24px', background: '#fff', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <button onClick={() => { const idx = PAPER_CLIPS.findIndex(c => c.id === selectedClip.id); if (idx > 0) setSelectedClip(PAPER_CLIPS[idx - 1]); }}
+                  disabled={selectedClip.id === 1}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: '1.5px solid #E2E8F0', borderRadius: 8, background: 'none', cursor: selectedClip.id === 1 ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, color: selectedClip.id === 1 ? '#CBD5E1' : DARK_TEXT, transition: 'all 0.2s' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                  Previous
+                </button>
+                <span style={{ fontSize: 12.5, color: '#94A3B8', fontWeight: 700 }}>{selectedClip.id} / {PAPER_CLIPS.length}</span>
+                <button onClick={() => { const idx = PAPER_CLIPS.findIndex(c => c.id === selectedClip.id); if (idx < PAPER_CLIPS.length - 1) setSelectedClip(PAPER_CLIPS[idx + 1]); }}
+                  disabled={selectedClip.id === PAPER_CLIPS.length}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: '1.5px solid #E2E8F0', borderRadius: 8, background: 'none', cursor: selectedClip.id === PAPER_CLIPS.length ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, color: selectedClip.id === PAPER_CLIPS.length ? '#CBD5E1' : DARK_TEXT, transition: 'all 0.2s' }}>
+                  Next
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* ══════════════════════════════════════════
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             FOOTER
-        ══════════════════════════════════════════ */}
-        <footer id="contact" style={{ background: NAVBAR_NAVY, color: '#FFFFFF', padding: '60px 16px 32px' }}>
-          <div className="inspire-container">
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 40, marginBottom: 40 }}>
-              
-              {/* Brand Information */}
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <footer id="contact" style={{ background: 'linear-gradient(160deg,#0F172A 0%,#0F172A 70%,#1E3A8A 100%)', color: '#fff', padding: '72px 16px 0', position: 'relative', overflow: 'hidden' }}>
+          {/* Decorative orbs */}
+          <div style={{ position: 'absolute', top: -60, right: -60, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle,rgba(245,158,11,0.1),transparent)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: 60, left: -80, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle,rgba(37,99,235,0.12),transparent)', pointerEvents: 'none' }} />
+
+          <div className="ic" style={{ position: 'relative' }}>
+            {/* Top gold separator line */}
+            <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(245,158,11,0.5),transparent)', marginBottom: 52 }} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 44, marginBottom: 52 }}>
+
+              {/* Brand column */}
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                  <img src={collegeLogo} alt="Logo" style={{ height: 44, width: 'auto', background: '#fff', padding: 3, borderRadius: 8 }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                  <img src={collegeLogo} alt="Logo" style={{ height: 46, background: '#fff', padding: '3px 6px', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }} />
                   <div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', fontFamily: "'Merriweather', serif" }}>
-                      Inspire Junior College
-                    </div>
-                    <div style={{ fontSize: 11, color: ACCENT_GOLD, fontWeight: 700 }}>
-                      Hanumakonda, Telangana
-                    </div>
+                    <div style={{ fontSize: 17, fontWeight: 900, color: '#fff', fontFamily: "'Merriweather',serif" }}>Inspire Junior College</div>
+                    <div style={{ fontSize: 10.5, color: ACCENT_GOLD, fontWeight: 800, letterSpacing: '0.05em' }}>Hanumakonda, Telangana</div>
                   </div>
                 </div>
-                <p style={{ fontSize: 13.5, color: '#94A3B8', lineHeight: 1.75 }}>
-                  Inspire Junior College is dedicated to preparing students for IIT-JEE, NEET, and Intermediate Board examinations with top-tier faculty and individual mentorship.
+                <p style={{ fontSize: 13.5, color: '#94A3B8', lineHeight: 1.8, marginBottom: 20 }}>
+                  Dedicated to preparing students for IIT-JEE, NEET, and Intermediate Board with top-tier faculty, individual mentorship, and modern campus infrastructure.
                 </p>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {[
+                    <path key="phone" d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 01.01 1.18 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.07 6.07l1.27-.84a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 15.53v1.39z"/>,
+                    <><rect key="r" x="2" y="3" width="20" height="14" rx="2" ry="2"/><line key="l1" x1="8" y1="21" x2="16" y2="21"/><line key="l2" x1="12" y1="17" x2="12" y2="21"/></>,
+                  ].map((path, i) => (
+                    <div key={i} style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s, transform 0.2s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.transform = ''; }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2">{path}</svg>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Our 4 Campuses */}
+              {/* Campuses */}
               <div>
-                <h4 style={{ fontSize: 14, fontWeight: 800, color: ACCENT_GOLD, marginBottom: 16, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 11, fontWeight: 900, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 20, height: 1.5, background: ACCENT_GOLD }} />
                   Our 4 Campuses
-                </h4>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {CAMPUSES_LIST.map(c => (
-                    <li key={c.name} style={{ fontSize: 13.5, color: '#CBD5E1', fontWeight: 600 }}>
-                      • {c.name}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Academic Programs */}
-              <div>
-                <h4 style={{ fontSize: 14, fontWeight: 800, color: ACCENT_GOLD, marginBottom: 16, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  Academic Streams
-                </h4>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {['MPC (JEE Mains & Advanced)', 'BiPC (NEET Medical)', 'MEC & CEC (CA / Civils)', 'Long-Term Repeater Program'].map(p => (
-                    <li key={p} style={{ fontSize: 13.5, color: '#CBD5E1', fontWeight: 600 }}>
-                      • {p}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Contact Information */}
-              <div>
-                <h4 style={{ fontSize: 14, fontWeight: 800, color: ACCENT_GOLD, marginBottom: 16, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  Contact Us
-                </h4>
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ fontSize: 13.5, color: '#CBD5E1', lineHeight: 1.6 }}>
-                    <strong>Inspire Junior College Campus HQ</strong><br />
-                    Hanamkonda, Warangal, Telangana, India
+                  {CAMPUSES_LIST.map(c => (
+                    <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: c.col, flexShrink: 0 }} />
+                      <span style={{ fontSize: 13.5, color: '#CBD5E1', fontWeight: 600 }}>{c.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Streams */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 20, height: 1.5, background: ACCENT_GOLD }} />
+                  Academic Streams
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {['MPC — IIT-JEE Mains & Advanced', 'BiPC — NEET Medical & AIIMS', 'MEC & CEC — CA / Civils', 'Long-Term Repeater Program'].map(p => (
+                    <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#38BDF8', flexShrink: 0 }} />
+                      <span style={{ fontSize: 13.5, color: '#CBD5E1', fontWeight: 600 }}>{p}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Contact */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 20, height: 1.5, background: ACCENT_GOLD }} />
+                  Contact Us
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Address</div>
+                    <div style={{ fontSize: 13.5, color: '#CBD5E1', lineHeight: 1.65 }}>Inspire Junior College Campus HQ<br />Hanamkonda, Warangal, Telangana</div>
                   </div>
-                  <div style={{ fontSize: 13.5, color: '#CBD5E1' }}>
-                    Helpline: <a href={`tel:${orgPhone}`} style={{ color: ACCENT_GOLD, textDecoration: 'none', fontWeight: 800 }}>{orgPhone}</a>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Admissions Helpline</div>
+                    <a href={`tel:${orgPhone}`} style={{ fontSize: 15, color: ACCENT_GOLD, textDecoration: 'none', fontWeight: 900, letterSpacing: '0.02em' }}>{orgPhone}</a>
                   </div>
-                  <div style={{ fontSize: 13.5, color: '#CBD5E1' }}>
-                    Email: <a href={`mailto:${orgEmail}`} style={{ color: '#93C5FD', textDecoration: 'none' }}>{orgEmail}</a>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Email</div>
+                    <a href={`mailto:${orgEmail}`} style={{ fontSize: 13, color: '#93C5FD', textDecoration: 'none', fontWeight: 600 }}>{orgEmail}</a>
                   </div>
                 </div>
               </div>
 
             </div>
 
-            {/* Bottom Rights */}
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-              <span style={{ fontSize: 12.5, color: '#94A3B8' }}>
-                © 2026 Inspire Junior College. All Rights Reserved.
-              </span>
-              <a href={portalHash} style={{ fontSize: 12, color: ACCENT_GOLD, textDecoration: 'none', fontWeight: 800 }}>
-                Staff &amp; Admin ERP Gateway &rarr;
+            {/* Bottom bar */}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <span style={{ fontSize: 12.5, color: '#64748B' }}>© 2026 Inspire Junior College. All Rights Reserved. Hanumakonda, Telangana.</span>
+              <a href={portalHash} style={{ fontSize: 12.5, color: ACCENT_GOLD, textDecoration: 'none', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6, transition: 'gap 0.2s' }}
+                onMouseEnter={e => (e.currentTarget.style.gap = '10px')} onMouseLeave={e => (e.currentTarget.style.gap = '6px')}>
+                Staff &amp; Admin ERP Gateway
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
               </a>
             </div>
-
           </div>
         </footer>
 
