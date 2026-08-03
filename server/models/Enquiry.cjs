@@ -10,7 +10,7 @@ const enquirySchema = new mongoose.Schema({
   preferredCampus: { type: String, required: true, trim: true },
   currentGrade: { type: String, trim: true, default: '10th Class' },
   notes: { type: String, trim: true, default: '' },
-  status: { type: String, enum: ['Pending', 'New', 'Contacted', 'Enrolled', 'Closed', 'Archived'], default: 'Pending' }
+  status: { type: String, enum: ['Pending', 'Contacted', 'Enrolled', 'Closed', 'Archived'], default: 'Pending' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Enquiry', enquirySchema);
