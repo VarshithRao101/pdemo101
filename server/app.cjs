@@ -1731,11 +1731,7 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
             cashier: existingPayment.cashier,
             date: existingPayment.date
           },
-          student: {
-            studentId: student.studentId,
-            remainingBalance: student.remainingBalance,
-            totalPaid: student.totalPaid
-          }
+          student
         }
       });
     }
@@ -1817,12 +1813,7 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
       status: 'success',
       data: {
         payment: paymentResponse,
-        student: {
-          studentId: updatedStudent.studentId,
-          remainingBalance: updatedStudent.remainingBalance,
-          totalPaid: updatedStudent.totalPaid,
-          receipts: updatedStudent.receipts || []
-        }
+        student: updatedStudent
       }
     });
   } catch (err) {

@@ -875,10 +875,14 @@ export const AccountantDashboardView: React.FC = () => {
         date: collectDate
       }, otp || securityKey);
 
-      // Update the selected student display immediately from the server response
-      const updatedStudent = res.student && res.student.remainingBalance !== undefined
-        ? res.student
-        : { ...selectedStudent, ...res.student, remainingBalance: (selectedStudent!.remainingBalance - paymentAmount), totalPaid: (selectedStudent!.totalPaid + paymentAmount) };
+      // Update the selected student display immediately, merging server response into existing profile
+      const updatedStudent = {
+        ...selectedStudent,
+        ...res.student,
+        remainingBalance: res.student?.remainingBalance ?? Math.max(0, selectedStudent.remainingBalance - paymentAmount),
+        totalPaid: res.student?.totalPaid ?? (selectedStudent.totalPaid + paymentAmount),
+        receipts: res.student?.receipts || selectedStudent.receipts
+      };
       setSelectedStudent(updatedStudent as any);
       setEditStudent(updatedStudent as any);
       setCollectAmount('');
@@ -1169,10 +1173,12 @@ export const AccountantDashboardView: React.FC = () => {
       ['Miscellaneous Fee', Number(student.miscellaneousFee || 0)],
       ['Previous Pending', Number(student.previousPending || 0)],
       ...customSlots
-    ];
+    ].filter(([, amount]) => amount > 0);
+
     const allWaiverRows: Array<[string, number]> = [
       ['Tuition Waiver', Number((student as any).tuitionWaiver || 0)],
       ['Hostel Waiver', Number((student as any).hostelWaiver || 0)],
+      ['Transport Waiver', Number((student as any).transportWaiver || 0)],
       ['Miscellaneous Waiver', Number((student as any).miscWaiver || 0)]
     ];
     const waiverRows = allWaiverRows.filter(([, amount]) => amount > 0);
@@ -1182,22 +1188,20 @@ export const AccountantDashboardView: React.FC = () => {
     const totalBaseFee = feeRows.reduce((total, [, amount]) => total + amount, 0);
     const totalPaid = Number(student.totalPaid || 0);
     const generatedDate = new Date().toLocaleString('en-IN');
-    const extraWaiverHeader = waiverRows.length > 0 ? '<th class="tr">Waiver</th><th class="tr">Net Payable</th>' : '';
+    
     const feeTableRows = feeRows.map(([label, amount]) => {
-      const wv = allWaiverRows.find(([wl]) => wl.startsWith(label.replace(' Fee', '')))?.[1] || 0;
-      const waiverCol = waiverRows.length > 0
-        ? '<td class="tr" style="color:#16A34A;font-weight:800;">' + (wv ? '&minus; Rs.' + wv.toLocaleString('en-IN') : '&mdash;') + '</td><td class="tr">Rs.' + Math.max(0, amount - wv).toLocaleString('en-IN') + '</td>'
-        : '';
-      return '<tr><td>' + escapeHtml(label) + '</td><td class="tr">Rs.' + amount.toLocaleString('en-IN') + '</td>' + waiverCol + '</tr>';
+      return '<tr><td>' + escapeHtml(label) + '</td><td class="tr">Rs.' + amount.toLocaleString('en-IN') + '</td></tr>';
     }).join('');
-    const waiverTotalRow = waiverRows.length > 0
-      ? '<tr class="wr"><td style="font-weight:900;">Total Waiver Applied</td><td></td><td class="tr" style="font-weight:900;">&minus; Rs.' + totalWaiver.toLocaleString('en-IN') + '</td><td></td></tr>'
-      : '';
+
+    const waiverTableRows = waiverRows.map(([label, amount]) => {
+      return '<tr class="wr" style="background:#F0FFF4;color:#166534;font-weight:800;"><td>' + escapeHtml(label) + '</td><td class="tr" style="color:#16A34A;">&minus; Rs.' + amount.toLocaleString('en-IN') + '</td></tr>';
+    }).join('');
+
     const lastReceiptHtml = lastReceipt
       ? '<div class="ltx"><div class="txl"><div class="tl">Receipt / Payment Record</div><span class="tr2">' + escapeHtml(lastReceipt.receiptNumber) + '</span><div class="tm">' + escapeHtml(lastReceipt.category) + ' &middot; ' + escapeHtml(lastReceipt.installment) + ' &middot; ' + escapeHtml(lastReceipt.mode) + '</div></div><div class="txr"><span class="ta">Rs.' + Number(lastReceipt.amount || 0).toLocaleString('en-IN') + '</span><span class="td2">' + new Date(lastReceipt.date).toLocaleDateString('en-GB') + '</span></div></div>'
       : '<div class="ntx">No payments recorded yet for this student account.</div>';
 
-    const css = '@page{size:A4;margin:14mm}*{box-sizing:border-box}body{margin:0;color:#1E293B;background:#fff;font-family:\'Segoe UI\',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:12px}.page{max-width:182mm;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:14px;margin-bottom:18px}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;object-fit:contain;background:#fff;border-radius:10px;padding:4px}.iname{color:#fff;font-size:13px;font-weight:900;text-transform:uppercase}.iaddr{color:#94A3B8;font-size:9px;line-height:1.4;margin-top:2px}.slbl strong{display:block;color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;text-align:right}.slbl span{color:#FBBF24;font-size:9px;font-weight:800;text-transform:uppercase}.scard{background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.fl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase;display:block}.fv{font-size:13px;font-weight:800;color:#1E293B;display:block;margin-top:3px}.stit{font-size:9px;font-weight:900;color:#64748B;text-transform:uppercase;letter-spacing:.1em;margin:14px 0 8px}.ftbl{width:100%;border-collapse:collapse;border:1.5px solid #E2E8F0;border-radius:10px;overflow:hidden;font-size:11px}.ftbl th{padding:9px 12px;background:#F8FAFC;color:#64748B;font-size:8.5px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid #E2E8F0;font-weight:800}.ftbl td{padding:9px 12px;border-bottom:1px solid #F1F5F9}.ftbl tr:last-child td{border-bottom:none}.tr{text-align:right;font-weight:800}.wr td{background:#F0FFF4;color:#166534}.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.sc{border:1.5px solid #E2E8F0;border-radius:10px;padding:12px 14px}.sc.hi{border-color:#D4AF37;background:#FFFDF4}.sc .sl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase}.sc .sv{font-size:17px;font-weight:900;color:#1E293B;display:block;margin-top:5px}.sc.pd .sv{color:#059669}.sc.hi .sv{color:#B88708}.ltx{border:1.5px solid #E2E8F0;border-radius:10px;padding:13px 16px;background:#F8FAFC;display:flex;justify-content:space-between;align-items:center}.txl .tl{font-size:8px;font-weight:800;color:#64748B;text-transform:uppercase}.txl .tr2{font-size:12px;font-weight:800;color:#1E293B;margin-top:3px;display:block}.txl .tm{font-size:10px;color:#64748B;margin-top:2px}.txr .ta{font-size:18px;font-weight:900;color:#059669;text-align:right;display:block}.txr .td2{font-size:10px;color:#64748B;text-align:right;margin-top:2px;display:block}.ntx{text-align:center;padding:14px;color:#94A3B8;border:1.5px dashed #E2E8F0;border-radius:10px;font-size:11px}.ftr{margin-top:18px;padding-top:12px;border-top:1.5px solid #E2E8F0;display:flex;justify-content:space-between;align-items:flex-end;font-size:8.5px;color:#94A3B8}.sig{border-top:1.5px solid #1E293B;padding-top:4px;font-size:8px;font-weight:800;color:#1E293B;text-transform:uppercase;margin-top:24px;text-align:center;width:120px}.pbtn{display:block;margin:0 auto 16px;padding:10px 20px;background:linear-gradient(135deg,#1E293B,#334155);color:#fff;border:none;border-radius:10px;font-weight:900;font-size:12px;cursor:pointer}@media print{.pbtn{display:none}}';
+    const css = '@page{size:A4;margin:14mm}*{box-sizing:border-box}body{margin:0;color:#1E293B;background:#fff;font-family:\'Segoe UI\',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:12px}.page{max-width:182mm;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:14px;margin-bottom:18px}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;object-fit:contain;background:#fff;border-radius:10px;padding:4px}.iname{color:#fff;font-size:13px;font-weight:900;text-transform:uppercase}.iaddr{color:#94A3B8;font-size:9px;line-height:1.4;margin-top:2px}.slbl strong{display:block;color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;text-align:right}.slbl span{color:#FBBF24;font-size:9px;font-weight:800;text-transform:uppercase}.scard{background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.fl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase;display:block}.fv{font-size:13px;font-weight:800;color:#1E293B;display:block;margin-top:3px}.stit{font-size:9px;font-weight:900;color:#64748B;text-transform:uppercase;letter-spacing:.1em;margin:14px 0 8px}.ftbl{width:100%;border-collapse:collapse;border:1.5px solid #E2E8F0;border-radius:10px;overflow:hidden;font-size:11px}.ftbl th{padding:9px 12px;background:#F8FAFC;color:#64748B;font-size:8.5px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid #E2E8F0;font-weight:800}.ftbl td{padding:9px 12px;border-bottom:1px solid #F1F5F9}.ftbl tr:last-child td{border-bottom:none}.tr{text-align:right;font-weight:800}.wr td{background:#F0FFF4;color:#166534}.sgrid{display:grid;grid-template-columns:' + (totalWaiver > 0 ? 'repeat(4,1fr)' : 'repeat(3,1fr)') + ';gap:10px;margin-top:14px}.sc{border:1.5px solid #E2E8F0;border-radius:10px;padding:12px 14px}.sc.hi{border-color:#D4AF37;background:#FFFDF4}.sc .sl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase}.sc .sv{font-size:17px;font-weight:900;color:#1E293B;display:block;margin-top:5px}.sc.pd .sv{color:#059669}.sc.hi .sv{color:#B88708}.ltx{border:1.5px solid #E2E8F0;border-radius:10px;padding:13px 16px;background:#F8FAFC;display:flex;justify-content:space-between;align-items:center}.txl .tl{font-size:8px;font-weight:800;color:#64748B;text-transform:uppercase}.txl .tr2{font-size:12px;font-weight:800;color:#1E293B;margin-top:3px;display:block}.txl .tm{font-size:10px;color:#64748B;margin-top:2px}.txr .ta{font-size:18px;font-weight:900;color:#059669;text-align:right;display:block}.txr .td2{font-size:10px;color:#64748B;text-align:right;margin-top:2px;display:block}.ntx{text-align:center;padding:14px;color:#94A3B8;border:1.5px dashed #E2E8F0;border-radius:10px;font-size:11px}.ftr{margin-top:18px;padding-top:12px;border-top:1.5px solid #E2E8F0;display:flex;justify-content:space-between;align-items:flex-end;font-size:8.5px;color:#94A3B8}.sig{border-top:1.5px solid #1E293B;padding-top:4px;font-size:8px;font-weight:800;color:#1E293B;text-transform:uppercase;margin-top:24px;text-align:center;width:120px}.pbtn{display:block;margin:0 auto 16px;padding:10px 20px;background:linear-gradient(135deg,#1E293B,#334155);color:#fff;border:none;border-radius:10px;font-weight:900;font-size:12px;cursor:pointer}@media print{.pbtn{display:none}}';
 
     const statementHtml = '<html><head><title>Fee Statement - ' + escapeHtml(student.admissionNumber) + '</title>'
       + '<style>' + css + '</style></head><body><div class="page">'
@@ -1213,9 +1217,10 @@ export const AccountantDashboardView: React.FC = () => {
       + '<div><span class="fl">Hostel Status</span><span class="fv">' + escapeHtml(student.hostelStatus || 'Day Scholar') + '</span></div>'
       + '</div>'
       + '<div class="stit">Fee Structure</div>'
-      + '<table class="ftbl"><thead><tr><th>Fee Component</th><th class="tr">Base Amount</th>' + extraWaiverHeader + '</tr></thead><tbody>' + feeTableRows + waiverTotalRow + '</tbody></table>'
+      + '<table class="ftbl"><thead><tr><th>Fee Component / Particulars</th><th class="tr">Amount</th></tr></thead><tbody>' + feeTableRows + waiverTableRows + '</tbody></table>'
       + '<div class="sgrid">'
-      + '<div class="sc"><span class="sl">Total Base Fee</span><span class="sv">Rs.' + totalBaseFee.toLocaleString('en-IN') + '</span></div>'
+      + '<div class="sc"><span class="sl">Gross Base Fee</span><span class="sv">Rs.' + totalBaseFee.toLocaleString('en-IN') + '</span></div>'
+      + (totalWaiver > 0 ? '<div class="sc pd" style="border-color:#16A34A;background:#F0FFF4;"><span class="sl" style="color:#166534;">Waivers Applied</span><span class="sv" style="color:#166534;">- Rs.' + totalWaiver.toLocaleString('en-IN') + '</span></div>' : '')
       + '<div class="sc pd"><span class="sl">Total Paid</span><span class="sv">Rs.' + totalPaid.toLocaleString('en-IN') + '</span></div>'
       + '<div class="sc hi"><span class="sl">Outstanding Balance</span><span class="sv">Rs.' + Number(student.remainingBalance || 0).toLocaleString('en-IN') + '</span></div>'
       + '</div>'
@@ -2369,6 +2374,31 @@ export const AccountantDashboardView: React.FC = () => {
                         </strong>
                       </div>
                     ))}
+
+                    {Number((selectedStudent as any).tuitionWaiver || 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '5px 0', borderBottom: '1px dashed #F1F5F9', color: '#059669' }}>
+                        <span style={{ fontWeight: 700 }}>Tuition Waiver</span>
+                        <strong style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>- Rs.{Number((selectedStudent as any).tuitionWaiver).toLocaleString('en-IN')}</strong>
+                      </div>
+                    )}
+                    {Number((selectedStudent as any).hostelWaiver || 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '5px 0', borderBottom: '1px dashed #F1F5F9', color: '#059669' }}>
+                        <span style={{ fontWeight: 700 }}>Hostel Waiver</span>
+                        <strong style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>- Rs.{Number((selectedStudent as any).hostelWaiver).toLocaleString('en-IN')}</strong>
+                      </div>
+                    )}
+                    {Number((selectedStudent as any).transportWaiver || 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '5px 0', borderBottom: '1px dashed #F1F5F9', color: '#059669' }}>
+                        <span style={{ fontWeight: 700 }}>Transport Waiver</span>
+                        <strong style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>- Rs.{Number((selectedStudent as any).transportWaiver).toLocaleString('en-IN')}</strong>
+                      </div>
+                    )}
+                    {Number((selectedStudent as any).miscWaiver || 0) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '5px 0', borderBottom: '1px dashed #F1F5F9', color: '#059669' }}>
+                        <span style={{ fontWeight: 700 }}>Miscellaneous Waiver</span>
+                        <strong style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>- Rs.{Number((selectedStudent as any).miscWaiver).toLocaleString('en-IN')}</strong>
+                      </div>
+                    )}
                   </div>
 
                   {/* Horizontal Dashed Line */}
@@ -2380,7 +2410,11 @@ export const AccountantDashboardView: React.FC = () => {
                       const activeSlots = getActiveFeeSlots(selectedStudent);
                       const grossTotal = activeSlots.reduce((sum, s) => sum + s.amount, 0);
                       const totalPaid = Number(selectedStudent.totalPaid) || 0;
-                      const totalWaivers = Number((selectedStudent as any).tuitionWaiver || 0) + Number((selectedStudent as any).hostelWaiver || 0) + Number((selectedStudent as any).miscWaiver || 0);
+                      const tW = Number((selectedStudent as any).tuitionWaiver || 0);
+                      const hW = Number((selectedStudent as any).hostelWaiver || 0);
+                      const trW = Number((selectedStudent as any).transportWaiver || 0);
+                      const mW = Number((selectedStudent as any).miscWaiver || 0);
+                      const totalWaivers = tW + hW + trW + mW;
                       const remaining = selectedStudent.remainingBalance;
 
                       return (
@@ -2390,10 +2424,35 @@ export const AccountantDashboardView: React.FC = () => {
                             <strong style={{ color: '#0F172A', fontWeight: 800 }}>Rs.{grossTotal.toLocaleString('en-IN')}</strong>
                           </div>
 
-                          {totalWaivers > 0 && (
+                          {tW > 0 && (
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#059669' }}>
-                              <span style={{ fontWeight: 600 }}>Fee Waivers / Concessions</span>
-                              <strong style={{ fontWeight: 800 }}>- Rs.{totalWaivers.toLocaleString('en-IN')}</strong>
+                              <span style={{ fontWeight: 600 }}>Tuition Waiver</span>
+                              <strong style={{ fontWeight: 800 }}>- Rs.{tW.toLocaleString('en-IN')}</strong>
+                            </div>
+                          )}
+                          {hW > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#059669' }}>
+                              <span style={{ fontWeight: 600 }}>Hostel Waiver</span>
+                              <strong style={{ fontWeight: 800 }}>- Rs.{hW.toLocaleString('en-IN')}</strong>
+                            </div>
+                          )}
+                          {trW > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#059669' }}>
+                              <span style={{ fontWeight: 600 }}>Transport Waiver</span>
+                              <strong style={{ fontWeight: 800 }}>- Rs.{trW.toLocaleString('en-IN')}</strong>
+                            </div>
+                          )}
+                          {mW > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#059669' }}>
+                              <span style={{ fontWeight: 600 }}>Miscellaneous Waiver</span>
+                              <strong style={{ fontWeight: 800 }}>- Rs.{mW.toLocaleString('en-IN')}</strong>
+                            </div>
+                          )}
+
+                          {totalWaivers > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: '#059669', borderTop: '1px dashed #A7F3D0', paddingTop: '4px', marginTop: '2px' }}>
+                              <span style={{ fontWeight: 700 }}>Total Waivers Applied</span>
+                              <strong style={{ fontWeight: 900 }}>- Rs.{totalWaivers.toLocaleString('en-IN')}</strong>
                             </div>
                           )}
 
