@@ -371,11 +371,14 @@ export const PortfolioView: React.FC = () => {
   };
 
   const tickerItems = [
-    'Inspire Junior College — Admissions Open 2026-27',
-    'IIT-JEE Mains & Advanced · NEET Medical · Intermediate Board',
-    '4 Premium Campuses across Hanamkonda & Warangal',
-    'Individual Mentorship · Doubt Clarification Desks · AC Hostels',
-    '99%+ Percentile Performers · 1500+ Successful Admissions',
+    { text: 'ADMISSIONS OPEN — Academic Year 2026-27', highlight: true },
+    { text: 'Excellence in IIT-JEE · NEET · Intermediate Board', highlight: false },
+    { text: 'Doubt Clarification & Personal Mentorship Every Day', highlight: false },
+    { text: 'ADMISSIONS OPEN — Limited Seats Available', highlight: true },
+    { text: 'AC Hostels · Digital Classrooms · Dedicated Transport', highlight: false },
+    { text: 'Top State & National Ranks Year After Year', highlight: false },
+    { text: 'ADMISSIONS OPEN — Enrol Today for 2026-27', highlight: true },
+    { text: '4 Premium Campuses — Hanamkonda & Warangal', highlight: false },
   ];
 
   return (
@@ -390,17 +393,29 @@ export const PortfolioView: React.FC = () => {
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             ANNOUNCEMENT TICKER
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <div style={{ background: 'linear-gradient(90deg,#0F172A,#1E3A8A)', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '8px 0', overflow: 'hidden' }}>
-          <div className="ticker-wrap">
+        <div style={{ background: 'linear-gradient(90deg,#0F172A 0%,#1a2744 50%,#0F172A 100%)', borderBottom: '1px solid rgba(245,158,11,0.2)', padding: '0', overflow: 'hidden', position: 'relative' }}>
+          {/* Glowing top edge */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(245,158,11,0.5),transparent)' }} />
+          <div className="ticker-wrap" style={{ padding: '9px 0' }}>
             <div className="ticker-inner">
               {[...tickerItems, ...tickerItems].map((t, i) => (
-                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 20, marginRight: 48, fontSize: 12, fontWeight: 700, color: '#CBD5E1', letterSpacing: '0.03em' }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: ACCENT_GOLD, display: 'inline-block', flexShrink: 0 }} />
-                  {t}
+                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 16, marginRight: 44 }}>
+                  {t.highlight ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 20, padding: '2px 12px', fontSize: 11.5, fontWeight: 900, color: ACCENT_GOLD, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: ACCENT_GOLD, display: 'inline-block', boxShadow: '0 0 6px rgba(245,158,11,0.8)', animation: 'glowPulse 1.4s ease-in-out infinite' }} />
+                      {t.text}
+                    </span>
+                  ) : (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+                      <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#475569', display: 'inline-block' }} />
+                      {t.text}
+                    </span>
+                  )}
                 </span>
               ))}
             </div>
           </div>
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)' }} />
         </div>
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -478,53 +493,49 @@ export const PortfolioView: React.FC = () => {
             HERO — CLEAN BIG IMAGE SHOWCASE
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <section id="hero" className="hero-h" style={{ position: 'relative', height: 640, overflow: 'hidden', background: '#0F172A' }}>
-          {/* Full hero image */}
-          <img src={heroImg} alt="Inspire Junior College Campus" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.78)' }} />
-          {/* Multi-stop gradient overlay */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(160deg, rgba(15,23,42,0.25) 0%, transparent 40%, rgba(15,23,42,0.82) 100%)' }} />
+          {/* Full hero image — completely clear, nothing overlapping */}
+          <img src={heroImg} alt="Inspire Junior College Campus" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.88)' }} />
+          {/* Very light vignette only around edges so image appears bright & full */}
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 40%, rgba(15,23,42,0.28) 100%)' }} />
+          {/* Subtle bottom fade for smooth transition to info band below */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top, rgba(15,23,42,0.55), transparent)' }} />
+        </section>
 
-          {/* Decorative corner ornaments */}
-          <div style={{ position: 'absolute', top: 28, left: 28, width: 64, height: 64, border: '2px solid rgba(245,158,11,0.5)', borderRadius: 6, transform: 'rotate(12deg)', animation: 'floatY 5s ease-in-out infinite' }} />
-          <div style={{ position: 'absolute', top: 36, left: 36, width: 64, height: 64, border: '2px solid rgba(37,99,235,0.35)', borderRadius: 6, transform: 'rotate(-4deg)' }} />
-          <div style={{ position: 'absolute', bottom: 80, right: 40, width: 48, height: 48, border: '2px solid rgba(245,158,11,0.4)', borderRadius: '50%', animation: 'floatY 6s ease-in-out infinite 1s' }} />
-
-          {/* Bottom info bar */}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
-            {/* Thin gold accent line above bar */}
-            <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #F59E0B 30%, #2563EB 70%, transparent)' }} />
-            <div style={{ background: 'linear-gradient(90deg, rgba(15,23,42,0.96), rgba(15,23,42,0.88))', backdropFilter: 'blur(12px)', padding: '20px 28px' }}>
-              <div className="ic" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-                <div style={{ animation: 'fadeUp 0.8s ease both 0.3s' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                    <div style={{ width: 28, height: 3, background: 'linear-gradient(90deg,#F59E0B,#D97706)', borderRadius: 2 }} />
-                    <span style={{ fontSize: 11, fontWeight: 800, color: ACCENT_GOLD, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Established &amp; Accredited</span>
-                    <div style={{ width: 28, height: 3, background: 'linear-gradient(90deg,#D97706,#F59E0B)', borderRadius: 2 }} />
-                  </div>
-                  <h1 className="h1-hero" style={{ fontSize: 'clamp(26px,3.8vw,46px)', fontWeight: 900, color: '#FFFFFF', fontFamily: "'Merriweather',serif", textShadow: '0 4px 14px rgba(0,0,0,0.5)', margin: '0 0 4px', lineHeight: 1.2 }}>
-                    Inspire Junior College
-                  </h1>
-                  <p style={{ fontSize: 14, color: '#94A3B8', fontWeight: 600 }}>Hanumakonda, Telangana · IIT-JEE · NEET · Intermediate</p>
-                </div>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', animation: 'fadeUp 0.8s ease both 0.5s' }}>
-                  <a href="#enquiry" className="btn-gold pulse">
-                    Apply for Admission 2026
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                  </a>
-                  <a href="#paper-clips" className="btn-ghost">
-                    View Rank Clippings
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-                  </a>
-                </div>
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            HERO INFO BAND — below the full clear hero image
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <div style={{ background: 'linear-gradient(90deg,#0F172A,#0F172A 70%,#1E3A8A)', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'relative' }}>
+          {/* Top gradient accent line */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,#F59E0B 30%,#2563EB 70%,transparent)' }} />
+          <div className="ic" style={{ padding: '22px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 18 }}>
+            <div style={{ animation: 'fadeUp 0.8s ease both 0.2s' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 24, height: 2.5, background: 'linear-gradient(90deg,#F59E0B,#D97706)', borderRadius: 2 }} />
+                <span style={{ fontSize: 10.5, fontWeight: 900, color: ACCENT_GOLD, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Established &amp; Accredited · Hanumakonda, Telangana</span>
               </div>
+              <h1 className="h1-hero" style={{ fontSize: 'clamp(24px,3.5vw,42px)', fontWeight: 900, color: '#FFFFFF', fontFamily: "'Merriweather',serif", margin: '0 0 5px', lineHeight: 1.2 }}>
+                Inspire Junior College
+              </h1>
+              <p style={{ fontSize: 13.5, color: '#94A3B8', fontWeight: 600, margin: 0 }}>IIT-JEE Mains &amp; Advanced &nbsp;·&nbsp; NEET Medical &nbsp;·&nbsp; Intermediate Board</p>
+            </div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', animation: 'fadeUp 0.8s ease both 0.4s' }}>
+              <a href="#enquiry" className="btn-gold pulse">
+                Apply for Admission 2026
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </a>
+              <a href="#paper-clips" className="btn-ghost">
+                View Rank Clippings
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+              </a>
             </div>
           </div>
-        </section>
+        </div>
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             ANIMATED STATS BAR
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <section style={{ background: '#F8FAFC', padding: '0 16px' }}>
-          <div ref={statsRef.ref} className="ic" style={{ position: 'relative', marginTop: -30, paddingBottom: 44 }}>
+          <div ref={statsRef.ref} className="ic" style={{ position: 'relative', paddingTop: 36, paddingBottom: 44 }}>
             <div style={{ background: '#fff', borderRadius: 24, padding: 16, boxShadow: '0 12px 48px rgba(15,23,42,0.11)', border: '1.5px solid #E2E8F0', position: 'relative', overflow: 'hidden' }}>
               {/* Shimmer top accent */}
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#1E3A8A,#F59E0B,#10B981,#7C3AED,#0284C7)', borderRadius: '24px 24px 0 0' }} />
@@ -970,17 +981,22 @@ export const PortfolioView: React.FC = () => {
                 <p style={{ fontSize: 13.5, color: '#94A3B8', lineHeight: 1.8, marginBottom: 20 }}>
                   Dedicated to preparing students for IIT-JEE, NEET, and Intermediate Board with top-tier faculty, individual mentorship, and modern campus infrastructure.
                 </p>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  {[
-                    <path key="phone" d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 01.01 1.18 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.07 6.07l1.27-.84a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 15.53v1.39z"/>,
-                    <><rect key="r" x="2" y="3" width="20" height="14" rx="2" ry="2"/><line key="l1" x1="8" y1="21" x2="16" y2="21"/><line key="l2" x1="12" y1="17" x2="12" y2="21"/></>,
-                  ].map((path, i) => (
-                    <div key={i} style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s, transform 0.2s' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.transform = ''; }}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2">{path}</svg>
-                    </div>
-                  ))}
+                {/* Quick Links + ERP Portal */}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <a href="#enquiry"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, fontSize: 12.5, fontWeight: 800, color: ACCENT_GOLD, textDecoration: 'none', transition: 'background 0.2s, transform 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.1)'; e.currentTarget.style.transform = ''; }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                    Admissions
+                  </a>
+                  <a href={portalHash}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.3)', borderRadius: 10, fontSize: 12.5, fontWeight: 800, color: '#93C5FD', textDecoration: 'none', transition: 'background 0.2s, transform 0.2s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.22)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.12)'; e.currentTarget.style.transform = ''; }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    Staff ERP Portal
+                  </a>
                 </div>
               </div>
 
@@ -1043,11 +1059,7 @@ export const PortfolioView: React.FC = () => {
             {/* Bottom bar */}
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
               <span style={{ fontSize: 12.5, color: '#64748B' }}>© 2026 Inspire Junior College. All Rights Reserved. Hanumakonda, Telangana.</span>
-              <a href={portalHash} style={{ fontSize: 12.5, color: ACCENT_GOLD, textDecoration: 'none', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6, transition: 'gap 0.2s' }}
-                onMouseEnter={e => (e.currentTarget.style.gap = '10px')} onMouseLeave={e => (e.currentTarget.style.gap = '6px')}>
-                Staff &amp; Admin ERP Gateway
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-              </a>
+              <span style={{ fontSize: 12.5, color: '#475569' }}>IIT-JEE · NEET · Intermediate Board</span>
             </div>
           </div>
         </footer>
