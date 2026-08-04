@@ -293,6 +293,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [newStuMobile, setNewStuMobile] = useState('');
   const [newStuCourse, setNewStuCourse] = useState('MPC');
   const [newStuSection, setNewStuSection] = useState('MPC-A');
+  const [newStuYear, setNewStuYear] = useState('1st Year');
 
   // Screen 2: Personal & Family Information
   const [newStuFatherName, setNewStuFatherName] = useState('');
