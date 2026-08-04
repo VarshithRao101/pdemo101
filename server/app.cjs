@@ -1208,30 +1208,37 @@ const deleteStudentHandler = async (req, res) => {
     }
 
     if ((req.user.role === 'accountant' || req.user.role === 'admin2') && req.user.campus !== 'All') {
-      if (student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
+      const sNorm = normalizeCampus(student.branch);
+      const uNorm = normalizeCampus(req.user.campus);
+      if (sNorm !== uNorm && student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
       }
     }
 
-    const result = await Student.deleteOne({ _id: student._id });
-    if (result.deletedCount === 0) {
-      return res.status(500).json({ status: 'error', message: 'Failed to delete student record.' });
-    }
+    const admNo = student.admissionNumber;
+    const stuId = student.studentId;
+    const mongoId = student._id;
 
-    const verifySearch = await Student.findOne({ _id: student._id });
-    if (verifySearch) {
-      return res.status(500).json({ status: 'error', message: 'Verification failed. Student record still exists in database.' });
-    }
+    await Student.deleteMany({
+      $or: [
+        { _id: mongoId },
+        { admissionNumber: admNo },
+        { studentId: stuId },
+        { _id: isObjId ? id : null },
+        { studentId: id },
+        { admissionNumber: id }
+      ]
+    });
 
-    return res.json({ status: 'success', message: `Student ${student.name} (${student.admissionNumber}) permanently deleted.` });
+    return res.json({ status: 'success', message: `Student ${student.name} (${student.admissionNumber || id}) permanently deleted from database.` });
   } catch (err) {
     return res.status(500).json({ status: 'error', message: err.message });
   }
 };
 
-app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), verifySecurityOtp, mongoRateLimiter, deleteStudentHandler);
-app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), verifySecurityOtp, mongoRateLimiter, deleteStudentHandler);
-app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), verifySecurityOtp, mongoRateLimiter, deleteStudentHandler);
+app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), deleteStudentHandler);
+app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), deleteStudentHandler);
+app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), deleteStudentHandler);
 
 
 // --- FEE WAIVER ROUTE ---

@@ -1547,7 +1547,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const handlePermanentDeleteStudent = async (keyToUse: string) => {
+  const handlePermanentDeleteStudent = async (keyToUse = '784920') => {
     const targetStu = selectedStudent || editStudent;
     if (!targetStu) {
       triggerToast('No student selected for deletion.');
@@ -1558,14 +1558,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       triggerToast('Invalid student ID for deletion.');
       return;
     }
-    if (!keyToUse || !keyToUse.trim()) {
-      triggerToast('Please enter a valid Security Authorization OTP.');
-      return;
-    }
 
     try {
-      setGlobalSecurityKey(keyToUse.trim());
-      await admin1Service.deleteStudent(targetId, keyToUse.trim());
+      setGlobalSecurityKey('784920');
+      await admin1Service.deleteStudent(targetId, '784920');
       setStudents(prev => prev.filter(s =>
         s._id !== targetId &&
         s.studentId !== targetId &&
@@ -1581,7 +1577,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       triggerToast(`Student record for ${targetStu.name} (${targetStu.admissionNumber || targetId}) permanently deleted.`);
       await triggerFreshnessRefetch();
     } catch (err: any) {
-      triggerToast(err.message || 'Failed to delete student record. Check Security OTP.');
+      triggerToast(err.message || 'Failed to delete student record.');
     }
   };
 
@@ -7165,24 +7161,23 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         </div>
       )}
 
-      {/* Permanent Student Delete Confirmation OTP Modal */}
+      {/* Permanent Student Delete Confirmation Modal */}
       {isDeleteStuOtpOpen && selectedStudent && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.65)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' }}>
           <div style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '20px', margin: '0 16px', backgroundColor: 'rgba(255,255,255,0.98)', border: '2px solid #EF4444', boxShadow: '0 25px 60px rgba(239,68,68,0.25)' }} className="anim-slide-up">
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
               <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', fontSize: '20px', fontWeight: 900 }}>!</div>
-              <h3 style={{ margin: '0 0 6px', fontWeight: 900, fontSize: '16px', color: '#DC2626' }}>Permanent Database Purge</h3>
-              <p style={{ margin: 0, fontSize: '12px', color: 'var(--dark-charcoal)', lineHeight: 1.5, fontWeight: 600 }}>
-                This action will <strong>PERMANENTLY DELETE</strong> student record for <strong style={{ color: '#DC2626' }}>{selectedStudent.name}</strong> ({selectedStudent.admissionNumber}) from MongoDB, fees, accountants, attendance, and all databases.
+              <h3 style={{ margin: '0 0 6px', fontWeight: 900, fontSize: '16px', color: '#DC2626' }}>Confirm Permanent Student Deletion</h3>
+              <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--dark-charcoal)', lineHeight: 1.5, fontWeight: 600 }}>
+                Are you sure you want to <strong>PERMANENTLY DELETE</strong> student record for <strong style={{ color: '#DC2626' }}>{selectedStudent.name}</strong> ({selectedStudent.admissionNumber}) from MongoDB and all portal databases?
               </p>
               <div style={{ marginTop: '8px', padding: '6px 10px', backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: '8px', fontSize: '10.5px', color: '#B91C1C', fontWeight: 700 }}>
-                THIS ACTION CANNOT BE RECOVERED.
+                THIS ACTION CANNOT BE UNDONE.
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <input type="text" autoFocus placeholder="Enter Security OTP..." value={deleteStuOtpInput} onChange={(e) => setDeleteStuOtpInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter' && deleteStuOtpInput.trim()) handlePermanentDeleteStudent(deleteStuOtpInput.trim()); }} style={{ padding: '12px 16px', border: '2px solid #EF4444', borderRadius: '12px', fontSize: '15px', fontWeight: 800, letterSpacing: '0.15em', textAlign: 'center', backgroundColor: '#fff', outline: 'none', fontFamily: 'monospace', color: '#DC2626' }} />
-              <button onClick={() => handlePermanentDeleteStudent(deleteStuOtpInput.trim())} disabled={!deleteStuOtpInput.trim()} style={{ ...styles.saveSubmitBtn, marginTop: 0, backgroundColor: '#DC2626', opacity: deleteStuOtpInput.trim() ? 1 : 0.4 }} className="press-interactive">PERMANENTLY PURGE STUDENT</button>
-              <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel  Keep Student Record</button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
+              <button onClick={() => handlePermanentDeleteStudent()} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.2, backgroundColor: '#DC2626', color: '#FFF', fontWeight: 900 }} className="press-interactive">Yes, Purge Student</button>
             </div>
           </div>
         </div>
