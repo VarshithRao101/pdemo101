@@ -32,7 +32,17 @@ dist-ssr
 /server/node_modules
 /server/.env
 /server/dist
-
 /server/credential-secrets.local.json
+
+# Runtime backups (generated at runtime, never commit)
+/server/backups/
+
+# Dev artifacts
+scratch/
+tmp/
+PHASE*.md
+DEBUG_REPORT.md
+DATABASE_MIGRATION_REPORT.md
+DATABASE_ROOT_CAUSE_REPORT.md
 
 .vercel
