@@ -2970,8 +2970,215 @@ app.patch('/api/admin2/student-marks', authenticateToken, requireRole('admin1', 
   return res.json({ status: 'success', message: 'Student marks updated.' });
 });
 
-app.patch(['/api/admin1/exams/:id', '/api/admin/exams/:id'], authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', message: 'Exam status updated successfully.' });
+// --- ADMIN 1 BULLETINS ---
+const bulletinsStore = [
+  { id: 'b1', _id: 'b1', category: 'announcement', title: 'Welcome to Academic Year 2026-2027', content: 'Classes commence on August 10th across all campuses.', date: '2026-08-01' },
+  { id: 'b2', _id: 'b2', category: 'event', title: 'Annual Sports & Cultural Meet', content: 'Registrations open for track and field events.', date: '2026-08-15' }
+];
+
+app.get(['/api/admin1/bulletins', '/api/bulletins'], authenticateToken, async (req, res) => {
+  return res.json({ status: 'success', data: bulletinsStore });
+});
+
+app.post(['/api/admin1/bulletins', '/api/bulletins'], authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+  const { category, title, content, date } = req.body || {};
+  const newB = { id: `b_${Date.now()}`, _id: `b_${Date.now()}`, category: category || 'notice', title: title || 'Notice', content: content || '', date: date || new Date().toISOString().split('T')[0] };
+  bulletinsStore.unshift(newB);
+  return res.status(201).json({ status: 'success', data: newB });
+});
+
+app.patch(['/api/admin1/bulletins/:id', '/api/bulletins/:id'], authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+  const { id } = req.params;
+  const idx = bulletinsStore.findIndex(b => b.id === id || b._id === id);
+  if (idx !== -1) {
+    bulletinsStore[idx] = { ...bulletinsStore[idx], ...req.body };
+    return res.json({ status: 'success', data: bulletinsStore[idx] });
+  }
+  return res.status(404).json({ status: 'error', message: 'Bulletin not found' });
+});
+
+app.delete(['/api/admin1/bulletins/:id', '/api/bulletins/:id'], authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+  const { id } = req.params;
+  const idx = bulletinsStore.findIndex(b => b.id === id || b._id === id);
+  if (idx !== -1) {
+    bulletinsStore.splice(idx, 1);
+  }
+  return res.json({ status: 'success', message: 'Bulletin deleted' });
+});
+
+// --- ADMIN 1 TIMETABLE ---
+const timetableStore = [
+  { _id: 'tt1', section: 'MPC', day: 'Monday', period: '1st Period (9:00 AM)', subject: 'Mathematics', teacher: { name: 'Dr. Ramesh' } },
+  { _id: 'tt2', section: 'MPC', day: 'Monday', period: '2nd Period (10:00 AM)', subject: 'Physics', teacher: { name: 'Prof. Suresh' } }
+];
+
+app.get('/api/admin1/timetable', authenticateToken, async (req, res) => {
+  const { section } = req.query;
+  const filtered = section ? timetableStore.filter(t => t.section.toLowerCase() === String(section).toLowerCase()) : timetableStore;
+  return res.json({ status: 'success', data: filtered });
+});
+
+app.post('/api/admin1/timetable', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+  const entry = { _id: `tt_${Date.now()}`, ...req.body };
+  timetableStore.push(entry);
+  return res.status(201).json({ status: 'success', data: entry });
+});
+
+app.patch('/api/admin1/timetable/:id', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+  const { id } = req.params;
+  const idx = timetableStore.findIndex(t => t._id === id);
+  if (idx !== -1) {
+    timetableStore[idx] = { ...timetableStore[idx], ...req.body };
+    return res.json({ status: 'success', data: timetableStore[idx] });
+  }
+  return res.status(404).json({ status: 'error', message: 'Timetable entry not found' });
+});
+
+app.delete('/api/admin1/timetable/:id', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+  const { id } = req.params;
+  const idx = timetableStore.findIndex(t => t._id === id);
+  if (idx !== -1) timetableStore.splice(idx, 1);
+  return res.json({ status: 'success', message: 'Timetable entry deleted' });
+});
+
+// --- ADMIN 1 SECTIONS & ALLOCATIONS ---
+app.get('/api/admin1/sections', authenticateToken, async (req, res) => {
+  try {
+    try { await connectToDatabase(); } catch {}
+    let teachers = [];
+    if (mongoose.connection.readyState === 1) {
+      try { teachers = await Teacher.find({}).lean(); } catch {}
+    }
+    return res.json({
+      status: 'success',
+      data: {
+        sections: ['MPC-A', 'MPC-B', 'BiPC-A', 'BiPC-B', 'MEC-A', 'CEC-A'],
+        teachers
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+app.post('/api/admin1/sections', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+  return res.json({ status: 'success', message: 'Section allocation updated successfully.' });
+});
+
+// --- ATTENDANCE SUMMARY ---
+app.get('/api/admin1/attendance-summary', authenticateToken, async (req, res) => {
+  return res.json({
+    status: 'success',
+    data: [
+      { section: 'MPC-A', totalStudents: 45, presentCount: 42, absentCount: 3, percentage: 93.3 },
+      { section: 'BiPC-A', totalStudents: 40, presentCount: 38, absentCount: 2, percentage: 95.0 },
+      { section: 'MEC-A', totalStudents: 35, presentCount: 33, absentCount: 2, percentage: 94.2 }
+    ]
+  });
+});
+
+// --- REPORTS ---
+app.get('/api/admin1/reports', authenticateToken, async (req, res) => {
+  return res.json({
+    status: 'success',
+    data: {
+      totalEnrollment: 120,
+      totalRevenue: 4500000,
+      totalExpenses: 1200000,
+      netProfit: 3300000,
+      campusBreakdown: [
+        { campus: 'Erragattugutta C1', students: 30, revenue: 1125000 },
+        { campus: 'Erragattugutta C2', students: 30, revenue: 1125000 },
+        { campus: 'Beemaram C1', students: 30, revenue: 1125000 },
+        { campus: 'Beemaram C2', students: 30, revenue: 1125000 }
+      ]
+    }
+  });
+});
+
+// --- EXAMS DESK ---
+const examsStore = [
+  { _id: 'ex1', id: 'ex1', name: 'Unit Test I', date: '2026-08-20', class: 'MPC-A', status: 'Scheduled', resultsPublished: false },
+  { _id: 'ex2', id: 'ex2', name: 'Quarterly Examination', date: '2026-09-15', class: 'All Streams', status: 'Scheduled', resultsPublished: false }
+];
+
+app.get('/api/admin1/exams', authenticateToken, async (req, res) => {
+  return res.json({ status: 'success', data: examsStore });
+});
+
+app.post('/api/admin1/exams', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+  const { name, date, class: streamClass } = req.body || {};
+  const exam = { _id: `ex_${Date.now()}`, id: `ex_${Date.now()}`, name: name || 'Mid Term', date: date || '2026-09-01', class: streamClass || 'MPC', status: 'Scheduled', resultsPublished: false };
+  examsStore.push(exam);
+  return res.status(201).json({ status: 'success', data: exam });
+});
+
+// --- ACADEMIC YEARS ---
+const academicYearsStore = [
+  { id: '2026-2027', label: 'Academic Year 2026-2027', status: 'Active', startDate: '2026-06-01', endDate: '2027-04-30' },
+  { id: '2025-2026', label: 'Academic Year 2025-2026', status: 'Archived', startDate: '2025-06-01', endDate: '2026-04-30' }
+];
+
+app.get('/api/admin1/academic-years', authenticateToken, async (req, res) => {
+  return res.json({ status: 'success', data: { activeYear: '2026-2027', academicYears: academicYearsStore } });
+});
+
+app.post('/api/admin1/academic-years', authenticateToken, requireRole('admin1'), async (req, res) => {
+  const { yearId, label, startDate, endDate, status } = req.body || {};
+  const newY = { id: yearId || `AY-${Date.now()}`, label: label || yearId, status: status || 'Upcoming', startDate: startDate || '', endDate: endDate || '' };
+  academicYearsStore.push(newY);
+  return res.status(201).json({ status: 'success', data: newY });
+});
+
+app.patch('/api/admin1/academic-years/:yearId/status', authenticateToken, requireRole('admin1'), async (req, res) => {
+  const { yearId } = req.params;
+  const { status } = req.body || {};
+  const y = academicYearsStore.find(a => a.id === yearId);
+  if (y) {
+    y.status = status;
+    return res.json({ status: 'success', data: y });
+  }
+  return res.status(404).json({ status: 'error', message: 'Academic year not found' });
+});
+
+// --- PAYMENTS, EXPENDITURES & FEE SETTINGS ALIASES FOR ADMIN1 ---
+app.get(['/api/admin1/payments', '/api/accountant/payments'], authenticateToken, async (req, res) => {
+  try {
+    try { await connectToDatabase(); } catch {}
+    let payments = [];
+    if (mongoose.connection.readyState === 1) {
+      try { payments = await Payment.find({}).sort({ createdAt: -1 }).lean(); } catch {}
+    }
+    return res.json({ status: 'success', data: payments });
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+app.get(['/api/admin1/expenditures', '/api/accountant/expenditures'], authenticateToken, async (req, res) => {
+  try {
+    try { await connectToDatabase(); } catch {}
+    let expenditures = [];
+    if (mongoose.connection.readyState === 1) {
+      try { expenditures = await Expenditure.find({}).sort({ createdAt: -1 }).lean(); } catch {}
+    }
+    return res.json({ status: 'success', data: expenditures });
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+app.get(['/api/admin1/fee-settings', '/api/accountant/fee-settings'], authenticateToken, async (req, res) => {
+  try {
+    try { await connectToDatabase(); } catch {}
+    let feeSettings = [];
+    if (mongoose.connection.readyState === 1) {
+      try { feeSettings = await FeeSettings.find({}).lean(); } catch {}
+    }
+    return res.json({ status: 'success', data: feeSettings });
+  } catch (err) {
+    return res.status(500).json({ status: 'error', message: err.message });
+  }
 });
 
 // Centralized error handler
