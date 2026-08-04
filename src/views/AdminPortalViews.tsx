@@ -1402,8 +1402,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       if (activePage === 'menu') return;
       setIsPageLoading(true);
       try {
-        if (activePage === 'students' || activePage === 'teachers') {
+        if (activePage === 'students' || activePage === 'add_student' || activePage === 'teachers') {
           await Promise.all([fetchStudents(''), fetchSections()]);
+          if (activePage === 'add_student') {
+            if (!newStuAdmissionNumber.trim()) setNewStuAdmissionNumber(`ADM2400${students.length + 1}`);
+            setNewStuFormPage(1);
+            setIsStudentHoverModalOpen(true);
+          }
         } else if (activePage === 'publishing') {
           await fetchBulletins();
         } else if (activePage === 'exams') {
@@ -2026,11 +2031,43 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('emerald')}
         <header style={styles.header}>
-          <button onClick={() => { setActivePage('menu'); setSelectedStudent(null); setEditStudent(null); }} style={styles.backArrowBtn} className="press-interactive">
-            Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Student Registry</h1>
-          <p style={styles.subtitle}>Configure permissions, reset credentials and view documents</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '12px', zIndex: 1 }}>
+            <div>
+              <button onClick={() => { setActivePage('menu'); setSelectedStudent(null); setEditStudent(null); }} style={styles.backArrowBtn} className="press-interactive">
+                Back to Cockpit
+              </button>
+              <h1 style={{ ...styles.title, marginTop: '8px' }}>Student Registry</h1>
+              <p style={styles.subtitle}>Configure permissions, reset credentials, register new admissions, and view documents</p>
+            </div>
+            <button
+              onClick={() => {
+                if (!newStuAdmissionNumber.trim()) {
+                  setNewStuAdmissionNumber(`ADM2400${students.length + 1}`);
+                }
+                setNewStuFormPage(1);
+                setIsStudentHoverModalOpen(true);
+              }}
+              style={{
+                backgroundColor: '#059669',
+                color: '#FFFFFF',
+                padding: '10px 20px',
+                borderRadius: '12px',
+                fontWeight: 850,
+                fontSize: '13.5px',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(5,150,105,0.3)',
+                transition: 'all 0.2s ease'
+              }}
+              className="press-interactive"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              + Add New Student Admission
+            </button>
+          </div>
         </header>
 
         <main style={styles.content}>
@@ -2122,10 +2159,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <button
                   type="button"
                   onClick={() => {
-                    if (!newStuName.trim() || !newStuMobile.trim()) {
-                      triggerToast('Please complete Student Name and Mobile Number first.');
-                      return;
-                    }
                     if (!newStuAdmissionNumber.trim()) {
                       setNewStuAdmissionNumber(`ADM2400${students.length + 1}`);
                     }
@@ -2137,7 +2170,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     marginTop: 0,
                     width: '100%',
                     padding: '8px 16px',
-                    backgroundColor: '#0F172A',
+                    backgroundColor: '#059669',
                     color: '#FFFFFF',
                     fontSize: '12.5px',
                     fontWeight: 800,
@@ -2148,7 +2181,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   }}
                   className="press-interactive"
                 >
-                  Submit Student →
+                  Register & Open Full Form →
                 </button>
               </div>
             </div>
@@ -6914,6 +6947,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <h4 style={styles.moduleTitle}>Students Registry</h4>
                 <p style={styles.moduleDesc}>Register admissions, view records across all 4 campuses.</p>
+              </div>
+
+              <div onClick={() => { setActivePage('students'); if (!newStuAdmissionNumber.trim()) setNewStuAdmissionNumber(`ADM2400${students.length + 1}`); setNewStuFormPage(1); setIsStudentHoverModalOpen(true); }} style={styles.moduleCardNew} className="module-card press-interactive">
+                <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </div>
+                <h4 style={styles.moduleTitle}>+ Add Student Admission</h4>
+                <p style={styles.moduleDesc}>Register new student profile, campus allocation, and fee structure.</p>
               </div>
 
               <div onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">

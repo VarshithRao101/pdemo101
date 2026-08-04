@@ -87,7 +87,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
     }, 1200);
   };
 
-  // Mobile & Desktop side drawer list items (EXACTLY 5 for Security Authenticator)
+  // Mobile & Desktop side drawer list items for all portal roles
   const drawerMenuItems = portalRole === 'authenticator'
     ? [
         { label: 'Dashboard Overview', type: 'dashboard', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
@@ -96,7 +96,29 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
         { label: 'Sync Integrity Console', type: 'sync_integrity', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('sync_integrity'); } },
         { label: 'Settings', type: 'settings', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('settings'); } },
       ]
-    : [];
+    : portalRole === 'admin1'
+    ? [
+        { label: 'Rector General Cockpit', type: 'dashboard', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
+        { label: 'Students Registry', type: 'students', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('students'); } },
+        { label: '+ Add Student Admission', type: 'add_student', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('add_student'); } },
+        { label: 'Faculty Management', type: 'teachers', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('teachers'); } },
+        { label: 'Student Fee & Waivers', type: 'fee_editor', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('fee_editor'); } },
+        { label: 'Multi-Branch Expenditure', type: 'expenditure', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('expenditure'); } },
+        { label: 'Admission Enquiries', type: 'enquiries', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('enquiries'); } },
+      ]
+    : portalRole === 'admin2'
+    ? [
+        { label: 'Campus Cockpit', type: 'dashboard', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
+        { label: 'Campus Expenditures', type: 'expenditure', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('expenditure'); } },
+        { label: 'Worker Payments', type: 'worker_payments', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('worker_payments'); } },
+        { label: 'Admission Enquiries', type: 'enquiries', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('enquiries'); } },
+      ]
+    : [
+        { label: 'Accountant Cockpit', type: 'dashboard', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
+        { label: 'Student Registry', type: 'registry', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('registry'); } },
+        { label: '+ Add New Student', type: 'add_student', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('add_student'); } },
+        { label: 'Collect Student Fees', type: 'fees', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('fees'); } },
+      ];
 
   // Helper function to render styled Neo-Brutalist Modal Overlay
   const renderModal = (title: string, onClose: () => void, content: React.ReactNode) => {
