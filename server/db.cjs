@@ -10,7 +10,6 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
-const FALLBACK_MONGODB_URI = 'mongodb+srv://inspirehead:7gPAF4kPW13lwETe@cluster0.aw1u47g.mongodb.net/jc_erp_prod?retryWrites=true&w=majority&appName=Cluster0';
 let databaseBlockedUntil = 0;
 const DATABASE_BLOCK_COOLDOWN_MS = 30 * 1000;
 
@@ -23,7 +22,10 @@ async function connectToDatabase() {
     throw new Error('MongoDB temporarily unavailable. Falling back to managed portal cache.');
   }
 
-  const MONGODB_URI = process.env.MONGODB_URI || FALLBACK_MONGODB_URI;
+  const MONGODB_URI = process.env.MONGODB_URI;
+  if (!MONGODB_URI) {
+    throw new Error('MONGODB_URI is not configured for this deployment.');
+  }
 
   if (cached.conn && mongoose.connection.readyState === 1) {
     databaseBlockedUntil = 0;
@@ -48,14 +50,6 @@ async function connectToDatabase() {
       })
       .catch((err) => {
         databaseBlockedUntil = Date.now() + DATABASE_BLOCK_COOLDOWN_MS;
-        if (MONGODB_URI !== FALLBACK_MONGODB_URI) {
-          console.warn('⚠️ [Database]: Primary MONGODB_URI failed (' + err.message + '). Retrying with Atlas fallback...');
-          return mongoose.connect(FALLBACK_MONGODB_URI, opts).then((mongooseInstance) => {
-            databaseBlockedUntil = 0;
-            console.log('✅ [Database]: Connected via Atlas fallback URI.');
-            return mongooseInstance.connection;
-          });
-        }
         cached.promise = null;
         global.mongoose.promise = null;
         console.error('❌ [Database]: MongoDB connection error:', err.message);
