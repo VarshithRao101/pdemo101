@@ -251,7 +251,6 @@ interface ExamItem {
 
 
 
-//  ADMIN DASHBOARD CONTROLLER
 export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ role = 'admin1' }) => {
   const { user } = useNavigation();
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';

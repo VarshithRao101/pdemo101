@@ -80,6 +80,14 @@ app.use(cors({
 app.use(express.json());
 app.use(morgan('dev'));
 
+// URL Path Normalization Middleware (Fixes double /api/api/ prefixing & serverless routing quirks)
+app.use((req, res, next) => {
+  if (req.url && req.url.startsWith('/api/api/')) {
+    req.url = req.url.replace('/api/api/', '/api/');
+  }
+  next();
+});
+
 // Health Check Endpoint
 app.get('/api/health', async (req, res) => {
   let dbStatus = 'disconnected';
@@ -475,7 +483,7 @@ function resolveUsername(input) {
 
 // --- AUTHENTICATION ROUTES ---
 
-app.get('/api/auth/me', authenticateToken, async (req, res) => {
+app.get(['/api/auth/me', '/auth/me', '/api/me'], authenticateToken, async (req, res) => {
   try {
     const user = await findUserAccount(req.user.username);
     if (!user || user.status === 'disabled') {
@@ -497,7 +505,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/auth/verify-credentials', mongoRateLimiter, async (req, res) => {
+app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/verify-credentials'], mongoRateLimiter, async (req, res) => {
   try {
     try {
       await connectToDatabase();
@@ -535,7 +543,7 @@ app.post('/api/auth/verify-credentials', mongoRateLimiter, async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
+app.post(['/api/auth/login', '/auth/login', '/api/login', '/login'], mongoRateLimiter, async (req, res) => {
   try {
     try {
       await connectToDatabase();
@@ -616,7 +624,7 @@ app.post('/api/auth/login', mongoRateLimiter, async (req, res) => {
 });
 
 // --- FORCE LOGIN ROUTE (KICK OTHER SESSION) ---
-app.post('/api/auth/force-login', mongoRateLimiter, async (req, res) => {
+app.post(['/api/auth/force-login', '/auth/force-login', '/api/force-login'], mongoRateLimiter, async (req, res) => {
   try {
     try {
       await connectToDatabase();
@@ -698,7 +706,7 @@ app.post('/api/auth/force-login', mongoRateLimiter, async (req, res) => {
   }
 });
 
-app.post('/api/auth/refresh', async (req, res) => {
+app.post(['/api/auth/refresh', '/auth/refresh', '/api/refresh'], async (req, res) => {
   try {
     await connectToDatabase();
     const { refreshToken } = req.body;
@@ -740,7 +748,7 @@ app.post('/api/auth/refresh', async (req, res) => {
   }
 });
 
-app.post('/api/auth/logout', async (req, res) => {
+app.post(['/api/auth/logout', '/auth/logout', '/api/logout'], async (req, res) => {
   try {
     await connectToDatabase();
     const { refreshToken } = req.body;

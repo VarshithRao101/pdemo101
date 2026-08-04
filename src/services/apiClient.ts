@@ -191,9 +191,16 @@ export const apiClient = {
   },
 
   async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    let cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    
+    // Strip duplicate /api prefix if caller passed /api/... to avoid /api/api/... 404 errors
+    if (cleanPath.startsWith('/api/')) {
+      cleanPath = cleanPath.substring(4);
+    }
+
     const baseUrl = getApiBaseUrl();
-    const url = `${baseUrl}${cleanPath}`;
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    const url = `${cleanBaseUrl}${cleanPath}`;
 
     const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
     const headers: Record<string, string> = {

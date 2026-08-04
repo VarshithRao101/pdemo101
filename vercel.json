@@ -6,7 +6,11 @@
       "destination": "/api/index.js"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/auth/(.*)",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/((?!api/|auth/).*)",
       "destination": "/index.html"
     }
   ],

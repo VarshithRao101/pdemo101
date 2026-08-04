@@ -18,7 +18,7 @@ function fetchGithub(path) {
 }
 
 async function main() {
-  const statuses = await fetchGithub('/repos/VarshithRao101/pdemo101/deployments/5717618995/statuses');
+  const statuses = await fetchGithub('/repos/VarshithRao101/pdemo101/deployments/5737180352/statuses');
   console.log(JSON.stringify(statuses, null, 2));
 }
 
