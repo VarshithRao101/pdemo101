@@ -326,9 +326,25 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#FAFCFF;color:#0F172A
   gap: 20px;
 }
 
+/* ── Courses / Streams Grid ── */
+.streams-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+
+/* ── Stats bar scroller ── */
+.stats-inner {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+
 /* ── Responsive Mobile Optimizations ── */
 @media(max-width:1100px){
   .clips-grid{grid-template-columns:repeat(2,1fr)!important;gap:16px!important}
+  .streams-grid{grid-template-columns:repeat(2,1fr)!important;gap:18px!important}
+  .stats-inner{grid-template-columns:repeat(3,1fr)!important;gap:12px!important}
 }
 @media(max-width:1024px){
   .desk-nav{display:none!important}.desk-top{display:none!important}
@@ -337,8 +353,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#FAFCFF;color:#0F172A
 @media(max-width:640px){
   .hero-h{height:clamp(220px,55vw,360px)!important}
   .section-pad{padding:36px 12px!important}
-  .clips-grid{grid-template-columns:repeat(1,1fr)!important;gap:14px!important}
-  .stat-val{font-size:24px!important}
+  .clips-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
+  .streams-grid{grid-template-columns:repeat(1,1fr)!important;gap:14px!important}
+  .stats-inner{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
+  .stat-val{font-size:22px!important}
   .form-box{padding:20px 14px!important;border-radius:16px!important}
   .h1-hero{font-size:22px!important}
 }
@@ -602,12 +620,12 @@ export const PortfolioView: React.FC = () => {
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <section className="bg-grid-animated" style={{ padding: '0 16px' }}>
           <div ref={statsRef.ref} className="ic" style={{ position: 'relative', paddingTop: 28, paddingBottom: 36 }}>
-            <div style={{ background: '#fff', borderRadius: 24, padding: 16, boxShadow: '0 12px 48px rgba(15,23,42,0.11)', border: '1.5px solid #E2E8F0', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ background: '#fff', borderRadius: 24, padding: '20px 20px 16px', boxShadow: '0 12px 48px rgba(15,23,42,0.11)', border: '1.5px solid #E2E8F0', position: 'relative', overflow: 'hidden' }}>
               {/* Rainbow top accent */}
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3.5, background: 'linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853,#4285F4)', backgroundSize: '200% 200%', animation: 'rainbowFlow 3s linear infinite', borderRadius: '24px 24px 0 0' }} />
-              <div style={{ display: 'flex', gap: 14, flexWrap: 'nowrap', overflowX: 'auto', paddingTop: 8 }}>
+              <div className={`stats-inner ${statsRef.visible ? 'visible' : ''}`} style={{ paddingTop: 8 }}>
                 {STAT_CARDS.map((s, i) => (
-                  <div key={i} className={`reveal d${(i+1)*100}`} style={{ flex: 1, minWidth: 150, ...(statsRef.visible ? {} : {}) }}>
+                  <div key={i} className={`reveal d${(i+1)*100} ${statsRef.visible ? 'visible' : ''}`}>
                     <StatCard stat={s} active={statsRef.visible} />
                   </div>
                 ))}
@@ -706,7 +724,7 @@ export const PortfolioView: React.FC = () => {
               <div className="dec-divider-line" /><div className="dec-divider-gem" /><div className="dec-divider-line" />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(290px,1fr))', gap: 22 }}>
+            <div className="streams-grid">
               {PROGRAM_CARDS.map((prog, idx) => (
                 <div key={idx} className={`ch reveal d${(idx+1)*200} ${streamsRef.visible ? 'visible' : ''}`}
                   style={{ background: '#0F172A', borderRadius: 22, overflow: 'hidden', border: '1.5px solid rgba(255,255,255,0.1)', boxShadow: '0 12px 36px rgba(15,23,42,0.22)', display: 'flex', flexDirection: 'column' }}>
