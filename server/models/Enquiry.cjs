@@ -13,4 +13,4 @@ const enquirySchema = new mongoose.Schema({
   status: { type: String, enum: ['Pending', 'Contacted', 'Enrolled', 'Closed', 'Archived'], default: 'Pending' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Enquiry', enquirySchema);
+module.exports = mongoose.models.Enquiry || mongoose.model('Enquiry', enquirySchema);

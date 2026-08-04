@@ -17,9 +17,16 @@ const BACKUP_KEY_RAW = process.env.BACKUP_ENCRYPTION_KEY || 'inspire_secure_back
 const ENCRYPTION_KEY = crypto.scryptSync(BACKUP_KEY_RAW, 'inspire-erp-salt-2026', 32);
 
 // Local encrypted backup storage directory
-const LOCAL_BACKUP_DIR = path.join(__dirname, '../backups');
-if (!fs.existsSync(LOCAL_BACKUP_DIR)) {
-  fs.mkdirSync(LOCAL_BACKUP_DIR, { recursive: true });
+const LOCAL_BACKUP_DIR = (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)
+  ? path.join('/tmp', 'backups')
+  : path.join(__dirname, '../backups');
+
+try {
+  if (!fs.existsSync(LOCAL_BACKUP_DIR)) {
+    fs.mkdirSync(LOCAL_BACKUP_DIR, { recursive: true });
+  }
+} catch (dirErr) {
+  console.warn('⚠️ [BackupService]: Safe notice - Could not create local backup directory:', dirErr.message);
 }
 
 // Retrievable backup audit log memory
@@ -119,9 +126,13 @@ async function generateAndUploadBackup(triggeredBy = 'system') {
   const dateStr = new Date().toISOString().slice(0, 10);
   const fileName = `inspire-erp-backup-${dateStr}-${Date.now().toString().slice(-6)}.json.enc`;
 
-  // Always save encrypted copy locally as safety net
-  const localFilePath = path.join(LOCAL_BACKUP_DIR, fileName);
-  fs.writeFileSync(localFilePath, encryptedPayload, 'utf-8');
+  // Save encrypted copy locally if storage directory is writable
+  try {
+    const localFilePath = path.join(LOCAL_BACKUP_DIR, fileName);
+    fs.writeFileSync(localFilePath, encryptedPayload, 'utf-8');
+  } catch (localWriteErr) {
+    console.warn('⚠️ [BackupService]: Safe notice - local backup file write skipped:', localWriteErr.message);
+  }
 
   // Attempt Google Drive Upload - SURFACES ERRORS DIRECTLY IF DRIVE FAILS
   try {

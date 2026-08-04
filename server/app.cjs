@@ -177,24 +177,6 @@ function safeBcryptCompare(input, hash) {
   }
 }
 
-function safeSecretMatch(input, storedValue, fallbackPlaintext = null) {
-  if (input === undefined || input === null) return false;
-  const normalizedInput = String(input).trim();
-  if (!normalizedInput) return false;
-
-  if (storedValue !== undefined && storedValue !== null) {
-    const normalizedStored = String(storedValue).trim();
-    if (!normalizedStored) return false;
-    if (safeBcryptCompare(normalizedInput, normalizedStored)) return true;
-    if (normalizedInput === normalizedStored) return true;
-  }
-
-  if (fallbackPlaintext !== undefined && fallbackPlaintext !== null) {
-    return normalizedInput === String(fallbackPlaintext).trim();
-  }
-
-  return false;
-}
 
 function resolveUsername(inputUser) {
   if (!inputUser || typeof inputUser !== 'string') return '';
@@ -549,7 +531,7 @@ async function verifySecurityOtp(req, res, next) {
       return res.status(403).json({ status: 'error', message: 'User account security PIN error.' });
     }
 
-    const isMatch = safeSecretMatch(String(otpHeader).trim(), user.pin, user.pin_plaintext);
+    const isMatch = safeBcryptCompare(String(otpHeader).trim(), user.pin);
     if (!isMatch) {
       return res.status(403).json({
         status: 'error',
@@ -640,43 +622,10 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
   const normalizedPin = pin !== undefined && pin !== null ? String(pin).trim() : null;
   const seedUser = defaultSeedUsers.find(u => u.username === resolvedUser);
 
-  if (resolvedUser === FIXED_AUTHENTICATOR_USERNAME) {
-    const passwordOk = normalizedPassword === FIXED_AUTHENTICATOR_PASSWORD;
-    const pinOk = normalizedPin === null || normalizedPin === FIXED_AUTHENTICATOR_PIN;
-    if (!passwordOk || !pinOk) {
-      return null;
-    }
-
-    return {
-      _id: resolvedUser,
-      username: resolvedUser,
-      password: bcrypt.hashSync(FIXED_AUTHENTICATOR_PASSWORD, 10),
-      pin: bcrypt.hashSync(FIXED_AUTHENTICATOR_PIN, 10),
-      pin_plaintext: FIXED_AUTHENTICATOR_PIN,
-      role: 'authenticator',
-      campus: 'All',
-      name: 'Security Authenticator',
-      status: 'active'
-    };
-  }
-
-  if (seedUser && mongoose.connection.readyState !== 1) {
-    const passwordOk = safeSecretMatch(normalizedPassword, seedUser.password);
-    const pinOk = normalizedPin === null || safeSecretMatch(normalizedPin, seedUser.pin) || normalizedPin === generate24HourDeterministicCode(`pin_${resolvedUser}`);
-    if (!passwordOk || !pinOk) {
-      return null;
-    }
-    return {
-      _id: seedUser.username,
-      username: seedUser.username,
-      password: bcrypt.hashSync(seedUser.password, 10),
-      pin: bcrypt.hashSync(seedUser.pin, 10),
-      pin_plaintext: seedUser.pin,
-      role: seedUser.role,
-      campus: seedUser.campus,
-      name: seedUser.name,
-      status: 'active'
-    };
+  try {
+    await connectToDatabase();
+  } catch (dbErr) {
+    console.warn('⚠️ [Auth]: Mongo connection notice in validateUserLoginCredentials:', dbErr.message);
   }
 
   let user = await findUserAccount(resolvedUser);
@@ -687,7 +636,6 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
       username: seedUser.username,
       password: bcrypt.hashSync(seedUser.password, 10),
       pin: bcrypt.hashSync(seedUser.pin, 10),
-      pin_plaintext: seedUser.pin,
       role: seedUser.role,
       campus: seedUser.campus,
       name: seedUser.name,
@@ -699,24 +647,13 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
     return null;
   }
 
-  let isPasswordOk = safeSecretMatch(normalizedPassword, user.password, user.password_plaintext);
-  if (!isPasswordOk && seedUser) {
-    isPasswordOk = safeSecretMatch(normalizedPassword, seedUser.password);
-  }
-
+  const isPasswordOk = safeBcryptCompare(normalizedPassword, user.password);
   if (!isPasswordOk) {
     return null;
   }
 
-  if (pin !== undefined && pin !== null) {
-    const inputPinStr = normalizedPin;
-    const dateSeed = getLocalDateSeed();
-    const deterministicPin = generate24HourDeterministicCode(`pin_${resolvedUser}`, dateSeed);
-
-    let isPinOk = safeSecretMatch(inputPinStr, user.pin, user.pin_plaintext) ||
-                  (seedUser && safeSecretMatch(inputPinStr, seedUser.pin)) ||
-                  (inputPinStr === deterministicPin);
-
+  if (normalizedPin !== null) {
+    const isPinOk = safeBcryptCompare(normalizedPin, user.pin);
     if (!isPinOk) {
       return null;
     }
@@ -777,6 +714,11 @@ app.get(['/api/auth/me', '/auth/me', '/api/me'], authenticateToken, async (req, 
 
 app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/verify-credentials'], mongoRateLimiter, async (req, res) => {
   try {
+    try {
+      await connectToDatabase();
+    } catch (dbErr) {
+      console.warn('⚠️ [Auth]: Database connection notice on verify-credentials:', dbErr.message);
+    }
     const { username, identifier, password } = req.body || {};
     const inputUser = username || identifier;
 
@@ -799,6 +741,11 @@ app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/veri
 
 app.post(['/api/auth/login', '/auth/login', '/api/login', '/login'], mongoRateLimiter, async (req, res) => {
   try {
+    try {
+      await connectToDatabase();
+    } catch (dbErr) {
+      console.warn('⚠️ [Auth]: Database connection notice on login:', dbErr.message);
+    }
     const { username, identifier, password, pin } = req.body || {};
     const inputUser = username || identifier;
 
