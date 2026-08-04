@@ -184,11 +184,10 @@ function resolveUsername(inputUser) {
 
 async function findUserAccount(resolvedUsername) {
   if (!resolvedUsername) return null;
-  if (isDatabaseTemporarilyBlocked()) {
+  if (mongoose.connection.readyState !== 1 || isDatabaseTemporarilyBlocked()) {
     return null;
   }
   try {
-    await connectToDatabase();
     return await User.findOne({ username: resolvedUsername });
   } catch (dbErr) {
     console.warn('⚠️ [Auth]: Mongo query error during findUserAccount:', dbErr.message);
@@ -230,10 +229,6 @@ function sanitizeManagedAccount(userDoc) {
 }
 
 async function getManagedPortalAccounts() {
-  try {
-    await connectToDatabase();
-  } catch {}
-
   const fallbackAccounts = defaultUsers.map((u, i) => ({
     _id: `sys_${u.username}`,
     username: u.username,
@@ -340,14 +335,6 @@ async function mongoRateLimiter(req, res, next) {
   const maxAttempts = 100;
 
   try {
-    if (mongoose.connection.readyState !== 1) {
-      try {
-        await connectToDatabase();
-      } catch (connErr) {
-        console.warn('âš ï¸ [RateLimiter]: Database connection attempt notice:', connErr.message);
-      }
-    }
-
     if (mongoose.connection.readyState === 1) {
       let record = await RateLimit.findOne({ key });
       if (!record || record.resetAt < now) {
@@ -415,9 +402,8 @@ async function authenticateToken(req, res, next) {
     // Check activeSessionId against database in MongoDB or fallback seed user
     if (decoded.id || decoded.username) {
       let dbUser = null;
-      if (!isDatabaseTemporarilyBlocked()) {
+      if (mongoose.connection.readyState === 1 && !isDatabaseTemporarilyBlocked()) {
         try {
-          await connectToDatabase();
           if (mongoose.Types.ObjectId.isValid(decoded.id)) {
             dbUser = await User.findById(decoded.id).select('activeSessionId status username');
           }
@@ -425,7 +411,7 @@ async function authenticateToken(req, res, next) {
             dbUser = await User.findOne({ username: decoded.username }).select('activeSessionId status username');
           }
         } catch (dbErr) {
-          console.warn('âš ï¸ [Auth]: Mongo query notice in authenticateToken:', dbErr.message);
+          console.warn('⚠️ [Auth]: Mongo query notice in authenticateToken:', dbErr.message);
         }
       }
 
@@ -655,7 +641,7 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
     };
   }
 
-  if (seedUser && isDatabaseTemporarilyBlocked()) {
+  if (seedUser && mongoose.connection.readyState !== 1) {
     const passwordOk = normalizedPassword === seedUser.password;
     const pinOk = normalizedPin === null || normalizedPin === seedUser.pin || normalizedPin === generate24HourDeterministicCode(`pin_${resolvedUser}`);
     if (!passwordOk || !pinOk) {
@@ -727,7 +713,32 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
 
 app.get(['/api/auth/me', '/auth/me', '/api/me'], authenticateToken, async (req, res) => {
   try {
-    const user = await findUserAccount(req.user.username);
+    let user = null;
+    if (mongoose.connection.readyState === 1) {
+      user = await findUserAccount(req.user.username);
+    }
+    if (!user) {
+      const seedUser = defaultSeedUsers.find(u => u.username === resolveUsername(req.user.username));
+      if (seedUser) {
+        user = {
+          _id: seedUser.username,
+          username: seedUser.username,
+          role: seedUser.role,
+          campus: seedUser.campus,
+          name: seedUser.name,
+          status: 'active'
+        };
+      } else {
+        user = {
+          _id: req.user.id || req.user.username,
+          username: req.user.username,
+          role: req.user.role,
+          campus: req.user.campus,
+          name: req.user.name,
+          status: 'active'
+        };
+      }
+    }
     if (!user || user.status === 'disabled') {
       return res.status(401).json({ status: 'error', message: 'User account not found or disabled.' });
     }
@@ -749,11 +760,6 @@ app.get(['/api/auth/me', '/auth/me', '/api/me'], authenticateToken, async (req, 
 
 app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/verify-credentials'], mongoRateLimiter, async (req, res) => {
   try {
-    try {
-      await connectToDatabase();
-    } catch (dbErr) {
-      console.warn('⚠️ [Auth]: DB connection notice during verify-credentials:', dbErr.message);
-    }
     const { username, identifier, password } = req.body || {};
     const inputUser = username || identifier;
 
@@ -776,11 +782,6 @@ app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/veri
 
 app.post(['/api/auth/login', '/auth/login', '/api/login', '/login'], mongoRateLimiter, async (req, res) => {
   try {
-    try {
-      await connectToDatabase();
-    } catch (dbErr) {
-      console.warn('⚠️ [Auth]: DB connection notice during login:', dbErr.message);
-    }
     const { username, identifier, password, pin } = req.body || {};
     const inputUser = username || identifier;
 
@@ -3022,6 +3023,8 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
+
+
 
 
 
