@@ -957,7 +957,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <button onClick={() => {}} style={{ padding: '8px 14px', borderRadius: '10px', border: '2px solid #2563EB', backgroundColor: '#2563EB', color: '#FFFFFF', fontWeight: 850, fontSize: '12px', cursor: 'pointer' }} className="press-interactive">
+                <button onClick={loadData} style={{ padding: '8px 14px', borderRadius: '10px', border: '2px solid #2563EB', backgroundColor: '#2563EB', color: '#FFFFFF', fontWeight: 850, fontSize: '12px', cursor: 'pointer' }} className="press-interactive">
                   Refresh Ledger
                 </button>
               </div>
@@ -968,13 +968,13 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 {(['all', 'success', 'failed'] as const).map(filter => (
                   <button
                     key={filter}
-                    onClick={() => {}}
+                    onClick={() => setLedgerFilter(filter)}
                     style={{
                       padding: '8px 14px',
                       borderRadius: '10px',
-                      border: '2px solid #CBD5E1',
-                      backgroundColor: '#FFFFFF',
-                      color: '#475569',
+                      border: ledgerFilter === filter ? '2px solid #0F172A' : '2px solid #CBD5E1',
+                      backgroundColor: ledgerFilter === filter ? '#0F172A' : '#FFFFFF',
+                      color: ledgerFilter === filter ? '#FFFFFF' : '#475569',
                       fontWeight: 850,
                       fontSize: '12px',
                       cursor: 'pointer'
@@ -988,6 +988,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <input
                 type="text"
                 placeholder="Search transaction ID, action, user..."
+                value={ledgerSearch}
+                onChange={e => setLedgerSearch(e.target.value)}
                 style={{
                   padding: '8px 14px',
                   borderRadius: '10px',
