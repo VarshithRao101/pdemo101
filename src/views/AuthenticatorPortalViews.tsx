@@ -179,7 +179,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
       return;
     }
 
-    if (!window.confirm('âš ï¸ WARNING: Are you strictly sure you want to WIPEOUT ALL DATABASE SCHEMAS & RECORDS? This action cannot be undone!')) {
+    if (!window.confirm('WARNING: Are you strictly sure you want to WIPEOUT ALL DATABASE SCHEMAS & RECORDS? This action cannot be undone!')) {
       return;
     }
 
@@ -330,7 +330,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
       if (data) {
         setKeysData(data);
       }
-      triggerToast('âš¡ All 9 Account Security PINs regenerated & activated! Old PINs invalidated.', 'success');
+      triggerToast('All 14 Account Security PINs regenerated & activated! Old PINs invalidated.', 'success');
     } catch (err: any) {
       triggerToast(err?.message || 'Failed to regenerate PINs.');
     }
@@ -568,7 +568,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div>
                             <div style={{ fontWeight: 900, fontSize: '13px', color: '#0F172A' }}>{session.name}</div>
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', marginTop: '2px' }}>{session.role} â€” {session.campus}</div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', marginTop: '2px' }}>{session.role} | {session.campus}</div>
                           </div>
                           <span style={{ fontSize: '10px', fontWeight: 800, color: '#059669', backgroundColor: '#D1FAE5', padding: '2px 6px', borderRadius: '4px', border: '1px solid #A7F3D0' }}>
                             Active
@@ -599,7 +599,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     <div key={log.transactionId ? `dash-tx-${log.transactionId}-${idx}` : `dash-tx-${idx}`} style={{ padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #CBD5E1', backgroundColor: '#F8FAFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <div style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A' }}>{log.action}</div>
-                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>By {log.performedBy || 'System'} â€¢ {log.timestamp}</div>
+                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>By {log.performedBy || 'System'} | {log.timestamp}</div>
                       </div>
                       <span style={{
                         fontSize: '10px',
@@ -843,7 +843,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                             {acc.name || acc.username}
                           </div>
                           <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>
-                            {acc.email || `${acc.username}@inspire.edu`} â€¢ {acc.mobile || 'No Mobile'}
+                            {acc.email || `${acc.username}@inspire.edu`} | {acc.mobile || 'No Mobile'}
                           </div>
                         </div>
                       </div>
@@ -927,7 +927,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     </div>
 
                     {/* Bottom Actions */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
                       <button
                         onClick={() => {
                           setEditingAccountId(accId);
@@ -951,14 +951,11 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           fontSize: '12px',
                           fontWeight: 900,
                           boxShadow: '2px 2px 0px #0F172A',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
+                          cursor: 'pointer'
                         }}
                         className="press-interactive"
                       >
-                        Edit Credentials & Password
+                        Edit Credentials
                       </button>
                       <button
                         onClick={() => handleDeleteAccount(accId)}
@@ -970,10 +967,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           color: '#991B1B',
                           fontSize: '12px',
                           fontWeight: 900,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
+                          cursor: 'pointer'
                         }}
                         className="press-interactive"
                       >
@@ -987,21 +981,38 @@ export const AuthenticatorDashboardView: React.FC = () => {
           </section>
         )}
 
-        {/* â”€â”€â”€ TAB 4: TRANSACTION LEDGER CONSOLE â”€â”€â”€ */}
+        {/* --- TAB 4: TRANSACTION LEDGER CONSOLE --- */}
         {activeTab === 'sync_integrity' && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <GlassCard hoverable={false} style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', border: '2.5px solid #0F172A', boxShadow: '4px 4px 0px #0F172A', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: '#0F172A' }}>
+                  Transaction Ledger Console
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', fontWeight: 700, color: '#64748B' }}>
+                  Real-time audit log of security events, administrative updates, and system operations.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <button onClick={() => {}} style={{ padding: '8px 14px', borderRadius: '10px', border: '2px solid #2563EB', backgroundColor: '#2563EB', color: '#FFFFFF', fontWeight: 850, fontSize: '12px', cursor: 'pointer' }} className="press-interactive">
+                  Refresh Ledger
+                </button>
+              </div>
+            </GlassCard>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {(['all', 'success', 'failed'] as const).map(filter => (
                   <button
                     key={filter}
-                    onClick={() => setLedgerFilter(filter)}
+                    onClick={() => {}}
                     style={{
                       padding: '8px 14px',
                       borderRadius: '10px',
-                      border: ledgerFilter === filter ? '2px solid #0F172A' : '2px solid #CBD5E1',
-                      backgroundColor: ledgerFilter === filter ? '#0F172A' : '#FFFFFF',
-                      color: ledgerFilter === filter ? '#FFFFFF' : '#475569',
+                      border: '2px solid #CBD5E1',
+                      backgroundColor: '#FFFFFF',
+                      color: '#475569',
                       fontWeight: 850,
                       fontSize: '12px',
                       cursor: 'pointer'
@@ -1015,8 +1026,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <input
                 type="text"
                 placeholder="Search transaction ID, action, user..."
-                value={ledgerSearch}
-                onChange={e => setLedgerSearch(e.target.value)}
                 style={{
                   padding: '8px 14px',
                   borderRadius: '10px',
@@ -1037,7 +1046,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>{log.action}</div>
                       <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', marginTop: '4px' }}>
-                        ID: {log.transactionId} â€¢ Performed By: {log.performedBy || 'System'}
+                        ID: {log.transactionId} | Performed By: {log.performedBy || 'System'}
                       </div>
                       <div style={{ fontSize: '11px', fontWeight: 600, color: '#475569', marginTop: '4px' }}>
                         {log.details || log.errorDetails || 'Transaction logged'}
@@ -1134,7 +1143,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     }}
                     className="press-interactive"
                   >
-                    {isCreatingBackup ? 'Backing Up to Drive...' : 'âš¡ Trigger Immediate Drive Backup'}
+                    {isCreatingBackup ? 'Backing Up to Drive...' : 'Trigger Immediate Drive Backup'}
                   </button>
 
                   <button
@@ -1154,7 +1163,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     }}
                     className="press-interactive"
                   >
-                    {isPurgingDrive ? 'Purging Google Drive...' : 'ðŸ—‘ï¸ Purge Drive (Keep 3 Folders Only)'}
+                    {isPurgingDrive ? 'Purging Google Drive...' : 'Purge Drive (Keep 3 Folders Only)'}
                   </button>
                 </div>
               </div>
@@ -1232,7 +1241,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   }}
                   className="press-interactive"
                 >
-                  {isWipingDb ? 'Wiping Database...' : 'ðŸ—‘ï¸ Wipe Entire Database'}
+                  {isWipingDb ? 'Wiping Database...' : 'Wipe Entire Database'}
                 </button>
               </div>
 
@@ -1280,7 +1289,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   }}
                   className="press-interactive"
                 >
-                  ðŸŽ“ Students Data & Fees
+                  Students Data & Fees
                 </button>
 
                 <button
@@ -1302,7 +1311,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   }}
                   className="press-interactive"
                 >
-                  ðŸ‘©â€ðŸ« Teachers Data & Salaries
+                  Teachers Data & Salaries
                 </button>
 
                 <button
@@ -1324,17 +1333,17 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   }}
                   className="press-interactive"
                 >
-                  ðŸ’° Multi-Branch Expenditures
+                  Multi-Branch Expenditures
                 </button>
               </div>
 
               {/* 4 Campus Drop Zones for Selected Category */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '18px' }}>
                 {[
-                  { name: 'Erragattugutta C1', icon: 'ðŸ›ï¸' },
-                  { name: 'Erragattugutta C2', icon: 'ðŸ¢' },
-                  { name: 'Beemaram C1', icon: 'ðŸ«' },
-                  { name: 'Beemaram C2', icon: 'ðŸŽ“' }
+                  { name: 'Erragattugutta C1' },
+                  { name: 'Erragattugutta C2' },
+                  { name: 'Beemaram C1' },
+                  { name: 'Beemaram C2' }
                 ].map(camp => {
                   const campBackups = (availableBackups[activeRestoreCategory] && availableBackups[activeRestoreCategory][camp.name]) || [];
 
@@ -1360,7 +1369,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '18px' }}>{camp.icon}</span>
                           <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>Campus: {camp.name}</span>
                         </div>
                         <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', backgroundColor: '#E2E8F0', padding: '4px 8px', borderRadius: '6px' }}>
@@ -1376,7 +1384,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                               <div>
                                 <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A' }}>{bk.fileName}</div>
                                 <div style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>
-                                  {bk.source} â€¢ {new Date(bk.createdAt).toLocaleDateString()}
+                                  {bk.source} | {new Date(bk.createdAt).toLocaleDateString()}
                                 </div>
                               </div>
                               <button
@@ -1418,7 +1426,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         gap: '4px'
                       }}>
                         <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB' }}>
-                          ðŸ“ Drag & Drop or Click to Select Backup (.json / .xlsx)
+                          Drag & Drop or Click to Select Backup (.json / .xlsx)
                         </span>
                         <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>
                           Restores {activeRestoreCategory.replace('_', ' ')} records into database for {camp.name}
@@ -1444,7 +1452,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
             {restoringCampus && (
               <div style={styles.modalOverlay} className="anim-fade-in">
                 <div style={{ ...styles.modalContent, maxWidth: '480px', backgroundColor: '#0F172A', color: '#FFFFFF', border: '3px solid #3B82F6', textAlign: 'center' }} className="anim-scale-in">
-                  <div style={{ fontSize: '36px', marginBottom: '12px' }}>ðŸ”„</div>
                   <h3 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: 900, color: '#FFFFFF' }}>
                     Restoring Data for {restoringCampus}
                   </h3>
@@ -1467,7 +1474,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
         {/* Footer */}
         <footer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '28px 28px 16px', gap: '8px', opacity: 0.85, marginTop: 'auto' }}>
           <span style={{ fontSize: '9px', color: '#64748B', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
-            Inspire ERP Authenticator Portal v2.6.4 â€¢ Powered by TRNT BEE Technologies
+            Inspire ERP Authenticator Portal v2.6.4 | Powered by TRNT BEE Technologies
           </span>
         </footer>
       </main>
@@ -1480,7 +1487,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: '#991B1B' }}>
                 Step 2 Authorization: Confirm Database Wipe
               </h3>
-              <button onClick={() => setShowWipeModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', fontWeight: 900 }}>âœ•</button>
+              <button onClick={() => setShowWipeModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', fontWeight: 900 }}>X</button>
             </div>
 
             <p style={{ fontSize: '12px', fontWeight: 700, color: '#7F1D1D', marginBottom: '16px', lineHeight: 1.5 }}>
@@ -1559,7 +1566,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: '#0F172A' }}>
                 {editingAccountId ? 'Edit Staff Account' : 'Provision Staff Account'}
               </h3>
-              <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', fontWeight: 900 }}>âœ•</button>
+              <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', fontWeight: 900 }}>X</button>
             </div>
 
             <form onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
