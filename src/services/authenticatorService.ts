@@ -137,7 +137,7 @@ export const authenticatorService = {
   },
 
   // Restore data payload for specific category and campus
-  async restoreData(payload: { category: string; campus: string; backupData?: any; backupFileContent?: string }): Promise<any> {
+  async restoreData(payload: { category: string; campus: string; backupData?: any; backupFileContent?: string; fileId?: string }): Promise<any> {
     const res = await apiClient.post<{ status: string; data: any }>('/authenticator/restore-data', payload);
     return res.data;
   },

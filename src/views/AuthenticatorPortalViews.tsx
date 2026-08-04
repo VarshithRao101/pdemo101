@@ -85,7 +85,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
     Teachers_Data: {},
     Expenditures_Data: {}
   });
-  const [_isLoadingBackups, setIsLoadingBackups] = useState<boolean>(false);
+  const [isLoadingBackups, setIsLoadingBackups] = useState<boolean>(false);
   const [activeRestoreCategory, setActiveRestoreCategory] = useState<'Students_Data' | 'Teachers_Data' | 'Expenditures_Data'>('Students_Data');
   const [restoringCampus, setRestoringCampus] = useState<string | null>(null);
   const [restoreProgress, setRestoreProgress] = useState<number>(0);
@@ -122,7 +122,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
     }, 300);
 
     try {
-      const result = await authenticatorService.createBackup(backupPasscode.trim());
+      await authenticatorService.createBackup(backupPasscode.trim());
       clearInterval(interval);
       setBackupProgress(100);
 
@@ -146,7 +146,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Handler: Purge Google Drive (Keep 3 Folders Only)
   const [isPurgingDrive, setIsPurgingDrive] = useState(false);
   const handlePurgeGoogleDrive = async () => {
-    if (!window.confirm('ðŸ—‘ï¸ Delete all items in Google Drive except the 3 category folders (Students, Teachers, Expenditures)?')) {
+    if (!window.confirm('Delete all items in Google Drive except the 3 category folders (Students, Teachers, Expenditures)?')) {
       return;
     }
     setIsPurgingDrive(true);
@@ -203,7 +203,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
   };
 
   // Handler: Execute Data Restore for Campus & Category
-  const handleExecuteDataRestore = async (category: string, campus: string, backupFileContent?: string, _fileId?: string) => {
+  const handleExecuteDataRestore = async (category: string, campus: string, backupFileContent?: string, fileId?: string) => {
     setRestoringCampus(campus);
     setRestoreProgress(10);
     setRestoreStatusText(`Connecting secure restore tunnel for ${campus}...`);
@@ -227,7 +227,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
       const result = await authenticatorService.restoreData({
         category,
         campus,
-        backupFileContent
+        backupFileContent,
+        fileId
       });
 
       clearInterval(pTimer);
@@ -1353,7 +1354,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>Campus: {camp.name}</span>
                         </div>
                         <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', backgroundColor: '#E2E8F0', padding: '4px 8px', borderRadius: '6px' }}>
-                          {campBackups.length} Drive Snapshot(s)
+                          {isLoadingBackups ? 'Loading Drive...' : `${campBackups.length} Drive Snapshot(s)`}
                         </span>
                       </div>
 
