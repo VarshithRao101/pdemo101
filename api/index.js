@@ -16,7 +16,11 @@ const { connectToDatabase } = require(dbPath);
 
 export default async function handler(req, res) {
   try {
-    await connectToDatabase();
+    try {
+      await connectToDatabase();
+    } catch (dbErr) {
+      console.warn('Vercel API database connect notice:', dbErr.message);
+    }
 
     const app = typeof expressApp === 'function' ? expressApp : (expressApp && expressApp.default) || expressApp;
     if (typeof app !== 'function') {
