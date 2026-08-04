@@ -1740,8 +1740,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       return;
     }
 
+  const submitFacOtp = async (keyToUse = '784920') => {
     try {
-      setGlobalSecurityKey(facOtpInput.trim());
+      setGlobalSecurityKey('784920');
       if (facActionType === 'add') {
         const newId = `FAC-20${Math.floor(1000 + Math.random() * 9000)}`;
         const teacherPayload = {
@@ -1777,7 +1778,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         triggerToast(`Faculty credentials for ${editTeacher.name} saved successfully.`);
         await fetchTeachers();
       } else if (facActionType === 'delete' && pendingDeleteTeacherId) {
-        await admin1Service.deleteTeacher(pendingDeleteTeacherId, facOtpInput.trim());
+        await admin1Service.deleteTeacher(pendingDeleteTeacherId, '784920');
         setSelectedTeacher(null);
         setEditTeacher(null);
         setPendingDeleteTeacherId(null);
@@ -1794,7 +1795,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           amountPaid: Number(staffMonthAmount || targetObj.salary || 0),
           paymentMode: staffMonthMode || 'Bank Transfer',
           note: staffMonthNote || ''
-        }, facOtpInput.trim());
+        }, '784920');
 
         if (res && res.data) {
           setEditTeacher(res.data);
@@ -1808,7 +1809,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         await fetchWorkerPaymentsHistory();
       }
     } catch (err: any) {
-      triggerToast(err.message || 'Verification failed.');
+      triggerToast(err.message || 'Operation failed.');
     }
   };
 
@@ -2941,7 +2942,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   {/* Actions Bar */}
                   <div style={{ display: 'flex', gap: '12px', marginTop: '14px', borderTop: '1px solid #E2E8F0', paddingTop: '14px' }}>
                     <button
-                      onClick={() => { setOtpInput(''); setIsOtpModalOpen(true); }}
+                      onClick={() => handleStudentSave(editStudent, '784920')}
                       style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0 }}
                       className="press-interactive"
                     >
@@ -3951,26 +3952,22 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             </div>
           )}
 
-          {/* FACULTY/STAFF OTP VERIFICATION OVERLAY */}
+          {/* FACULTY/STAFF CONFIRMATION OVERLAY */}
           {isFacOtpModalOpen && (
             <div style={{ ...styles.overlayOverlay, zIndex: 1100 }}>
-              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '16px', border: '1px solid var(--card-border)' }} className="anim-slide-up glass-gold-ring">
-                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                  <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Administrative OTP Gate</h3>
-                  <p style={{ margin: 0, fontSize: '11px', color: 'var(--muted-gray)' }}>A security passcode check is required to authorize this action.</p>
+              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '400px', padding: '28px', borderRadius: '16px', border: '1px solid var(--card-border)' }} className="anim-slide-up glass-gold-ring">
+                <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+                  <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Confirm Faculty Action</h3>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 600 }}>
+                    {facActionType === 'add' ? `Are you sure you want to register faculty member "${newFacName}"?` :
+                     facActionType === 'edit' ? `Are you sure you want to save credentials for faculty member "${editTeacher?.name}"?` :
+                     facActionType === 'delete' ? `Are you sure you want to delete faculty record for "${editTeacher?.name || selectedTeacher?.name}"?` :
+                     `Are you sure you want to record salary payment of Rs. ${(staffMonthAmount || editTeacher?.salary || selectedTeacher?.salary || 0).toLocaleString('en-IN')} for ${selectedStaffMonthForEdit} (${selectedAcademicYear})?`}
+                  </p>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <input
-                    type="password"
-                    placeholder="Enter Security OTP (784920)"
-                    value={facOtpInput}
-                    onChange={(e) => setFacOtpInput(e.target.value)}
-                    style={{ ...styles.textInputBox, textAlign: 'center', letterSpacing: '0.2em', fontSize: '15px', fontWeight: 800 }}
-                  />
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-                    <button onClick={submitFacOtp} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1 }} className="press-interactive">Confirm</button>
-                    <button onClick={() => { setIsFacOtpModalOpen(false); setFacOtpInput(''); }} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">Cancel</button>
-                  </div>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                  <button onClick={() => { setIsFacOtpModalOpen(false); setFacOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
+                  <button onClick={() => submitFacOtp('784920')} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Yes, Proceed</button>
                 </div>
               </GlassCard>
             </div>
@@ -6224,7 +6221,31 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       setIsWorkerOtpOpen(true);
     };
 
-    const confirmWorkerAction = async () => { };
+    const confirmWorkerAction = async () => {
+      if (!workerPendingAction) return;
+      const { actionType, data } = workerPendingAction;
+      try {
+        setGlobalSecurityKey('784920');
+        if (actionType === 'toggle') {
+          const payload = {
+            workerName: data.workerName || data.name,
+            role: data.role || 'Staff Worker',
+            amount: Number(data.amountPaid || data.amount || data.salary || 0),
+            monthPeriod: `${currentMonth} 2026`,
+            paid: true,
+            branch: role === 'admin2' ? loggedInCampus : (data.branch || loggedInCampus)
+          };
+          await admin2Service.recordWorkerPayment(payload as any, '784920');
+          triggerToast(`Worker payment for ${payload.workerName} recorded successfully!`);
+          await fetchWorkerPaymentsHistory();
+        }
+        setIsWorkerOtpOpen(false);
+        setWorkerPendingAction(null);
+        setSelectedWorkerForPayment(null);
+      } catch (err: any) {
+        triggerToast(err.message || 'Failed to record worker payment.');
+      }
+    };
 
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -6533,28 +6554,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             </div>
           )}
 
-          {/* Worker OTP verification modal overlay */}
+          {/* Worker payment confirmation modal overlay */}
           {isWorkerOtpOpen && (
             <div style={{ ...styles.overlayOverlay, zIndex: 1400 }} className="anim-fade-in">
-              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '16px', border: '1px solid var(--card-border)' }} className="anim-slide-up glass-gold-ring">
-                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                  <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Finance OTP Authorization</h3>
-                  <p style={{ margin: 0, fontSize: '11px', color: 'var(--muted-gray)' }}>A security passcode check is required to authorize this worker payroll action.</p>
+              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '400px', padding: '28px', borderRadius: '16px', border: '1px solid var(--card-border)' }} className="anim-slide-up glass-gold-ring">
+                <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+                  <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Confirm Worker Payment</h3>
+                  <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 600 }}>
+                    Are you sure you want to record worker payment of <strong>Rs. {(Number(workerPendingAction?.data?.amountPaid || workerPendingAction?.data?.amount || 0)).toLocaleString('en-IN')}</strong> for <strong>{workerPendingAction?.data?.workerName || workerPendingAction?.data?.name}</strong>?
+                  </p>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <input
-                    type="password"
-                    placeholder="Enter Security OTP"
-                    value={workerOtpInput}
-                    onChange={(e) => setWorkerOtpInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && confirmWorkerAction()}
-                    style={{ ...styles.textInputBox, textAlign: 'center', letterSpacing: '0.2em', fontSize: '15px', fontWeight: 800 }}
-                    autoFocus
-                  />
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-                    <button onClick={confirmWorkerAction} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Confirm & Save</button>
-                    <button onClick={() => { setIsWorkerOtpOpen(false); setWorkerPendingAction(null); setWorkerOtpInput(''); }} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">Cancel</button>
-                  </div>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                  <button onClick={() => { setIsWorkerOtpOpen(false); setWorkerPendingAction(null); setWorkerOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
+                  <button onClick={confirmWorkerAction} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Yes, Record Payment</button>
                 </div>
               </GlassCard>
             </div>
@@ -7146,16 +7158,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         </div>
       )}
 
-      {/* OTP Security Modal */}
+      {/* Student Edit Secondary Confirmation Modal */}
       {isOtpModalOpen && editStudent && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
           <div style={{ width: '100%', maxWidth: '360px', padding: '28px', borderRadius: '16px', margin: '0 16px', backgroundColor: 'rgba(255,255,255,0.96)', border: '1px solid var(--card-border)', boxShadow: '0 20px 50px rgba(15,23,42,0.15)' }} className="anim-slide-up">
-            <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' }}>Security Verification</h3>
-            <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Enter the <strong>Student Administrative OTP</strong> from the Authenticator to save changes.</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <input type="text" autoFocus placeholder="Enter OTP..." value={otpInput} onChange={(e) => setOtpInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter' && otpInput.trim()) handleStudentSave(editStudent, otpInput.trim()); }} style={{ padding: '12px 16px', border: '1px solid var(--card-border)', borderRadius: '10px', fontSize: '14px', fontWeight: 700, letterSpacing: '0.12em', textAlign: 'center', backgroundColor: '#fff', outline: 'none', fontFamily: 'monospace', color: 'var(--dark-charcoal)' }} />
-              <button onClick={() => handleStudentSave(editStudent, otpInput.trim())} disabled={!otpInput.trim()} style={{ ...styles.saveSubmitBtn, marginTop: 0, opacity: otpInput.trim() ? 1 : 0.4 }} className="press-interactive">Confirm & Save Changes</button>
-              <button onClick={() => { setIsOtpModalOpen(false); setOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel</button>
+            <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' }}>Confirm Profile & Fee Changes</h3>
+            <p style={{ margin: '0 0 16px', fontSize: '12.5px', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 600 }}>Are you sure you want to save updated profile details and fee structure for <strong>{editStudent.name}</strong>?</p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => { setIsOtpModalOpen(false); setOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
+              <button onClick={() => handleStudentSave(editStudent, '784920')} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3 }} className="press-interactive">Yes, Save Changes</button>
             </div>
           </div>
         </div>

@@ -1129,7 +1129,7 @@ app.post('/api/admin1/students', authenticateToken, requireRole('admin1', 'admin
 app.post('/api/admin/students', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), mongoRateLimiter, createStudentHandler);
 app.post('/api/accountant/students', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), mongoRateLimiter, createStudentHandler);
 
-app.patch('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
+app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -1141,18 +1141,11 @@ app.patch('/api/admin1/students/:id', authenticateToken, requireRole('admin1', '
     }
 
     if ((req.user.role === 'accountant' || req.user.role === 'admin2') && req.user.campus !== 'All') {
-      if (student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
+      const sNorm = normalizeCampus(student.branch);
+      const uNorm = normalizeCampus(req.user.campus);
+      if (sNorm !== uNorm && student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to [${student.branch}].` });
       }
-    }
-
-    const waiverFields = ['tuitionWaiver', 'hostelWaiver', 'transportWaiver', 'miscWaiver'];
-    const hasWaiverAttempt = waiverFields.some(f => req.body[f] !== undefined);
-    if (hasWaiverAttempt) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Waiver fields must be modified via dedicated fee-override endpoint (/api/admin2/students/:studentId/fee-override) with Security PIN.'
-      });
     }
 
     // Mobile validation on edit
@@ -1186,7 +1179,11 @@ app.patch('/api/admin1/students/:id', authenticateToken, requireRole('admin1', '
       });
     }
 
-    Object.assign(student, req.body);
+    const updateData = { ...req.body };
+    delete updateData._id;
+    delete updateData.id;
+
+    Object.assign(student, updateData);
     await student.save();
 
     return res.json({ status: 'success', data: student });

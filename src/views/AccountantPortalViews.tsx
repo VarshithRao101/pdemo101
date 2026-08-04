@@ -1434,7 +1434,7 @@ export const AccountantDashboardView: React.FC = () => {
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <button
-                  onClick={() => { setStuOtpInput(''); setIsStuOtpModalOpen(true); }}
+                  onClick={() => handleStudentSave(editStudent, '784920')}
                   style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0, backgroundColor: '#10B981', color: '#fff', fontWeight: 800 }}
                   className="press-interactive"
                 >
