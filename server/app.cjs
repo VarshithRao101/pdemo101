@@ -16,7 +16,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const { connectToDatabase } = require('./db.cjs');
+const { connectToDatabase, isDatabaseTemporarilyBlocked } = require('./db.cjs');
 const User = require('./models/User.cjs');
 const RefreshToken = require('./models/RefreshToken.cjs');
 const RateLimit = require('./models/RateLimit.cjs');
@@ -184,6 +184,9 @@ function resolveUsername(inputUser) {
 
 async function findUserAccount(resolvedUsername) {
   if (!resolvedUsername) return null;
+  if (isDatabaseTemporarilyBlocked()) {
+    return null;
+  }
   try {
     await connectToDatabase();
     return await User.findOne({ username: resolvedUsername });
@@ -318,7 +321,9 @@ function ensureBootstrap() {
   return bootstrapPromise;
 }
 
-ensureBootstrap();
+if (!process.env.VERCEL) {
+  ensureBootstrap();
+}
 
 
 // --- SECURITY MIDDLEWARE ---
@@ -409,13 +414,10 @@ async function authenticateToken(req, res, next) {
 
     // Check activeSessionId against database in MongoDB or fallback seed user
     if (decoded.id || decoded.username) {
-      try {
-        await connectToDatabase();
-      } catch { /* ignore DB connection notice */ }
-
       let dbUser = null;
-      if (mongoose.connection.readyState === 1) {
+      if (!isDatabaseTemporarilyBlocked()) {
         try {
+          await connectToDatabase();
           if (mongoose.Types.ObjectId.isValid(decoded.id)) {
             dbUser = await User.findById(decoded.id).select('activeSessionId status username');
           }
@@ -428,7 +430,14 @@ async function authenticateToken(req, res, next) {
       }
 
       if (!dbUser && decoded.username) {
-        dbUser = await findUserAccount(decoded.username);
+        const seedUser = defaultSeedUsers.find(u => u.username === resolveUsername(decoded.username));
+        if (seedUser) {
+          dbUser = {
+            username: seedUser.username,
+            status: 'active',
+            activeSessionId: decoded.sessionId || null
+          };
+        }
       }
 
       if (!dbUser || dbUser.status === 'disabled') {
@@ -505,8 +514,32 @@ async function verifySecurityOtp(req, res, next) {
   }
 
   try {
-    await connectToDatabase();
-    const user = await User.findById(req.user.id);
+    let user = null;
+    if (!isDatabaseTemporarilyBlocked()) {
+      try {
+        await connectToDatabase();
+        user = await User.findById(req.user.id);
+      } catch {}
+    }
+
+    if (!user && req.user?.username) {
+      const resolvedUsername = resolveUsername(req.user.username);
+      const seedUser = defaultSeedUsers.find(u => u.username === resolvedUsername);
+      if (seedUser) {
+        user = {
+          username: seedUser.username,
+          role: seedUser.role,
+          pin: bcrypt.hashSync(seedUser.pin, 10)
+        };
+      } else if (resolvedUsername === FIXED_AUTHENTICATOR_USERNAME) {
+        user = {
+          username: FIXED_AUTHENTICATOR_USERNAME,
+          role: 'authenticator',
+          pin: bcrypt.hashSync(FIXED_AUTHENTICATOR_PIN, 10)
+        };
+      }
+    }
+
     if (!user || !user.pin) {
       return res.status(403).json({ status: 'error', message: 'User account security PIN error.' });
     }
@@ -600,6 +633,7 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
   const resolvedUser = resolveUsername(inputUser);
   const normalizedPassword = password.trim();
   const normalizedPin = pin !== undefined && pin !== null ? String(pin).trim() : null;
+  const seedUser = defaultSeedUsers.find(u => u.username === resolvedUser);
 
   if (resolvedUser === FIXED_AUTHENTICATOR_USERNAME) {
     const passwordOk = normalizedPassword === FIXED_AUTHENTICATOR_PASSWORD;
@@ -608,31 +642,39 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
       return null;
     }
 
-    let authUser = await findUserAccount(resolvedUser);
-    if (!authUser) {
-      authUser = {
-        _id: resolvedUser,
-        username: resolvedUser,
-        password: bcrypt.hashSync(FIXED_AUTHENTICATOR_PASSWORD, 10),
-        pin: bcrypt.hashSync(FIXED_AUTHENTICATOR_PIN, 10),
-        pin_plaintext: FIXED_AUTHENTICATOR_PIN,
-        role: 'authenticator',
-        campus: 'All',
-        name: 'Security Authenticator',
-        status: 'active'
-      };
-    }
+    return {
+      _id: resolvedUser,
+      username: resolvedUser,
+      password: bcrypt.hashSync(FIXED_AUTHENTICATOR_PASSWORD, 10),
+      pin: bcrypt.hashSync(FIXED_AUTHENTICATOR_PIN, 10),
+      pin_plaintext: FIXED_AUTHENTICATOR_PIN,
+      role: 'authenticator',
+      campus: 'All',
+      name: 'Security Authenticator',
+      status: 'active'
+    };
+  }
 
-    authUser.role = 'authenticator';
-    authUser.username = resolvedUser;
-    authUser.campus = authUser.campus || 'All';
-    authUser.name = authUser.name || 'Security Authenticator';
-    authUser.status = authUser.status || 'active';
-    return authUser;
+  if (seedUser && isDatabaseTemporarilyBlocked()) {
+    const passwordOk = normalizedPassword === seedUser.password;
+    const pinOk = normalizedPin === null || normalizedPin === seedUser.pin || normalizedPin === generate24HourDeterministicCode(`pin_${resolvedUser}`);
+    if (!passwordOk || !pinOk) {
+      return null;
+    }
+    return {
+      _id: seedUser.username,
+      username: seedUser.username,
+      password: bcrypt.hashSync(seedUser.password, 10),
+      pin: bcrypt.hashSync(seedUser.pin, 10),
+      pin_plaintext: seedUser.pin,
+      role: seedUser.role,
+      campus: seedUser.campus,
+      name: seedUser.name,
+      status: 'active'
+    };
   }
 
   let user = await findUserAccount(resolvedUser);
-  const seedUser = defaultSeedUsers.find(u => u.username === resolvedUser);
 
   if (!user && seedUser) {
     user = {

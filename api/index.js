@@ -9,19 +9,11 @@ const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 
 const appPath = path.resolve(__dirname, '../server/app.cjs');
-const dbPath = path.resolve(__dirname, '../server/db.cjs');
 
 const expressApp = require(appPath);
-const { connectToDatabase } = require(dbPath);
 
 export default async function handler(req, res) {
   try {
-    try {
-      await connectToDatabase();
-    } catch (dbErr) {
-      console.warn('Vercel API database connect notice:', dbErr.message);
-    }
-
     const app = typeof expressApp === 'function' ? expressApp : (expressApp && expressApp.default) || expressApp;
     if (typeof app !== 'function') {
       throw new Error('Express app module failed to export a valid function handler.');
