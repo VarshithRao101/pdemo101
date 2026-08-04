@@ -56,12 +56,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
   const [accountAddress, setAccountAddress] = useState<string>('');
   const [accountCampus, setAccountCampus] = useState<string>('');
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
-  const [visiblePasswords, setVisiblePasswords] = useState<{ [id: string]: boolean }>({});
   const [showModalPassword, setShowModalPassword] = useState<boolean>(false);
-
-  const togglePasswordVisibility = (accId: string) => {
-    setVisiblePasswords(prev => ({ ...prev, [accId]: !prev[accId] }));
-  };
 
   const copyTextToClipboard = (text: string, label: string) => {
     if (!text) {
@@ -79,10 +74,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
   // Settings State 2: Emergency Database Wipe
   const [wipePasscode, setWipePasscode] = useState<string>('');
-  const [wipePass1, setWipePass1] = useState<string>('');
   const [wipePass2, setWipePass2] = useState<string>('');
   const [showWipeModal, setShowWipeModal] = useState<boolean>(false);
-  const [wipeStep, setWipeStep] = useState<number>(1);
   const [isWipingDb, setIsWipingDb] = useState<boolean>(false);
   const [wipeProgress, setWipeProgress] = useState<number>(0);
 
@@ -92,7 +85,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
     Teachers_Data: {},
     Expenditures_Data: {}
   });
-  const [isLoadingBackups, setIsLoadingBackups] = useState<boolean>(false);
+  const [_isLoadingBackups, setIsLoadingBackups] = useState<boolean>(false);
   const [activeRestoreCategory, setActiveRestoreCategory] = useState<'Students_Data' | 'Teachers_Data' | 'Expenditures_Data'>('Students_Data');
   const [restoringCampus, setRestoringCampus] = useState<string | null>(null);
   const [restoreProgress, setRestoreProgress] = useState<number>(0);
@@ -210,7 +203,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
   };
 
   // Handler: Execute Data Restore for Campus & Category
-  const handleExecuteDataRestore = async (category: string, campus: string, backupFileContent?: string, fileId?: string) => {
+  const handleExecuteDataRestore = async (category: string, campus: string, backupFileContent?: string, _fileId?: string) => {
     setRestoringCampus(campus);
     setRestoreProgress(10);
     setRestoreStatusText(`Connecting secure restore tunnel for ${campus}...`);
@@ -336,15 +329,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
     }
   };
   // Settings Action 2: Wipe Database 2-Step Flow
-  const handleInitiateWipeStep1 = () => {
-    if (!wipePass1.trim()) {
-      triggerToast('Please enter master password to initiate database wipe.');
-      return;
-    }
-    setShowWipeModal(true);
-    setWipeStep(2);
-  };
-
   const handleConfirmWipeStep2 = async () => {
     if (!wipePass2.trim()) {
       triggerToast('Please enter secondary authorization key to confirm.');
@@ -355,8 +339,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
       const msg = await authenticatorService.wipeEntireDatabase(wipePass2.trim());
       triggerToast(msg || 'Entire database wiped out successfully.');
       setShowWipeModal(false);
-      setWipeStep(1);
-      setWipePass1('');
       setWipePass2('');
     } catch (err: any) {
       triggerToast(err.message || 'Wipe database failed.');
@@ -785,7 +767,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
             <div style={styles.accountsGrid}>
               {accounts.map((acc, idx) => {
                 const accId = acc.id || (acc as any)._id || `acc-${acc.username}-${idx}`;
-                const isPassVisible = !!visiblePasswords[accId];
 
                 let roleLabel = 'Accountant';
                 let roleBadgeBg = '#1D4ED8';
