@@ -210,6 +210,74 @@ const defaultSeedUsers = [
   { username: 'accountant_beemaram_c2_2', password: 'NewPass#2026', pin: '998877', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2' }
 ];
 
+const FIXED_AUTHENTICATOR_USERNAME = '9059068384';
+const FIXED_AUTHENTICATOR_PASSWORD = '00112233';
+const FIXED_AUTHENTICATOR_PIN = '789456';
+const MANAGED_PORTAL_ROLES = new Set(['admin1', 'admin2', 'accountant', 'authenticator']);
+const MANAGED_PORTAL_USERNAMES = new Set(defaultUsers.map(u => u.username));
+
+function sanitizeManagedAccount(userDoc) {
+  if (!userDoc) return null;
+
+  const plain = typeof userDoc.toObject === 'function' ? userDoc.toObject() : { ...userDoc };
+  delete plain.password;
+  delete plain.pin;
+  delete plain.pin_plaintext;
+  return plain;
+}
+
+async function getManagedPortalAccounts() {
+  try {
+    await connectToDatabase();
+  } catch {}
+
+  const fallbackAccounts = defaultUsers.map((u, i) => ({
+    _id: `sys_${u.username}`,
+    username: u.username,
+    role: u.role,
+    name: u.name,
+    campus: u.campus,
+    email: '',
+    mobile: '',
+    department: '',
+    status: 'active',
+    backupCode: `BC-${1000 + i}`
+  }));
+
+  if (mongoose.connection.readyState !== 1) {
+    return fallbackAccounts;
+  }
+
+  try {
+    const docs = await User.find({ role: { $in: [...MANAGED_PORTAL_ROLES] } }).lean();
+    if (!docs || docs.length === 0) {
+      return fallbackAccounts;
+    }
+
+    return docs
+      .map(doc => ({
+        _id: doc._id,
+        username: doc.username,
+        role: doc.role,
+        name: doc.name,
+        campus: doc.campus,
+        email: doc.email || '',
+        mobile: doc.mobile || '',
+        department: doc.department || '',
+        status: doc.status || 'active'
+      }))
+      .sort((a, b) => {
+        const roleOrder = { admin1: 0, authenticator: 1, admin2: 2, accountant: 3 };
+        const roleDiff = (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99);
+        if (roleDiff !== 0) return roleDiff;
+        return String(a.username).localeCompare(String(b.username));
+      });
+  } catch (err) {
+    console.warn('⚠️ [Auth]: Failed to load managed accounts from DB:', err.message);
+    return fallbackAccounts;
+  }
+}
+
 async function seedInitialAccounts() {
   try {
     await connectToDatabase();
@@ -530,6 +598,39 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
   }
 
   const resolvedUser = resolveUsername(inputUser);
+  const normalizedPassword = password.trim();
+  const normalizedPin = pin !== undefined && pin !== null ? String(pin).trim() : null;
+
+  if (resolvedUser === FIXED_AUTHENTICATOR_USERNAME) {
+    const passwordOk = normalizedPassword === FIXED_AUTHENTICATOR_PASSWORD;
+    const pinOk = normalizedPin === null || normalizedPin === FIXED_AUTHENTICATOR_PIN;
+    if (!passwordOk || !pinOk) {
+      return null;
+    }
+
+    let authUser = await findUserAccount(resolvedUser);
+    if (!authUser) {
+      authUser = {
+        _id: resolvedUser,
+        username: resolvedUser,
+        password: bcrypt.hashSync(FIXED_AUTHENTICATOR_PASSWORD, 10),
+        pin: bcrypt.hashSync(FIXED_AUTHENTICATOR_PIN, 10),
+        pin_plaintext: FIXED_AUTHENTICATOR_PIN,
+        role: 'authenticator',
+        campus: 'All',
+        name: 'Security Authenticator',
+        status: 'active'
+      };
+    }
+
+    authUser.role = 'authenticator';
+    authUser.username = resolvedUser;
+    authUser.campus = authUser.campus || 'All';
+    authUser.name = authUser.name || 'Security Authenticator';
+    authUser.status = authUser.status || 'active';
+    return authUser;
+  }
+
   let user = await findUserAccount(resolvedUser);
   const seedUser = defaultSeedUsers.find(u => u.username === resolvedUser);
 
@@ -551,8 +652,8 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
     return null;
   }
 
-  let isPasswordOk = safeBcryptCompare(password, user.password);
-  if (!isPasswordOk && seedUser && password.trim() === seedUser.password) {
+  let isPasswordOk = safeBcryptCompare(normalizedPassword, user.password);
+  if (!isPasswordOk && seedUser && normalizedPassword === seedUser.password) {
     isPasswordOk = true;
   }
 
@@ -561,7 +662,7 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
   }
 
   if (pin !== undefined && pin !== null) {
-    const inputPinStr = String(pin).trim();
+    const inputPinStr = normalizedPin;
     const dateSeed = getLocalDateSeed();
     const deterministicPin = generate24HourDeterministicCode(`pin_${resolvedUser}`, dateSeed);
 
@@ -2090,6 +2191,10 @@ app.get('/api/authenticator/keys', authenticateToken, requireRole('authenticator
       try {
         const users = await User.find({ username: { $in: trackedUsernames } }).select('username pin_plaintext').lean();
         for (const u of users) {
+          if (u.username === FIXED_AUTHENTICATOR_USERNAME) {
+            dailyPins[u.username] = FIXED_AUTHENTICATOR_PIN;
+            continue;
+          }
           if (u.pin_plaintext) dailyPins[u.username] = u.pin_plaintext;
         }
       } catch {}
@@ -2112,6 +2217,22 @@ app.post('/api/authenticator/regenerate-keys', authenticateToken, requireRole('a
 
     // Generate new random 6-digit PIN for each account and persist to MongoDB
     for (const username of trackedUsernames) {
+      if (username === FIXED_AUTHENTICATOR_USERNAME) {
+        dailyPins[username] = FIXED_AUTHENTICATOR_PIN;
+        if (mongoose.connection.readyState === 1) {
+          try {
+            await User.findOneAndUpdate(
+              { username },
+              { $set: { pin: bcrypt.hashSync(FIXED_AUTHENTICATOR_PIN, 10), pin_plaintext: FIXED_AUTHENTICATOR_PIN } },
+              { upsert: false }
+            );
+          } catch (dbErr) {
+            console.warn(`⚠️ [Keys]: Notice updating fixed authenticator PIN:`, dbErr.message);
+          }
+        }
+        continue;
+      }
+
       const newPin = String(Math.floor(100000 + Math.random() * 900000));
       dailyPins[username] = newPin;
       if (mongoose.connection.readyState === 1) {
@@ -2196,23 +2317,7 @@ app.post('/api/authenticator/reconcile', authenticateToken, requireRole('authent
  */
 app.get('/api/authenticator/accounts', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
-    let accounts = [];
-    if (mongoose.connection.readyState === 1) {
-      try {
-        accounts = await User.find({}).select('-password -pin').lean();
-      } catch {}
-    }
-    if (!accounts || accounts.length === 0) {
-      accounts = defaultUsers.map((u, i) => ({
-        _id: `sys_${u.username}`,
-        username: u.username,
-        role: u.role,
-        name: u.name,
-        campus: u.campus,
-        backupCode: `BC-${1000 + i}`
-      }));
-    }
+    const accounts = await getManagedPortalAccounts();
     return res.json({ status: 'success', data: accounts });
   } catch (err) {
     return res.status(500).json({ status: 'error', message: err.message });
@@ -2221,41 +2326,43 @@ app.get('/api/authenticator/accounts', authenticateToken, requireRole('authentic
 
 app.post('/api/authenticator/accounts', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
     const { username, password, role, name, email, mobile, department, campus } = req.body || {};
-    if (!username || !password) {
-      return res.status(400).json({ status: 'error', message: 'Username and password are required.' });
+    const normalizedUsername = String(username || '').trim().toLowerCase();
+    if (!normalizedUsername) {
+      return res.status(400).json({ status: 'error', message: 'Username is required.' });
     }
-    const hashedPassword = bcrypt.hashSync(String(password).trim(), 10);
-    const hashedPin = bcrypt.hashSync('789456', 10);
-    const backupCode = `BC-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    let newUser = {
-      _id: `user_${Date.now()}`,
-      username: String(username).trim().toLowerCase(),
-      password: hashedPassword,
-      pin: hashedPin,
-      role: role || 'accountant',
-      name: name || username,
-      email: email || '',
-      mobile: mobile || '',
-      department: department || '',
-      campus: campus || 'All',
-      backupCode,
-    };
-
-    if (mongoose.connection.readyState === 1) {
-      try {
-        const created = await User.create(newUser);
-        newUser = created.toObject();
-        delete newUser.password;
-        delete newUser.pin;
-      } catch (dbErr) {
-        console.warn('DB user create notice:', dbErr.message);
-      }
+    if (normalizedUsername === FIXED_AUTHENTICATOR_USERNAME) {
+      return res.status(403).json({ status: 'error', message: 'Authenticator credentials cannot be changed from this panel.' });
+    }
+    if (!MANAGED_PORTAL_USERNAMES.has(normalizedUsername)) {
+      return res.status(403).json({ status: 'error', message: 'Creating new portal IDs is disabled. Update an existing portal slot only.' });
     }
 
-    return res.json({ status: 'success', data: newUser });
+    try { await connectToDatabase(); } catch {}
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ status: 'error', message: 'Database unavailable. Cannot update portal account now.' });
+    }
+
+    const existing = await User.findOne({ username: normalizedUsername });
+    if (!existing) {
+      return res.status(404).json({ status: 'error', message: 'Portal slot not found. Restore the default seeded account first.' });
+    }
+
+    if (password && String(password).trim()) {
+      existing.password = bcrypt.hashSync(String(password).trim(), 10);
+    }
+    if (name !== undefined) existing.name = String(name || '').trim() || existing.name;
+    if (email !== undefined) existing.email = String(email || '').trim();
+    if (mobile !== undefined) existing.mobile = String(mobile || '').trim();
+    if (department !== undefined) existing.department = String(department || '').trim();
+    if (role && MANAGED_PORTAL_ROLES.has(String(role))) existing.role = String(role);
+    if (campus !== undefined && existing.role !== 'authenticator') {
+      existing.campus = String(campus || '').trim() || existing.campus;
+    }
+
+    await existing.save();
+    const updated = sanitizeManagedAccount(existing);
+    return res.json({ status: 'success', data: updated });
   } catch (err) {
     return res.status(500).json({ status: 'error', message: err.message });
   }
@@ -2265,21 +2372,30 @@ app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authe
   try {
     try { await connectToDatabase(); } catch {}
     const { id } = req.params;
-    const { username: bodyUsername, password, pin: newPin, role, name, email, mobile, department, campus } = req.body || {};
+    const { username: bodyUsername, password, name, email, mobile, department } = req.body || {};
+    const normalizedUsername = String(bodyUsername || '').trim().toLowerCase();
+
+    if (id === FIXED_AUTHENTICATOR_USERNAME || normalizedUsername === FIXED_AUTHENTICATOR_USERNAME) {
+      return res.status(403).json({ status: 'error', message: 'Authenticator credentials cannot be modified.' });
+    }
 
     const updateFields = {};
-    if (name) updateFields.name = name;
-    if (email) updateFields.email = email;
-    if (mobile) updateFields.mobile = mobile;
-    if (department) updateFields.department = department;
-    if (campus) updateFields.campus = campus;
-    if (role) updateFields.role = role;
+    if (normalizedUsername) {
+      const duplicate = await User.findOne({
+        username: normalizedUsername,
+        _id: { $ne: id }
+      }).lean().catch(() => null);
+      if (duplicate) {
+        return res.status(409).json({ status: 'error', message: 'That portal ID is already in use.' });
+      }
+      updateFields.username = normalizedUsername;
+    }
+    if (name !== undefined) updateFields.name = String(name || '').trim();
+    if (email !== undefined) updateFields.email = String(email || '').trim();
+    if (mobile !== undefined) updateFields.mobile = String(mobile || '').trim();
+    if (department !== undefined) updateFields.department = String(department || '').trim();
     if (password && typeof password === 'string' && password.trim()) {
       updateFields.password = bcrypt.hashSync(password.trim(), 10);
-    }
-    if (newPin && typeof newPin === 'string' && newPin.trim()) {
-      updateFields.pin = bcrypt.hashSync(newPin.trim(), 10);
-      updateFields.pin_plaintext = newPin.trim();
     }
 
     let updated = { _id: id, ...updateFields };
@@ -2310,12 +2426,7 @@ app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authe
 
 app.delete('/api/authenticator/accounts/:id', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
-    const { id } = req.params;
-    if (mongoose.connection.readyState === 1 && !id.startsWith('sys_')) {
-      try { await User.findByIdAndDelete(id); } catch {}
-    }
-    return res.json({ status: 'success', message: 'Account deleted successfully.' });
+    return res.status(405).json({ status: 'error', message: 'Deleting portal accounts is disabled. Update the existing fixed slots only.' });
   } catch (err) {
     return res.status(500).json({ status: 'error', message: err.message });
   }
@@ -2357,10 +2468,13 @@ app.get('/api/authenticator/backup-codes', authenticateToken, requireRole('authe
   return res.json({ status: 'success', data: defaultBackupCodes });
 });
 
-app.post('/api/authenticator/reset-password', async (req, res) => {
+app.post('/api/authenticator/reset-password', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
   const { username, password, backupCode } = req.body || {};
   if (!username || !password || !backupCode) {
     return res.status(400).json({ status: 'error', message: 'Username, new password, and backup code are required.' });
+  }
+  if (String(username).trim().toLowerCase() === FIXED_AUTHENTICATOR_USERNAME) {
+    return res.status(403).json({ status: 'error', message: 'Authenticator password is fixed and cannot be reset here.' });
   }
   const nextBackupCode = `BC-${Math.floor(1000 + Math.random() * 9000)}`;
   if (mongoose.connection.readyState === 1) {

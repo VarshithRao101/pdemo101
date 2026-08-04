@@ -333,38 +333,28 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Create/Update Admin & Accountant Accounts
   const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accountUsername || (!editingAccountId && !accountPassword)) {
-      triggerToast(editingAccountId ? 'Username is required.' : 'Username and password are required.');
+    if (!editingAccountId) {
+      triggerToast('Creating new portal IDs is disabled.');
+      return;
+    }
+
+    if (!accountUsername) {
+      triggerToast('Username is required.');
       return;
     }
 
     try {
-      if (editingAccountId) {
-        await authenticatorService.updateAccount(editingAccountId, {
-          username: accountUsername,
-          password: accountPassword || undefined,
-          name: accountName,
-          email: accountEmail,
-          mobile: accountMobile,
-          department: accountDepartment,
-          address: accountAddress,
-          campus: accountCampus
-        });
-        triggerToast('Staff account updated successfully.');
-      } else {
-        const u = await authenticatorService.createAccount({
-          username: accountUsername,
-          role: accountRole,
-          password: accountPassword,
-          name: accountName,
-          email: accountEmail,
-          mobile: accountMobile,
-          department: accountDepartment,
-          address: accountAddress,
-          campus: accountCampus
-        });
-        triggerToast(`Created login for ${u.role}. Backup code: ${u.backupCode}`);
-      }
+      await authenticatorService.updateAccount(editingAccountId, {
+        username: accountUsername,
+        password: accountPassword || undefined,
+        name: accountName,
+        email: accountEmail,
+        mobile: accountMobile,
+        department: accountDepartment,
+        address: accountAddress,
+        campus: accountCampus
+      });
+      triggerToast('Staff account updated successfully.');
       setAccountUsername('');
       setAccountPassword('');
       setAccountName('');
@@ -378,18 +368,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
       loadData();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to save account.');
-    }
-  };
-
-  // Delete staff account
-  const handleDeleteAccount = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this staff account?')) return;
-    try {
-      await authenticatorService.deleteAccount(id);
-      triggerToast('Staff account deleted successfully.');
-      loadData();
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to delete account.');
     }
   };
 
@@ -715,34 +693,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: '#0F172A' }}>Staff Accounts Registry</h3>
-              <button
-                onClick={() => {
-                  setEditingAccountId(null);
-                  setAccountUsername('');
-                  setAccountPassword('');
-                  setAccountName('');
-                  setAccountEmail('');
-                  setAccountMobile('');
-                  setAccountDepartment('');
-                  setAccountAddress('');
-                  setAccountCampus('');
-                  setIsEditModalOpen(true);
-                }}
-                style={{
-                  padding: '10px 18px',
-                  borderRadius: '12px',
-                  border: '2px solid #0F172A',
-                  backgroundColor: '#0F172A',
-                  color: '#FFFFFF',
-                  fontWeight: 900,
-                  fontSize: '12px',
-                  boxShadow: '3px 3px 0px #0F172A',
-                  cursor: 'pointer'
-                }}
-                className="press-interactive"
-              >
-                + Provision New Account
-              </button>
+            </div>
+
+            <div style={{ padding: '12px 14px', borderRadius: '14px', border: '1.5px solid #CBD5E1', backgroundColor: '#F8FAFC', fontSize: '12px', fontWeight: 700, color: '#334155' }}>
+              Portal slots are fixed. Update the existing accounts only. Creating or deleting IDs is disabled.
             </div>
 
             <div style={styles.accountsGrid}>
@@ -918,22 +872,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         className="press-interactive"
                       >
                         Edit Credentials
-                      </button>
-                      <button
-                        onClick={() => handleDeleteAccount(accId)}
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: '10px',
-                          border: '2px solid #EF4444',
-                          backgroundColor: '#FEE2E2',
-                          color: '#991B1B',
-                          fontSize: '12px',
-                          fontWeight: 900,
-                          cursor: 'pointer'
-                        }}
-                        className="press-interactive"
-                      >
-                        Delete Account
                       </button>
                     </div>
                   </div>
@@ -1451,7 +1389,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
           <div style={styles.modalContent} className="anim-scale-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid #CBD5E1', paddingBottom: '10px' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: '#0F172A' }}>
-                {editingAccountId ? 'Edit Staff Account' : 'Provision Staff Account'}
+                Edit Staff Account
               </h3>
               <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', fontWeight: 900 }}>X</button>
             </div>
@@ -1511,16 +1449,16 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div style={styles.formGroup}>
-                  <label style={styles.inputLabel}>
-                    Role {editingAccountId ? '(Locked - Cannot Change)' : ''}
-                  </label>
+                  <label style={styles.inputLabel}>Role (Locked)</label>
                   <select
                     value={accountRole}
                     onChange={(e) => setAccountRole(e.target.value as any)}
-                    disabled={!!editingAccountId}
+                    disabled
                     style={{
                       ...styles.formSelect,
-                      ...(editingAccountId ? { backgroundColor: '#E2E8F0', cursor: 'not-allowed', color: '#64748B' } : {})
+                      backgroundColor: '#E2E8F0',
+                      cursor: 'not-allowed',
+                      color: '#64748B'
                     }}
                   >
                     <option value="admin1">Admin 1 (Rector)</option>
@@ -1530,18 +1468,18 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   </select>
                 </div>
                 <div style={styles.formGroup}>
-                  <label style={styles.inputLabel}>
-                    Campus {editingAccountId ? '(Locked - Cannot Change)' : ''}
-                  </label>
+                  <label style={styles.inputLabel}>Campus (Locked)</label>
                   <input
                     type="text"
                     placeholder="e.g. Erragattugutta C1"
                     value={accountCampus}
                     onChange={(e) => setAccountCampus(e.target.value)}
-                    disabled={!!editingAccountId}
+                    disabled
                     style={{
                       ...styles.formInput,
-                      ...(editingAccountId ? { backgroundColor: '#E2E8F0', cursor: 'not-allowed', color: '#64748B' } : {})
+                      backgroundColor: '#E2E8F0',
+                      cursor: 'not-allowed',
+                      color: '#64748B'
                     }}
                   />
                 </div>
