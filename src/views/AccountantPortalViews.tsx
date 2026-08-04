@@ -1240,14 +1240,8 @@ export const AccountantDashboardView: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ ...styles.container, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: '#F8FAFC' }} className="anim-fade-in">
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', zIndex: 10 }}>
-          <div style={{ width: '52px', height: '52px', border: '4px solid rgba(212,175,55,0.2)', borderTopColor: 'var(--royal-gold)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-            Synchronizing Campus Data...
-          </div>
-          <span style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>Secure Live Connection Verified</span>
-        </div>
+      <div style={{ ...styles.container, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: '#F8FAFC' }} className="anim-fade-in">
+        <div style={{ width: '36px', height: '36px', border: '4px solid rgba(0,0,0,.1)', borderLeftColor: 'transparent', borderRadius: '50%', animation: 'spin89345 1s linear infinite' }} />
       </div>
     );
   }

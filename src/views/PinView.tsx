@@ -804,40 +804,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
   // Render Success Animation
   const renderSuccessContent = () => {
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '30px 10px',
-        textAlign: 'center'
-      }} className="anim-scale-in">
-        <div style={{
-          width: '72px',
-          height: '72px',
-          borderRadius: '20px',
-          backgroundColor: '#059669',
-          border: '3px solid #047857',
-          boxShadow: '4px 4px 0px #047857',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#FFFFFF',
-          marginBottom: '16px'
-        }}>
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        </div>
-        <h3 style={{ color: '#065F46', fontWeight: 900, fontSize: '22px', margin: 0, fontFamily: 'var(--font-family)' }}>
-          Access Granted
-        </h3>
-        <p style={{ fontSize: '13px', color: '#047857', marginTop: '6px', fontWeight: 700, fontFamily: 'var(--font-family)' }}>
-          Syncing secure ERP session...
-        </p>
-      </div>
-    );
+    // This branch is now handled by the full-screen portal transition overlay below.
+    // Return null here so nothing renders inside the card when isSuccess is true.
+    return null;
   };
 
   const renderConflictContent = () => {
@@ -981,25 +950,55 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       {isChecking && !isSuccess && (
         <div style={styles.loaderOverlay} className="anim-fade-in">
           <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '20px 24px',
-            borderRadius: '6px',
-            backgroundColor: '#FFFFFF',
-            border: '1px solid #E4E4E1',
-          }}>
-            <div style={{
-              width: '24px',
-              height: '24px',
-              border: '2px solid #E4E4E1',
-              borderTop: '2px solid #1C1C1E',
-              borderRadius: '50%',
-              animation: 'rotate 0.8s linear infinite'
-            }} />
-            <span style={{ fontSize: '13px', fontWeight: 500, color: '#1C1C1E' }}>Authenticating Credentials...</span>
-          </div>
+            width: '36px',
+            height: '36px',
+            border: '4px solid rgba(0,0,0,.1)',
+            borderLeftColor: 'transparent',
+            borderRadius: '50%',
+            animation: 'spin89345 1s linear infinite'
+          }} />
+        </div>
+      )}
+
+      {/* Post-PIN Portal Transition — full-screen, no text, only the dual-blob animation */}
+      {isSuccess && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#0F172A',
+        }} className="anim-fade-in">
+          <style>{`
+            .pin-dual-loader {
+              position: relative;
+              width: 2.5em;
+              height: 2.5em;
+              transform: rotate(165deg);
+              font-size: 24px;
+            }
+            .pin-dual-loader::before,
+            .pin-dual-loader::after {
+              content: "";
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              display: block;
+              width: 0.5em;
+              height: 0.5em;
+              border-radius: 0.25em;
+              transform: translate(-50%, -50%);
+            }
+            .pin-dual-loader::before {
+              animation: before8 2s infinite;
+            }
+            .pin-dual-loader::after {
+              animation: after6 2s infinite;
+            }
+          `}</style>
+          <div className="pin-dual-loader" />
         </div>
       )}
 

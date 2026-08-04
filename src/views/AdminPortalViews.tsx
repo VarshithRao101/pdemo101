@@ -1986,8 +1986,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   if (isLoading) {
     return (
-      <div style={styles.container}>
-        <PortalDataLoader visible={true} message="Initializing Admin System Engine & Syncing Ledger..." colorAccent={role === 'admin2' ? '#3B82F6' : '#FBBF24'} />
+      <div style={{ ...styles.container, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div style={{
+          width: '36px',
+          height: '36px',
+          border: '4px solid rgba(0,0,0,.1)',
+          borderLeftColor: 'transparent',
+          borderRadius: '50%',
+          animation: 'spin89345 1s linear infinite'
+        }} />
       </div>
     );
   }
@@ -2914,10 +2921,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 {regStuError && <div style={{ marginBottom: '14px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', fontSize: '12px', fontWeight: 700 }}>{regStuError}</div>}
 
                 {isSubmittingStudent ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 0', gap: '14px' }}>
-                    <div style={{ width: '32px', height: '32px', border: '3.5px solid rgba(212,175,55,0.2)', borderTopColor: '#D4AF37', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
-                    <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--royal-gold)' }}>Creating Student Profile & Generating PIN...</span>
-                    <span style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>Synchronizing {newStuBranch} Ledger...</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0' }}>
+                    <div style={{ width: '36px', height: '36px', border: '4px solid rgba(0,0,0,.1)', borderLeftColor: 'transparent', borderRadius: '50%', animation: 'spin89345 1s linear infinite' }} />
                   </div>
                 ) : (
                   <>
