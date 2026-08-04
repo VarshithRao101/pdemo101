@@ -250,6 +250,15 @@ interface ExamItem {
 }
 
 
+// --- Input Validation Helpers ---
+// Mobile: optional strips spaces/dashes then checks for exactly 10 digits
+const validateMobile = (val: string): string | null => {
+  if (!val || val.trim() === '') return null; // empty is allowed (optional field)
+  const digits = val.replace(/[\s\-]/g, '');
+  if (!/^\d{10}$/.test(digits)) return 'Mobile number must be exactly 10 digits.';
+  return null;
+};
+const MAX_STUDENT_FEE = 1_000_000; // Rs. 10,00,000
 
 export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ role = 'admin1' }) => {
   const { user } = useNavigation();
@@ -1467,6 +1476,26 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     const targetId = targetStu._id || targetStu.studentId || targetStu.admissionNumber;
     if (!targetId) return;
 
+    // Mobile validation
+    const mobileErr = validateMobile((targetStu as any).mobile || '');
+    if (mobileErr) { triggerToast(mobileErr); return; }
+    const parentMobileErr = validateMobile((targetStu as any).parentMobile || '');
+    if (parentMobileErr) { triggerToast('Parent mobile: ' + parentMobileErr); return; }
+
+    // Fee cap validation
+    const stuCustomSlots: any[] = (targetStu as any).customFeeSlots || [];
+    const editedGross =
+      Number((targetStu as any).tuitionFee || 0) +
+      Number((targetStu as any).hostelFee || 0) +
+      Number((targetStu as any).transportFee || 0) +
+      Number((targetStu as any).miscellaneousFee || 0) +
+      Number((targetStu as any).previousPending || 0) +
+      stuCustomSlots.reduce((sum: number, s: any) => sum + (Number(s.amount) || 0), 0);
+    if (editedGross > MAX_STUDENT_FEE) {
+      triggerToast(`Total fees (Rs. ${editedGross.toLocaleString('en-IN')}) exceed the maximum allowed per student (Rs. ${MAX_STUDENT_FEE.toLocaleString('en-IN')}).`);
+      return;
+    }
+
     try {
       setGlobalSecurityKey(keyToUse.trim());
       const saved = await admin1Service.updateStudent(targetId, targetStu);
@@ -1561,10 +1590,23 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       triggerToast('Please complete Student Name, Admission Number, Mobile, Course, and Campus.');
       return;
     }
+
+    // Mobile validation
+    const mobileErr = validateMobile(newStuMobile);
+    if (mobileErr) { triggerToast(mobileErr); return; }
+    const parentMobileErr = validateMobile(newStuParentMobile);
+    if (parentMobileErr) { triggerToast('Parent mobile: ' + parentMobileErr); return; }
+
     const newAdm = newStuAdmissionNumber.trim();
 
     const activeSlots = newStuFeeSlots.filter(s => Number(s.amount) > 0);
     const grossFeeTotal = activeSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+
+    // Fee cap validation
+    if (grossFeeTotal > MAX_STUDENT_FEE) {
+      triggerToast(`Total fees (Rs. ${grossFeeTotal.toLocaleString('en-IN')}) exceed the maximum allowed per student (Rs. ${MAX_STUDENT_FEE.toLocaleString('en-IN')}).`);
+      return;
+    }
 
     const stdKeys = ['tuitionFee', 'hostelFee', 'transportFee', 'miscellaneousFee', 'previousPending'];
     const finalCustomSlots = activeSlots
@@ -1657,6 +1699,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       triggerToast('Please complete name, role, salary, mobile, and branch.');
       return;
     }
+    // Mobile validation
+    const facMobileErr = validateMobile(newFacMobile);
+    if (facMobileErr) { triggerToast(facMobileErr); return; }
     setFacActionType('add');
     setFacOtpInput('');
     setIsFacOtpModalOpen(true);
@@ -1693,6 +1738,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         triggerToast(`Faculty member ${teacherPayload.name} registered successfully!`);
         await fetchTeachers();
       } else if (facActionType === 'edit' && editTeacher) {
+        // Mobile validation on teacher edit
+        const editFacMobileErr = validateMobile(editTeacher.mobile || '');
+        if (editFacMobileErr) { triggerToast(editFacMobileErr); return; }
         const targetId = editTeacher._id || editTeacher.id || '';
         await admin1Service.updateTeacher(targetId, editTeacher);
         setSelectedTeacher(null);

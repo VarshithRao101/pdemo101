@@ -126,6 +126,21 @@ function isValidPositiveNumber(val) {
   return !isNaN(num) && num >= 0;
 }
 
+// Mobile validation: strip spaces and dashes, require exactly 10 digits
+function isValidMobile(val) {
+  if (!val && val !== 0) return false;
+  const digits = String(val).replace(/[\s\-]/g, '');
+  return /^\d{10}$/.test(digits);
+}
+
+// Fee cap constants
+const MAX_STUDENT_FEE = 1000000; // Rs. 10,00,000
+
+function calcStudentGrossFees(tuitionFee, hostelFee, transportFee, miscellaneousFee, previousPending, customFeeSlots) {
+  const customTotal = (Array.isArray(customFeeSlots) ? customFeeSlots : []).reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
+  return Number(tuitionFee || 0) + Number(hostelFee || 0) + Number(transportFee || 0) + Number(miscellaneousFee || 0) + Number(previousPending || 0) + customTotal;
+}
+
 // --- IDEMPOTENT PER-USERNAME BOOTSTRAP SEEDER ---
 const defaultUsers = [
   { username: 'admin1', role: 'admin1', campus: 'All', name: 'Rector' },
@@ -821,6 +836,20 @@ const createStudentHandler = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Student name and admission number are required.' });
     }
 
+    // Mobile number validation (optional fields but must be valid if provided)
+    if (mobile && mobile !== '') {
+      const mobileDigits = String(mobile).replace(/[\s\-]/g, '');
+      if (!/^\d{10}$/.test(mobileDigits)) {
+        return res.status(400).json({ status: 'error', message: 'Mobile number must be exactly 10 digits.' });
+      }
+    }
+    if (parentMobile && parentMobile !== '') {
+      const parentMobileDigits = String(parentMobile).replace(/[\s\-]/g, '');
+      if (!/^\d{10}$/.test(parentMobileDigits)) {
+        return res.status(400).json({ status: 'error', message: 'Parent mobile number must be exactly 10 digits.' });
+      }
+    }
+
     const targetBranch = branch || req.user.campus;
     if (!isValidCampus(targetBranch)) {
       return res.status(400).json({ status: 'error', message: `Invalid campus branch [${targetBranch}]. Must be one of: ${VALID_CAMPUSES.join(', ')}` });
@@ -857,6 +886,15 @@ const createStudentHandler = async (req, res) => {
 
     const totalCustomFees = cleanedCustomSlots.reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
     const grossFees = Number(tuitionFee) + Number(hostelFee) + Number(transportFee) + Number(miscellaneousFee) + Number(previousPending) + totalCustomFees;
+
+    // Fee cap enforcement
+    if (grossFees > MAX_STUDENT_FEE) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Total fees (Rs. ${grossFees.toLocaleString('en-IN')}) exceed the maximum allowed per student (Rs. ${MAX_STUDENT_FEE.toLocaleString('en-IN')}).`
+      });
+    }
+
     const remainingBalance = Math.max(0, grossFees);
 
     const randomPin = String(Math.floor(100000 + Math.random() * 900000));
@@ -938,6 +976,37 @@ app.patch('/api/admin1/students/:id', authenticateToken, requireRole('admin1', '
       return res.status(400).json({
         status: 'error',
         message: 'Waiver fields must be modified via dedicated fee-override endpoint (/api/admin2/students/:studentId/fee-override) with Security PIN.'
+      });
+    }
+
+    // Mobile validation on edit
+    if (req.body.mobile !== undefined && req.body.mobile !== '') {
+      const mobileDigits = String(req.body.mobile).replace(/[\s\-]/g, '');
+      if (!/^\d{10}$/.test(mobileDigits)) {
+        return res.status(400).json({ status: 'error', message: 'Mobile number must be exactly 10 digits.' });
+      }
+    }
+    if (req.body.parentMobile !== undefined && req.body.parentMobile !== '') {
+      const parentMobileDigits = String(req.body.parentMobile).replace(/[\s\-]/g, '');
+      if (!/^\d{10}$/.test(parentMobileDigits)) {
+        return res.status(400).json({ status: 'error', message: 'Parent mobile number must be exactly 10 digits.' });
+      }
+    }
+
+    // Fee cap enforcement on edit
+    const updatedCustomSlots = req.body.customFeeSlots !== undefined ? req.body.customFeeSlots : student.customFeeSlots;
+    const editedGrossFees = calcStudentGrossFees(
+      req.body.tuitionFee !== undefined ? req.body.tuitionFee : student.tuitionFee,
+      req.body.hostelFee !== undefined ? req.body.hostelFee : student.hostelFee,
+      req.body.transportFee !== undefined ? req.body.transportFee : student.transportFee,
+      req.body.miscellaneousFee !== undefined ? req.body.miscellaneousFee : student.miscellaneousFee,
+      req.body.previousPending !== undefined ? req.body.previousPending : student.previousPending,
+      updatedCustomSlots
+    );
+    if (editedGrossFees > MAX_STUDENT_FEE) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Total fees (Rs. ${editedGrossFees.toLocaleString('en-IN')}) exceed the maximum allowed per student (Rs. ${MAX_STUDENT_FEE.toLocaleString('en-IN')}).`
       });
     }
 
@@ -1029,6 +1098,15 @@ app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, req
 
     const totalCustomFees = cleanedSlots.reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
     const grossFees = Number(student.tuitionFee || 0) + Number(student.hostelFee || 0) + Number(student.transportFee || 0) + Number(student.miscellaneousFee || 0) + Number(student.previousPending || 0) + totalCustomFees;
+
+    // Fee cap enforcement on waiver override (gross fees cannot exceed cap regardless of waivers)
+    if (grossFees > MAX_STUDENT_FEE) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Total fees (Rs. ${grossFees.toLocaleString('en-IN')}) exceed the maximum allowed per student (Rs. ${MAX_STUDENT_FEE.toLocaleString('en-IN')}).`
+      });
+    }
+
     const totalWaivers = student.tuitionWaiver + student.hostelWaiver + student.transportWaiver + student.miscWaiver;
 
     student.customFeeSlots = cleanedSlots;
@@ -1100,6 +1178,14 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
       return res.status(400).json({ status: 'error', message: 'Salary must be a valid non-negative number.' });
     }
 
+    // Mobile validation for teacher (optional but must be valid if provided)
+    if (mobile && mobile !== '') {
+      const teacherMobileDigits = String(mobile).replace(/[\s\-]/g, '');
+      if (!/^\d{10}$/.test(teacherMobileDigits)) {
+        return res.status(400).json({ status: 'error', message: 'Mobile number must be exactly 10 digits.' });
+      }
+    }
+
     const existing = await Teacher.findOne({ id: String(id).trim() });
     if (existing) {
       return res.status(409).json({ status: 'error', message: `Teacher with ID [${id}] already exists.` });
@@ -1139,6 +1225,14 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
 
     if (req.user.role === 'admin2' && teacher.branch !== req.user.campus) {
       return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot modify staff at [${teacher.branch}].` });
+    }
+
+    // Mobile validation on teacher edit
+    if (req.body.mobile !== undefined && req.body.mobile !== '') {
+      const editMobileDigits = String(req.body.mobile).replace(/[\s\-]/g, '');
+      if (!/^\d{10}$/.test(editMobileDigits)) {
+        return res.status(400).json({ status: 'error', message: 'Mobile number must be exactly 10 digits.' });
+      }
     }
 
     Object.assign(teacher, req.body);
@@ -2336,6 +2430,12 @@ app.post('/api/enquiries', async (req, res) => {
 
     if (!studentName || !mobile || !preferredCampus) {
       return res.status(400).json({ status: 'error', message: 'Student Name, Mobile Number, and Preferred Campus are required.' });
+    }
+
+    // Mobile validation for enquiry
+    const enquiryMobileDigits = String(mobile).replace(/[\s\-]/g, '');
+    if (!/^\d{10}$/.test(enquiryMobileDigits)) {
+      return res.status(400).json({ status: 'error', message: 'Mobile number must be exactly 10 digits.' });
     }
 
     const count = await Enquiry.countDocuments();
