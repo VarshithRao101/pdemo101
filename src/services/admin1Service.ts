@@ -248,12 +248,6 @@ export const admin1Service = {
     return res;
   },
 
-  // Audit Logs
-  async getAuditLogs(): Promise<any[]> {
-    const res = await apiClient.get<{ status: string; data: any[] }>('/admin/audit-logs');
-    return res.data;
-  },
-
   // Teacher Monthly Salary
   async updateTeacherMonthlySalary(id: string, payload: {
     academicYear?: string;

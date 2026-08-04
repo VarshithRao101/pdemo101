@@ -11,6 +11,7 @@ const UNIVERSAL_HASH = '#/secure-gateway-portal-v2-x9k84m2n7p1q3w5r8z-inspire';
 const AUTHENTICATOR_HASH = '#/sec-auth-sys-9i0j7k8l';
 
 import { HorizontalProgressBarLoader } from './components/common/HorizontalProgressBarLoader';
+import { PortalErrorBoundary } from './components/common/PortalErrorBoundary';
 
 const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
   const { portalRole, checkSession, logout, isAuthenticated, isAuthLoading, setPortalRole } = useNavigation();
@@ -174,19 +175,35 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
 
   const renderActiveView = () => {
     if (portalRole === 'admin1') {
-      return <AdminDashboardView role="admin1" />;
+      return (
+        <PortalErrorBoundary portalLabel="Admin Portal (Admin 1)">
+          <AdminDashboardView role="admin1" />
+        </PortalErrorBoundary>
+      );
     }
 
     if (portalRole === 'admin2') {
-      return <AdminDashboardView role="admin2" />;
+      return (
+        <PortalErrorBoundary portalLabel="Admin Portal (Admin 2)">
+          <AdminDashboardView role="admin2" />
+        </PortalErrorBoundary>
+      );
     }
 
     if (portalRole === 'accountant') {
-      return <AccountantDashboardView />;
+      return (
+        <PortalErrorBoundary portalLabel="Accountant Portal">
+          <AccountantDashboardView />
+        </PortalErrorBoundary>
+      );
     }
 
     if (portalRole === 'authenticator') {
-      return <AuthenticatorDashboardView />;
+      return (
+        <PortalErrorBoundary portalLabel="Authenticator Portal">
+          <AuthenticatorDashboardView />
+        </PortalErrorBoundary>
+      );
     }
 
     return null;
