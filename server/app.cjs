@@ -177,6 +177,25 @@ function safeBcryptCompare(input, hash) {
   }
 }
 
+function safeSecretMatch(input, storedValue, fallbackPlaintext = null) {
+  if (input === undefined || input === null) return false;
+  const normalizedInput = String(input).trim();
+  if (!normalizedInput) return false;
+
+  if (storedValue !== undefined && storedValue !== null) {
+    const normalizedStored = String(storedValue).trim();
+    if (!normalizedStored) return false;
+    if (safeBcryptCompare(normalizedInput, normalizedStored)) return true;
+    if (normalizedInput === normalizedStored) return true;
+  }
+
+  if (fallbackPlaintext !== undefined && fallbackPlaintext !== null) {
+    return normalizedInput === String(fallbackPlaintext).trim();
+  }
+
+  return false;
+}
+
 function resolveUsername(inputUser) {
   if (!inputUser || typeof inputUser !== 'string') return '';
   return inputUser.trim().toLowerCase();
@@ -530,7 +549,7 @@ async function verifySecurityOtp(req, res, next) {
       return res.status(403).json({ status: 'error', message: 'User account security PIN error.' });
     }
 
-    const isMatch = bcrypt.compareSync(String(otpHeader).trim(), user.pin);
+    const isMatch = safeSecretMatch(String(otpHeader).trim(), user.pin, user.pin_plaintext);
     if (!isMatch) {
       return res.status(403).json({
         status: 'error',
@@ -642,8 +661,8 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
   }
 
   if (seedUser && mongoose.connection.readyState !== 1) {
-    const passwordOk = normalizedPassword === seedUser.password;
-    const pinOk = normalizedPin === null || normalizedPin === seedUser.pin || normalizedPin === generate24HourDeterministicCode(`pin_${resolvedUser}`);
+    const passwordOk = safeSecretMatch(normalizedPassword, seedUser.password);
+    const pinOk = normalizedPin === null || safeSecretMatch(normalizedPin, seedUser.pin) || normalizedPin === generate24HourDeterministicCode(`pin_${resolvedUser}`);
     if (!passwordOk || !pinOk) {
       return null;
     }
@@ -680,9 +699,9 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
     return null;
   }
 
-  let isPasswordOk = safeBcryptCompare(normalizedPassword, user.password);
-  if (!isPasswordOk && seedUser && normalizedPassword === seedUser.password) {
-    isPasswordOk = true;
+  let isPasswordOk = safeSecretMatch(normalizedPassword, user.password, user.password_plaintext);
+  if (!isPasswordOk && seedUser) {
+    isPasswordOk = safeSecretMatch(normalizedPassword, seedUser.password);
   }
 
   if (!isPasswordOk) {
@@ -694,10 +713,8 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
     const dateSeed = getLocalDateSeed();
     const deterministicPin = generate24HourDeterministicCode(`pin_${resolvedUser}`, dateSeed);
 
-    let isPinOk = safeBcryptCompare(inputPinStr, user.pin) ||
-                  (user.pin_plaintext && inputPinStr === String(user.pin_plaintext).trim()) ||
-                  (seedUser && inputPinStr === String(seedUser.pin).trim()) ||
-                  (seedUser && safeBcryptCompare(inputPinStr, seedUser.pin)) ||
+    let isPinOk = safeSecretMatch(inputPinStr, user.pin, user.pin_plaintext) ||
+                  (seedUser && safeSecretMatch(inputPinStr, seedUser.pin)) ||
                   (inputPinStr === deterministicPin);
 
     if (!isPinOk) {
