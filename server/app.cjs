@@ -133,6 +133,12 @@ function isValidMobile(val) {
   return /^\d{10}$/.test(digits);
 }
 
+// Strict 24-hex-character ObjectId check (prevents CastError on 12-char non-hex strings like ADM-ACC-1104)
+function isValidObjectId(val) {
+  if (!val) return false;
+  return /^[0-9a-fA-F]{24}$/.test(String(val).trim());
+}
+
 // Fee cap constants
 const MAX_STUDENT_FEE = 1000000; // Rs. 10,00,000
 
@@ -957,7 +963,7 @@ app.patch('/api/admin1/students/:id', authenticateToken, requireRole('admin1', '
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const student = await Student.findOne({ $or: [{ _id: isObjId ? id : null }, { studentId: id }, { admissionNumber: id }] });
 
     if (!student) {
@@ -1023,7 +1029,7 @@ const deleteStudentHandler = async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const query = { $or: [{ _id: isObjId ? id : null }, { studentId: id }, { admissionNumber: id }] };
 
     const student = await Student.findOne(query);
@@ -1070,7 +1076,7 @@ app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, req
       return res.status(400).json({ status: 'error', message: 'Waiver amounts must be valid non-negative numbers.' });
     }
 
-    const isObjId = mongoose.Types.ObjectId.isValid(studentId);
+    const isObjId = isValidObjectId(studentId);
     const student = await Student.findOne({ $or: [{ _id: isObjId ? studentId : null }, { studentId }, { admissionNumber: studentId }] });
 
     if (!student) {
@@ -1216,7 +1222,7 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const teacher = await Teacher.findOne({ $or: [{ _id: isObjId ? id : null }, { id }] });
 
     if (!teacher) {
@@ -1249,7 +1255,7 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const query = { $or: [{ _id: isObjId ? id : null }, { id }] };
 
     const teacher = await Teacher.findOne(query);
@@ -1282,7 +1288,7 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const teacher = await Teacher.findOne({ $or: [{ _id: isObjId ? id : null }, { id }] });
 
     if (!teacher) {
@@ -1524,7 +1530,7 @@ app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1'
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const exp = await Expenditure.findOne({ $or: [{ _id: isObjId ? id : null }, { id }] });
 
     if (!exp) {
@@ -1550,7 +1556,7 @@ app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const query = { $or: [{ _id: isObjId ? id : null }, { id }] };
 
     const exp = await Expenditure.findOne(query);
@@ -1651,7 +1657,7 @@ app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('adm
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const wrk = await WorkerPayment.findOne({ $or: [{ _id: isObjId ? id : null }, { id }] });
 
     if (!wrk) {
@@ -1677,7 +1683,7 @@ app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('ad
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const query = { $or: [{ _id: isObjId ? id : null }, { id }] };
 
     const wrk = await WorkerPayment.findOne(query);
@@ -1737,7 +1743,7 @@ app.get('/api/accountant/students/:id', authenticateToken, requireRole('accounta
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const student = await Student.findOne({ $or: [{ _id: isObjId ? id : null }, { studentId: id }, { admissionNumber: id }] });
 
     if (!student) {
@@ -1760,7 +1766,7 @@ app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('ac
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const student = await Student.findOne({ $or: [{ _id: isObjId ? id : null }, { studentId: id }, { admissionNumber: id }] });
 
     if (!student) {
@@ -1800,7 +1806,7 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
       return res.status(400).json({ status: 'error', message: 'Amount must be a valid positive number.' });
     }
 
-    const isObjId = mongoose.Types.ObjectId.isValid(studentId);
+    const isObjId = isValidObjectId(studentId);
     const student = await Student.findOne({ $or: [{ _id: isObjId ? studentId : null }, { studentId }, { admissionNumber: studentId }] });
 
     if (!student) {
@@ -1928,7 +1934,7 @@ app.get('/api/accountant/students/:studentId/payments', authenticateToken, requi
   try {
     await connectToDatabase();
     const { studentId } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(studentId);
+    const isObjId = isValidObjectId(studentId);
     const student = await Student.findOne({ $or: [{ _id: isObjId ? studentId : null }, { studentId }, { admissionNumber: studentId }] });
 
     if (!student) {
@@ -2226,7 +2232,7 @@ app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authe
 
     if (mongoose.connection.readyState === 1) {
       try {
-        const isObjId = mongoose.Types.ObjectId.isValid(id);
+        const isObjId = isValidObjectId(id);
         const targetUsername = bodyUsername || id.replace('sys_', '');
         const doc = await User.findOneAndUpdate(
           { $or: [{ _id: isObjId ? id : null }, { username: targetUsername }, { username: id }] },
@@ -2539,7 +2545,7 @@ app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const teacher = await Teacher.findOne({ $or: [{ _id: isObjId ? id : null }, { id }] });
     if (!teacher) return res.status(404).json({ status: 'error', message: 'Teacher not found.' });
     const { monthKey, paidAmount, salaryStatus, paymentDate, paymentMode, referenceNumber, notes } = req.body || {};
@@ -2559,7 +2565,7 @@ app.get('/api/admin2/students/:studentId/fee-breakdown', authenticateToken, requ
   try {
     await connectToDatabase();
     const { studentId } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(studentId);
+    const isObjId = isValidObjectId(studentId);
     const student = await Student.findOne({ $or: [{ _id: isObjId ? studentId : null }, { studentId }, { admissionNumber: studentId }] }).lean();
     if (!student) return res.status(404).json({ status: 'error', message: 'Student not found.' });
     const tuitionFee = Number(student.tuitionFee || 0);
@@ -2582,6 +2588,7 @@ app.get('/api/admin2/students/:studentId/fee-breakdown', authenticateToken, requ
     const gross = tuitionFee + hostelFee + transportFee + miscFee + previousPending + customFees;
     const totalWaivers = tuitionWaiver + hostelWaiver + transportWaiver + miscWaiver;
     const netFeeOwed = Math.max(0, gross - totalWaivers);
+    const totalPaid = Number(student.totalPaid || 0);
     const remainingBalance = Math.max(0, netFeeOwed - totalPaid);
 
     return res.json({
@@ -2624,7 +2631,7 @@ app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRol
   try {
     await connectToDatabase();
     const { teacherId } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(teacherId);
+    const isObjId = isValidObjectId(teacherId);
     const updated = await Teacher.findOneAndUpdate(
       { $or: [{ _id: isObjId ? teacherId : null }, { id: teacherId }] },
       { $set: req.body },
@@ -2641,7 +2648,7 @@ app.patch('/api/enquiries/:id', authenticateToken, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
-    const isObjId = mongoose.Types.ObjectId.isValid(id);
+    const isObjId = isValidObjectId(id);
     const doc = await Enquiry.findOneAndUpdate(
       { $or: [{ _id: isObjId ? id : null }, { referenceCode: id }] },
       { $set: req.body },

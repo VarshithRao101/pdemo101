@@ -37,6 +37,8 @@ export const admin1Service = {
     if (branch && branch !== 'All') params.push(`branch=${encodeURIComponent(branch)}`);
     const query = params.length > 0 ? `?${params.join('&')}` : '';
     const res = await apiClient.get<{ status: string; data: StudentProfile[] }>(`/admin1/students${query}`);
+    // Guard: if backend returns unexpected shape, return empty array rather than crashing with TypeError
+    if (!res || !Array.isArray(res.data)) return [];
     return res.data;
   },
 

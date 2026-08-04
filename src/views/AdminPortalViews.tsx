@@ -1184,13 +1184,25 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const fetchStudents = async (query = '') => {
+  const fetchStudents = async (query = '', suppressToast = false) => {
     try {
       const branchParam = role === 'admin2' ? loggedInCampus : '';
       const data = await admin1Service.getStudents(query, branchParam);
-      setStudents(data);
+      setStudents(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      triggerToast(err.message || 'Failed to load students.');
+      // On 404/503 (Vercel cold-start or transient error), retry once silently after a short delay
+      if (err?.status === 404 || err?.status === 503) {
+        try {
+          await new Promise(r => setTimeout(r, 1500));
+          const branchParam = role === 'admin2' ? loggedInCampus : '';
+          const data = await admin1Service.getStudents(query, branchParam);
+          setStudents(Array.isArray(data) ? data : []);
+          return;
+        } catch { /* fall through to toast below */ }
+      }
+      if (!suppressToast) {
+        triggerToast(err.message || 'Failed to load students.');
+      }
     }
   };
 
@@ -1345,7 +1357,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       try {
         const branchParam = role === 'admin2' ? loggedInCampus : undefined;
         const tasks: Promise<any>[] = [
-          fetchStudents(''),
+          fetchStudents('', true), // suppressToast=true: cold-start 404s silently retry
           fetchBulletins(),
           fetchFeeSettings(branchParam, true)
         ];
@@ -1420,6 +1432,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         } else if (activePage === 'enquiries') {
           await fetchEnquiries();
         }
+      } catch (err) {
+        console.error('Page data load error for', activePage, err);
       } finally {
         setIsPageLoading(false);
       }

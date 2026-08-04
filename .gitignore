@@ -34,3 +34,5 @@ dist-ssr
 /server/dist
 
 /server/credential-secrets.local.json
+
+.vercel
