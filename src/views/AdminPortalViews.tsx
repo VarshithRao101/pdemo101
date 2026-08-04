@@ -6303,7 +6303,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           {workerTotalPages > 1 && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
               <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>
-                Showing {((workerCurrentPage - 1) * WORKER_PER_PAGE) + 1}â€“{Math.min(workerCurrentPage * WORKER_PER_PAGE, filteredWorkers.length)} of {filteredWorkers.length}
+                Showing {((workerCurrentPage - 1) * WORKER_PER_PAGE) + 1}-{Math.min(workerCurrentPage * WORKER_PER_PAGE, filteredWorkers.length)} of {filteredWorkers.length}
               </span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => setWorkerPage(p => Math.max(1, p - 1))} disabled={workerCurrentPage === 1}
@@ -6313,7 +6313,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', display: 'flex', alignItems: 'center' }}>Page {workerCurrentPage} / {workerTotalPages}</span>
                 <button onClick={() => setWorkerPage(p => Math.min(workerTotalPages, p + 1))} disabled={workerCurrentPage === workerTotalPages}
                   style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: workerCurrentPage === workerTotalPages ? '#F8FAFC' : '#fff', color: workerCurrentPage === workerTotalPages ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === workerTotalPages ? 'default' : 'pointer' }}>
-                  Next â†’
+                  Next
                 </button>
               </div>
             </div>
@@ -6489,7 +6489,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>Page {workerCurrentPage} of {workerTotalPages}</span>
               <button onClick={() => setWorkerPage(p => Math.min(workerTotalPages, p + 1))} disabled={workerCurrentPage === workerTotalPages}
                 style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid #E2E8F0', background: workerCurrentPage === workerTotalPages ? '#F8FAFC' : '#fff', color: workerCurrentPage === workerTotalPages ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === workerTotalPages ? 'default' : 'pointer' }}>
-                Next â†’
+                Next
               </button>
             </div>
           )}
@@ -6500,7 +6500,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--royal-gold)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h3 style={{ ...styles.modalTitle, color: '#7C5A00' }}>Record Worker Payment</h3>
-                  <button onClick={() => { setIsPaymentAmountModalOpen(false); setSelectedWorkerForPayment(null); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>âœ•</button>
+                  <button onClick={() => { setIsPaymentAmountModalOpen(false); setSelectedWorkerForPayment(null); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>×</button>
                 </div>
                 <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '14px' }}>
                   Worker: <strong>{selectedWorkerForPayment.workerName || selectedWorkerForPayment.name}</strong> ({selectedWorkerForPayment.role})<br />
