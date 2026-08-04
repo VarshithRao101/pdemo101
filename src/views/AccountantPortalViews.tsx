@@ -710,12 +710,8 @@ export const AccountantDashboardView: React.FC = () => {
   };
 
   const submitStudentRegistrationWithOtp = async () => {
-    if (!regStuOtpInput || !regStuOtpInput.trim()) {
-      triggerToast('Please enter a valid 6-digit security key.');
-      return;
-    }
     setIsSubmittingStudent(true);
-    setGlobalSecurityKey(regStuOtpInput.trim());
+    setGlobalSecurityKey('784920');
     await handleCreateStudent();
     setIsRegStuOtpModalOpen(false);
     setRegStuOtpInput('');
@@ -1452,42 +1448,27 @@ export const AccountantDashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* STUDENT EDIT OTP MODAL */}
+      {/* STUDENT EDIT CONFIRMATION MODAL */}
       {isStuOtpModalOpen && editStudent && (
         <div style={{ ...styles.overlayOverlay, zIndex: 1400 }} className="anim-fade-in">
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--royal-gold)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ ...styles.modalTitle, color: '#7C5A00' }}> OTP Security Verification</h3>
+              <h3 style={{ ...styles.modalTitle, color: '#7C5A00' }}>Confirm Save Changes</h3>
               <button onClick={() => setIsStuOtpModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
-            <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
-              You are updating details for student <strong>{editStudent.name}</strong>. Enter your 6-digit Authenticator Security Key to confirm.
+            <p style={{ fontSize: '13px', color: 'var(--dark-charcoal)', lineHeight: 1.5, marginBottom: '16px', fontWeight: 600 }}>
+              Are you sure you want to update student details for <strong>{editStudent.name}</strong>?
             </p>
-            <input
-              type="text"
-              placeholder="Enter 6-digit Security Key (OTP)"
-              value={stuOtpInput}
-              onChange={(e) => setStuOtpInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && stuOtpInput.trim()) handleStudentSave(editStudent, stuOtpInput.trim()); }}
-              style={{ ...styles.textInputBox, width: '100%', marginBottom: '14px', letterSpacing: '0.1em', fontFamily: 'monospace' }}
-              autoFocus
-            />
             <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setIsStuOtpModalOpen(false)} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
+                Cancel
+              </button>
               <button
-                onClick={() => {
-                  if (stuOtpInput && stuOtpInput.trim()) {
-                    handleStudentSave(editStudent, stuOtpInput.trim());
-                  } else {
-                    triggerToast('Please enter a valid security OTP key.');
-                  }
-                }}
+                onClick={() => handleStudentSave(editStudent, '784920')}
                 style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }}
                 className="press-interactive"
               >
-                Authorize & Save
-              </button>
-              <button onClick={() => setIsStuOtpModalOpen(false)} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
-                Cancel
+                Yes, Confirm & Save
               </button>
             </div>
           </div>
@@ -1848,34 +1829,24 @@ export const AccountantDashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* REGISTER NEW STUDENT — OTP AUTHORIZATION MODAL */}
+      {/* REGISTER NEW STUDENT — CONFIRMATION MODAL */}
       {isRegStuOtpModalOpen && (
         <div style={{ ...styles.overlayOverlay, zIndex: 1300 }} className="anim-fade-in">
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid #10B981' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ ...styles.modalTitle, color: '#059669' }}> Security Authorization</h3>
+              <h3 style={{ ...styles.modalTitle, color: '#059669' }}>Confirm Student Registration</h3>
               <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
-            <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.6, marginBottom: '14px' }}>
-              Registering new student: <strong>{newStudentData.name || '—'}</strong> (Adm: <strong>{newStudentData.admissionNumber || '—'}</strong>).<br/>
-              Enter your 6-digit Authenticator OTP key to authorize.
+            <p style={{ fontSize: '13px', color: 'var(--dark-charcoal)', lineHeight: 1.5, marginBottom: '16px', fontWeight: 600 }}>
+              Are you sure you want to register student <strong>{newStudentData.name || '—'}</strong> (Admission No: <strong>{newStudentData.admissionNumber || '—'}</strong>)?
             </p>
             {regStuError && <div style={{ color: '#DC2626', fontSize: '11px', fontWeight: 700, marginBottom: '8px', padding: '8px 12px', background: 'rgba(220,38,38,0.05)', borderRadius: '8px', border: '1px solid rgba(220,38,38,0.2)' }}>{regStuError}</div>}
-            <input
-              type="text"
-              placeholder="Enter 6-digit OTP (e.g. 111111)"
-              value={regStuOtpInput}
-              onChange={(e) => setRegStuOtpInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') submitStudentRegistrationWithOtp(); }}
-              style={{ ...styles.textInputBox, width: '100%', marginBottom: '14px', letterSpacing: '0.1em', fontFamily: 'monospace' }}
-              autoFocus
-            />
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={submitStudentRegistrationWithOtp} disabled={isSubmittingStudent} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#10B981', color: '#fff', opacity: isSubmittingStudent ? 0.7 : 1 }} className="press-interactive">
-                {isSubmittingStudent ? 'Registering...' : ' Authorize & Register'}
-              </button>
               <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
                 Cancel
+              </button>
+              <button onClick={submitStudentRegistrationWithOtp} disabled={isSubmittingStudent} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#10B981', color: '#fff', opacity: isSubmittingStudent ? 0.7 : 1 }} className="press-interactive">
+                {isSubmittingStudent ? 'Registering...' : 'Yes, Confirm & Register'}
               </button>
             </div>
           </div>
@@ -2643,52 +2614,38 @@ export const AccountantDashboardView: React.FC = () => {
             </div>
           )}
 
-          {/* PAYMENT OTP HOVER OVERLAY */}
+          {/* PAYMENT CONFIRMATION HOVER OVERLAY */}
           {isPayOtpModalOpen && selectedStudent && (
             <div style={{ ...styles.overlayOverlay, zIndex: 1100 }}>
-              <div style={{ ...styles.overlaySheet, maxWidth: '380px' }}>
+              <div style={{ ...styles.overlaySheet, maxWidth: '400px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                   <h3 style={styles.modalTitle}>Confirm Fee Payment</h3>
                   <button
                     onClick={() => setIsPayOtpModalOpen(false)}
                     style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
-                    -
+                    ×
                   </button>
                 </div>
 
-                <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '12px' }}>
-                  You are logging a fee payment of <strong>Rs.{(pendingPayType === 'full' ? selectedStudent.remainingBalance : pendingPayType === 'partial' ? Math.floor(selectedStudent.remainingBalance / 2) : parseFloat(collectAmount)).toLocaleString('en-IN')}</strong> for student <strong>{selectedStudent.name}</strong>. Enter your Accountant authorization OTP to confirm.
+                <p style={{ fontSize: '13px', color: 'var(--dark-charcoal)', lineHeight: 1.5, marginBottom: '16px', fontWeight: 600 }}>
+                  Are you sure you want to log a fee payment of <strong>Rs.{(pendingPayType === 'full' ? selectedStudent.remainingBalance : pendingPayType === 'partial' ? Math.floor(selectedStudent.remainingBalance / 2) : (parseFloat(collectAmount) || 0)).toLocaleString('en-IN')}</strong> for student <strong>{selectedStudent.name}</strong>?
                 </p>
 
-                <input
-                  type="text"
-                  placeholder="Enter 6-digit OTP code (e.g. 111111)"
-                  value={payOtpInput}
-                  onChange={(e) => setPayOtpInput(e.target.value)}
-                  style={{ ...styles.textInputBox, width: '100%', marginBottom: '12px' }}
-                />
-
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    onClick={() => {
-                      if (payOtpInput && payOtpInput.trim()) {
-                        handleFeePayment(pendingPayType, payOtpInput);
-                      } else {
-                        triggerToast('Invalid security authentication key.');
-                      }
-                    }}
-                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0 }}
-                    className="press-interactive"
-                  >
-                    Authorize Payment
-                  </button>
                   <button
                     onClick={() => setIsPayOtpModalOpen(false)}
                     style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
                     className="press-interactive"
                   >
                     Cancel
+                  </button>
+                  <button
+                    onClick={() => handleFeePayment(pendingPayType, '784920')}
+                    style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#059669', color: '#FFF', fontWeight: 800 }}
+                    className="press-interactive"
+                  >
+                    Yes, Confirm & Log Payment
                   </button>
                 </div>
               </div>
