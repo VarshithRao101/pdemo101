@@ -74,8 +74,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
   // Settings State 2: Emergency Database Wipe
   const [wipePasscode, setWipePasscode] = useState<string>('');
-  const [wipePass2, setWipePass2] = useState<string>('');
-  const [showWipeModal, setShowWipeModal] = useState<boolean>(false);
   const [isWipingDb, setIsWipingDb] = useState<boolean>(false);
   const [wipeProgress, setWipeProgress] = useState<number>(0);
 
@@ -327,24 +325,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
       triggerToast('All 14 Account Security PINs regenerated & activated! Old PINs invalidated.', 'success');
     } catch (err: any) {
       triggerToast(err?.message || 'Failed to regenerate PINs.');
-    }
-  };
-  // Settings Action 2: Wipe Database 2-Step Flow
-  const handleConfirmWipeStep2 = async () => {
-    if (!wipePass2.trim()) {
-      triggerToast('Please enter secondary authorization key to confirm.');
-      return;
-    }
-    setIsWipingDb(true);
-    try {
-      const msg = await authenticatorService.wipeEntireDatabase(wipePass2.trim());
-      triggerToast(msg || 'Entire database wiped out successfully.');
-      setShowWipeModal(false);
-      setWipePass2('');
-    } catch (err: any) {
-      triggerToast(err.message || 'Wipe database failed.');
-    } finally {
-      setIsWipingDb(false);
     }
   };
 
@@ -1461,84 +1441,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
         </footer>
       </main>
 
-      {/* 2-Step Emergency Wipe Confirmation Modal */}
-      {showWipeModal && (
-        <div style={styles.modalOverlay} className="anim-fade-in">
-          <div style={styles.modalContent} className="anim-scale-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid #EF4444', paddingBottom: '10px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: '#991B1B' }}>
-                Step 2 Authorization: Confirm Database Wipe
-              </h3>
-              <button onClick={() => setShowWipeModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', fontWeight: 900 }}>X</button>
-            </div>
 
-            <p style={{ fontSize: '12px', fontWeight: 700, color: '#7F1D1D', marginBottom: '16px', lineHeight: 1.5 }}>
-              CRITICAL: Please enter the secondary authorization password (e.g. <strong>MASTER-WIPE-2026</strong> or confirm 2nd pass) to execute complete database wipe out.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: 900, color: '#991B1B', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
-                  Secondary Authorization Password / Code
-                </label>
-                <input
-                  type="password"
-                  value={wipePass2}
-                  onChange={(e) => setWipePass2(e.target.value)}
-                  placeholder="Enter Secondary Authorization Password"
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: '12px',
-                    border: '2px solid #EF4444',
-                    fontSize: '14px',
-                    fontWeight: 800,
-                    color: '#0F172A',
-                    outline: 'none',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowWipeModal(false)}
-                  style={{
-                    padding: '12px 18px',
-                    borderRadius: '12px',
-                    border: '2px solid #CBD5E1',
-                    backgroundColor: '#FFFFFF',
-                    fontWeight: 800,
-                    fontSize: '12px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmWipeStep2}
-                  disabled={isWipingDb}
-                  style={{
-                    padding: '12px 20px',
-                    borderRadius: '12px',
-                    border: '2px solid #DC2626',
-                    backgroundColor: '#DC2626',
-                    color: '#FFFFFF',
-                    fontWeight: 900,
-                    fontSize: '12px',
-                    boxShadow: '3px 3px 0px #991B1B',
-                    cursor: isWipingDb ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  {isWipingDb ? 'Wiping Database...' : 'Confirm & Wipe Entire Database'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Edit/Create Staff Account Modal */}
       {isEditModalOpen && (
