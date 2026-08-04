@@ -115,9 +115,9 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
       ]
     : [
         { label: 'Accountant Cockpit', type: 'dashboard', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
-        { label: 'Student Registry', type: 'registry', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('registry'); } },
+        { label: 'Student Registry', type: 'student_search', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('student_search'); } },
         { label: '+ Add New Student', type: 'add_student', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('add_student'); } },
-        { label: 'Collect Student Fees', type: 'fees', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('fees'); } },
+        { label: 'Collect Student Fees', type: 'fee_collection', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('fee_collection'); } },
       ];
 
   // Helper function to render styled Neo-Brutalist Modal Overlay

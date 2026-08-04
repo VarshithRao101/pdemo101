@@ -326,7 +326,7 @@ const getAccountantActiveFeeSlots = (stu: any, breakdown?: any) => {
 };
 
 export const AccountantDashboardView: React.FC = () => {
-  const { user } = useNavigation();
+  const { user, activeTab: globalActiveTab } = useNavigation();
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
 
   const [isLoading, setIsLoading] = useState(true);
@@ -336,6 +336,19 @@ export const AccountantDashboardView: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [livePulseKey, setLivePulseKey] = useState<'students' | 'fees' | 'attendance' | 'settings' | null>(null);
   const [securityKey] = useState('');
+
+  // Sync globalActiveTab from sidebar/navigation drawer into local activeSubPage
+  useEffect(() => {
+    if (globalActiveTab) {
+      if (globalActiveTab === 'dashboard' || globalActiveTab === 'home') {
+        setActiveSubPage('menu');
+      } else if (globalActiveTab === 'add_student') {
+        setIsAddStudentModalOpen(true);
+      } else if (['student_search', 'fee_collection', 'attendance', 'reports', 'late_fees', 'scholarships', 'profile'].includes(globalActiveTab)) {
+        setActiveSubPage(globalActiveTab as any);
+      }
+    }
+  }, [globalActiveTab]);
 
   // New Student & Delete Student Modals
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);

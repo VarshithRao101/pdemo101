@@ -1,7 +1,36 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { apiClient } from '../services/apiClient';
 
-export type TabType = 'dashboard' | 'keys' | 'backup_codes' | 'accounts' | 'sync_integrity' | 'settings';
+export type TabType =
+  | 'dashboard'
+  | 'keys'
+  | 'backup_codes'
+  | 'accounts'
+  | 'sync_integrity'
+  | 'settings'
+  | 'students'
+  | 'add_student'
+  | 'teachers'
+  | 'publishing'
+  | 'calendar'
+  | 'classes'
+  | 'exams'
+  | 'academic_fees'
+  | 'enquiries'
+  | 'attendance'
+  | 'fee_editor'
+  | 'late_scholarships'
+  | 'expenditure'
+  | 'salary_status'
+  | 'worker_payments'
+  | 'enrollment_stats'
+  | 'profile'
+  | 'registry'
+  | 'student_search'
+  | 'fee_collection'
+  | 'fees'
+  | 'home'
+  | string;
 export type PortalRoleType = 'admin1' | 'admin2' | 'accountant' | 'authenticator';
 export type ThemeModeType = 'Light' | 'Dark' | 'System';
 

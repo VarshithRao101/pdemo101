@@ -261,7 +261,7 @@ const validateMobile = (val: string): string | null => {
 const MAX_STUDENT_FEE = 1_000_000; // Rs. 10,00,000
 
 export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ role = 'admin1' }) => {
-  const { user } = useNavigation();
+  const { user, activeTab: globalActiveTab } = useNavigation();
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
 
   const [isLoading, setIsLoading] = useState(true);
@@ -271,6 +271,21 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [livePulseKey, setLivePulseKey] = useState<'students' | 'attendance' | 'bulletins' | 'fees' | 'finance' | null>(null);
   const [securityKey, setSecurityKey] = useState('');
   const [admin1Tab, setAdmin1Tab] = useState<'dashboard' | 'overview'>('dashboard');
+
+  // Sync globalActiveTab from sidebar/navigation drawer into local activePage
+  useEffect(() => {
+    if (globalActiveTab) {
+      if (globalActiveTab === 'dashboard' || globalActiveTab === 'home') {
+        setActivePage('menu');
+      } else if (globalActiveTab === 'add_student') {
+        setActivePage('students');
+        setNewStuFormPage(1);
+        setIsStudentHoverModalOpen(true);
+      } else {
+        setActivePage(globalActiveTab);
+      }
+    }
+  }, [globalActiveTab]);
 
 
   // States
