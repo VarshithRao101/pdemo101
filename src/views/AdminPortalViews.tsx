@@ -1734,12 +1734,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     setIsFacOtpModalOpen(true);
   };
 
-  const submitFacOtp = async () => {
-    if (!facOtpInput || !facOtpInput.trim()) {
-      triggerToast('Please enter a valid security OTP.');
-      return;
-    }
-
   const submitFacOtp = async (keyToUse = '784920') => {
     try {
       setGlobalSecurityKey('784920');
