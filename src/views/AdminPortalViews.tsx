@@ -272,22 +272,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [securityKey, setSecurityKey] = useState('');
   const [admin1Tab, setAdmin1Tab] = useState<'dashboard' | 'overview'>('dashboard');
 
-  // Sync globalActiveTab from sidebar/navigation drawer into local activePage
-  useEffect(() => {
-    if (globalActiveTab) {
-      if (globalActiveTab === 'dashboard' || globalActiveTab === 'home') {
-        setActivePage('menu');
-      } else if (globalActiveTab === 'add_student') {
-        setActivePage('students');
-        setNewStuFormPage(1);
-        setIsStudentHoverModalOpen(true);
-      } else {
-        setActivePage(globalActiveTab);
-      }
-    }
-  }, [globalActiveTab]);
-
-
   // States
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -339,6 +323,26 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [newStuSlotName, setNewStuSlotName] = useState('');
   const [newStuSlotAmount, setNewStuSlotAmount] = useState('');
 
+  const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
+  const [regStuOtpInput, setRegStuOtpInput] = useState('');
+  const [regStuError, setRegStuError] = useState('');
+  const [isSubmittingStudent, setIsSubmittingStudent] = useState(false);
+
+  // Sync globalActiveTab from sidebar/navigation drawer into local activePage
+  useEffect(() => {
+    if (globalActiveTab) {
+      if (globalActiveTab === 'dashboard' || globalActiveTab === 'home') {
+        setActivePage('menu');
+      } else if (globalActiveTab === 'add_student') {
+        setActivePage('students');
+        setNewStuFormPage(1);
+        setIsStudentHoverModalOpen(true);
+      } else {
+        setActivePage(globalActiveTab);
+      }
+    }
+  }, [globalActiveTab]);
+
   const handleAddNewStuCustomSlot = () => {
     if (!newStuSlotName.trim()) {
       triggerToast('Please enter fee section description.');
@@ -362,11 +366,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     setNewStuFeeSlots(prev => prev.filter(s => s.id !== slotId));
     triggerToast('Fee section slot deleted.');
   };
-
-  const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
-  const [regStuOtpInput, setRegStuOtpInput] = useState('');
-  const [regStuError, setRegStuError] = useState('');
-  const [isSubmittingStudent, setIsSubmittingStudent] = useState(false);
 
   // Faculty Management & 12-Month Ledger States
   const [searchFac, setSearchFac] = useState('');
