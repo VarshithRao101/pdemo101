@@ -3241,9 +3241,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       if (role === 'admin2' && t.branch !== loggedInCampus) return false;
       if (filterFacCampus !== 'All' && t.branch !== filterFacCampus) return false;
       if (filterStaffClassification !== 'All' && (t.classification || 'Teaching') !== filterStaffClassification) return false;
-      if (filterStaffSubject !== 'All') {
+      if (filterFacSubject !== 'All') {
         const roleOrSub = `${t.role || ''} ${t.subject || ''}`.toLowerCase();
-        const fLow = filterStaffSubject.toLowerCase();
+        const fLow = filterFacSubject.toLowerCase();
         if (fLow.includes('teacher') || fLow.includes('lecturer')) {
           if (!roleOrSub.includes('teacher') && !roleOrSub.includes('lecturer') && !roleOrSub.includes('professor') && (t.classification || 'Teaching') !== 'Teaching') return false;
         } else if (!roleOrSub.includes(fLow)) {
