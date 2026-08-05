@@ -1342,16 +1342,18 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
     await connectToDatabase();
     let { id, name, subject, salary = 0, mobile, email, branch, classification = 'Teaching', role = 'Senior Lecturer' } = req.body || {};
 
-    if (req.user.role === 'admin2') {
+    if (req.user.role === 'admin2' && req.user.campus && req.user.campus !== 'All') {
       branch = req.user.campus; // Lock campus to admin2's assigned campus
     }
 
+    let normBranch = normalizeCampus(branch);
+    if (!isValidCampus(normBranch) || normBranch.toLowerCase() === 'all') {
+      normBranch = (req.user.campus && req.user.campus !== 'All' && isValidCampus(req.user.campus)) ? normalizeCampus(req.user.campus) : 'Erragattugutta C1';
+    }
+    branch = normBranch;
+
     if (!id || !name || !subject || !branch) {
       return res.status(400).json({ status: 'error', message: 'Teacher ID, name, subject, and campus branch are required.' });
-    }
-
-    if (!isValidCampus(branch)) {
-      return res.status(400).json({ status: 'error', message: `Invalid campus branch [${branch}]. Must be one of: ${VALID_CAMPUSES.join(', ')}` });
     }
 
     if (!isValidPositiveNumber(salary)) {
@@ -1366,9 +1368,9 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
       }
     }
 
-    const existing = await Teacher.findOne({ id: String(id).trim() });
+    const existing = await Teacher.findOne({ $or: [{ id: String(id).trim() }, { name: String(name).trim(), branch }] });
     if (existing) {
-      return res.status(409).json({ status: 'error', message: `Teacher with ID [${id}] already exists.` });
+      return res.status(409).json({ status: 'error', message: `Teacher with ID [${id}] or name already exists in campus [${branch}].` });
     }
 
     const teacher = await Teacher.create({
@@ -1665,14 +1667,14 @@ app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'ad
     await connectToDatabase();
     const { category, amount, description, date, branch } = req.body || {};
     const rawBranch = branch || req.user.campus;
-    const targetBranch = normalizeCampus(rawBranch);
+    let targetBranch = normalizeCampus(rawBranch);
 
-    if (!category || amount === undefined || !targetBranch || targetBranch.toLowerCase() === 'all') {
-      return res.status(400).json({ status: 'error', message: 'Category, amount, and specific campus branch are required.' });
+    if (!isValidCampus(targetBranch) || targetBranch.toLowerCase() === 'all') {
+      targetBranch = (req.user.campus && req.user.campus !== 'All' && isValidCampus(req.user.campus)) ? normalizeCampus(req.user.campus) : 'Erragattugutta C1';
     }
 
-    if (!isValidCampus(targetBranch)) {
-      return res.status(400).json({ status: 'error', message: `Invalid campus branch [${rawBranch}]. Must be one of: ${VALID_CAMPUSES.join(', ')}` });
+    if (!category || amount === undefined) {
+      return res.status(400).json({ status: 'error', message: 'Category and amount are required.' });
     }
 
     if (!isValidPositiveNumber(amount) || Number(amount) <= 0) {

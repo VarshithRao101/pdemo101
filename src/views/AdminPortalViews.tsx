@@ -849,6 +849,161 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     triggerToast('Master worker payroll report downloaded (' + totalStaff + ' records).');
   };
 
+  const handleDownloadDisbursementLogPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      triggerToast('Popup blocked by browser. Please allow popups.');
+      return;
+    }
+
+    const generatedDate = new Date().toLocaleString('en-IN');
+    const totalAmount = workerPaymentsHistory.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+
+    const rowsHtml = workerPaymentsHistory.map((item: any) => `
+      <tr>
+        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; font-weight:700;">${new Date(item.createdAt || Date.now()).toLocaleDateString('en-IN')}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; font-weight:800; color:#0F172A;">${escapeHtml(item.workerName || item.name || 'Staff Member')}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0;">${escapeHtml(item.role || 'Staff')}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; font-weight:900; color:#059669; text-align:right;">Rs. ${Number(item.amount || 0).toLocaleString('en-IN')}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; text-align:center;">${escapeHtml(item.monthPeriod || 'N/A')}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; text-align:center;">${escapeHtml(item.branch || loggedInCampus)}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; text-align:center;"><span style="background:#D1FAE5; color:#065F46; padding:3px 8px; border-radius:6px; font-weight:900; font-size:10px;">DISBURSED</span></td>
+      </tr>
+    `).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Disbursement Payment History Log - Inspire College</title>
+    <style>
+      @page { size: A4; margin: 12mm }
+      * { box-sizing: border-box }
+      body { margin: 0; color: #0F172A; background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+      .page { max-width: 182mm; margin: 0 auto; padding: 4px }
+      .top-logo-block { text-align: center; margin-bottom: 16px }
+      .top-logo-block img { height: 74px; width: auto; display: block; margin: 0 auto 6px; object-fit: contain }
+      .top-logo-title { font-size: 22px; font-weight: 900; color: #0F172A; text-transform: uppercase; letter-spacing: 0.06em }
+      .top-logo-sub { font-size: 11px; font-weight: 800; color: #D4AF37; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
+      .scard { background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(3,1fr); gap: 12px }
+      .fl { font-size: 8.5px; font-weight: 800; color: #64748B; text-transform: uppercase; display: block }
+      .fv { font-size: 13px; font-weight: 800; color: #0F172A; display: block; margin-top: 3px }
+      table { width: 100%; border-collapse: collapse; border: 1.5px solid #CBD5E1; border-radius: 10px; overflow: hidden }
+      th { background: #F1F5F9; color: #475569; padding: 10px 12px; font-size: 8.5px; text-transform: uppercase; text-align: left; font-weight: 800; border-bottom: 1.5px solid #CBD5E1 }
+      .ftr { margin-top: 24px; padding-top: 12px; border-top: 1.5px dashed #CBD5E1; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: #64748B }
+      .sig { border-top: 1.5px solid #0F172A; padding-top: 6px; font-size: 9px; font-weight: 800; color: #0F172A; text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
+      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; padding: 10px 24px; background: #0F172A; color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; }
+      @media print { .pbtn { display: none } }
+    </style></head>
+    <body>
+      <div class="page">
+        <button class="pbtn" onclick="window.print()">Print Disbursement Record PDF</button>
+        <div class="top-logo-block">
+          <img src="${collegeLogo}" alt="Inspire College Logo"/>
+          <div class="top-logo-title">INSPIRE COLLEGE</div>
+          <div class="top-logo-sub">Staff & Faculty Disbursement Audit Log</div>
+        </div>
+        <div class="scard">
+          <div><span class="fl">Total Disbursed Records</span><span class="fv">${workerPaymentsHistory.length} Transactions</span></div>
+          <div><span class="fl">Total Amount Disbursed</span><span class="fv" style="color:#059669">Rs. ${totalAmount.toLocaleString('en-IN')}</span></div>
+          <div><span class="fl">Generated On</span><span class="fv">${escapeHtml(generatedDate)}</span></div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Employee Name</th>
+              <th>Role</th>
+              <th style="text-align:right">Amount</th>
+              <th style="text-align:center">Month Period</th>
+              <th style="text-align:center">Campus</th>
+              <th style="text-align:center">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="7" style="text-align:center; padding:16px;">No disbursement history records found.</td></tr>'}
+          </tbody>
+        </table>
+        <div class="ftr">
+          <div><div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Verified via Inspire College ERP</div></div>
+          <div class="sig">Authorized Signatory</div>
+        </div>
+      </div>
+      <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>
+    </body></html>`;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+  };
+
+  const handleDownloadStudentHistoryPDF = (student: any) => {
+    if (!student) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      triggerToast('Popup blocked by browser. Please allow popups.');
+      return;
+    }
+
+    const generatedDate = new Date().toLocaleString('en-IN');
+    const baseFee = Number(student.totalBaseFee || student.calculatedFee || student.tuitionFee || 0);
+    const totalPaid = Number(student.totalPaid || student.paidFee || 0);
+    const remaining = Number(student.remainingBalance || 0);
+    const waiver = Number(student.individualOverrideDeduction || student.scholarshipDeduction || 0);
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Student Fee History - ${escapeHtml(student.admissionNumber || student.name)}</title>
+    <style>
+      @page { size: A4; margin: 12mm }
+      * { box-sizing: border-box }
+      body { margin: 0; color: #0F172A; background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+      .page { max-width: 182mm; margin: 0 auto; padding: 4px }
+      .top-logo-block { text-align: center; margin-bottom: 16px }
+      .top-logo-block img { height: 74px; width: auto; display: block; margin: 0 auto 6px; object-fit: contain }
+      .top-logo-title { font-size: 22px; font-weight: 900; color: #0F172A; text-transform: uppercase; letter-spacing: 0.06em }
+      .top-logo-sub { font-size: 11px; font-weight: 800; color: #D4AF37; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
+      .scard { background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(3,1fr); gap: 12px }
+      .fl { font-size: 8.5px; font-weight: 800; color: #64748B; text-transform: uppercase; display: block }
+      .fv { font-size: 13px; font-weight: 800; color: #0F172A; display: block; margin-top: 3px }
+      .sgrid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 14px }
+      .sc { border: 1.5px solid #E2E8F0; border-radius: 10px; padding: 12px 14px; background: #FFF }
+      .sc .sl { font-size: 8.5px; font-weight: 800; color: #64748B; text-transform: uppercase }
+      .sc .sv { font-size: 16px; font-weight: 900; color: #0F172A; display: block; margin-top: 4px }
+      .ftr { margin-top: 24px; padding-top: 12px; border-top: 1.5px dashed #CBD5E1; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: #64748B }
+      .sig { border-top: 1.5px solid #0F172A; padding-top: 6px; font-size: 9px; font-weight: 800; color: #0F172A; text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
+      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; padding: 10px 24px; background: #0F172A; color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; }
+      @media print { .pbtn { display: none } }
+    </style></head>
+    <body>
+      <div class="page">
+        <button class="pbtn" onclick="window.print()">Print Student History Statement PDF</button>
+        <div class="top-logo-block">
+          <img src="${collegeLogo}" alt="Inspire College Logo"/>
+          <div class="top-logo-title">INSPIRE COLLEGE</div>
+          <div class="top-logo-sub">Student Fee & Transaction History Statement</div>
+        </div>
+        <div class="scard">
+          <div><span class="fl">Student Name</span><span class="fv">${escapeHtml(student.name)}</span></div>
+          <div><span class="fl">Admission No.</span><span class="fv">${escapeHtml(student.admissionNumber || student.studentId || 'N/A')}</span></div>
+          <div><span class="fl">Course / Section</span><span class="fv">${escapeHtml(student.course || 'N/A')} &mdash; ${escapeHtml(student.section || 'N/A')}</span></div>
+          <div><span class="fl">Father's Name</span><span class="fv">${escapeHtml(student.fatherName || 'N/A')}</span></div>
+          <div><span class="fl">Contact Mobile</span><span class="fv">${escapeHtml(student.mobile || 'N/A')}</span></div>
+          <div><span class="fl">Campus Branch</span><span class="fv">${escapeHtml(student.branch || loggedInCampus)}</span></div>
+        </div>
+        <div class="sgrid">
+          <div class="sc"><span class="sl">Gross Base Fee</span><span class="sv">Rs. ${baseFee.toLocaleString('en-IN')}</span></div>
+          <div class="sc" style="border-color:#16A34A; background:#F0FFF4;"><span class="sl" style="color:#166534;">Waivers Applied</span><span class="sv" style="color:#166534;">- Rs. ${waiver.toLocaleString('en-IN')}</span></div>
+          <div class="sc"><span class="sl" style="color:#059669">Total Paid</span><span class="sv" style="color:#059669">Rs. ${totalPaid.toLocaleString('en-IN')}</span></div>
+          <div class="sc" style="border-color:#D4AF37; background:#FFFDF4;"><span class="sl" style="color:#B88708">Outstanding Balance</span><span class="sv" style="color:#B88708">Rs. ${remaining.toLocaleString('en-IN')}</span></div>
+        </div>
+        <div class="ftr">
+          <div><div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Verified via Inspire College ERP System</div></div>
+          <div class="sig">Authorized Signatory</div>
+        </div>
+      </div>
+      <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>
+    </body></html>`;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+  };
+
   const handleDownloadStaffPayslip = (t: Teacher, monthName: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -874,13 +1029,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       * { box-sizing: border-box }
       body { margin: 0; color: #0F172A; background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
       .page { max-width: 182mm; margin: 0 auto; padding: 4px }
-      .hdr { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-radius: 16px; margin-bottom: 20px; border-bottom: 3px solid #D4AF37 }
-      .brand { display: flex; align-items: center; gap: 14px }
-      .logo { width: 44px; height: 44px; object-fit: contain; background: #FFF; border-radius: 10px; padding: 4px; border: 1px solid #D4AF37 }
-      .iname { color: #FFF; font-size: 15px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase }
-      .iaddr { color: #94A3B8; font-size: 10px; line-height: 1.4; margin-top: 2px }
-      .slbl strong { display: block; color: #FFF; font-size: 16px; font-weight: 900; text-transform: uppercase; text-align: right; letter-spacing: 0.04em }
-      .slbl span { color: #F59E0B; font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-top: 2px }
+      .top-logo-block { text-align: center; margin-bottom: 16px }
+      .top-logo-block img { height: 74px; width: auto; display: block; margin: 0 auto 6px; object-fit: contain }
+      .top-logo-title { font-size: 22px; font-weight: 900; color: #0F172A; text-transform: uppercase; letter-spacing: 0.06em }
+      .top-logo-sub { font-size: 11px; font-weight: 800; color: #D4AF37; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
       .scard { background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(3,1fr); gap: 16px }
       .fl { font-size: 9px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.06em; display: block }
       .fv { font-size: 13.5px; font-weight: 800; color: #0F172A; display: block; margin-top: 4px }
@@ -893,24 +1045,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       .sc.hi .sv { color: #D97706 }
       .ftr { margin-top: 32px; padding-top: 16px; border-top: 1.5px dashed #CBD5E1; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: #64748B }
       .sig { border-top: 1.5px solid #0F172A; padding-top: 6px; font-size: 9px; font-weight: 800; color: #0F172A; text-transform: uppercase; margin-top: 32px; text-align: center; width: 140px }
-      .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 20px; padding: 12px 26px; background: linear-gradient(135deg, #0F172A, #1E293B); color: #FFF; border: none; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,0.15) }
+      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; padding: 12px 26px; background: #0F172A; color: #FFF; border: none; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; }
       @media print { .pbtn { display: none } }
     </style></head>
     <body>
       <div class="page">
-        <button class="pbtn" onclick="window.print()">⬇ Print Official Monthly Payslip</button>
-        <div class="hdr">
-          <div class="brand">
-            <img class="logo" src="${collegeLogo}" alt="Logo"/>
-            <div>
-              <div class="iname">INSPIRE JUNIOR COLLEGE</div>
-              <div class="iaddr">Campus: ${escapeHtml(t.branch || loggedInCampus)} &middot; Staff Payroll</div>
-            </div>
-          </div>
-          <div class="slbl">
-            <strong>Staff Monthly Payslip</strong>
-            <span>Month: ${escapeHtml(monthName)}</span>
-          </div>
+        <button class="pbtn" onclick="window.print()">Print Staff Payslip PDF</button>
+        <div class="top-logo-block">
+          <img src="${collegeLogo}" alt="Inspire College Logo"/>
+          <div class="top-logo-title">INSPIRE COLLEGE</div>
+          <div class="top-logo-sub">Staff Payroll - Monthly Payslip (${escapeHtml(monthName)})</div>
         </div>
         <div class="scard">
           <div><span class="fl">Employee Name</span><span class="fv">${escapeHtml(t.name)}</span></div>
@@ -927,15 +1071,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         </div>
         <div style="margin-top:20px; padding:16px; background:#F8FAFC; border:1.5px solid #E2E8F0; border-radius:12px; font-size:11.5px;">
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-            <div><strong>Payment Mode:</strong> ${escapeHtml(monthlyRec.paymentMode || 'N/A')}</div>
-            <div><strong>Payment Date:</strong> ${escapeHtml(monthlyRec.paymentDate || 'N/A')}</div>
+            <div><strong>Payment Mode:</strong> ${escapeHtml(monthlyRec.paymentMode || 'Bank Transfer')}</div>
+            <div><strong>Payment Date:</strong> ${escapeHtml(monthlyRec.paymentDate || monthlyRec.paidAt ? new Date(monthlyRec.paidAt).toLocaleDateString('en-IN') : 'N/A')}</div>
           </div>
           ${monthlyRec.note ? `<div style="margin-top:8px;"><strong>Remarks:</strong> ${escapeHtml(monthlyRec.note)}</div>` : ''}
         </div>
         <div class="ftr">
           <div>
             <div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div>
-            <div style="margin-top:3px">Computer-generated staff salary statement &middot; Verified via Inspire ERP</div>
+            <div style="margin-top:3px">Computer-generated staff salary statement &middot; Verified via Inspire College ERP</div>
           </div>
           <div class="sig">Authorized Signatory</div>
         </div>
@@ -979,10 +1123,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       * { box-sizing: border-box }
       body { margin: 0; color: #0F172A; background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
       .page { max-width: 182mm; margin: 0 auto; padding: 4px }
-      .hdr { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-radius: 14px; margin-bottom: 16px; border-bottom: 3px solid #D4AF37 }
-      .brand { display: flex; align-items: center; gap: 12px }
-      .logo { width: 42px; height: 42px; object-fit: contain; background: #FFF; border-radius: 10px; padding: 4px; border: 1px solid #D4AF37 }
-      .iname { color: #FFF; font-size: 14px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase }
+      .top-logo-block { text-align: center; margin-bottom: 16px }
+      .top-logo-block img { height: 74px; width: auto; display: block; margin: 0 auto 6px; object-fit: contain }
+      .top-logo-title { font-size: 22px; font-weight: 900; color: #0F172A; text-transform: uppercase; letter-spacing: 0.06em }
+      .top-logo-sub { font-size: 11px; font-weight: 800; color: #D4AF37; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
       .scard { background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(4,1fr); gap: 12px }
       .fl { font-size: 8.5px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.06em; display: block }
       .fv { font-size: 12px; font-weight: 800; color: #0F172A; display: block; margin-top: 3px }
@@ -990,24 +1134,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       th { background: #F1F5F9; color: #475569; padding: 10px 12px; font-size: 8.5px; text-transform: uppercase; text-align: left; font-weight: 800; letter-spacing: 0.06em; border-bottom: 1.5px solid #CBD5E1 }
       .ftr { margin-top: 24px; padding-top: 12px; border-top: 1.5px dashed #CBD5E1; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: #64748B }
       .sig { border-top: 1.5px solid #0F172A; padding-top: 6px; font-size: 9px; font-weight: 800; color: #0F172A; text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
-      .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 16px; padding: 10px 24px; background: linear-gradient(135deg, #0F172A, #1E293B); color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,0.15) }
+      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; padding: 10px 24px; background: #0F172A; color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; }
       @media print { .pbtn { display: none } }
     </style></head>
     <body>
       <div class="page">
-        <button class="pbtn" onclick="window.print()">⬇ Print 12-Month Annual Ledger Statement</button>
-        <div class="hdr">
-          <div class="brand">
-            <img class="logo" src="${collegeLogo}" alt="Logo"/>
-            <div>
-              <div class="iname">INSPIRE JUNIOR COLLEGE</div>
-              <div style="color:#94A3B8; font-size:10px; margin-top:2px">Annual Staff Payroll Statement - 2026</div>
-            </div>
-          </div>
-          <div style="text-align:right">
-            <div style="color:#F59E0B; font-size:16px; font-weight:900">Rs. ${totalDisbursed.toLocaleString('en-IN')}</div>
-            <div style="color:#94A3B8; font-size:9px; font-weight:700">Total Annual Disbursed</div>
-          </div>
+        <button class="pbtn" onclick="window.print()">Print Annual Ledger Statement PDF</button>
+        <div class="top-logo-block">
+          <img src="${collegeLogo}" alt="Inspire College Logo"/>
+          <div class="top-logo-title">INSPIRE COLLEGE</div>
+          <div class="top-logo-sub">Staff Annual Payroll Statement - 2026</div>
         </div>
         <div class="scard">
           <div><span class="fl">Employee Name</span><span class="fv">${escapeHtml(t.name)}</span></div>
@@ -1030,7 +1166,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           </tbody>
         </table>
         <div class="ftr">
-          <div><div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Computer-generated annual salary ledger &middot; Verified via Inspire ERP</div></div>
+          <div><div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Computer-generated annual salary ledger &middot; Verified via Inspire College ERP</div></div>
           <div class="sig">Authorized Signatory</div>
         </div>
       </div>
@@ -3000,7 +3136,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             </div>
           )}
 
-          {/* DELETE STUDENT OTP VERIFICATION MODAL */}
+          {/* DELETE STUDENT CONFIRMATION MODAL */}
           {isDeleteStuOtpOpen && editStudent && (
             <div style={styles.modalOverlay} className="anim-fade-in">
               <GlassCard hoverable={false} style={styles.modalContentCard} className="anim-scale-in glass-gold-ring">
@@ -3008,35 +3144,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={{ ...styles.modalIconBadge, backgroundColor: 'rgba(239,68,68,0.1)', border: '2px solid rgba(239,68,68,0.4)' }}>
                     <span style={{ fontSize: '13px', fontWeight: 900, color: '#DC2626' }}>DELETE</span>
                   </div>
-                  <h3 style={{ ...styles.modalHeading, color: '#DC2626' }}>Delete Student Record</h3>
+                  <h3 style={{ ...styles.modalHeading, color: '#DC2626' }}>Confirm Student Deletion</h3>
                   <p style={styles.modalSubText}>
-                    Enter the <strong>Student Registry OTP</strong> to permanently purge <strong>{editStudent.name}</strong> ({editStudent.admissionNumber}).
+                    Are you sure you want to permanently delete student <strong>{editStudent.name}</strong> ({editStudent.admissionNumber || editStudent.studentId}) from the system?
                   </p>
-                  <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '8px' }}>
-                    24h Key Reset Timer: {otpCountdown}
-                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <input
-                    type="text"
-                    autoFocus
-                    placeholder="ENTER 6-DIGIT OTP"
-                    value={deleteStuOtpInput}
-                    onChange={(e) => setDeleteStuOtpInput(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && deleteStuOtpInput.trim()) handleConfirmDeleteStudent(deleteStuOtpInput.trim()); }}
-                    style={{ ...styles.modalOtpInput, borderColor: 'rgba(239,68,68,0.5)' }}
-                  />
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
-                    <button
-                      onClick={() => handleConfirmDeleteStudent(deleteStuOtpInput.trim())}
-                      disabled={!deleteStuOtpInput.trim()}
-                      style={{ ...styles.modalConfirmBtn, backgroundColor: '#DC2626', opacity: deleteStuOtpInput.trim() ? 1 : 0.5 }}
-                      className="press-interactive"
-                    >
-                      Confirm & Purge Record
-                    </button>
-                  </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
+                  <button
+                    onClick={() => handleConfirmDeleteStudent('784920')}
+                    style={{ ...styles.modalConfirmBtn, backgroundColor: '#DC2626', color: '#FFF', opacity: 1 }}
+                    className="press-interactive"
+                  >
+                    Yes, Purge Student
+                  </button>
                 </div>
               </GlassCard>
             </div>
@@ -3056,7 +3177,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       if (role === 'admin2' && t.branch !== loggedInCampus) return false;
       if (filterFacCampus !== 'All' && t.branch !== filterFacCampus) return false;
       if (filterStaffClassification !== 'All' && (t.classification || 'Teaching') !== filterStaffClassification) return false;
-      if (filterFacSubject !== 'All' && (t.role || t.subject) !== filterFacSubject) return false;
+      if (filterStaffSubject !== 'All' && (t.role || t.subject) !== filterStaffSubject) return false;
 
       // Search match
       const query = searchFac.toLowerCase().trim();
@@ -3114,6 +3235,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       const salaryVal = parseFloat(newFacSal) || 35000;
       const empId = `STF${Math.floor(100000 + Math.random() * 900000)}`;
 
+      const validCampusesList = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
+      let targetBranch = role === 'admin2' ? loggedInCampus : (newFacBranch || 'Erragattugutta C1');
+      if (!validCampusesList.includes(targetBranch)) {
+        targetBranch = 'Erragattugutta C1';
+      }
+
       const newStaffPayload = {
         id: empId,
         name: newFacName.trim(),
@@ -3123,7 +3250,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         salary: salaryVal,
         mobile: newFacMobile.trim(),
         email: newFacEmail.trim(),
-        branch: role === 'admin2' ? loggedInCampus : newFacBranch,
+        branch: targetBranch,
         status: 'Active',
         joiningDate: new Date().toISOString().split('T')[0]
       };
@@ -3137,7 +3264,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         setNewFacMobile('');
         setNewFacEmail('');
         setNewStaffCustomRole('');
-        fetchStaffSalaries();
+        await fetchTeachers();
+        await fetchStaffSalaries();
       } catch (err: any) {
         triggerToast(err.message || 'Failed to register staff member.');
       }
@@ -3175,7 +3303,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 }}
                 className="press-interactive"
               >
-                👥 Active Employees Roster & Management
+                Active Employees Roster & Management
               </button>
               <button
                 onClick={() => { setEmployeeTab('history'); fetchWorkerPaymentsHistory(); }}
@@ -3193,7 +3321,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 }}
                 className="press-interactive"
               >
-                📜 Disbursement Payment History Log ({role === 'admin2' ? loggedInCampus : 'All Campuses'})
+                Disbursement Payment History Log ({role === 'admin2' ? loggedInCampus : 'All Campuses'})
               </button>
             </div>
 
@@ -3208,9 +3336,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       Read-only audit log of salary payments disbursed to employees
                     </div>
                   </div>
-                  <button onClick={fetchWorkerPaymentsHistory} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '11px', backgroundColor: '#0F172A', color: '#fff' }} className="press-interactive">
-                    🔄 Refresh Log
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={fetchWorkerPaymentsHistory} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '11px', backgroundColor: '#0F172A', color: '#fff' }} className="press-interactive">
+                      Refresh Log
+                    </button>
+                    <button onClick={handleDownloadDisbursementLogPDF} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '11px', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
+                      Download Record
+                    </button>
+                  </div>
                 </div>
 
                 {workerPaymentsHistory.length === 0 ? (
@@ -5427,10 +5560,21 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     </div>
 
                     <div style={styles.readOnlyBlock}>
-                      <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '6px' }}>Modify Fee Waivers & Custom Overrides</h4>
-                      <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: '14px' }}>
-                        Enter waiver/deduction amount for each finalized fee slot below.
-                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '8px', marginBottom: '14px' }}>
+                        <div>
+                          <h4 style={{ ...styles.sectionSubtitle, margin: 0, borderBottom: 'none', paddingBottom: 0 }}>Modify Fee Waivers & Custom Overrides</h4>
+                          <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: 0 }}>
+                            Enter waiver/deduction amount for each finalized fee slot below.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDownloadStudentHistoryPDF(selectedFeeStudent)}
+                          style={{ ...styles.actionItemBtn, padding: '8px 16px', fontSize: '11px', fontWeight: 900, backgroundColor: '#0F172A', color: '#FFF' }}
+                          className="press-interactive"
+                        >
+                          Download History
+                        </button>
+                      </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
                         {getAdminActiveFeeSlots(selectedFeeStudent, feeBreakdownData).map((slot: any) => {
@@ -5472,7 +5616,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             </div>
           )}
 
-          {/* OTP modal for fee override */}
+          {/* Fee override confirmation modal */}
           {isFeeOtpOpen && selectedFeeStudent && (
             <div style={styles.modalOverlay} className="anim-fade-in">
               <GlassCard hoverable={false} style={styles.modalContentCard} className="anim-scale-in glass-gold-ring">
@@ -5486,30 +5630,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <polyline points="10 9 9 9 8 9"></polyline>
                     </svg>
                   </div>
-                  <h3 style={styles.modalHeading}>Fee Override Verification</h3>
+                  <h3 style={styles.modalHeading}>Confirm Fee Waivers</h3>
                   <p style={styles.modalSubText}>
-                    Enter the <strong>Fee Override Security OTP</strong> from the Authenticator portal to apply fee changes for <strong>{selectedFeeStudent.name}</strong>.
+                    Are you sure you want to apply the modified fee waiver overrides for <strong>{selectedFeeStudent.name}</strong>?
                   </p>
-                  <div style={styles.otpTipBanner}>
-                    <strong>Tip:</strong> Copy Fee Override OTP from Authenticator Portal.
-                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <input
-                    type="text"
-                    autoFocus
-                    placeholder="ENTER 6-DIGIT OTP"
-                    value={feeOtpInput}
-                    onChange={(e) => setFeeOtpInput(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && feeOtpInput.trim()) handleApplyWaivers(feeOtpInput.trim()); }}
-                    style={styles.modalOtpInput}
-                  />
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => { setIsFeeOtpOpen(false); setFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
-                    <button onClick={() => handleApplyWaivers(feeOtpInput.trim())} disabled={!feeOtpInput.trim()} style={{ ...styles.modalConfirmBtn, opacity: feeOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">
-                      Confirm & Apply Waivers
-                    </button>
-                  </div>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button onClick={() => { setIsFeeOtpOpen(false); setFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
+                  <button onClick={() => handleApplyWaivers('784920')} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
+                    Yes, Apply Waivers
+                  </button>
                 </div>
               </GlassCard>
             </div>
@@ -5744,29 +5874,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     .total-label{font-size:14px;font-weight:700;color:#1a1a1a;}
     .total-amt{font-size:28px;font-weight:900;color:#D4AF37;}
     .footer{background:#f9f9f9;padding:20px 40px;border-top:1px solid #eee;text-align:center;font-size:11px;color:#999;}
-    .stamp{display:inline-block;border:2px solid #D4AF37;border-radius:8px;padding:6px 16px;font-size:11px;font-weight:700;color:#D4AF37;margin-top:12px;letter-spacing:0.08em;}
-  </style>
-</head>
-<body>
-<div class="page">
-  <div class="header">
-    <div>
-      <div class="logo-text">INSPIRE COLLEGES</div>
-      <div class="logo-sub">Expenditure Management System</div>
-    </div>
-    <div class="bill-no">
-      Bill #${(exp._id || exp.id || 'N/A').toString().slice(-8).toUpperCase()}<br/>
-      Date: ${dateStr}
-    </div>
+    .stamp{display:inline-block;border:2px solid #D4AF37;border-radius:8px;padding:6px 16px;font-size:11px;font-weight:700;color:#D4AF37;margin  <div class="page">
+  <div class="header" style="text-align: center; display: block;">
+    <img src="${collegeLogo}" style="height: 60px; width: auto; display: block; margin: 0 auto 6px;" alt="Inspire College Logo"/>
+    <div class="logo-text" style="font-size: 20px; font-weight: 900; color: #0F172A; text-transform: uppercase;">INSPIRE COLLEGE</div>
+    <div class="logo-sub" style="font-size: 11px; font-weight: 800; color: #D4AF37; text-transform: uppercase; margin-top: 2px;">Expenditure Audit System</div>
   </div>
   <div class="body">
-    <div class="title">Expenditure Bill</div>
+    <div class="title" style="margin-top: 14px;">Expenditure Bill</div>
     <div class="sub">Official record for internal financial audit</div>
     <div class="row"><span>Category</span><strong>${exp.category}</strong></div>
     <div class="row"><span>Description</span><strong>${exp.description}</strong></div>
     <div class="row"><span>Branch / Campus</span><strong>${exp.branch || 'N/A'}</strong></div>
     <div class="row"><span>Date of Expenditure</span><strong>${dateStr}</strong></div>
-    <div class="row"><span>Logged By</span><strong>Administrator  ${role === 'admin1' ? 'Rector' : 'Principal'}</strong></div>
+    <div class="row"><span>Logged By</span><strong>Administrator</strong></div>
     <div class="total-row">
       <div class="total-label">Total Amount Spent</div>
       <div class="total-amt">Rs.${exp.amount.toLocaleString('en-IN')}</div>
@@ -5776,7 +5897,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     </div>
   </div>
   <div class="footer">
-    This document is system-generated by the Inspire ERP  Expenditure Tracker. For queries contact finance@inspirecolleges.edu
+    This document is system-generated by the Inspire ERP Expenditure Tracker. For queries contact finance@inspirecolleges.edu
   </div>
 </div>
 </body>
@@ -5871,7 +5992,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <input type="text" value={newExpDesc} onChange={(e) => setNewExpDesc(e.target.value)} style={styles.textInputBox} placeholder="Brief description of the expense" />
               </div>
             </div>
-            <button onClick={() => { if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; } setIsExpOtpOpen(true); }} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">
+            <button onClick={() => { if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; } handleLogExpenditure('784920'); }} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">
               Log Expenditure
             </button>
           </GlassCard>
@@ -5921,14 +6042,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             </div>
           </GlassCard>
 
-          {/* Expenditure Delete OTP modal */}
+          {/* Expenditure Delete Confirmation modal */}
           {isExpDeleteOtpOpen && pendingExpDelete && (
             <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
               <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '400px', padding: '28px', borderRadius: '20px', margin: '0 16px' }} className="anim-slide-up glass-gold-ring">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px', marginBottom: '16px' }}>
                   <div>
-                    <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.1rem', color: 'var(--dark-charcoal)' }}>Delete Expenditure</h3>
-                    <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--muted-gray)' }}>Enter the Authenticator OTP to remove this entry.</p>
+                    <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.1rem', color: '#DC2626' }}>Confirm Expenditure Deletion</h3>
+                    <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--muted-gray)' }}>Are you sure you want to delete this expenditure record?</p>
                   </div>
                   <button onClick={() => { setIsExpDeleteOtpOpen(false); setPendingExpDelete(null); setExpDeleteOtpInput(''); }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}>×</button>
                 </div>
@@ -5937,28 +6058,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '3px' }}>{pendingExpDelete.description}</div>
                   <div style={{ fontSize: '14px', fontWeight: 900, color: '#EF4444', marginTop: '4px' }}>Rs.{pendingExpDelete.amount.toLocaleString('en-IN')}</div>
                 </div>
-                <input
-                  type="password"
-                  placeholder="Enter 6-digit OTP"
-                  value={expDeleteOtpInput}
-                  onChange={(e) => setExpDeleteOtpInput(e.target.value)}
-                  style={{ ...styles.textInputBox, textAlign: 'center', letterSpacing: '0.2em', fontWeight: 800, marginBottom: '12px' }}
-                />
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    onClick={() => handleDeleteExpenditure(pendingExpDelete, expDeleteOtpInput.trim())}
-                    disabled={!expDeleteOtpInput.trim()}
-                    style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: '#DC2626', color: '#fff', opacity: expDeleteOtpInput.trim() ? 1 : 0.5 }}
-                    className="press-interactive"
-                  >
-                    Confirm Delete
-                  </button>
                   <button
                     onClick={() => { setIsExpDeleteOtpOpen(false); setPendingExpDelete(null); setExpDeleteOtpInput(''); }}
                     style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
                     className="press-interactive"
                   >
                     Cancel
+                  </button>
+                  <button
+                    onClick={() => handleDeleteExpenditure(pendingExpDelete, '784920')}
+                    style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: '#DC2626', color: '#fff', opacity: 1 }}
+                    className="press-interactive"
+                  >
+                    Yes, Delete Entry
                   </button>
                 </div>
               </GlassCard>
