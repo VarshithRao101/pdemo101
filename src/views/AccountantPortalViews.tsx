@@ -331,6 +331,7 @@ export const AccountantDashboardView: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
+  const [isProcessingUpload, setIsProcessingUpload] = useState(false);
   const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'attendance' | 'reports' | 'late_fees' | 'scholarships' | 'profile'>('menu');
   const [students, setStudents] = useState<Student[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -879,7 +880,7 @@ export const AccountantDashboardView: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
+    setIsProcessingUpload(true);
     try {
       const res = await accountantService.recordPayment(selectedStudent._id, {
         amount: paymentAmount,
@@ -908,7 +909,7 @@ export const AccountantDashboardView: React.FC = () => {
     } catch (err: any) {
       triggerToast(err.message || 'Failed to submit payment.');
     } finally {
-      setIsLoading(false);
+      setIsProcessingUpload(false);
     }
   };
 
@@ -1180,72 +1181,118 @@ export const AccountantDashboardView: React.FC = () => {
       return;
     }
 
+    const generatedDate = new Date().toLocaleString('en-IN');
     const customSlots: Array<[string, number]> = ((student as any).customFeeSlots || []).map((s: any) => [s.name, Number(s.amount || 0)]);
     const feeRows: Array<[string, number]> = [
       ['Tuition Fee', Number(student.tuitionFee || 0)],
       ['Hostel Fee', Number(student.hostelFee || 0)],
       ['Miscellaneous Fee', Number(student.miscellaneousFee || 0)],
       ['Previous Pending', Number(student.previousPending || 0)],
+      ['Books Fee', Number((student as any).booksFee || 0)],
+      ['Uniform Fee', Number((student as any).uniformFees || 0)],
+      ['Internal Exam Fee', Number((student as any).internalExamFees || 0)],
+      ['Annual Exam Fee', Number((student as any).annualExamFees || 0)],
+      ['Lab Fee', Number((student as any).labFees || 0)],
+      ['Bus Fee', Number((student as any).busFees || 0)],
       ...customSlots
     ].filter(([, amount]) => amount > 0);
 
+    const tuitionWaiver = Number((student as any).tuitionWaiver || 0);
+    const hostelWaiver = Number((student as any).hostelWaiver || 0);
+    const transportWaiver = Number((student as any).transportWaiver || 0);
+    const miscWaiver = Number((student as any).miscWaiver || 0);
+    const overrideDeduction = Number((student as any).individualOverrideDeduction || (student as any).scholarshipDeduction || 0);
+
     const allWaiverRows: Array<[string, number]> = [
-      ['Tuition Waiver', Number((student as any).tuitionWaiver || 0)],
-      ['Hostel Waiver', Number((student as any).hostelWaiver || 0)],
-      ['Transport Waiver', Number((student as any).transportWaiver || 0)],
-      ['Miscellaneous Waiver', Number((student as any).miscWaiver || 0)]
+      ['Tuition Waiver', tuitionWaiver],
+      ['Hostel Waiver', hostelWaiver],
+      ['Transport Waiver', transportWaiver],
+      ['Miscellaneous Waiver', miscWaiver]
     ];
+    if (overrideDeduction > 0 && tuitionWaiver === 0 && hostelWaiver === 0 && miscWaiver === 0) {
+      allWaiverRows.push(['Special Scholarship Waiver', overrideDeduction]);
+    }
     const waiverRows = allWaiverRows.filter(([, amount]) => amount > 0);
     const totalWaiver = waiverRows.reduce((sum, [, amount]) => sum + amount, 0);
-    const receipts = [...(student.receipts || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    const lastReceipt = receipts.length > 0 ? receipts[0] : null;
-    const totalBaseFee = feeRows.reduce((total, [, amount]) => total + amount, 0);
+
+    const totalBaseFee = feeRows.reduce((total, [, amount]) => total + amount, 0) || Number((student as any).totalBaseFee || (student as any).calculatedFee || student.tuitionFee || 0);
     const totalPaid = Number(student.totalPaid || 0);
-    const generatedDate = new Date().toLocaleString('en-IN');
-    
-    const feeTableRows = feeRows.map(([label, amount]) => {
-      return '<tr><td>' + escapeHtml(label) + '</td><td class="tr">Rs.' + amount.toLocaleString('en-IN') + '</td></tr>';
-    }).join('');
+    const remaining = Number(student.remainingBalance ?? Math.max(0, totalBaseFee - totalWaiver - totalPaid));
+    const receipts = [...(student.receipts || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const waiverTableRows = waiverRows.map(([label, amount]) => {
-      return '<tr class="wr" style="background:#F0FFF4;color:#166534;font-weight:800;"><td>' + escapeHtml(label) + '</td><td class="tr" style="color:#16A34A;">&minus; Rs.' + amount.toLocaleString('en-IN') + '</td></tr>';
-    }).join('');
+    const feeTableRows = feeRows.length > 0
+      ? feeRows.map(([label, amount]) => `<tr><td>${escapeHtml(label)}</td><td class="tr">Rs. ${amount.toLocaleString('en-IN')}</td></tr>`).join('')
+      : `<tr><td>Baseline Academic Course Fee</td><td class="tr">Rs. ${totalBaseFee.toLocaleString('en-IN')}</td></tr>`;
 
-    const lastReceiptHtml = lastReceipt
-      ? '<div class="ltx"><div class="txl"><div class="tl">Receipt / Payment Record</div><span class="tr2">' + escapeHtml(lastReceipt.receiptNumber) + '</span><div class="tm">' + escapeHtml(lastReceipt.category) + ' &middot; ' + escapeHtml(lastReceipt.installment) + ' &middot; ' + escapeHtml(lastReceipt.mode) + '</div></div><div class="txr"><span class="ta">Rs.' + Number(lastReceipt.amount || 0).toLocaleString('en-IN') + '</span><span class="td2">' + new Date(lastReceipt.date).toLocaleDateString('en-GB') + '</span></div></div>'
-      : '<div class="ntx">No payments recorded yet for this student account.</div>';
+    const waiverTableRows = waiverRows.map(([label, amount]) =>
+      `<tr class="wr" style="background:#F0FFF4;color:#166534;font-weight:800;"><td>${escapeHtml(label)}</td><td class="tr" style="color:#16A34A;">&minus; Rs. ${amount.toLocaleString('en-IN')}</td></tr>`
+    ).join('');
 
-    const css = '@page{size:A4;margin:14mm}*{box-sizing:border-box}body{margin:0;color:#1E293B;background:#fff;font-family:\'Segoe UI\',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:12px}.page{max-width:182mm;margin:0 auto}.hdr{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:14px;margin-bottom:18px}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;object-fit:contain;background:#fff;border-radius:10px;padding:4px}.iname{color:#fff;font-size:13px;font-weight:900;text-transform:uppercase}.iaddr{color:#94A3B8;font-size:9px;line-height:1.4;margin-top:2px}.slbl strong{display:block;color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;text-align:right}.slbl span{color:#FBBF24;font-size:9px;font-weight:800;text-transform:uppercase}.scard{background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.fl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase;display:block}.fv{font-size:13px;font-weight:800;color:#1E293B;display:block;margin-top:3px}.stit{font-size:9px;font-weight:900;color:#64748B;text-transform:uppercase;letter-spacing:.1em;margin:14px 0 8px}.ftbl{width:100%;border-collapse:collapse;border:1.5px solid #E2E8F0;border-radius:10px;overflow:hidden;font-size:11px}.ftbl th{padding:9px 12px;background:#F8FAFC;color:#64748B;font-size:8.5px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid #E2E8F0;font-weight:800}.ftbl td{padding:9px 12px;border-bottom:1px solid #F1F5F9}.ftbl tr:last-child td{border-bottom:none}.tr{text-align:right;font-weight:800}.wr td{background:#F0FFF4;color:#166534}.sgrid{display:grid;grid-template-columns:' + (totalWaiver > 0 ? 'repeat(4,1fr)' : 'repeat(3,1fr)') + ';gap:10px;margin-top:14px}.sc{border:1.5px solid #E2E8F0;border-radius:10px;padding:12px 14px}.sc.hi{border-color:#D4AF37;background:#FFFDF4}.sc .sl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase}.sc .sv{font-size:17px;font-weight:900;color:#1E293B;display:block;margin-top:5px}.sc.pd .sv{color:#059669}.sc.hi .sv{color:#B88708}.ltx{border:1.5px solid #E2E8F0;border-radius:10px;padding:13px 16px;background:#F8FAFC;display:flex;justify-content:space-between;align-items:center}.txl .tl{font-size:8px;font-weight:800;color:#64748B;text-transform:uppercase}.txl .tr2{font-size:12px;font-weight:800;color:#1E293B;margin-top:3px;display:block}.txl .tm{font-size:10px;color:#64748B;margin-top:2px}.txr .ta{font-size:18px;font-weight:900;color:#059669;text-align:right;display:block}.txr .td2{font-size:10px;color:#64748B;text-align:right;margin-top:2px;display:block}.ntx{text-align:center;padding:14px;color:#94A3B8;border:1.5px dashed #E2E8F0;border-radius:10px;font-size:11px}.ftr{margin-top:18px;padding-top:12px;border-top:1.5px solid #E2E8F0;display:flex;justify-content:space-between;align-items:flex-end;font-size:8.5px;color:#94A3B8}.sig{border-top:1.5px solid #1E293B;padding-top:4px;font-size:8px;font-weight:800;color:#1E293B;text-transform:uppercase;margin-top:24px;text-align:center;width:120px}.pbtn{display:block;margin:0 auto 16px;padding:10px 20px;background:linear-gradient(135deg,#1E293B,#334155);color:#fff;border:none;border-radius:10px;font-weight:900;font-size:12px;cursor:pointer}@media print{.pbtn{display:none}}';
+    const receiptLogRows = receipts.length > 0
+      ? receipts.map(r => `
+          <tr>
+            <td><strong>${escapeHtml(r.receiptNumber)}</strong></td>
+            <td>${escapeHtml(r.date)}</td>
+            <td>${escapeHtml(r.category || 'Tuition')} &middot; ${escapeHtml(r.installment || 'Installment')}</td>
+            <td>${escapeHtml(r.mode || 'Cash')}</td>
+            <td class="tr" style="color:#059669;font-weight:900;">Rs. ${Number(r.amount || 0).toLocaleString('en-IN')}</td>
+            <td class="tr" style="font-weight:800;color:#0F172A;">Rs. ${Number(r.balance || 0).toLocaleString('en-IN')}</td>
+          </tr>
+        `).join('')
+      : `<tr><td colspan="6" style="text-align:center;color:#94A3B8;padding:12px;">No payment receipts logged yet.</td></tr>`;
 
-    const statementHtml = '<html><head><title>Fee Statement - ' + escapeHtml(student.admissionNumber) + '</title>'
-      + '<style>' + css + '</style></head><body><div class="page">'
-      + '<button class="pbtn" onclick="window.print()">&#8595; Download / Print Statement</button>'
-      + '<div class="hdr"><div class="brand"><img class="logo" src="' + collegeLogo + '" alt="Logo"/><div><div class="iname">' + RECEIPT_INSTITUTION_NAME + '</div><div class="iaddr">' + RECEIPT_INSTITUTION_ADDRESS + '</div></div></div>'
-      + '<div class="slbl"><strong>Fee Statement</strong><span>Campus: ' + escapeHtml(student.branch || loggedInCampus) + '</span></div></div>'
-      + '<div class="scard">'
-      + '<div><span class="fl">Student Name</span><span class="fv">' + escapeHtml(student.name) + '</span></div>'
-      + '<div><span class="fl">Admission No.</span><span class="fv">' + escapeHtml(student.admissionNumber) + '</span></div>'
-      + '<div><span class="fl">Course / Section</span><span class="fv">' + escapeHtml(student.course || 'N/A') + ' &mdash; ' + escapeHtml(student.section || 'N/A') + '</span></div>'
-      + '<div><span class="fl">Father\'s Name</span><span class="fv">' + escapeHtml(student.fatherName || 'N/A') + '</span></div>'
-      + '<div><span class="fl">Mobile</span><span class="fv">' + escapeHtml(student.mobile || 'N/A') + '</span></div>'
-      + '<div><span class="fl">Hostel Status</span><span class="fv">' + escapeHtml(student.hostelStatus || 'Day Scholar') + '</span></div>'
-      + '</div>'
-      + '<div class="stit">Fee Structure</div>'
-      + '<table class="ftbl"><thead><tr><th>Fee Component / Particulars</th><th class="tr">Amount</th></tr></thead><tbody>' + feeTableRows + waiverTableRows + '</tbody></table>'
-      + '<div class="sgrid">'
-      + '<div class="sc"><span class="sl">Gross Base Fee</span><span class="sv">Rs.' + totalBaseFee.toLocaleString('en-IN') + '</span></div>'
-      + (totalWaiver > 0 ? '<div class="sc pd" style="border-color:#16A34A;background:#F0FFF4;"><span class="sl" style="color:#166534;">Waivers Applied</span><span class="sv" style="color:#166534;">- Rs.' + totalWaiver.toLocaleString('en-IN') + '</span></div>' : '')
-      + '<div class="sc pd"><span class="sl">Total Paid</span><span class="sv">Rs.' + totalPaid.toLocaleString('en-IN') + '</span></div>'
-      + '<div class="sc hi"><span class="sl">Outstanding Balance</span><span class="sv">Rs.' + Number(student.remainingBalance || 0).toLocaleString('en-IN') + '</span></div>'
-      + '</div>'
-      + '<div class="stit" style="margin-top:18px">Last Transaction</div>'
-      + lastReceiptHtml
-      + '<div class="ftr"><div><div>Generated: ' + escapeHtml(generatedDate) + '</div><div style="margin-top:2px">Computer-generated statement. No physical signature required.</div></div><div class="sig">Authorized Signatory</div></div>'
-      + '</div><script>window.addEventListener(\'load\',function(){setTimeout(function(){window.print();},300);});<\/script></body></html>';
+    const css = `@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#0F172A;background:#fff;font-family:'Inter','Segoe UI',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:11px}.page{max-width:182mm;margin:0 auto;padding:4px}.hdr{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:14px;margin-bottom:16px;border-bottom:3px solid #D4AF37}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;object-fit:contain;background:#fff;border-radius:10px;padding:4px;border:1px solid #D4AF37}.iname{color:#fff;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}.iaddr{color:#94A3B8;font-size:9.5px;line-height:1.3;margin-top:2px}.slbl strong{display:block;color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;text-align:right}.slbl span{color:#FBBF24;font-size:9.5px;font-weight:800;text-transform:uppercase}.scard{background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.fl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase;display:block}.fv{font-size:12.5px;font-weight:800;color:#0F172A;display:block;margin-top:3px}.stit{font-size:9.5px;font-weight:900;color:#0F172A;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 8px;border-bottom:1.5px solid #E2E8F0;padding-bottom:4px}.ftbl{width:100%;border-collapse:collapse;border:1.5px solid #CBD5E1;border-radius:10px;overflow:hidden;font-size:11px}.ftbl th{padding:8px 10px;background:#F1F5F9;color:#475569;font-size:8.5px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid #CBD5E1;font-weight:800}.ftbl td{padding:8px 10px;border-bottom:1px solid #E2E8F0}.ftbl tr:last-child td{border-bottom:none}.tr{text-align:right;font-weight:800}.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.sc{border:1.5px solid #E2E8F0;border-radius:10px;padding:12px 14px;background:#FFF}.sc.hi{border-color:#D4AF37;background:#FFFDF4}.sc .sl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase}.sc .sv{font-size:16px;font-weight:900;color:#0F172A;display:block;margin-top:4px}.sc.pd .sv{color:#059669}.sc.hi .sv{color:#D97706}.ftr{margin-top:24px;padding-top:12px;border-top:1.5px dashed #CBD5E1;display:flex;justify-content:space-between;align-items:flex-end;font-size:9px;color:#64748B}.sig{border-top:1.5px solid #0F172A;padding-top:4px;font-size:8px;font-weight:800;color:#0F172A;text-transform:uppercase;margin-top:24px;text-align:center;width:130px}.pbtn{display:flex;align-items:center;justify-content:center;margin:0 auto 16px;padding:10px 24px;background:linear-gradient(135deg,#0F172A,#1E293B);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer}@media print{.pbtn{display:none}}`;
+
+    const statementHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fee Statement - ${escapeHtml(student.admissionNumber || student.name)}</title><style>${css}</style></head><body><div class="page">
+      <button class="pbtn" onclick="window.print()">Print Complete Fee Statement PDF</button>
+      <div class="hdr">
+        <div class="brand">
+          <img class="logo" src="${collegeLogo}" alt="Logo"/>
+          <div>
+            <div class="iname">${RECEIPT_INSTITUTION_NAME}</div>
+            <div class="iaddr">Campus: ${escapeHtml(student.branch || loggedInCampus)} &middot; Complete Financial Statement</div>
+          </div>
+        </div>
+        <div class="slbl">
+          <strong>Fee Statement</strong>
+          <span>Adm No: ${escapeHtml(student.admissionNumber || (student as any).studentId || 'N/A')}</span>
+        </div>
+      </div>
+      <div class="scard">
+        <div><span class="fl">Student Name</span><span class="fv">${escapeHtml(student.name)}</span></div>
+        <div><span class="fl">Admission No.</span><span class="fv">${escapeHtml(student.admissionNumber || (student as any).studentId || 'N/A')}</span></div>
+        <div><span class="fl">Course / Section</span><span class="fv">${escapeHtml(student.course || 'N/A')} &mdash; ${escapeHtml(student.section || 'N/A')}</span></div>
+        <div><span class="fl">Father's Name</span><span class="fv">${escapeHtml(student.fatherName || 'N/A')}</span></div>
+        <div><span class="fl">Contact Mobile</span><span class="fv">${escapeHtml(student.mobile || 'N/A')}</span></div>
+        <div><span class="fl">Hostel Status</span><span class="fv">${escapeHtml(student.hostelStatus || 'Day Scholar')}</span></div>
+      </div>
+      <div class="stit">Baseline Fee Structure & Applied Waivers</div>
+      <table class="ftbl">
+        <thead><tr><th>Fee Component / Particulars</th><th class="tr">Amount</th></tr></thead>
+        <tbody>${feeTableRows}${waiverTableRows}</tbody>
+      </table>
+      <div class="sgrid">
+        <div class="sc"><span class="sl">Gross Base Fee</span><span class="sv">Rs. ${totalBaseFee.toLocaleString('en-IN')}</span></div>
+        <div class="sc" style="border-color:#16A34A; background:#F0FFF4;"><span class="sl" style="color:#166534;">Waivers Applied</span><span class="sv" style="color:#166534;">- Rs. ${totalWaiver.toLocaleString('en-IN')}</span></div>
+        <div class="sc"><span class="sl" style="color:#059669">Total Paid</span><span class="sv" style="color:#059669">Rs. ${totalPaid.toLocaleString('en-IN')}</span></div>
+        <div class="sc hi"><span class="sl" style="color:#B88708">Outstanding Balance</span><span class="sv" style="color:#B88708">Rs. ${remaining.toLocaleString('en-IN')}</span></div>
+      </div>
+      <div class="stit">Complete Receipt & Payment Transaction History</div>
+      <table class="ftbl">
+        <thead><tr><th>Receipt No.</th><th>Date</th><th>Category & Installment</th><th>Payment Mode</th><th class="tr">Amount Paid</th><th class="tr">Balance After</th></tr></thead>
+        <tbody>${receiptLogRows}</tbody>
+      </table>
+      <div class="ftr">
+        <div><div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Computer-generated official statement &middot; Verified via Inspire College ERP System</div></div>
+        <div class="sig">Authorized Signatory</div>
+      </div>
+    </div>
+    <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>
+    </body></html>`;
     printWindow.document.write(statementHtml);
     printWindow.document.close();
     printWindow.focus();
-    triggerToast('Fee statement opened for printing/download.');
+    triggerToast('Complete fee statement opened for printing/download.');
   };
 
   // Stats calculations
@@ -1262,6 +1309,38 @@ export const AccountantDashboardView: React.FC = () => {
 
   const renderModals = () => (
     <>
+      {isProcessingUpload && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          zIndex: 99999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#FFFFFF'
+        }} className="anim-fade-in">
+          <div style={{
+            width: '56px',
+            height: '56px',
+            border: '4px solid rgba(251, 191, 36, 0.2)',
+            borderTop: '4px solid #FBBF24',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+            marginBottom: '20px'
+          }} />
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: '#FBBF24', letterSpacing: '0.04em' }}>
+            Processing & Uploading...
+          </h3>
+          <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#94A3B8', fontWeight: 600 }}>
+            Please wait while your request is being saved to the database.
+          </p>
+        </div>
+      )}
+
       {/* STUDENT PROFILE & FEE EDITOR MODAL */}
       {isStudentModalOpen && selectedStudent && editStudent && (
         <div style={styles.overlayOverlay} className="anim-fade-in">

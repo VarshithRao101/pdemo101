@@ -389,6 +389,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [facOtpInput, setFacOtpInput] = useState('');
   const [facActionType, setFacActionType] = useState<'add' | 'edit' | 'delete' | 'salary_payment'>('edit');
   const [isAddTeacherModalOpen, setIsAddTeacherModalOpen] = useState(false);
+  const [isProcessingUpload, setIsProcessingUpload] = useState(false);
   const [assignClass, setAssignClass] = useState('Junior MPC');
   const [assignSec, setAssignSec] = useState('Section A');
   const [assignSub] = useState('Physics');
@@ -942,61 +943,112 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
 
     const generatedDate = new Date().toLocaleString('en-IN');
-    const baseFee = Number(student.totalBaseFee || student.calculatedFee || student.tuitionFee || 0);
-    const totalPaid = Number(student.totalPaid || student.paidFee || 0);
-    const remaining = Number(student.remainingBalance || 0);
-    const waiver = Number(student.individualOverrideDeduction || student.scholarshipDeduction || 0);
+    const customSlots: Array<[string, number]> = (student.customFeeSlots || []).map((s: any) => [s.name, Number(s.amount || 0)]);
+    const feeRows: Array<[string, number]> = [
+      ['Tuition Fee', Number(student.tuitionFee || 0)],
+      ['Hostel Fee', Number(student.hostelFee || 0)],
+      ['Miscellaneous Fee', Number(student.miscellaneousFee || 0)],
+      ['Previous Pending', Number(student.previousPending || 0)],
+      ['Books Fee', Number(student.booksFee || 0)],
+      ['Uniform Fee', Number(student.uniformFees || 0)],
+      ['Internal Exam Fee', Number(student.internalExamFees || 0)],
+      ['Annual Exam Fee', Number(student.annualExamFees || 0)],
+      ['Lab Fee', Number(student.labFees || 0)],
+      ['Bus Fee', Number(student.busFees || 0)],
+      ...customSlots
+    ].filter(([, amount]) => amount > 0);
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Student Fee History - ${escapeHtml(student.admissionNumber || student.name)}</title>
-    <style>
-      @page { size: A4; margin: 12mm }
-      * { box-sizing: border-box }
-      body { margin: 0; color: #0F172A; background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
-      .page { max-width: 182mm; margin: 0 auto; padding: 4px }
-      .top-logo-block { text-align: center; margin-bottom: 16px }
-      .top-logo-block img { height: 74px; width: auto; display: block; margin: 0 auto 6px; object-fit: contain }
-      .top-logo-title { font-size: 22px; font-weight: 900; color: #0F172A; text-transform: uppercase; letter-spacing: 0.06em }
-      .top-logo-sub { font-size: 11px; font-weight: 800; color: #D4AF37; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
-      .scard { background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(3,1fr); gap: 12px }
-      .fl { font-size: 8.5px; font-weight: 800; color: #64748B; text-transform: uppercase; display: block }
-      .fv { font-size: 13px; font-weight: 800; color: #0F172A; display: block; margin-top: 3px }
-      .sgrid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 14px }
-      .sc { border: 1.5px solid #E2E8F0; border-radius: 10px; padding: 12px 14px; background: #FFF }
-      .sc .sl { font-size: 8.5px; font-weight: 800; color: #64748B; text-transform: uppercase }
-      .sc .sv { font-size: 16px; font-weight: 900; color: #0F172A; display: block; margin-top: 4px }
-      .ftr { margin-top: 24px; padding-top: 12px; border-top: 1.5px dashed #CBD5E1; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: #64748B }
-      .sig { border-top: 1.5px solid #0F172A; padding-top: 6px; font-size: 9px; font-weight: 800; color: #0F172A; text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
-      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; padding: 10px 24px; background: #0F172A; color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; }
-      @media print { .pbtn { display: none } }
-    </style></head>
-    <body>
-      <div class="page">
-        <button class="pbtn" onclick="window.print()">Print Student History Statement PDF</button>
-        <div class="top-logo-block">
-          <img src="${collegeLogo}" alt="Inspire College Logo"/>
-          <div class="top-logo-title">INSPIRE COLLEGE</div>
-          <div class="top-logo-sub">Student Fee & Transaction History Statement</div>
+    const tuitionWaiver = Number(student.tuitionWaiver || 0);
+    const hostelWaiver = Number(student.hostelWaiver || 0);
+    const transportWaiver = Number(student.transportWaiver || 0);
+    const miscWaiver = Number(student.miscWaiver || 0);
+    const overrideDeduction = Number(student.individualOverrideDeduction || student.scholarshipDeduction || 0);
+
+    const allWaiverRows: Array<[string, number]> = [
+      ['Tuition Waiver', tuitionWaiver],
+      ['Hostel Waiver', hostelWaiver],
+      ['Transport Waiver', transportWaiver],
+      ['Miscellaneous Waiver', miscWaiver]
+    ];
+    if (overrideDeduction > 0 && tuitionWaiver === 0 && hostelWaiver === 0 && miscWaiver === 0) {
+      allWaiverRows.push(['Special Scholarship Waiver', overrideDeduction]);
+    }
+    const waiverRows = allWaiverRows.filter(([, amount]) => amount > 0);
+    const totalWaiver = waiverRows.reduce((sum, [, amount]) => sum + amount, 0);
+
+    const totalBaseFee = feeRows.reduce((total, [, amount]) => total + amount, 0) || Number(student.totalBaseFee || student.calculatedFee || student.tuitionFee || 0);
+    const totalPaid = Number(student.totalPaid || student.paidFee || 0);
+    const remaining = Number(student.remainingBalance ?? Math.max(0, totalBaseFee - totalWaiver - totalPaid));
+    const receipts = [...(student.receipts || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const feeTableRows = feeRows.length > 0
+      ? feeRows.map(([label, amount]) => `<tr><td>${escapeHtml(label)}</td><td class="tr">Rs. ${amount.toLocaleString('en-IN')}</td></tr>`).join('')
+      : `<tr><td>Baseline Academic Course Fee</td><td class="tr">Rs. ${totalBaseFee.toLocaleString('en-IN')}</td></tr>`;
+
+    const waiverTableRows = waiverRows.map(([label, amount]) =>
+      `<tr class="wr" style="background:#F0FFF4;color:#166534;font-weight:800;"><td>${escapeHtml(label)}</td><td class="tr" style="color:#16A34A;">&minus; Rs. ${amount.toLocaleString('en-IN')}</td></tr>`
+    ).join('');
+
+    const receiptLogRows = receipts.length > 0
+      ? receipts.map(r => `
+          <tr>
+            <td><strong>${escapeHtml(r.receiptNumber)}</strong></td>
+            <td>${escapeHtml(r.date)}</td>
+            <td>${escapeHtml(r.category || 'Tuition')} &middot; ${escapeHtml(r.installment || 'Installment')}</td>
+            <td>${escapeHtml(r.mode || 'Cash')}</td>
+            <td class="tr" style="color:#059669;font-weight:900;">Rs. ${Number(r.amount || 0).toLocaleString('en-IN')}</td>
+            <td class="tr" style="font-weight:800;color:#0F172A;">Rs. ${Number(r.balance || 0).toLocaleString('en-IN')}</td>
+          </tr>
+        `).join('')
+      : `<tr><td colspan="6" style="text-align:center;color:#94A3B8;padding:12px;">No payment receipts logged yet.</td></tr>`;
+
+    const css = `@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#0F172A;background:#fff;font-family:'Inter','Segoe UI',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:11px}.page{max-width:182mm;margin:0 auto;padding:4px}.hdr{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:14px;margin-bottom:16px;border-bottom:3px solid #D4AF37}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;object-fit:contain;background:#fff;border-radius:10px;padding:4px;border:1px solid #D4AF37}.iname{color:#fff;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}.iaddr{color:#94A3B8;font-size:9.5px;line-height:1.3;margin-top:2px}.slbl strong{display:block;color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;text-align:right}.slbl span{color:#FBBF24;font-size:9.5px;font-weight:800;text-transform:uppercase}.scard{background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.fl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase;display:block}.fv{font-size:12.5px;font-weight:800;color:#0F172A;display:block;margin-top:3px}.stit{font-size:9.5px;font-weight:900;color:#0F172A;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 8px;border-bottom:1.5px solid #E2E8F0;padding-bottom:4px}.ftbl{width:100%;border-collapse:collapse;border:1.5px solid #CBD5E1;border-radius:10px;overflow:hidden;font-size:11px}.ftbl th{padding:8px 10px;background:#F1F5F9;color:#475569;font-size:8.5px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid #CBD5E1;font-weight:800}.ftbl td{padding:8px 10px;border-bottom:1px solid #E2E8F0}.ftbl tr:last-child td{border-bottom:none}.tr{text-align:right;font-weight:800}.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.sc{border:1.5px solid #E2E8F0;border-radius:10px;padding:12px 14px;background:#FFF}.sc.hi{border-color:#D4AF37;background:#FFFDF4}.sc .sl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase}.sc .sv{font-size:16px;font-weight:900;color:#0F172A;display:block;margin-top:4px}.sc.pd .sv{color:#059669}.sc.hi .sv{color:#D97706}.ftr{margin-top:24px;padding-top:12px;border-top:1.5px dashed #CBD5E1;display:flex;justify-content:space-between;align-items:flex-end;font-size:9px;color:#64748B}.sig{border-top:1.5px solid #0F172A;padding-top:4px;font-size:8px;font-weight:800;color:#0F172A;text-transform:uppercase;margin-top:24px;text-align:center;width:130px}.pbtn{display:flex;align-items:center;justify-content:center;margin:0 auto 16px;padding:10px 24px;background:linear-gradient(135deg,#0F172A,#1E293B);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer}@media print{.pbtn{display:none}}`;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fee Statement - ${escapeHtml(student.admissionNumber || student.name)}</title><style>${css}</style></head><body><div class="page">
+      <button class="pbtn" onclick="window.print()">Print Complete Fee Statement PDF</button>
+      <div class="hdr">
+        <div class="brand">
+          <img class="logo" src="${collegeLogo}" alt="Logo"/>
+          <div>
+            <div class="iname">INSPIRE ROYAL RESIDENTIAL JUNIOR COLLEGE</div>
+            <div class="iaddr">Campus: ${escapeHtml(student.branch || loggedInCampus)} &middot; Complete Financial Statement</div>
+          </div>
         </div>
-        <div class="scard">
-          <div><span class="fl">Student Name</span><span class="fv">${escapeHtml(student.name)}</span></div>
-          <div><span class="fl">Admission No.</span><span class="fv">${escapeHtml(student.admissionNumber || student.studentId || 'N/A')}</span></div>
-          <div><span class="fl">Course / Section</span><span class="fv">${escapeHtml(student.course || 'N/A')} &mdash; ${escapeHtml(student.section || 'N/A')}</span></div>
-          <div><span class="fl">Father's Name</span><span class="fv">${escapeHtml(student.fatherName || 'N/A')}</span></div>
-          <div><span class="fl">Contact Mobile</span><span class="fv">${escapeHtml(student.mobile || 'N/A')}</span></div>
-          <div><span class="fl">Campus Branch</span><span class="fv">${escapeHtml(student.branch || loggedInCampus)}</span></div>
-        </div>
-        <div class="sgrid">
-          <div class="sc"><span class="sl">Gross Base Fee</span><span class="sv">Rs. ${baseFee.toLocaleString('en-IN')}</span></div>
-          <div class="sc" style="border-color:#16A34A; background:#F0FFF4;"><span class="sl" style="color:#166534;">Waivers Applied</span><span class="sv" style="color:#166534;">- Rs. ${waiver.toLocaleString('en-IN')}</span></div>
-          <div class="sc"><span class="sl" style="color:#059669">Total Paid</span><span class="sv" style="color:#059669">Rs. ${totalPaid.toLocaleString('en-IN')}</span></div>
-          <div class="sc" style="border-color:#D4AF37; background:#FFFDF4;"><span class="sl" style="color:#B88708">Outstanding Balance</span><span class="sv" style="color:#B88708">Rs. ${remaining.toLocaleString('en-IN')}</span></div>
-        </div>
-        <div class="ftr">
-          <div><div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Verified via Inspire College ERP System</div></div>
-          <div class="sig">Authorized Signatory</div>
+        <div class="slbl">
+          <strong>Fee Statement</strong>
+          <span>Adm No: ${escapeHtml(student.admissionNumber || student.studentId || 'N/A')}</span>
         </div>
       </div>
-      <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>
+      <div class="scard">
+        <div><span class="fl">Student Name</span><span class="fv">${escapeHtml(student.name)}</span></div>
+        <div><span class="fl">Admission No.</span><span class="fv">${escapeHtml(student.admissionNumber || student.studentId || 'N/A')}</span></div>
+        <div><span class="fl">Course / Section</span><span class="fv">${escapeHtml(student.course || 'N/A')} &mdash; ${escapeHtml(student.section || 'N/A')}</span></div>
+        <div><span class="fl">Father's Name</span><span class="fv">${escapeHtml(student.fatherName || 'N/A')}</span></div>
+        <div><span class="fl">Contact Mobile</span><span class="fv">${escapeHtml(student.mobile || 'N/A')}</span></div>
+        <div><span class="fl">Hostel Status</span><span class="fv">${escapeHtml(student.hostelStatus || 'Day Scholar')}</span></div>
+      </div>
+      <div class="stit">Baseline Fee Structure & Applied Waivers</div>
+      <table class="ftbl">
+        <thead><tr><th>Fee Component / Particulars</th><th class="tr">Amount</th></tr></thead>
+        <tbody>${feeTableRows}${waiverTableRows}</tbody>
+      </table>
+      <div class="sgrid">
+        <div class="sc"><span class="sl">Gross Base Fee</span><span class="sv">Rs. ${totalBaseFee.toLocaleString('en-IN')}</span></div>
+        <div class="sc" style="border-color:#16A34A; background:#F0FFF4;"><span class="sl" style="color:#166534;">Waivers Applied</span><span class="sv" style="color:#166534;">- Rs. ${totalWaiver.toLocaleString('en-IN')}</span></div>
+        <div class="sc"><span class="sl" style="color:#059669">Total Paid</span><span class="sv" style="color:#059669">Rs. ${totalPaid.toLocaleString('en-IN')}</span></div>
+        <div class="sc hi"><span class="sl" style="color:#B88708">Outstanding Balance</span><span class="sv" style="color:#B88708">Rs. ${remaining.toLocaleString('en-IN')}</span></div>
+      </div>
+      <div class="stit">Complete Receipt & Payment Transaction History</div>
+      <table class="ftbl">
+        <thead><tr><th>Receipt No.</th><th>Date</th><th>Category & Installment</th><th>Payment Mode</th><th class="tr">Amount Paid</th><th class="tr">Balance After</th></tr></thead>
+        <tbody>${receiptLogRows}</tbody>
+      </table>
+      <div class="ftr">
+        <div><div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Computer-generated official statement &middot; Verified via Inspire College ERP System</div></div>
+        <div class="sig">Authorized Signatory</div>
+      </div>
+    </div>
+    <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>
     </body></html>`;
 
     printWindow.document.write(html);
@@ -1386,7 +1438,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const fetchTeachers = async () => {
     try {
-      const branchParam = role === 'admin2' ? loggedInCampus : (filterFacCampus !== 'All' ? filterFacCampus : undefined);
+      const branchParam = role === 'admin2' ? loggedInCampus : undefined;
       const data = await admin1Service.getTeachers(branchParam);
       if (Array.isArray(data)) {
         const uniqueMap = new Map();
@@ -1719,7 +1771,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const handleTeacherSave = async (updated: Teacher) => {
     setEditTeacher({ ...updated });
-    setFacActionType('save');
+    setFacActionType('edit');
     setFacOtpInput('');
     setIsFacOtpModalOpen(true);
   };
@@ -1871,6 +1923,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   };
 
   const submitFacOtp = async (keyToUse = '784920') => {
+    setIsProcessingUpload(true);
     try {
       setGlobalSecurityKey('784920');
       if (facActionType === 'add') {
@@ -1940,6 +1993,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       }
     } catch (err: any) {
       triggerToast(err.message || 'Operation failed.');
+    } finally {
+      setIsProcessingUpload(false);
     }
   };
 
@@ -5853,7 +5908,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 <html>
 <head>
   <meta charset="UTF-8"/>
-  <title>Expenditure Bill  ${exp.category}</title>
+  <title>Expenditure Bill - ${escapeHtml(exp.category)}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     *{margin:0;padding:0;box-sizing:border-box;}
@@ -5874,30 +5929,34 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     .total-label{font-size:14px;font-weight:700;color:#1a1a1a;}
     .total-amt{font-size:28px;font-weight:900;color:#D4AF37;}
     .footer{background:#f9f9f9;padding:20px 40px;border-top:1px solid #eee;text-align:center;font-size:11px;color:#999;}
-    .stamp{display:inline-block;border:2px solid #D4AF37;border-radius:8px;padding:6px 16px;font-size:11px;font-weight:700;color:#D4AF37;margin  <div class="page">
+    .stamp{display:inline-block;border:2px solid #D4AF37;border-radius:8px;padding:6px 16px;font-size:11px;font-weight:700;color:#D4AF37;margin-top:10px;}
+  </style>
+</head>
+<body>
+<div class="page">
   <div class="header" style="text-align: center; display: block;">
     <img src="${collegeLogo}" style="height: 60px; width: auto; display: block; margin: 0 auto 6px;" alt="Inspire College Logo"/>
     <div class="logo-text" style="font-size: 20px; font-weight: 900; color: #0F172A; text-transform: uppercase;">INSPIRE COLLEGE</div>
     <div class="logo-sub" style="font-size: 11px; font-weight: 800; color: #D4AF37; text-transform: uppercase; margin-top: 2px;">Expenditure Audit System</div>
   </div>
   <div class="body">
-    <div class="title" style="margin-top: 14px;">Expenditure Bill</div>
-    <div class="sub">Official record for internal financial audit</div>
-    <div class="row"><span>Category</span><strong>${exp.category}</strong></div>
-    <div class="row"><span>Description</span><strong>${exp.description}</strong></div>
-    <div class="row"><span>Branch / Campus</span><strong>${exp.branch || 'N/A'}</strong></div>
-    <div class="row"><span>Date of Expenditure</span><strong>${dateStr}</strong></div>
-    <div class="row"><span>Logged By</span><strong>Administrator</strong></div>
+    <div class="title" style="margin-top: 14px;">Expenditure Voucher Bill</div>
+    <div class="sub">Official financial voucher for campus expenditure accounting</div>
+    <div class="row"><span>Category</span><strong>${escapeHtml(exp.category)}</strong></div>
+    <div class="row"><span>Description</span><strong>${escapeHtml(exp.description || 'General expenditure')}</strong></div>
+    <div class="row"><span>Branch / Campus</span><strong>${escapeHtml(exp.branch || 'N/A')}</strong></div>
+    <div class="row"><span>Date of Expenditure</span><strong>${escapeHtml(dateStr)}</strong></div>
+    <div class="row"><span>Voucher Ref</span><strong>${escapeHtml(exp._id || exp.id || 'EXP-BILL')}</strong></div>
     <div class="total-row">
-      <div class="total-label">Total Amount Spent</div>
+      <div class="total-label">Total Amount Disbursed</div>
       <div class="total-amt">Rs.${exp.amount.toLocaleString('en-IN')}</div>
     </div>
     <div style="margin-top:20px;text-align:right;">
-      <div class="stamp"> APPROVED</div>
+      <div class="stamp">VERIFIED & APPROVED</div>
     </div>
   </div>
   <div class="footer">
-    This document is system-generated by the Inspire ERP Expenditure Tracker. For queries contact finance@inspirecolleges.edu
+    This voucher is system-generated by Inspire College ERP Expenditure Audit. Verified internal document.
   </div>
 </div>
 </body>
@@ -7298,6 +7357,37 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <button onClick={() => handlePermanentDeleteStudent()} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.2, backgroundColor: '#DC2626', color: '#FFF', fontWeight: 900 }} className="press-interactive">Yes, Purge Student</button>
             </div>
           </div>
+        </div>
+      )}
+      {isProcessingUpload && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          zIndex: 99999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#FFFFFF'
+        }} className="anim-fade-in">
+          <div style={{
+            width: '56px',
+            height: '56px',
+            border: '4px solid rgba(251, 191, 36, 0.2)',
+            borderTop: '4px solid #FBBF24',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+            marginBottom: '20px'
+          }} />
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: '#FBBF24', letterSpacing: '0.04em' }}>
+            Processing & Uploading...
+          </h3>
+          <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#94A3B8', fontWeight: 600 }}>
+            Please wait while your request is being saved to the database.
+          </p>
         </div>
       )}
     </div>
