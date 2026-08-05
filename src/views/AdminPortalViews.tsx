@@ -1446,7 +1446,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           const key = String(t._id || t.id);
           uniqueMap.set(key, t);
         });
-        setTeachers(Array.from(uniqueMap.values()));
+        const list = Array.from(uniqueMap.values());
+        setTeachers(list);
+
+        if (editTeacher) {
+          const fresh = list.find((t: any) => String(t._id || t.id) === String(editTeacher._id || editTeacher.id));
+          if (fresh) {
+            setSelectedTeacher(fresh);
+            setEditTeacher(fresh);
+          }
+        }
       }
     } catch (err: any) {
       console.error('Failed to load teachers from backend:', err);
@@ -3232,7 +3241,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       if (role === 'admin2' && t.branch !== loggedInCampus) return false;
       if (filterFacCampus !== 'All' && t.branch !== filterFacCampus) return false;
       if (filterStaffClassification !== 'All' && (t.classification || 'Teaching') !== filterStaffClassification) return false;
-      if (filterStaffSubject !== 'All' && (t.role || t.subject) !== filterStaffSubject) return false;
+      if (filterStaffSubject !== 'All') {
+        const roleOrSub = `${t.role || ''} ${t.subject || ''}`.toLowerCase();
+        const fLow = filterStaffSubject.toLowerCase();
+        if (fLow.includes('teacher') || fLow.includes('lecturer')) {
+          if (!roleOrSub.includes('teacher') && !roleOrSub.includes('lecturer') && !roleOrSub.includes('professor') && (t.classification || 'Teaching') !== 'Teaching') return false;
+        } else if (!roleOrSub.includes(fLow)) {
+          return false;
+        }
+      }
 
       // Search match
       const query = searchFac.toLowerCase().trim();
@@ -3310,6 +3327,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         joiningDate: new Date().toISOString().split('T')[0]
       };
 
+      setIsProcessingUpload(true);
       try {
         await admin1Service.createTeacher(newStaffPayload);
         triggerToast(`New staff member ${newFacName} registered under ${newStaffPayload.branch}.`);
@@ -3323,6 +3341,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         await fetchStaffSalaries();
       } catch (err: any) {
         triggerToast(err.message || 'Failed to register staff member.');
+      } finally {
+        setIsProcessingUpload(false);
       }
     };
 

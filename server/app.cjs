@@ -1368,9 +1368,9 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
       }
     }
 
-    const existing = await Teacher.findOne({ $or: [{ id: String(id).trim() }, { name: String(name).trim(), branch }] });
+    const existing = await Teacher.findOne({ id: String(id).trim() });
     if (existing) {
-      return res.status(409).json({ status: 'error', message: `Teacher with ID [${id}] or name already exists in campus [${branch}].` });
+      return res.status(409).json({ status: 'error', message: `Teacher with ID [${id}] already exists.` });
     }
 
     const teacher = await Teacher.create({
@@ -1384,7 +1384,8 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
       classification,
       role,
       status: 'Active',
-      salaryLedger: {}
+      salaryLedger: {},
+      monthlySalaries: {}
     });
 
     return res.status(201).json({ status: 'success', data: teacher });
@@ -1417,7 +1418,28 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
       }
     }
 
-    Object.assign(teacher, req.body);
+    const updatePayload = { ...req.body };
+    delete updatePayload._id;
+    delete updatePayload.id;
+    delete updatePayload.createdAt;
+    delete updatePayload.updatedAt;
+    delete updatePayload.__v;
+
+    if (updatePayload.branch) {
+      updatePayload.branch = normalizeCampus(updatePayload.branch);
+      if (!isValidCampus(updatePayload.branch)) {
+        return res.status(400).json({ status: 'error', message: `Invalid campus branch [${updatePayload.branch}].` });
+      }
+    }
+
+    if (updatePayload.salary !== undefined) {
+      updatePayload.salary = Number(updatePayload.salary) || 0;
+    }
+
+    Object.assign(teacher, updatePayload);
+    if (updatePayload.salaryLedger) teacher.markModified('salaryLedger');
+    if (updatePayload.monthlySalaries) teacher.markModified('monthlySalaries');
+
     await teacher.save();
 
     return res.json({ status: 'success', data: teacher });
@@ -1520,7 +1542,7 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
     const amt = Number(amountPaid) || Number(teacher.salary) || 0;
     const pDate = new Date().toISOString().split('T')[0];
 
-    teacher.salaryLedger[academicYear][month] = {
+    const monthRecord = {
       status: 'Paid',
       amountPaid: amt,
       paymentDate: pDate,
@@ -1528,8 +1550,13 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
       note
     };
 
+    teacher.salaryLedger[academicYear][month] = monthRecord;
+    if (!teacher.monthlySalaries) teacher.monthlySalaries = {};
+    teacher.monthlySalaries[month] = monthRecord;
+
     // Mark Mongoose mixed object modified
     teacher.markModified('salaryLedger');
+    teacher.markModified('monthlySalaries');
     await teacher.save();
 
     // Create a WorkerPayment log for History tab tracking
