@@ -1350,7 +1350,7 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
       return res.status(404).json({ status: 'error', message: 'Teacher record not found.' });
     }
 
-    if (req.user.role === 'admin2' && teacher.branch !== req.user.campus) {
+    if (req.user.role === 'admin2' && String(teacher.branch || '').toLowerCase().trim() !== String(req.user.campus || '').toLowerCase().trim()) {
       return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot modify staff at [${teacher.branch}].` });
     }
 
@@ -1405,7 +1405,7 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
       return res.status(404).json({ status: 'error', message: 'Teacher record not found.' });
     }
 
-    if (req.user.role === 'admin2' && teacher.branch !== req.user.campus) {
+    if (req.user.role === 'admin2' && String(teacher.branch || '').toLowerCase().trim() !== String(req.user.campus || '').toLowerCase().trim()) {
       return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot delete staff at [${teacher.branch}].` });
     }
 
@@ -1437,8 +1437,8 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
       return res.status(404).json({ status: 'error', message: 'Teacher not found.' });
     }
 
-    if (req.user.role === 'admin2' && teacher.branch !== req.user.campus) {
-      return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot process salary payments for staff at [${teacher.branch}].` });
+    if (req.user.role === 'admin2' && String(teacher.branch || '').toLowerCase().trim() !== String(req.user.campus || '').toLowerCase().trim()) {
+      return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot modify staff at [${teacher.branch}].` });
     }
 
     const { academicYear = '2026-2027', month, amountPaid, paymentMode = 'Bank Transfer', note = '' } = req.body || {};

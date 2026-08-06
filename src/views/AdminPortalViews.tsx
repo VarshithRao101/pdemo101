@@ -3218,7 +3218,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   }
 
   // SUBPAGE 2: STAFF & FACULTY REGISTRY (WITH 12-MONTH SALARY LEDGER)
-  if (activePage === 'teachers') {
+  if (activePage === 'teachers' || activePage === 'salary_status') {
     const monthsList = ["June", "July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May"];
     const currentMonth = "July";
 
@@ -7198,6 +7198,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   </div>
                   <h4 style={styles.moduleTitle}>Campus Expenditures</h4>
                   <p style={styles.moduleDesc}>Log and track local expenditures of {loggedInCampus}.</p>
+                </div>
+
+                <div onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
+                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+                  </div>
+                  <h4 style={styles.moduleTitle}>Faculty & Staff 12-Month Ledger</h4>
+                  <p style={styles.moduleDesc}>Manage campus teachers & 12-month salary ledgers for {loggedInCampus}.</p>
                 </div>
 
                 <div onClick={() => setActivePage('worker_payments')} style={styles.moduleCardNew} className="press-interactive">
