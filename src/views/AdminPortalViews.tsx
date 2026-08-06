@@ -3138,7 +3138,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   }
 
   // SUBPAGE 2: STAFF & FACULTY REGISTRY (WITH 12-MONTH SALARY LEDGER)
-  if (activePage === 'teachers' || activePage === 'salary_status') {
+  if (activePage === 'teachers' || activePage === 'salary_status' || activePage === 'worker_payments') {
     const monthsList = ["June", "July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May"];
     const currentMonth = "July";
 
@@ -7120,14 +7120,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   </div>
                   <h4 style={styles.moduleTitle}>Faculty & Staff 12-Month Ledger</h4>
                   <p style={styles.moduleDesc}>Manage campus teachers & 12-month salary ledgers for {loggedInCampus}.</p>
-                </div>
-
-                <div onClick={() => setActivePage('worker_payments')} style={styles.moduleCardNew} className="press-interactive">
-                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
-                  </div>
-                  <h4 style={styles.moduleTitle}>Worker Payments</h4>
-                  <p style={styles.moduleDesc}>Record and mark non-teaching staff payroll payouts.</p>
                 </div>
 
                 <div onClick={() => setActivePage('enquiries')} style={styles.moduleCardNew} className="press-interactive">

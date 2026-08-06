@@ -110,7 +110,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
     ? [
         { label: 'Campus Cockpit', type: 'dashboard', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
         { label: 'Campus Expenditures', type: 'expenditure', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('expenditure'); } },
-        { label: 'Worker Payments', type: 'worker_payments', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('worker_payments'); } },
+        { label: 'Faculty & Staff 12-Month Ledger', type: 'teachers', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('teachers'); } },
         { label: 'Admission Enquiries', type: 'enquiries', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('enquiries'); } },
       ]
     : [
