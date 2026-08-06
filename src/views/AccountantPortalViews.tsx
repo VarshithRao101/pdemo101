@@ -155,6 +155,8 @@ interface Receipt {
   balance: number;
   mode: string;
   cashier: string;
+  transactionRef?: string;
+  referenceNo?: string;
 }
 
 interface FeeAdjustment {
@@ -430,6 +432,7 @@ export const AccountantDashboardView: React.FC = () => {
   const [collectInstallment, setCollectInstallment] = useState('Installment 1');
   const [collectCategory, setCollectCategory] = useState('Tuition Fee');
   const [collectMode, setCollectMode] = useState('UPI / NetBanking');
+  const [collectTransactionRef, setCollectTransactionRef] = useState('');
   const [collectDate, setCollectDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [activeOverlay, setActiveOverlay] = useState<string | null>(null);
@@ -887,7 +890,8 @@ export const AccountantDashboardView: React.FC = () => {
         installment: collectInstallment,
         mode: collectMode,
         category: collectCategory,
-        date: collectDate
+        date: collectDate,
+        transactionRef: collectTransactionRef
       }, otp || securityKey);
 
       // Update the selected student display immediately, merging server response into existing profile
@@ -901,6 +905,7 @@ export const AccountantDashboardView: React.FC = () => {
       setSelectedStudent(updatedStudent as any);
       setEditStudent(updatedStudent as any);
       setCollectAmount('');
+      setCollectTransactionRef('');
       triggerToast(`Payment logged: Rs.${paymentAmount.toLocaleString('en-IN')}`);
       setIsPayOtpModalOpen(false);
       setPayOtpInput('');
@@ -929,6 +934,7 @@ export const AccountantDashboardView: React.FC = () => {
     const studentRoll = student.rollNumber || student.studentId || student.admissionNumber;
     const receiptAmount = `Rs. ${receipt.amount.toLocaleString('en-IN')}`;
     const receiptBalance = `Rs. ${receipt.balance.toLocaleString('en-IN')}`;
+    const txnRefDisplay = receipt.transactionRef || receipt.referenceNo || receipt.receiptNumber;
     const receiptHtml = `
       <html>
       <head>
@@ -941,19 +947,16 @@ export const AccountantDashboardView: React.FC = () => {
           .copy { flex: 1 1 0; border: 1.2px solid #E7D39A; border-radius: 14px; padding: 10px 11px 9px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; background: #fffdf8; overflow: hidden; }
           .copy-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
           .copy-tag { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #8B6A14; font-weight: 900; background: #FFF6DB; border: 1px solid #E7D39A; border-radius: 999px; padding: 4px 8px; }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; border-bottom: 1.8px solid #D4AF37; padding-bottom: 7px; }
-          .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-          .brand-logo { width: 34px; height: 34px; object-fit: contain; flex: 0 0 auto; }
-          .brand-copy { min-width: 0; }
-          .brand-name { font-size: 14px; font-weight: 900; color: #8F6A00; text-transform: uppercase; letter-spacing: 0.06em; line-height: 1.05; }
-          .brand-address { font-size: 8.5px; color: #475569; line-height: 1.25; margin-top: 2px; }
-          .receipt-meta { text-align: right; min-width: 110px; }
-          .receipt-title { font-size: 16px; font-weight: 900; color: #1E293B; letter-spacing: 0.12em; text-transform: uppercase; line-height: 1; }
-          .receipt-number { margin-top: 4px; font-size: 9px; font-weight: 800; color: #8B6A14; }
-          .receipt-date { font-size: 8.5px; color: #475569; margin-top: 2px; }
+          .header { text-align: center; border-bottom: 2px solid #D4AF37; padding-bottom: 8px; margin-bottom: 6px; }
+          .brand-logo { height: 50px; width: auto; object-fit: contain; margin: 0 auto 4px; display: block; }
+          .brand-name { font-size: 18px; font-weight: 900; color: #8F6A00; text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.1; margin: 0; }
+          .receipt-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; border-top: 1px dashed #EADFBF; padding-top: 4px; }
+          .receipt-title { font-size: 13px; font-weight: 900; color: #1E293B; letter-spacing: 0.08em; text-transform: uppercase; }
+          .receipt-number { font-size: 9px; font-weight: 800; color: #8B6A14; }
+          .receipt-date { font-size: 8.5px; color: #475569; }
           .section-title { font-size: 9px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: #8B6A14; margin-bottom: 5px; }
           .student-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
-          .field { display: flex; flex-direction: column; gap: 2px; padding: 5px 6px; border: 1px solid #EADFBF; border-radius: 9px; background: #FFFFFF; }
+          .field { display: flex; flex-direction: column; gap: 2px; padding: 5px 6px; border: 1px solid #EADFBF; border-radius: 99px; background: #FFFFFF; padding-left: 10px; }
           .label { font-size: 8px; text-transform: uppercase; color: #8B6A14; font-weight: 800; letter-spacing: 0.05em; }
           .value { font-size: 11px; font-weight: 800; color: #1E293B; line-height: 1.2; word-break: break-word; }
           .amount-wrap { display: flex; gap: 8px; align-items: stretch; }
@@ -995,13 +998,8 @@ export const AccountantDashboardView: React.FC = () => {
               <div style="width: 68px;"></div>
             </div>
             <div class="header">
-              <div class="brand">
-                <img src="${collegeLogo}" alt="Institution Logo" class="brand-logo" />
-                <div class="brand-copy">
-                  <div class="brand-name">${RECEIPT_INSTITUTION_NAME}</div>
-                  <div class="brand-address">${RECEIPT_INSTITUTION_ADDRESS}</div>
-                </div>
-              </div>
+              <img src="${collegeLogo}" alt="Institution Logo" class="brand-logo" />
+              <div class="brand-name">INSPIRE JUNIOR COLLEGE</div>
               <div class="receipt-meta">
                 <div class="receipt-title">Payment Receipt</div>
                 <div class="receipt-number">Receipt No. ${escapeHtml(receipt.receiptNumber)}</div>
@@ -1018,7 +1016,6 @@ export const AccountantDashboardView: React.FC = () => {
                 <div class="field"><span class="label">Mobile</span><span class="value">${escapeHtml(student.mobile)}</span></div>
                 <div class="field"><span class="label">Admission No.</span><span class="value">${escapeHtml(student.admissionNumber)}</span></div>
               </div>
-              \${svgChartHtml}
             </div>
             <div class="amount-wrap">
               <div class="amount-box">
@@ -1044,9 +1041,9 @@ export const AccountantDashboardView: React.FC = () => {
                 <table>
                   <thead>
                     <tr>
-                      <th style="width: 42%;">Description</th>
+                      <th style="width: 38%;">Description</th>
                       <th style="width: 20%;">Payment Type</th>
-                      <th style="width: 22%;">Reference / Transaction ID</th>
+                      <th style="width: 26%;">Transaction / UPI Ref No.</th>
                       <th style="width: 16%; text-align: right;">Amount</th>
                     </tr>
                   </thead>
@@ -1054,7 +1051,7 @@ export const AccountantDashboardView: React.FC = () => {
                     <tr>
                       <td>${escapeHtml(`${receipt.category} - ${receipt.installment}`)}</td>
                       <td>${escapeHtml(receipt.mode)}</td>
-                      <td>${escapeHtml(receipt.receiptNumber)}</td>
+                      <td>${escapeHtml(txnRefDisplay)}</td>
                       <td style="text-align: right;">${receiptAmount}</td>
                     </tr>
                   </tbody>
@@ -1075,17 +1072,12 @@ export const AccountantDashboardView: React.FC = () => {
           <div class="cut-line"></div>
           <div class="copy">
             <div class="copy-top">
-              <div class="copy-tag">Student Copy</div>
+              <div class="copy-tag">Campus Copy</div>
               <div style="width: 68px;"></div>
             </div>
             <div class="header">
-              <div class="brand">
-                <img src="${collegeLogo}" alt="Institution Logo" class="brand-logo" />
-                <div class="brand-copy">
-                  <div class="brand-name">${RECEIPT_INSTITUTION_NAME}</div>
-                  <div class="brand-address">${RECEIPT_INSTITUTION_ADDRESS}</div>
-                </div>
-              </div>
+              <img src="${collegeLogo}" alt="Institution Logo" class="brand-logo" />
+              <div class="brand-name">INSPIRE JUNIOR COLLEGE</div>
               <div class="receipt-meta">
                 <div class="receipt-title">Payment Receipt</div>
                 <div class="receipt-number">Receipt No. ${escapeHtml(receipt.receiptNumber)}</div>
@@ -1102,7 +1094,6 @@ export const AccountantDashboardView: React.FC = () => {
                 <div class="field"><span class="label">Mobile</span><span class="value">${escapeHtml(student.mobile)}</span></div>
                 <div class="field"><span class="label">Admission No.</span><span class="value">${escapeHtml(student.admissionNumber)}</span></div>
               </div>
-              \${svgChartHtml}
             </div>
             <div class="amount-wrap">
               <div class="amount-box">
@@ -1128,9 +1119,9 @@ export const AccountantDashboardView: React.FC = () => {
                 <table>
                   <thead>
                     <tr>
-                      <th style="width: 42%;">Description</th>
+                      <th style="width: 38%;">Description</th>
                       <th style="width: 20%;">Payment Type</th>
-                      <th style="width: 22%;">Reference / Transaction ID</th>
+                      <th style="width: 26%;">Transaction / UPI Ref No.</th>
                       <th style="width: 16%; text-align: right;">Amount</th>
                     </tr>
                   </thead>
@@ -1138,7 +1129,7 @@ export const AccountantDashboardView: React.FC = () => {
                     <tr>
                       <td>${escapeHtml(`${receipt.category} - ${receipt.installment}`)}</td>
                       <td>${escapeHtml(receipt.mode)}</td>
-                      <td>${escapeHtml(receipt.receiptNumber)}</td>
+                      <td>${escapeHtml(txnRefDisplay)}</td>
                       <td style="text-align: right;">${receiptAmount}</td>
                     </tr>
                   </tbody>
@@ -1156,7 +1147,6 @@ export const AccountantDashboardView: React.FC = () => {
               </div>
             </div>
           </div>
-          <div class="cut-line"></div>
         </div>
         <script>
           window.addEventListener('load', function () {
@@ -1426,90 +1416,6 @@ export const AccountantDashboardView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Section 2: Full Fee Structure Breakdown (Bill Format) */}
-              <div style={{
-                background: '#FFFFFF',
-                border: '1.5px solid #CBD5E1',
-                borderRadius: '16px',
-                padding: '18px',
-                boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #E2E8F0', paddingBottom: '10px' }}>
-                  <div>
-                    <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      INSPIRE JUNIOR COLLEGE
-                    </span>
-                    <h4 style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>
-                      Fee Structure & Bill Format
-                    </h4>
-                  </div>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: '#059669', backgroundColor: '#ECFDF5', padding: '4px 12px', borderRadius: '6px', border: '1px solid #A7F3D0' }}>
-                    Gross Total Base Fee: Rs.{(
-                      (Number(editStudent.tuitionFee) || 0) +
-                      (Number(editStudent.booksFee) || 0) +
-                      (Number(editStudent.uniformFees) || 0) +
-                      (Number(editStudent.hndFees) || 0) +
-                      (Number(editStudent.internalExamFees) || 0) +
-                      (Number(editStudent.annualExamFees) || 0) +
-                      (Number(editStudent.partyFees) || 0) +
-                      (Number(editStudent.busFees) || 0) +
-                      (Number(editStudent.labFees) || 0) +
-                      (Number(editStudent.handLoan) || 0) +
-                      (Number(editStudent.othersFee) || 0) +
-                      (Number(editStudent.hostelFee) || 0) +
-                      (Number(editStudent.miscellaneousFee) || 0) +
-                      ((editStudent.customFeeSlots || []).reduce((sum: number, s: any) => sum + (Number(s.amount) || 0), 0))
-                    ).toLocaleString('en-IN')}
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-                  {((editStudent.customFeeSlots && editStudent.customFeeSlots.length > 0)
-                    ? editStudent.customFeeSlots
-                    : getAccountantActiveFeeSlots(editStudent)
-                  ).map((slot: any) => (
-                    <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <label style={{ ...styles.formLabel, fontWeight: 700, color: '#1E293B' }}>
-                          {slot.name}
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const currentSlots = editStudent.customFeeSlots && editStudent.customFeeSlots.length > 0
-                              ? editStudent.customFeeSlots
-                              : getAccountantActiveFeeSlots(editStudent);
-                            const updatedSlots = currentSlots.filter((s: any) => s.id !== slot.id);
-                            setEditStudent({ ...editStudent, customFeeSlots: updatedSlots });
-                            triggerToast(`Fee slot "${slot.name}" deleted.`);
-                          }}
-                          style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#DC2626', borderRadius: '4px', width: '22px', height: '22px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}
-                          title="Delete Fee Slot"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      <input
-                        type="number"
-                        value={slot.amount}
-                        onChange={(e) => {
-                          const amt = parseFloat(e.target.value) || 0;
-                          const currentSlots = editStudent.customFeeSlots && editStudent.customFeeSlots.length > 0
-                            ? editStudent.customFeeSlots
-                            : getAccountantActiveFeeSlots(editStudent);
-                          const updatedSlots = currentSlots.map((s: any) => s.id === slot.id ? { ...s, amount: amt } : s);
-                          setEditStudent({ ...editStudent, customFeeSlots: updatedSlots });
-                        }}
-                        style={{ ...styles.textInputBox, fontWeight: 700, textAlign: 'right' }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <button
@@ -1517,7 +1423,7 @@ export const AccountantDashboardView: React.FC = () => {
                   style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0, backgroundColor: '#10B981', color: '#fff', fontWeight: 800 }}
                   className="press-interactive"
                 >
-                  Save & Update Profile & Fee Details
+                  Save & Update Student Profile
                 </button>
                 <button
                   onClick={() => { setStudentToDelete(editStudent); setIsDeleteConfirmModalOpen(true); }}
@@ -2561,14 +2467,26 @@ export const AccountantDashboardView: React.FC = () => {
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={styles.formLabel}>Payment Date</label>
-                        <input
-                          type="date"
-                          value={collectDate}
-                          onChange={(e) => setCollectDate(e.target.value)}
-                          style={styles.textInputBox}
-                        />
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                          <label style={styles.formLabel}>Payment Date</label>
+                          <input
+                            type="date"
+                            value={collectDate}
+                            onChange={(e) => setCollectDate(e.target.value)}
+                            style={styles.textInputBox}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                          <label style={styles.formLabel}>Transaction / UPI Ref No.</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. UPI/9849204128"
+                            value={collectTransactionRef}
+                            onChange={(e) => setCollectTransactionRef(e.target.value)}
+                            style={styles.textInputBox}
+                          />
+                        </div>
                       </div>
 
                       <div style={{ display: 'flex', gap: '10px' }}>

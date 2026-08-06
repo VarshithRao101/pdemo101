@@ -37,6 +37,7 @@ const paymentSchema = new mongoose.Schema({
   },
   date: { type: Date, default: Date.now },
   remarks: { type: String, default: '', trim: true },
+  transactionRef: { type: String, default: '', trim: true },
   idempotencyKey: { type: String, default: '', index: true }
 }, {
   timestamps: true

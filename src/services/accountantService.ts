@@ -88,7 +88,7 @@ export const updateStudentBio = async (id: string, fields: Partial<StudentProfil
 
 export const recordPayment = async (
   studentId: string,
-  paymentData: { amount: number; installment: string; mode: string; category: string; date?: string },
+  paymentData: { amount: number; installment: string; mode: string; category: string; date?: string; transactionRef?: string },
   securityKey?: string
 ): Promise<{ payment: FeePayment; student: StudentProfile }> => {
   const res = await apiClient.post<{ status: string; data: { payment: FeePayment; student: StudentProfile } }>(

@@ -1948,7 +1948,7 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
   try {
     await connectToDatabase();
     const { studentId } = req.params;
-    const { amount, category = 'Tuition Fee', installment = 'Installment 1', mode = 'UPI / NetBanking', date, remarks = '' } = req.body || {};
+    const { amount, category = 'Tuition Fee', installment = 'Installment 1', mode = 'UPI / NetBanking', date, remarks = '', transactionRef = '' } = req.body || {};
 
     if (!isValidPositiveNumber(amount) || Number(amount) <= 0) {
       return res.status(400).json({ status: 'error', message: 'Amount must be a valid positive number.' });
@@ -1985,7 +1985,8 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
             category: existingPayment.category,
             mode: existingPayment.paymentMode,
             cashier: existingPayment.cashier,
-            date: existingPayment.date
+            date: existingPayment.date,
+            transactionRef: existingPayment.transactionRef || ''
           },
           student
         }
@@ -1996,6 +1997,7 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
     const cashierUsername = req.user.username;
 
     const payAmt = Math.round(Number(amount) * 100) / 100;
+    const finalTxnRef = String(transactionRef || req.body.referenceNo || '').trim();
 
     const newPayment = await Payment.create({
       receiptNumber,
@@ -2010,6 +2012,7 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
       branch: student.branch,
       date: date ? new Date(date) : new Date(),
       remarks: remarks || '',
+      transactionRef: finalTxnRef,
       idempotencyKey
     });
 
@@ -2044,7 +2047,8 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
       amount: newPayment.amount,
       balance: updatedStudent.remainingBalance,
       mode: newPayment.paymentMode,
-      cashier: newPayment.cashier
+      cashier: newPayment.cashier,
+      transactionRef: newPayment.transactionRef || ''
     };
     updatedStudent.receipts = Array.isArray(updatedStudent.receipts) ? updatedStudent.receipts : [];
     updatedStudent.receipts.push(receiptSummary);
@@ -2061,7 +2065,8 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
       installment: newPayment.installment,
       mode: newPayment.paymentMode,
       cashier: newPayment.cashier,
-      date: newPayment.date
+      date: newPayment.date,
+      transactionRef: newPayment.transactionRef || ''
     };
 
     // Return the freshly-updated student values to ensure frontend reflects DB
