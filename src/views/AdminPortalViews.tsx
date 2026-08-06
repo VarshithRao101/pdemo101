@@ -533,14 +533,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const getAdminActiveFeeSlots = (stu: any, breakdown?: any) => {
     if (!stu && !breakdown) return [];
-    if (stu?.customFeeSlots && Array.isArray(stu.customFeeSlots) && stu.customFeeSlots.length > 0) {
-      return stu.customFeeSlots.map((c: any, idx: number) => ({
-        id: c.id ? `${c.id}_${idx}` : `${c.name}_${idx}`,
-        name: c.name,
-        amount: Number(c.amount) || 0,
-        isDefault: false
-      }));
-    }
     const baseSlots: Array<{ id: string; name: string; amount: number; isDefault?: boolean }> = [];
 
     const tuition = breakdown ? breakdown.tuitionFee : (stu?.tuitionFee || 0);
@@ -548,7 +540,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     const misc = breakdown ? breakdown.miscFee : (stu?.miscellaneousFee || 0);
     const prevPending = breakdown ? breakdown.previousPending : (stu?.previousPending || 0);
 
-    if (tuition) baseSlots.push({ id: 'tuitionFee', name: 'Tuition Fee', amount: Number(tuition) || 0, isDefault: true });
+    // Academic Tuition Fee always present
+    baseSlots.push({ id: 'tuitionFee', name: 'Tuition Fee (Academic)', amount: Number(tuition) || 0, isDefault: true });
     if (hostel) baseSlots.push({ id: 'hostelFee', name: 'Hostel Fee', amount: Number(hostel) || 0, isDefault: true });
     if (misc) baseSlots.push({ id: 'miscFee', name: 'Miscellaneous Fee', amount: Number(misc) || 0, isDefault: true });
     if (prevPending) baseSlots.push({ id: 'previousPending', name: 'Previous Pending', amount: Number(prevPending) || 0, isDefault: true });
@@ -562,6 +555,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     if (stu?.busFees) baseSlots.push({ id: 'busFees', name: 'Bus Fees', amount: Number(stu.busFees) || 0, isDefault: true });
     if (stu?.labFees) baseSlots.push({ id: 'labFees', name: 'Lab Fees', amount: Number(stu.labFees) || 0, isDefault: true });
     if (stu?.handLoan) baseSlots.push({ id: 'handLoan', name: 'Hand Loan', amount: Number(stu.handLoan) || 0, isDefault: true });
+
+    if (stu?.customFeeSlots && Array.isArray(stu.customFeeSlots)) {
+      const standardNames = ['tuition fee', 'tuition fee (academic)', 'hostel fee', 'miscellaneous fee', 'previous pending', 'books fee', 'uniform fees', 'hnd fees', 'internal exam', 'annual exam', 'party fees', 'bus fees', 'lab fees', 'hand loan'];
+      stu.customFeeSlots.forEach((c: any, idx: number) => {
+        if (c && c.name && !standardNames.includes(String(c.name).toLowerCase().trim())) {
+          baseSlots.push({
+            id: c.id ? `${c.id}_${idx}` : `custom_${c.name}_${idx}`,
+            name: c.name,
+            amount: Number(c.amount) || 0,
+            isDefault: false
+          });
+        }
+      });
+    }
 
     return baseSlots;
   };
@@ -3046,93 +3053,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     </div>
                   </div>
 
-                  {/* Section 3: Itemized Fee Structure Breakdown (Bill Format) */}
-                  <div style={{
-                    background: '#FFFFFF',
-                    border: '1.5px solid #CBD5E1',
-                    borderRadius: '16px',
-                    padding: '18px',
-                    boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px',
-                    marginTop: '8px'
-                  }}>
-                    {/* Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #E2E8F0', paddingBottom: '10px' }}>
-                      <div>
-                        <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                          INSPIRE JUNIOR COLLEGE
-                        </span>
-                        <h4 style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>
-                          Fee Structure & Bill Format
-                        </h4>
-                      </div>
-                      <div style={{ fontSize: '12px', fontWeight: 900, color: '#059669', backgroundColor: '#ECFDF5', padding: '4px 12px', borderRadius: '6px', border: '1px solid #A7F3D0' }}>
-                        Gross Total Base Fee: Rs.{(
-                          (Number(editStudent.tuitionFee) || 0) +
-                          (Number(editStudent.booksFee) || 0) +
-                          (Number(editStudent.uniformFees) || 0) +
-                          (Number(editStudent.hndFees) || 0) +
-                          (Number(editStudent.internalExamFees) || 0) +
-                          (Number(editStudent.annualExamFees) || 0) +
-                          (Number(editStudent.partyFees) || 0) +
-                          (Number(editStudent.busFees) || 0) +
-                          (Number(editStudent.labFees) || 0) +
-                          (Number(editStudent.handLoan) || 0) +
-                          (Number(editStudent.othersFee) || 0) +
-                          (Number(editStudent.hostelFee) || 0) +
-                          (Number(editStudent.miscellaneousFee) || 0) +
-                          ((editStudent.customFeeSlots || []).reduce((sum: number, s: any) => sum + (Number(s.amount) || 0), 0))
-                        ).toLocaleString('en-IN')}
-                      </div>
-                    </div>
-
-                    {/* Fee Section Description (Left) & Amount Inputs (Right) - Only Finalized Active Slots */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-                      {((editStudent.customFeeSlots && editStudent.customFeeSlots.length > 0)
-                        ? editStudent.customFeeSlots
-                        : getAdminActiveFeeSlots(editStudent)
-                      ).map((slot: any) => (
-                        <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <label style={{ ...styles.formLabel, fontWeight: 700, color: '#1E293B' }}>
-                              {slot.name}
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const currentSlots = editStudent.customFeeSlots && editStudent.customFeeSlots.length > 0
-                                  ? editStudent.customFeeSlots
-                                  : getAdminActiveFeeSlots(editStudent);
-                                const updatedSlots = currentSlots.filter((s: any) => s.id !== slot.id);
-                                setEditStudent({ ...editStudent, customFeeSlots: updatedSlots });
-                                triggerToast(`Fee slot "${slot.name}" deleted.`);
-                              }}
-                              style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', color: '#DC2626', borderRadius: '4px', width: '22px', height: '22px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}
-                              title="Delete Fee Slot"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                          <input
-                            type="number"
-                            value={slot.amount}
-                            onChange={(e) => {
-                              const amt = parseFloat(e.target.value) || 0;
-                              const currentSlots = editStudent.customFeeSlots && editStudent.customFeeSlots.length > 0
-                                ? editStudent.customFeeSlots
-                                : getAdminActiveFeeSlots(editStudent);
-                              const updatedSlots = currentSlots.map((s: any) => s.id === slot.id ? { ...s, amount: amt } : s);
-                              setEditStudent({ ...editStudent, customFeeSlots: updatedSlots });
-                            }}
-                            style={{ ...styles.textInputBox, fontWeight: 700, textAlign: 'right' }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
                   {/* Actions Bar */}
                   <div style={{ display: 'flex', gap: '12px', marginTop: '14px', borderTop: '1px solid #E2E8F0', paddingTop: '14px' }}>
                     <button
@@ -5281,23 +5201,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         if (res.status === 'success') {
           const breakdown = await admin2Service.getFeeBreakdown(studentKey, targetBranch);
           setFeeBreakdownData(breakdown);
-          const updatedStu = {
+          const freshStudentDoc = res.data?.student || {
             ...selectedFeeStudent,
             tuitionWaiver,
             hostelWaiver,
             transportWaiver,
             miscWaiver,
-            customFeeSlots: updatedCustomSlots
+            customFeeSlots: updatedCustomSlots,
+            remainingBalance: breakdown.remainingBalance
           };
-          setSelectedFeeStudent(updatedStu as any);
-          setStudents(prev => prev.map(s => (s._id === selectedFeeStudent._id || s.admissionNumber === selectedFeeStudent.admissionNumber) ? {
-            ...s,
-            tuitionWaiver,
-            hostelWaiver,
-            transportWaiver,
-            miscWaiver,
-            customFeeSlots: updatedCustomSlots
-          } : s));
+          setSelectedFeeStudent(freshStudentDoc as any);
+          await fetchStudents('');
 
           triggerToast(`Fee overrides updated for ${selectedFeeStudent.name}.`);
           setIsFeeOtpOpen(false);

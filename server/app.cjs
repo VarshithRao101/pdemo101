@@ -1184,11 +1184,11 @@ app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin
 
 // --- FEE WAIVER ROUTE ---
 
-app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, async (req, res) => {
+app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students/:studentId/fee-override', '/api/admin/students/:studentId/fee-override'], authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, async (req, res) => {
   try {
     await connectToDatabase();
     const { studentId } = req.params;
-    const { tuitionWaiver = 0, hostelWaiver = 0, transportWaiver = 0, miscWaiver = 0 } = req.body;
+    const { tuitionWaiver = 0, hostelWaiver = 0, transportWaiver = 0, miscWaiver = 0, customFeeSlots } = req.body;
 
     if (!isValidPositiveNumber(tuitionWaiver) || !isValidPositiveNumber(hostelWaiver) || !isValidPositiveNumber(transportWaiver) || !isValidPositiveNumber(miscWaiver)) {
       return res.status(400).json({ status: 'error', message: 'Waiver amounts must be valid non-negative numbers.' });
@@ -1211,6 +1211,10 @@ app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, req
     student.hostelWaiver = Number(hostelWaiver);
     student.transportWaiver = Number(transportWaiver);
     student.miscWaiver = Number(miscWaiver);
+
+    if (customFeeSlots !== undefined && Array.isArray(customFeeSlots)) {
+      student.customFeeSlots = customFeeSlots;
+    }
 
     const standardKeys = ['tuitionfee', 'hostelfee', 'transportfee', 'miscellaneousfee', 'previouspending', 'tuition', 'hostel', 'transport', 'misc'];
     const cleanedSlots = (student.customFeeSlots || []).filter(slot => {
@@ -1246,7 +1250,8 @@ app.patch('/api/admin2/students/:studentId/fee-override', authenticateToken, req
         hostelWaiver: student.hostelWaiver,
         transportWaiver: student.transportWaiver,
         miscWaiver: student.miscWaiver,
-        remainingBalance: student.remainingBalance
+        remainingBalance: student.remainingBalance,
+        student
       }
     });
   } catch (err) {
@@ -2738,7 +2743,7 @@ app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin
 });
 
 // --- FEE BREAKDOWN ---
-app.get('/api/admin2/students/:studentId/fee-breakdown', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
+app.get(['/api/admin1/students/:studentId/fee-breakdown', '/api/admin2/students/:studentId/fee-breakdown', '/api/admin/students/:studentId/fee-breakdown'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
   try {
     await connectToDatabase();
     const { studentId } = req.params;
