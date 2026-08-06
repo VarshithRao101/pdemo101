@@ -79,6 +79,57 @@ const CAMPUSES_LIST = [
   { name: 'Bheemaram Campus 2', code: 'BC·2', desc: 'Tranquil residential campus with AC hostels and round-the-clock study supervision.', col: '#7C3AED', bg: 'linear-gradient(135deg,#4C1D95,#8B5CF6)' },
 ];
 
+const CAMPUS_INSIGHT_ITEMS = [
+  {
+    id: 1,
+    title: 'Advanced Physics & Robotics Lab',
+    category: 'Science Labs',
+    campus: 'Erragattugutta Campus 1',
+    subtitle: 'Precision optics, mechanics, and electrodynamics experiment benches for JEE & NEET practicals.',
+    tag: '#PhysicsLab',
+  },
+  {
+    id: 2,
+    title: 'Air-Conditioned Digital Lecture Hall',
+    category: 'Smart Classrooms',
+    campus: 'Erragattugutta Campus 2',
+    subtitle: 'High-definition interactive smartboards, ergonomic seating, and acoustic clarity.',
+    tag: '#DigitalClassroom',
+  },
+  {
+    id: 3,
+    title: 'Botany & Organic Chemistry Lab',
+    category: 'Science Labs',
+    campus: 'Bheemaram Campus 1',
+    subtitle: 'Full spectrum bio-chemical reaction setups and NCERT line-by-line experiment stations.',
+    tag: '#BioChemLab',
+  },
+  {
+    id: 4,
+    title: 'Central Library & Silent Study Cabins',
+    category: 'Digital Library',
+    campus: 'Erragattugutta Campus 1',
+    subtitle: 'Over 10,000 reference volumes, entrance question archives, and individual study pods.',
+    tag: '#Library',
+  },
+  {
+    id: 5,
+    title: 'AC Hostels & Living Suites',
+    category: 'Residential Hostels',
+    campus: 'Bheemaram Campus 2',
+    subtitle: 'Comfortable climate-controlled residential rooms with 24/7 security & warden supervision.',
+    tag: '#HostelLife',
+  },
+  {
+    id: 6,
+    title: 'Sports & Recreation Indoor Arena',
+    category: 'Sports & Recreations',
+    campus: 'Erragattugutta Campus 2',
+    subtitle: 'Badminton courts, table tennis lounges, and fitness zone for student physical wellness.',
+    tag: '#SportsComplex',
+  },
+];
+
 const FEATURES = [
   { label: 'Doubt Clarification Desks', desc: 'Dedicated subject-expert desks for instant, personalized doubt resolution at every campus.' },
   { label: 'Individual Mentorship', desc: 'Each student is assigned a personal mentor who tracks daily progress and intervenes proactively.' },
@@ -400,6 +451,7 @@ export const PortfolioView: React.FC = () => {
   const [enquiryError, setEnquiryError] = useState('');
   const [selectedClip, setSelectedClip] = useState<typeof PAPER_CLIPS[0] | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [galleryFilter, setGalleryFilter] = useState('All');
   const [scrollPct, setScrollPct] = useState(0);
   const [scrolled, setScrolled] = useState(false);
 
@@ -409,6 +461,7 @@ export const PortfolioView: React.FC = () => {
   const streamsRef = useReveal(0.1);
   const aboutRef = useReveal(0.1);
   const campusesRef = useReveal(0.1);
+  const galleryRef = useReveal(0.1);
   const enquiryReveal = useReveal(0.1);
 
   // Scroll progress
@@ -545,8 +598,8 @@ export const PortfolioView: React.FC = () => {
               <span style={{ color: '#fff', fontWeight: 900, fontSize: 15, fontFamily: "'Merriweather',serif" }}>Inspire Junior College</span>
             </a>
             {/* Desktop links */}
-            <div className="desk-nav" style={{ display: 'flex', alignItems: 'center', gap: 32, width: '100%', justifyContent: 'center' }}>
-              {[['#about','About College'],['#streams','Academic Streams'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#mentorship','Mentorship'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
+            <div className="desk-nav" style={{ display: 'flex', alignItems: 'center', gap: 28, width: '100%', justifyContent: 'center' }}>
+              {[['#about','About College'],['#streams','Academic Streams'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#campus-gallery','Insight Gallery'],['#mentorship','Mentorship'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
                 <a key={h} href={h} className="nl">{l}</a>
               ))}
             </div>
@@ -561,7 +614,7 @@ export const PortfolioView: React.FC = () => {
           {/* Mobile dropdown */}
           {mobileOpen && (
             <div style={{ background: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.1)', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 4, animation: 'navSlide 0.28s ease both' }}>
-              {[['#about','About College'],['#streams','Academic Streams'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
+              {[['#about','About College'],['#streams','Academic Streams'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#campus-gallery','Insight Gallery'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
                 <a key={h} href={h} onClick={() => setMobileOpen(false)} style={{ color: '#CBD5E1', fontSize: 15, fontWeight: 700, textDecoration: 'none', padding: '10px 12px', borderRadius: 8, transition: 'background 0.2s, color 0.2s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#CBD5E1'; }}
@@ -926,6 +979,152 @@ export const PortfolioView: React.FC = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            CAMPUS INSIGHT GALLERY (PHOTO EXHIBIT & PLACEHOLDERS)
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section id="campus-gallery" className="section-pad bg-grid-animated" style={{ padding: '72px 16px', background: 'linear-gradient(180deg,#FAFCFF 0%,#F1F5F9 100%)', position: 'relative', borderTop: '1px solid #E2E8F0' }}>
+          <div ref={galleryRef.ref} className="ic">
+            <div className={`reveal ${galleryRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 740, margin: '0 auto 24px' }}>
+              <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>
+                Infrastructure Exhibit
+              </div>
+              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
+                Campus Insight Gallery
+              </h2>
+              <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75 }}>
+                An exclusive visual showcase of our state-of-the-art academic infrastructure, smart classrooms, advanced science laboratories, and residential amenities across our campuses.
+              </p>
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className={`reveal d200 ${galleryRef.visible ? 'visible' : ''}`} style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 36 }}>
+              {['All', 'Smart Classrooms', 'Science Labs', 'Digital Library', 'Residential Hostels', 'Sports & Recreations'].map(cat => {
+                const isActive = galleryFilter === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setGalleryFilter(cat)}
+                    style={{
+                      padding: '9px 18px',
+                      borderRadius: 20,
+                      fontSize: 12.5,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      border: isActive ? '1.5px solid #1E3A8A' : '1.5px solid #CBD5E1',
+                      background: isActive ? 'linear-gradient(135deg,#0F172A,#1E3A8A)' : '#FFFFFF',
+                      color: isActive ? '#FFFFFF' : '#475569',
+                      boxShadow: isActive ? '0 4px 14px rgba(30,58,138,0.22)' : '0 2px 6px rgba(0,0,0,0.03)',
+                      transition: 'all 0.22s ease',
+                    }}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Placeholder Gallery Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 24 }}>
+              {CAMPUS_INSIGHT_ITEMS
+                .filter(item => galleryFilter === 'All' || item.category === galleryFilter)
+                .map((item, i) => (
+                  <div
+                    key={item.id}
+                    className={`ch reveal d${(i + 1) * 100} ${galleryRef.visible ? 'visible' : ''}`}
+                    style={{
+                      background: '#0F172A',
+                      borderRadius: 22,
+                      border: '1.5px solid rgba(255,255,255,0.08)',
+                      overflow: 'hidden',
+                      boxShadow: '0 12px 32px rgba(15,23,42,0.14)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      position: 'relative',
+                    }}
+                  >
+                    {/* Placeholder Media Header Box */}
+                    <div style={{
+                      height: 195,
+                      position: 'relative',
+                      background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderBottom: '1px solid rgba(255,255,255,0.06)',
+                      padding: 20,
+                      textAlign: 'center',
+                    }}>
+                      {/* Animated Shimmer Overlay */}
+                      <div style={{
+                        position: 'absolute', inset: 0,
+                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent)',
+                        backgroundSize: '400px 100%',
+                        animation: 'shimmer 2.5s infinite',
+                        pointerEvents: 'none',
+                      }} />
+
+                      {/* Camera / Image Wireframe Icon */}
+                      <div style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: 16,
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1.5px dashed rgba(245,158,11,0.5)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: 10,
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                      }}>
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={ACCENT_GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                          <circle cx="8.5" cy="8.5" r="1.5"/>
+                          <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                      </div>
+
+                      <span style={{
+                        fontSize: 10.5,
+                        fontWeight: 900,
+                        color: ACCENT_GOLD,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        background: 'rgba(245,158,11,0.12)',
+                        border: '1px solid rgba(245,158,11,0.3)',
+                        padding: '3px 10px',
+                        borderRadius: 12,
+                      }}>
+                        Image Placeholder
+                      </span>
+                    </div>
+
+                    {/* Content Box */}
+                    <div style={{ padding: '20px 22px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: '#93C5FD', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.category}</span>
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B' }}>{item.tag}</span>
+                        </div>
+                        <h3 style={{ fontSize: 16.5, fontWeight: 800, color: '#FFFFFF', margin: '0 0 6px', lineHeight: 1.35 }}>
+                          {item.title}
+                        </h3>
+                        <p style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.6, margin: '0 0 14px' }}>
+                          {item.subtitle}
+                        </p>
+                      </div>
+
+                      <div style={{ paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#CBD5E1' }}>📍 {item.campus}</span>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: '#38BDF8', letterSpacing: '0.04em' }}>COMING SOON</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
             </div>
           </div>
         </section>
