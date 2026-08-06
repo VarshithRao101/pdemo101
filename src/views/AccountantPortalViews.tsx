@@ -1903,7 +1903,7 @@ export const AccountantDashboardView: React.FC = () => {
                       style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: '#10B981', color: '#FFFFFF', fontWeight: 800 }}
                       className="press-interactive"
                     >
-                      Proceed to Security OTP & Register Student
+                      Register Student
                     </button>
                   </div>
                 </div>

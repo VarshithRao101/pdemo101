@@ -503,65 +503,9 @@ function enforceCampusIsolation(req, res, next) {
   next();
 }
 
-// Security OTP PIN Verification Middleware
+// Security PIN/OTP Middleware - Auto-approved per requirements
 async function verifySecurityOtp(req, res, next) {
-  const otpHeader = req.headers['x-security-otp'] || req.headers['x-security-key'];
-  if (!otpHeader || !String(otpHeader).trim()) {
-    return res.status(403).json({
-      status: 'error',
-      message: 'Security PIN (OTP) required in X-Security-OTP header.'
-    });
-  }
-
-  try {
-    let user = null;
-    if (!isDatabaseTemporarilyBlocked()) {
-      try {
-        await connectToDatabase();
-        user = await User.findById(req.user.id);
-      } catch {}
-    }
-
-    if (!user && req.user?.username) {
-      const resolvedUsername = resolveUsername(req.user.username);
-      const seedUser = defaultSeedUsers.find(u => u.username === resolvedUsername);
-      if (seedUser) {
-        user = {
-          username: seedUser.username,
-          role: seedUser.role,
-          pin: bcrypt.hashSync(seedUser.pin, 10)
-        };
-      } else if (resolvedUsername === FIXED_AUTHENTICATOR_USERNAME) {
-        user = {
-          username: FIXED_AUTHENTICATOR_USERNAME,
-          role: 'authenticator',
-          pin: bcrypt.hashSync(FIXED_AUTHENTICATOR_PIN, 10)
-        };
-      }
-    }
-
-    const providedOtp = String(otpHeader).trim().toUpperCase();
-    const isBcryptMatch = user && user.pin ? safeBcryptCompare(providedOtp, user.pin) : false;
-    const dateSeed = getLocalDateSeed();
-    const isOtpMatch = isBcryptMatch ||
-      providedOtp === '784920' ||
-      providedOtp === generate24HourDeterministicCode(`pin_${req.user?.username || ''}`, dateSeed) ||
-      providedOtp === generate24HourDeterministicCode('pin_admin1', dateSeed) ||
-      providedOtp === generate24HourDeterministicCode('otp_expenditure', dateSeed) ||
-      providedOtp === generate24HourDeterministicCode('otp_finance', dateSeed) ||
-      providedOtp === generate24HourDeterministicCode('otp_fee_override', dateSeed);
-
-    if (!isOtpMatch) {
-      return res.status(403).json({
-        status: 'error',
-        message: 'Invalid Security PIN (OTP) provided.'
-      });
-    }
-
-    next();
-  } catch (err) {
-    return res.status(500).json({ status: 'error', message: 'Internal security PIN verification error.' });
-  }
+  next();
 }
 
 

@@ -3157,16 +3157,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             </div>
           ) : null}
 
-          {/* STUDENT REGISTRATION OTP MODAL */}
+          {/* STUDENT REGISTRATION CONFIRMATION MODAL */}
           {isRegStuOtpModalOpen && (
             <div style={styles.overlayOverlay}>
               <div style={{ ...styles.overlaySheet, maxWidth: '440px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ ...styles.modalTitle, color: 'var(--royal-gold)', margin: 0 }}>Security Authorization OTP</h3>
+                  <h3 style={{ ...styles.modalTitle, color: 'var(--royal-gold)', margin: 0 }}>Confirm Student Registration</h3>
                   <button onClick={() => !isSubmittingStudent && setIsRegStuOtpModalOpen(false)} disabled={isSubmittingStudent} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: isSubmittingStudent ? 'not-allowed' : 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}>×</button>
                 </div>
-                <p style={{ fontSize: '12px', color: 'var(--muted-gray)', marginBottom: '14px', lineHeight: 1.4 }}>
-                  Enter your 6-digit Security Authorization Key / OTP to finalize student registration for <strong>{newStuName}</strong> (Adm No: {newStuAdmissionNumber || `ADM2400${students.length + 1}`}).
+                <p style={{ fontSize: '13px', color: 'var(--dark-charcoal)', marginBottom: '16px', lineHeight: 1.5, fontWeight: 600 }}>
+                  Are you sure you want to finalize student registration for <strong>{newStuName}</strong> (Adm No: <strong>{newStuAdmissionNumber || `ADM2400${students.length + 1}`}</strong>)?
                 </p>
                 {regStuError && <div style={{ marginBottom: '14px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', fontSize: '12px', fontWeight: 700 }}>{regStuError}</div>}
 
@@ -3175,26 +3175,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div style={{ width: '36px', height: '36px', border: '4px solid rgba(0,0,0,.1)', borderLeftColor: 'transparent', borderRadius: '50%', animation: 'spin89345 1s linear infinite' }} />
                   </div>
                 ) : (
-                  <>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
-                      <label style={styles.formLabel}>Enter 6-Digit Security Key (OTP)</label>
-                      <input
-                        type="text"
-                        placeholder="Enter OTP or Daily PIN"
-                        value={regStuOtpInput}
-                        onChange={(e) => setRegStuOtpInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && submitStudentRegistrationWithOtp()}
-                        style={{ ...styles.textInputBox, fontSize: '1.1rem', letterSpacing: '0.1em', fontFamily: 'monospace', borderColor: 'var(--royal-gold)' }}
-                        autoFocus
-                      />
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button onClick={() => setIsRegStuOtpModalOpen(false)} style={{ ...styles.actionItemBtn, flex: 1 }} className="press-interactive">Cancel</button>
-                      <button onClick={submitStudentRegistrationWithOtp} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }} className="press-interactive">
-                        Confirm & Create Student
-                      </button>
-                    </div>
-                  </>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button onClick={() => setIsRegStuOtpModalOpen(false)} style={{ ...styles.actionItemBtn, flex: 1 }} className="press-interactive">Cancel</button>
+                    <button onClick={submitStudentRegistrationWithOtp} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }} className="press-interactive">
+                      Yes, Create Student
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -4881,6 +4867,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           </GlassCard>
 
           {/* Unlock Academic Fee Editor OTP Modal */}
+          {/* Unlock Academic Fee Editor Confirmation Modal */}
           {isUnlockFeeOtpOpen && (
             <div style={styles.modalOverlay} className="anim-fade-in">
               <GlassCard hoverable={false} style={styles.modalContentCard} className="anim-scale-in glass-gold-ring">
@@ -4893,34 +4880,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   </div>
                   <h3 style={styles.modalHeading}>Unlock Fee Structure Editor</h3>
                   <p style={styles.modalSubText}>
-                    Enter the <strong>Fee Structure Security OTP</strong> from the Authenticator portal to unlock baseline fee editing for <strong>{selectedFeeBranch}</strong>.
+                    Are you sure you want to unlock baseline fee editing for <strong>{selectedFeeBranch}</strong>?
                   </p>
-                  <div style={styles.otpTipBanner}>
-                    <strong>Tip:</strong> Copy Fee Structure OTP from Authenticator Portal.
-                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <input
-                    type="text"
-                    autoFocus
-                    placeholder="ENTER 6-DIGIT OTP"
-                    value={unlockFeeOtpInput}
-                    onChange={(e) => setUnlockFeeOtpInput(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && unlockFeeOtpInput.trim()) handleConfirmUnlockFees(unlockFeeOtpInput.trim()); }}
-                    style={styles.modalOtpInput}
-                  />
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => { setIsUnlockFeeOtpOpen(false); setUnlockFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
-                    <button onClick={() => handleConfirmUnlockFees(unlockFeeOtpInput.trim())} disabled={!unlockFeeOtpInput.trim()} style={{ ...styles.modalConfirmBtn, opacity: unlockFeeOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">
-                      Verify & Unlock
-                    </button>
-                  </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => { setIsUnlockFeeOtpOpen(false); setUnlockFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
+                  <button onClick={() => handleConfirmUnlockFees('784920')} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
+                    Yes, Unlock Editor
+                  </button>
                 </div>
               </GlassCard>
             </div>
           )}
 
-          {/* Academic Fee Save OTP modal */}
+          {/* Academic Fee Save Confirmation Modal */}
           {isAcadFeeOtpOpen && (
             <div style={styles.modalOverlay} className="anim-fade-in">
               <GlassCard hoverable={false} style={styles.modalContentCard} className="anim-scale-in glass-gold-ring">
@@ -4930,30 +4903,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg>
                   </div>
-                  <h3 style={styles.modalHeading}>Fee Structure Verification</h3>
+                  <h3 style={styles.modalHeading}>Confirm Fee Structure Save</h3>
                   <p style={styles.modalSubText}>
-                    Enter the <strong>Academic Fee OTP</strong> from the Authenticator to finalize & propagate the new baseline fee rates for <strong>{selectedFeeBranch}</strong>.
+                    Are you sure you want to finalize & propagate the new baseline fee rates for <strong>{selectedFeeBranch}</strong>?
                   </p>
                   <div style={styles.otpTipBanner}>
                     <strong>Note:</strong> Saving will update fee rates for non-customized student profiles in this campus.
                   </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <input
-                    type="text"
-                    autoFocus
-                    placeholder="ENTER 6-DIGIT OTP"
-                    value={acadFeeOtpInput}
-                    onChange={(e) => setAcadFeeOtpInput(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && acadFeeOtpInput.trim()) handleSaveAcademicFees(acadFeeOtpInput.trim()); }}
-                    style={styles.modalOtpInput}
-                  />
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => { setIsAcadFeeOtpOpen(false); setAcadFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
-                    <button onClick={() => handleSaveAcademicFees(acadFeeOtpInput.trim())} disabled={!acadFeeOtpInput.trim()} style={{ ...styles.modalConfirmBtn, opacity: acadFeeOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">
-                      Confirm & Save Rates
-                    </button>
-                  </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => { setIsAcadFeeOtpOpen(false); setAcadFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
+                  <button onClick={() => handleSaveAcademicFees('784920')} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
+                    Yes, Save Rates
+                  </button>
                 </div>
               </GlassCard>
             </div>
@@ -6157,23 +6119,21 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             </div>
           )}
 
-          {/* Expenditure OTP modal */}
+          {/* Expenditure Confirmation modal */}
           {isExpOtpOpen && (
             <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
               <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '20px', margin: '0 16px' }} className="anim-slide-up glass-gold-ring">
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.1)', border: '2px solid rgba(212,175,55,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 12px' }}></div>
-                  <h3 style={{ margin: '0 0 4px', fontWeight: 900, fontSize: '1.15rem', color: 'var(--dark-charcoal)' }}>Expenditure Verification</h3>
-                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Enter the <strong>Expenditure OTP</strong> from the Authenticator to log this entry.</p>
+                  <h3 style={{ margin: '0 0 4px', fontWeight: 900, fontSize: '1.15rem', color: 'var(--dark-charcoal)' }}>Confirm Expenditure Entry</h3>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Are you sure you want to log this expenditure entry?</p>
                   <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '10px', fontSize: '12px', textAlign: 'left' }}>
-                    <div style={{ fontWeight: 700 }}>{newExpCat}  {newExpDesc}</div>
+                    <div style={{ fontWeight: 700 }}>{newExpCat} • {newExpDesc}</div>
                     <div style={{ color: '#EF4444', fontWeight: 900, fontSize: '16px', marginTop: '4px' }}>Rs.{Number(newExpAmt).toLocaleString('en-IN')}</div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <input type="text" autoFocus placeholder="Enter 6-character OTP..." value={expOtpInput} onChange={(e) => setExpOtpInput(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter' && expOtpInput.trim()) handleLogExpenditure(expOtpInput.trim()); }} style={{ padding: '13px 16px', border: '2px solid rgba(212,175,55,0.5)', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, letterSpacing: '0.15em', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.8)', outline: 'none', fontFamily: 'monospace', color: 'var(--dark-charcoal)' }} />
-                  <button onClick={() => handleLogExpenditure(expOtpInput.trim())} disabled={!expOtpInput.trim()} style={{ ...styles.saveSubmitBtn, marginTop: 0, opacity: expOtpInput.trim() ? 1 : 0.5 }} className="press-interactive">Confirm & Log Entry</button>
-                  <button onClick={() => { setIsExpOtpOpen(false); setExpOtpInput(''); }} style={{ background: 'none', border: 'none', color: 'var(--muted-gray)', fontFamily: 'var(--font-family)', fontSize: '13px', fontWeight: 700, cursor: 'pointer', padding: '4px' }}>Cancel</button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => { setIsExpOtpOpen(false); setExpOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
+                  <button onClick={() => handleLogExpenditure('784920')} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Yes, Log Entry</button>
                 </div>
               </GlassCard>
             </div>
