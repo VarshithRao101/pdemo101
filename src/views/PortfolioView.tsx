@@ -470,7 +470,7 @@ const GALLERY_COLOR_SCREENS = [
   },
 ];
 
-const SingleFrameColorGallery: React.FC = () => {
+const SingleFrameColorGallery: React.FC<{ onEnlargePhoto?: (src: string, title: string) => void }> = ({ onEnlargePhoto }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
@@ -520,14 +520,15 @@ const SingleFrameColorGallery: React.FC = () => {
       style={{
         position: 'relative',
         width: '100%',
-        maxWidth: 1040,
-        height: 'clamp(340px, 50vh, 520px)',
+        maxWidth: 1240,
+        height: 'clamp(420px, 65vh, 640px)',
         margin: '0 auto',
         borderRadius: 28,
         overflow: 'hidden',
         boxShadow: `0 24px 60px -12px ${activeScreen.glowColor}, 0 12px 28px rgba(15, 23, 42, 0.18)`,
         transition: 'box-shadow 0.6s ease',
         background: '#0F172A',
+        cursor: 'pointer',
       }}
     >
       {/* Dynamic Photo Screens */}
@@ -549,13 +550,16 @@ const SingleFrameColorGallery: React.FC = () => {
             <img
               src={screen.img}
               alt={`Campus Gallery Photo ${idx + 1}`}
+              onClick={() => onEnlargePhoto?.(screen.img, `Campus Gallery Photo ${idx + 1}`)}
               style={{
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
+                objectPosition: 'center',
                 display: 'block',
                 transform: isActive ? 'scale(1)' : 'scale(1.04)',
                 transition: 'transform 0.8s ease-out',
+                cursor: 'zoom-in',
               }}
             />
             {/* Vignette Overlay */}
@@ -599,6 +603,33 @@ const SingleFrameColorGallery: React.FC = () => {
               >
                 Photo {idx + 1} of {screens.length}
               </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEnlargePhoto?.(screen.img, `Campus Gallery Photo ${idx + 1}`);
+                }}
+                aria-label="Enlarge Photo"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 14px',
+                  borderRadius: 20,
+                  background: 'rgba(245, 158, 11, 0.9)',
+                  color: '#0F172A',
+                  fontSize: 11.5,
+                  fontWeight: 900,
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.3)',
+                  transition: 'transform 0.2s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
+                onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Enlarge
+              </button>
             </div>
           </div>
         );
@@ -756,6 +787,7 @@ export const PortfolioView: React.FC = () => {
   const [enquiryRef, setEnquiryRef] = useState('');
   const [enquiryError, setEnquiryError] = useState('');
   const [selectedClip, setSelectedClip] = useState<typeof PAPER_CLIPS[0] | null>(null);
+  const [enlargedImage, setEnlargedImage] = useState<{ src: string; title?: string } | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrollPct, setScrollPct] = useState(0);
   const [scrolled, setScrolled] = useState(false);
@@ -934,8 +966,40 @@ export const PortfolioView: React.FC = () => {
             HERO — DYNAMIC BIG IMAGE SHOWCASE
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <section id="hero" className="hero-h" style={{ position: 'relative', height: 640, overflow: 'hidden', background: '#0F172A' }}>
-          {/* Full hero image — clear, responsive, static */}
-          <img src={heroImg} alt="Inspire Junior College Campus" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} />
+          {/* Full hero image — clear, responsive, static & clickable */}
+          <img
+            src={heroImg}
+            alt="Inspire Junior College Campus"
+            onClick={() => setEnlargedImage({ src: heroImg, title: 'Inspire Junior College Main Campus HQ' })}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', cursor: 'zoom-in' }}
+          />
+          {/* Zoom hint badge on hero */}
+          <div
+            onClick={() => setEnlargedImage({ src: heroImg, title: 'Inspire Junior College Main Campus HQ' })}
+            style={{
+              position: 'absolute',
+              top: 20,
+              right: 20,
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              color: '#FFFFFF',
+              padding: '6px 14px',
+              borderRadius: 20,
+              fontSize: 11.5,
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              zIndex: 10,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Click to Enlarge
+          </div>
           {/* Light vignette around edges */}
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 35%, rgba(15,23,42,0.35) 100%)' }} />
           {/* Crazy animated glowing light orbs */}
@@ -1302,7 +1366,7 @@ export const PortfolioView: React.FC = () => {
                 <div className="dec-divider-line" /><div className="dec-divider-gem" /><div className="dec-divider-line" />
               </div>
             </div>
-            <SingleFrameColorGallery />
+            <SingleFrameColorGallery onEnlargePhoto={(src, title) => setEnlargedImage({ src, title })} />
           </div>
         </section>
 
@@ -1558,6 +1622,117 @@ export const PortfolioView: React.FC = () => {
             </div>
           </div>
         </footer>
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            FULLSCREEN IMAGE LIGHTBOX MODAL WITH CROSS (X) BUTTON
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {(enlargedImage || selectedClip) && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 999999,
+              background: 'rgba(7, 11, 25, 0.94)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 20,
+              animation: 'fadeIn 0.22s ease both',
+            }}
+            onClick={() => {
+              setEnlargedImage(null);
+              setSelectedClip(null);
+            }}
+          >
+            {/* PROMINENT CROSS (X) CLOSE BUTTON */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setEnlargedImage(null);
+                setSelectedClip(null);
+              }}
+              aria-label="Close Enlarged View"
+              style={{
+                position: 'absolute',
+                top: 20,
+                right: 20,
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.15)',
+                border: '1.5px solid rgba(255, 255, 255, 0.35)',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
+                transition: 'all 0.22s ease',
+                zIndex: 1000000,
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#EF4444';
+                e.currentTarget.style.transform = 'scale(1.12)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+
+            {/* LIGHTBOX CONTENT CONTAINER */}
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'relative',
+                maxWidth: '92vw',
+                maxHeight: '88vh',
+                borderRadius: 22,
+                overflow: 'hidden',
+                boxShadow: '0 30px 80px rgba(0, 0, 0, 0.7)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                background: '#0F172A',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+              }}
+            >
+              <img
+                src={enlargedImage ? enlargedImage.src : selectedClip?.src}
+                alt={enlargedImage ? (enlargedImage.title || 'Enlarged View') : selectedClip?.title}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '80vh',
+                  objectFit: 'contain',
+                  display: 'block',
+                }}
+              />
+              <div
+                style={{
+                  width: '100%',
+                  padding: '14px 24px',
+                  background: '#0F172A',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: '#FFFFFF',
+                  textAlign: 'center',
+                  fontSize: 14.5,
+                  fontWeight: 800,
+                  letterSpacing: '0.02em',
+                }}
+              >
+                {enlargedImage ? (enlargedImage.title || 'Enlarged View') : selectedClip?.title}
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </>
