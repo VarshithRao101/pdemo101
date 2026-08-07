@@ -620,4 +620,61 @@
   100% { transform: rotate(360deg); }
 }
 
+/* ─── PORTFOLIO ENHANCEMENT ANIMATIONS ─────────────────────────────────────── */
+
+@keyframes textGradientShimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes floatOrbSmooth {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.12); }
+  66% { transform: translate(-20px, 20px) scale(0.92); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+@keyframes pulseBorderGold {
+  0% { border-color: rgba(245, 158, 11, 0.3); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.2); }
+  50% { border-color: rgba(245, 158, 11, 0.8); box-shadow: 0 0 15px 3px rgba(245, 158, 11, 0.35); }
+  100% { border-color: rgba(245, 158, 11, 0.3); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.2); }
+}
+
+@keyframes rainbowFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.text-shimmer-gold {
+  background: linear-gradient(135deg, #FFF 0%, #FBBF24 35%, #F59E0B 65%, #FFF 100%);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: textGradientShimmer 4s ease infinite;
+}
+
+.text-shimmer-blue {
+  background: linear-gradient(135deg, #1E293B 0%, #2563EB 40%, #3B82F6 70%, #0F172A 100%);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: textGradientShimmer 5s ease infinite;
+}
+
+.glass-card-interactive {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.35s ease;
+  will-change: transform, box-shadow;
+}
+
+.glass-card-interactive:hover {
+  transform: translateY(-6px) scale(1.015);
+  box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.15), 0 0 20px rgba(37, 99, 235, 0.18);
+  border-color: rgba(37, 99, 235, 0.4) !important;
+}
+
+
 

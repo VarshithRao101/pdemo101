@@ -951,8 +951,8 @@ export const PortfolioView: React.FC = () => {
   };
 
   const portalHash = '#/v1-portal-gate-x89f2a7b';
-  const orgPhone = '+91 97043 80320';
-  const orgEmail = 'admissions@inspirejuniorcollege.edu.in';
+  const orgPhone = '+91 74163 80320, +91 91776 57274';
+  const orgEmail = 'Inspirehnk@gmail.com';
 
   const handleEnquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1140,9 +1140,9 @@ export const PortfolioView: React.FC = () => {
           {/* Light vignette around edges */}
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 35%, rgba(15,23,42,0.35) 100%)' }} />
           {/* Crazy animated glowing light orbs */}
-          <div style={{ position: 'absolute', top: '15%', left: '10%', width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.25), transparent 70%)', animation: 'floatOrb 6s ease-in-out infinite', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', bottom: '20%', right: '12%', width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(66,133,244,0.3), transparent 70%)', animation: 'floatOrb 8s ease-in-out infinite 2s', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', top: '40%', right: '30%', width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,168,83,0.25), transparent 70%)', animation: 'floatOrb 7s ease-in-out infinite 1s', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: '12%', left: '8%', width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.28), transparent 70%)', animation: 'floatOrbSmooth 7s ease-in-out infinite', pointerEvents: 'none', filter: 'blur(8px)' }} />
+          <div style={{ position: 'absolute', bottom: '15%', right: '10%', width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle, rgba(66,133,244,0.32), transparent 70%)', animation: 'floatOrbSmooth 9s ease-in-out infinite 2s', pointerEvents: 'none', filter: 'blur(10px)' }} />
+          <div style={{ position: 'absolute', top: '38%', right: '28%', width: 150, height: 150, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,168,83,0.25), transparent 70%)', animation: 'floatOrbSmooth 8s ease-in-out infinite 1s', pointerEvents: 'none', filter: 'blur(6px)' }} />
           {/* Subtle bottom fade */}
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top, rgba(15,23,42,0.6), transparent)' }} />
         </section>
@@ -1159,7 +1159,7 @@ export const PortfolioView: React.FC = () => {
                 <div style={{ width: 28, height: 3, background: 'linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853)', backgroundSize: '200% 200%', animation: 'rainbowFlow 3s linear infinite', borderRadius: 2 }} />
                 <span style={{ fontSize: 10.5, fontWeight: 900, color: ACCENT_GOLD, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Established &amp; Accredited · Hanumakonda, Telangana</span>
               </div>
-              <h1 className="h1-hero" style={{ fontSize: 'clamp(22px,3.2vw,38px)', fontWeight: 900, color: '#FFFFFF', fontFamily: "'Merriweather',serif", margin: '0 0 4px', lineHeight: 1.2 }}>
+              <h1 className="h1-hero text-shimmer-gold" style={{ fontSize: 'clamp(22px,3.2vw,38px)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 4px', lineHeight: 1.2 }}>
                 Inspire Junior College
               </h1>
               <p style={{ fontSize: 13.5, color: '#CBD5E1', fontWeight: 600, margin: 0 }}>IIT-JEE Mains &amp; Advanced &nbsp;·&nbsp; NEET Medical &nbsp;·&nbsp; Intermediate Board</p>
@@ -1205,7 +1205,7 @@ export const PortfolioView: React.FC = () => {
             {/* Section heading */}
             <div className={`reveal ${clipsRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto' }}>
               <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Media Press &amp; Rank Clippings</div>
-              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
+              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
                 Our Paper Clips &amp; Rank Achievements
               </h2>
               <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75, maxWidth: 620, margin: '0 auto' }}>
@@ -1320,7 +1320,7 @@ export const PortfolioView: React.FC = () => {
           <div ref={streamsRef.ref} className="ic">
             <div className={`reveal ${streamsRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 20px' }}>
               <div className="section-label" style={{ color: ACCENT_GOLD, justifyContent: 'center' }}>Future-Ready Education</div>
-              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
+              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
                 Academic Programs Offered
               </h2>
               <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75 }}>
@@ -1334,7 +1334,7 @@ export const PortfolioView: React.FC = () => {
 
             <div className="streams-grid">
               {PROGRAM_CARDS.map((prog, idx) => (
-                <div key={idx} className={`ch reveal d${(idx+1)*200} ${streamsRef.visible ? 'visible' : ''}`}
+                <div key={idx} className={`ch glass-card-interactive reveal d${(idx+1)*200} ${streamsRef.visible ? 'visible' : ''}`}
                   style={{ background: '#0F172A', borderRadius: 22, overflow: 'hidden', border: '1.5px solid rgba(255,255,255,0.1)', boxShadow: '0 12px 36px rgba(15,23,42,0.22)', display: 'flex', flexDirection: 'column' }}>
 
                   {/* Top generated stream photo */}
@@ -1390,7 +1390,7 @@ export const PortfolioView: React.FC = () => {
             {/* Header */}
             <div style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 20px' }}>
               <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Media &amp; VIP Felicitations</div>
-              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 12px', lineHeight: 1.2 }}>
+              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 12px', lineHeight: 1.2 }}>
                 Highlights of Our Campus
               </h2>
               <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75 }}>
@@ -1904,7 +1904,7 @@ export const PortfolioView: React.FC = () => {
           <div ref={galleryRef.ref} className={`ic reveal ${galleryRef.visible ? 'visible' : ''}`}>
             <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 28px' }}>
               <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Infrastructure Exhibit</div>
-              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 10px', lineHeight: 1.2 }}>
+              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 10px', lineHeight: 1.2 }}>
                 Campus Gallery
               </h2>
               <div className="dec-divider" style={{ marginTop: 12, marginBottom: 0 }}>
@@ -1925,7 +1925,7 @@ export const PortfolioView: React.FC = () => {
 
             <div className={`reveal ${enquiryReveal.visible ? 'visible' : ''}`} style={{ textAlign: 'center', marginBottom: 44 }}>
               <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Admission Enquiry Desk 2026-27</div>
-              <h2 style={{ fontSize: 'clamp(26px,3.5vw,44px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 16px', lineHeight: 1.2 }}>
+              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(26px,3.5vw,44px)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 16px', lineHeight: 1.2 }}>
                 Enquire for Admission
               </h2>
               <p style={{ fontSize: 15.5, color: '#64748B', lineHeight: 1.8 }}>
@@ -2149,7 +2149,11 @@ export const PortfolioView: React.FC = () => {
                   </div>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Admissions Helpline</div>
-                    <a href={`tel:${orgPhone}`} style={{ fontSize: 15, color: ACCENT_GOLD, textDecoration: 'none', fontWeight: 900, letterSpacing: '0.02em' }}>{orgPhone}</a>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <a href="tel:7416380320" style={{ fontSize: 14.5, color: ACCENT_GOLD, textDecoration: 'none', fontWeight: 900, letterSpacing: '0.02em' }}>+91 74163 80320</a>
+                      <span style={{ color: '#64748B', fontWeight: 700 }}>|</span>
+                      <a href="tel:9177657274" style={{ fontSize: 14.5, color: ACCENT_GOLD, textDecoration: 'none', fontWeight: 900, letterSpacing: '0.02em' }}>+91 91776 57274</a>
+                    </div>
                   </div>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Email</div>

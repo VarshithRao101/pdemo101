@@ -220,10 +220,10 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           backgroundColor: 'var(--bg-primary)',
         }}>
           <h5 style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
-            Contact Numbers
+            Admission Enquiry Numbers
           </h5>
           <span style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>
-            +91 7416 380 320 | +91 7416 380 324
+            +91 7416380320 | +91 9177657274
           </span>
         </div>
 
@@ -238,7 +238,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           </h5>
           <span style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>
             www.inspirehnk.org <br />
-            inspirehnk@gmail.com
+            Inspirehnk@gmail.com
           </span>
         </div>
       </div>
