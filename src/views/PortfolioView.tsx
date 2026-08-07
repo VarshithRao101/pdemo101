@@ -498,7 +498,11 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#FAFCFF;color:#0F172A
   }
   .stats-inner{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
   .stat-val{font-size:22px!important}
-  .form-box{padding:20px 14px!important;border-radius:16px!important}
+  .form-box{padding:24px 16px!important;border-radius:18px!important}
+  .form-box form{grid-template-columns:1fr!important;gap:16px!important}
+  .form-box input, .form-box select, .form-box textarea{font-size:16px!important;padding:12px 14px!important}
+  .footer-grid{grid-template-columns:1fr!important;gap:28px!important}
+  .footer-bottom{flex-direction:column!important;text-align:center!important;gap:8px!important}
   .h1-hero{font-size:22px!important}
 }
 `;
@@ -2067,7 +2071,7 @@ export const PortfolioView: React.FC = () => {
             {/* Top gold separator line */}
             <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(245,158,11,0.5),transparent)', marginBottom: 52 }} />
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 44, marginBottom: 52 }}>
+            <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 44, marginBottom: 52 }}>
 
               {/* Brand column */}
               <div>
@@ -2157,7 +2161,7 @@ export const PortfolioView: React.FC = () => {
             </div>
 
             {/* Bottom bar */}
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div className="footer-bottom" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
               <span style={{ fontSize: 12.5, color: '#64748B' }}>© 2026 Inspire Junior College. All Rights Reserved. Hanumakonda, Telangana.</span>
               <span style={{ fontSize: 12.5, color: '#475569' }}>IIT-JEE · NEET · Intermediate Board</span>
             </div>
