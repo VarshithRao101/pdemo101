@@ -10,6 +10,25 @@ import clip5 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM 
 import clip6 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM.jpeg';
 import clip7 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.04 PM.jpeg';
 import clip8 from '../assets/paperclips/clip8.png';
+import clip9 from '../assets/paperclips/22.jpeg';
+import clip10 from '../assets/paperclips/234.jpeg';
+import clip11 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1..jpeg';
+import clip12 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.44 PM.jpeg';
+import clip13 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.45 PM.jpeg';
+import clip14 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.46 PM.jpeg';
+import clip15 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.46.jpeg';
+import clip16 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.47 PM.jpeg';
+import clip17 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.48 PM.jpeg';
+import clip18 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.49 .jpeg';
+import clip19 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.49 PM.jpeg';
+import clip20 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.50 PM.jpeg';
+import clip21 from '../assets/paperclips/WhatsApp Image 2026-08-07 at.jpeg';
+import clip22 from '../assets/paperclips/aa.jpeg';
+import clip23 from '../assets/paperclips/g.jpeg';
+import clip24 from '../assets/paperclips/h.jpeg';
+import clip25 from '../assets/paperclips/lpoki.jpeg';
+import clip26 from '../assets/paperclips/pp.jpeg';
+import clip27 from '../assets/paperclips/qw.jpeg';
 
 import mpcLab from '../assets/generated/mpc_lab.png';
 import bipcLab from '../assets/generated/bipc_lab.png';
@@ -38,6 +57,26 @@ const PAPER_CLIPS = [
   { id: 5, src: clip5, title: 'NEET Medical Entrance Record Ranks', subtitle: 'Highest selection percentage in NEET Medical across Warangal & Hanamkonda.', tag: 'NEET Medical' },
   { id: 6, src: clip6, title: 'IIT-JEE Mains & Advanced Top Scorers', subtitle: 'Students secure 99+ percentile in JEE Mains — top admissions into IITs & NITs.', tag: 'IIT-JEE' },
   { id: 7, src: clip7, title: 'Inspire Annual Results Newspaper Feature', subtitle: 'Comprehensive feature showcasing stellar rankers and campus achievements.', tag: 'Annual Results' },
+  { id: 8, src: clip8, title: 'Super 60 Intensive Batch Success Story', subtitle: 'Specialized focus batch produces remarkable entrance exam scores.', tag: 'Super 60' },
+  { id: 9, src: clip9, title: 'State Merit List Record Ranks', subtitle: 'Inspire students secure top positions in state-level merit honors.', tag: 'State Ranks' },
+  { id: 10, src: clip10, title: 'JEE Advanced All India Ranks Feature', subtitle: 'Outstanding performance by MPC batch students in JEE Advanced.', tag: 'JEE Advanced' },
+  { id: 11, src: clip11, title: 'Medical Entrance NEET Rank Celebration', subtitle: 'BiPC toppers felicitated in presence of academic dignitaries.', tag: 'NEET Medical' },
+  { id: 12, src: clip12, title: 'TG EAPCET Top Rankers Media Coverage', subtitle: 'Top engineering ranks in Telangana EAPCET entrance exam.', tag: 'TG EAPCET' },
+  { id: 13, src: clip13, title: 'Intermediate Board Toppers Distinction', subtitle: 'Outstanding 98%+ scores in MPC & BiPC Board Examinations.', tag: 'Board Distinction' },
+  { id: 14, src: clip14, title: 'State Level Academic Excellence Release', subtitle: 'Media feature covering consistent annual rank improvements.', tag: 'Media Release' },
+  { id: 15, src: clip15, title: 'Rank Holders Grand Felicitation Ceremony', subtitle: 'Celebrating student dedication, faculty guidance, and parental support.', tag: 'Felicitation' },
+  { id: 16, src: clip16, title: 'National Talent Search Exam Achievements', subtitle: 'Inspire scholars shine in competitive Olympiads and Talent Tests.', tag: 'Olympiad' },
+  { id: 17, src: clip17, title: 'Telangana State Top Percentiles Release', subtitle: 'Highest concentration of 99+ percentile scorers in Hanamkonda.', tag: 'Percentile Tops' },
+  { id: 18, src: clip18, title: 'Specialized Mentorship Impact Report', subtitle: 'How 1-on-1 doubt clearing transformed student learning outcomes.', tag: 'Mentorship' },
+  { id: 19, src: clip19, title: 'IIT & NIT Admissions Victory Roll', subtitle: 'Proud alumni entering prestigious national institutes of technology.', tag: 'IIT Admissions' },
+  { id: 20, src: clip20, title: 'Grand Rankers Triumph Announcement', subtitle: 'Front page newspaper feature highlighting campus rankers.', tag: 'Triumph' },
+  { id: 21, src: clip21, title: 'Commerce & Civils Base Distinction', subtitle: 'MEC & CEC stream students excel in CA Foundation groundwork.', tag: 'CA & Civils' },
+  { id: 22, src: clip22, title: 'Inspire Educational Excellence Spotlight', subtitle: 'Leading junior college of Hanamkonda highlighted in state press.', tag: 'Spotlight' },
+  { id: 23, src: clip23, title: 'Competitive Entrance Mock Diagnostic Winners', subtitle: 'Statewide mock test toppers awarded institutional scholarships.', tag: 'Mock Tests' },
+  { id: 24, src: clip24, title: 'Parent & Faculty Trust Media Feature', subtitle: 'Testimonials from parents praising campus discipline and care.', tag: 'Parent Trust' },
+  { id: 25, src: clip25, title: 'Digital Classrooms & Science Labs Spotlight', subtitle: 'Modern learning infrastructure boosting competitive readiness.', tag: 'Infrastructure' },
+  { id: 26, src: clip26, title: 'BiPC Medical Batch Outstanding Results', subtitle: 'Record medical college seats secured by Inspire BiPC students.', tag: 'Medical Ranks' },
+  { id: 27, src: clip27, title: 'Inspire Junior College Annual Achievers Wall', subtitle: 'Comprehensive honor roll of top rankers across all streams.', tag: 'Honor Roll' },
 ];
 
 const PROGRAM_CARDS = [
@@ -788,6 +827,7 @@ export const PortfolioView: React.FC = () => {
   const [enquiryError, setEnquiryError] = useState('');
   const [selectedClip, setSelectedClip] = useState<typeof PAPER_CLIPS[0] | null>(null);
   const [enlargedImage, setEnlargedImage] = useState<{ src: string; title?: string } | null>(null);
+  const [showAllClips, setShowAllClips] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrollPct, setScrollPct] = useState(0);
   const [scrolled, setScrolled] = useState(false);
@@ -1086,7 +1126,7 @@ export const PortfolioView: React.FC = () => {
 
             {/* 8-image clippings grid in optimized 4-column layout */}
             <div className="clips-grid">
-              {PAPER_CLIPS.map((clip, i) => (
+              {(showAllClips ? PAPER_CLIPS : PAPER_CLIPS.slice(0, 12)).map((clip, i) => (
                 <div
                   key={clip.id}
                   onClick={() => setSelectedClip(clip)}
@@ -1123,6 +1163,52 @@ export const PortfolioView: React.FC = () => {
                 </div>
               ))}
             </div>
+
+            {/* Show More / Show Less Toggle Button */}
+            {PAPER_CLIPS.length > 12 && (
+              <div style={{ textAlign: 'center', marginTop: 36 }}>
+                <button
+                  onClick={() => {
+                    if (showAllClips) {
+                      setShowAllClips(false);
+                      const el = document.getElementById('paper-clips');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    } else {
+                      setShowAllClips(true);
+                    }
+                  }}
+                  className="btn-gold pulse"
+                  style={{
+                    padding: '14px 36px',
+                    fontSize: 15,
+                    fontWeight: 900,
+                    borderRadius: 12,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    cursor: 'pointer',
+                    boxShadow: '0 8px 24px rgba(217, 119, 6, 0.35)',
+                    border: 'none',
+                  }}
+                >
+                  {showAllClips ? (
+                    <>
+                      <span>Show Less</span>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="18 15 12 9 6 15" />
+                      </svg>
+                    </>
+                  ) : (
+                    <>
+                      <span>Show More ({PAPER_CLIPS.length - 12} More Clippings)</span>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
