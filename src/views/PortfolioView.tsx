@@ -31,7 +31,6 @@ const PAPER_CLIPS = [
   { id: 5, src: clip5, title: 'NEET Medical Entrance Record Ranks', subtitle: 'Highest selection percentage in NEET Medical across Warangal & Hanamkonda.', tag: 'NEET Medical' },
   { id: 6, src: clip6, title: 'IIT-JEE Mains & Advanced Top Scorers', subtitle: 'Students secure 99+ percentile in JEE Mains — top admissions into IITs & NITs.', tag: 'IIT-JEE' },
   { id: 7, src: clip7, title: 'Inspire Annual Results Newspaper Feature', subtitle: 'Comprehensive feature showcasing stellar rankers and campus achievements.', tag: 'Annual Results' },
-  { id: 8, src: clip8, title: 'State Engineering & EAMCET Rank Records', subtitle: 'Top state ranks in TG-EAPCET / EAMCET engineering and agriculture entrance exams.', tag: 'EAMCET Top Ranks' },
 ];
 
 const PROGRAM_CARDS = [
@@ -152,8 +151,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#FAFCFF;color:#0F172A
 }
 
 @keyframes heroCrazyZoom {
-  0%, 100% { transform: scale(1); filter: brightness(0.92); }
-  50% { transform: scale(1.04); filter: brightness(1.02); }
+  0%, 100% { transform: scale(1); filter: brightness(0.96); }
 }
 
 @keyframes floatOrb {
@@ -354,10 +352,54 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#FAFCFF;color:#0F172A
   .mob-btn{display:flex!important}.ic{padding:0 16px}
 }
 @media(max-width:640px){
-  .hero-h{height:clamp(220px,55vw,360px)!important}
+  .hero-h{height:clamp(240px,55vw,380px)!important}
   .section-pad{padding:36px 12px!important}
-  .clips-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
-  .streams-grid{grid-template-columns:repeat(1,1fr)!important;gap:14px!important}
+  .clips-grid{
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    gap: 12px !important;
+    padding-bottom: 12px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+  .clips-grid::-webkit-scrollbar { display: none; }
+  .clips-grid > .clip-wrap {
+    flex: 0 0 calc(50% - 6px) !important;
+    min-width: calc(50% - 6px) !important;
+    max-width: calc(50% - 6px) !important;
+    scroll-snap-align: start !important;
+  }
+  .streams-grid {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    gap: 14px !important;
+    padding-bottom: 12px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+  .streams-grid::-webkit-scrollbar { display: none; }
+  .streams-grid > div {
+    flex: 0 0 85% !important;
+    min-width: 85% !important;
+    scroll-snap-align: start !important;
+  }
+  .campuses-grid {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    gap: 14px !important;
+    padding-bottom: 12px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+  .campuses-grid::-webkit-scrollbar { display: none; }
+  .campuses-grid > div {
+    flex: 0 0 85% !important;
+    min-width: 85% !important;
+    scroll-snap-align: start !important;
+  }
   .stats-inner{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
   .stat-val{font-size:22px!important}
   .form-box{padding:20px 14px!important;border-radius:16px!important}
@@ -897,8 +939,8 @@ export const PortfolioView: React.FC = () => {
             HERO — DYNAMIC BIG IMAGE SHOWCASE
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <section id="hero" className="hero-h" style={{ position: 'relative', height: 640, overflow: 'hidden', background: '#0F172A' }}>
-          {/* Full hero image — clear, responsive, animated scale */}
-          <img src={heroImg} alt="Inspire Junior College Campus" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', animation: 'heroCrazyZoom 14s ease-in-out infinite' }} />
+          {/* Full hero image — clear, responsive, static */}
+          <img src={heroImg} alt="Inspire Junior College Campus" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} />
           {/* Light vignette around edges */}
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 35%, rgba(15,23,42,0.35) 100%)' }} />
           {/* Crazy animated glowing light orbs */}
@@ -1223,7 +1265,7 @@ export const PortfolioView: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(270px,1fr))', gap: 20 }}>
+            <div className="campuses-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(270px,1fr))', gap: 20 }}>
               {CAMPUSES_LIST.map((c, i) => (
                 <div key={i} className={`ch reveal d${(i+1)*150} ${campusesRef.visible ? 'visible' : ''}`}
                   style={{ background: '#0F172A', borderRadius: 20, border: `1.5px solid ${c.col}50`, boxShadow: '0 8px 24px rgba(15,23,42,0.18)', overflow: 'hidden' }}>
@@ -1252,10 +1294,19 @@ export const PortfolioView: React.FC = () => {
         </section>
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            CAMPUS INSIGHT GALLERY (SINGLE FRAME COLOR CAROUSEL)
+            CAMPUS GALLERY (SINGLE FRAME COLOR CAROUSEL)
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <section id="campus-gallery" className="section-pad bg-grid-animated" style={{ padding: '72px 16px', background: 'linear-gradient(180deg,#FAFCFF 0%,#F1F5F9 100%)', position: 'relative', borderTop: '1px solid #E2E8F0' }}>
           <div ref={galleryRef.ref} className={`ic reveal ${galleryRef.visible ? 'visible' : ''}`}>
+            <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 28px' }}>
+              <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Infrastructure Exhibit</div>
+              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 10px', lineHeight: 1.2 }}>
+                Campus Gallery
+              </h2>
+              <div className="dec-divider" style={{ marginTop: 12, marginBottom: 0 }}>
+                <div className="dec-divider-line" /><div className="dec-divider-gem" /><div className="dec-divider-line" />
+              </div>
+            </div>
             <SingleFrameColorGallery />
           </div>
         </section>
