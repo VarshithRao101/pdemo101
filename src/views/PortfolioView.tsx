@@ -79,56 +79,7 @@ const CAMPUSES_LIST = [
   { name: 'Bheemaram Campus 2', code: 'BC·2', desc: 'Tranquil residential campus with AC hostels and round-the-clock study supervision.', col: '#7C3AED', bg: 'linear-gradient(135deg,#4C1D95,#8B5CF6)' },
 ];
 
-const CAMPUS_INSIGHT_ITEMS = [
-  {
-    id: 1,
-    title: 'Advanced Physics & Robotics Lab',
-    category: 'Science Labs',
-    campus: 'Erragattugutta Campus 1',
-    subtitle: 'Precision optics, mechanics, and electrodynamics experiment benches for JEE & NEET practicals.',
-    tag: '#PhysicsLab',
-  },
-  {
-    id: 2,
-    title: 'Air-Conditioned Digital Lecture Hall',
-    category: 'Smart Classrooms',
-    campus: 'Erragattugutta Campus 2',
-    subtitle: 'High-definition interactive smartboards, ergonomic seating, and acoustic clarity.',
-    tag: '#DigitalClassroom',
-  },
-  {
-    id: 3,
-    title: 'Botany & Organic Chemistry Lab',
-    category: 'Science Labs',
-    campus: 'Bheemaram Campus 1',
-    subtitle: 'Full spectrum bio-chemical reaction setups and NCERT line-by-line experiment stations.',
-    tag: '#BioChemLab',
-  },
-  {
-    id: 4,
-    title: 'Central Library & Silent Study Cabins',
-    category: 'Digital Library',
-    campus: 'Erragattugutta Campus 1',
-    subtitle: 'Over 10,000 reference volumes, entrance question archives, and individual study pods.',
-    tag: '#Library',
-  },
-  {
-    id: 5,
-    title: 'AC Hostels & Living Suites',
-    category: 'Residential Hostels',
-    campus: 'Bheemaram Campus 2',
-    subtitle: 'Comfortable climate-controlled residential rooms with 24/7 security & warden supervision.',
-    tag: '#HostelLife',
-  },
-  {
-    id: 6,
-    title: 'Sports & Recreation Indoor Arena',
-    category: 'Sports & Recreations',
-    campus: 'Erragattugutta Campus 2',
-    subtitle: 'Badminton courts, table tennis lounges, and fitness zone for student physical wellness.',
-    tag: '#SportsComplex',
-  },
-];
+
 
 const FEATURES = [
   { label: 'Doubt Clarification Desks', desc: 'Dedicated subject-expert desks for instant, personalized doubt resolution at every campus.' },
@@ -244,6 +195,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#FAFCFF;color:#0F172A
 @keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 @keyframes modalIn{from{opacity:0;transform:scale(0.9) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes cardShine{0%{left:-100%}100%{left:200%}}
+@keyframes galleryProgress{from{width:0%}to{width:100%}}
 
 /* ── Utility reveal classes ── */
 .reveal{opacity:0;transform:translateY(28px);transition:opacity 0.7s cubic-bezier(.25,.8,.25,1),transform 0.7s cubic-bezier(.25,.8,.25,1)}
@@ -434,6 +386,323 @@ function StatCard({ stat, active }: { stat: typeof STAT_CARDS[0]; active: boolea
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   COLOR GALLERY CAROUSEL (SINGLE FRAME)
+═══════════════════════════════════════════════════════════════ */
+const GALLERY_COLOR_SCREENS = [
+  {
+    id: 'red',
+    name: 'Red Screen',
+    bgGradient: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 50%, #7F1D1D 100%)',
+    textColor: '#FFFFFF',
+    glowColor: 'rgba(239, 68, 68, 0.4)',
+    accentBg: 'rgba(255, 255, 255, 0.22)',
+  },
+  {
+    id: 'blue',
+    name: 'Blue Screen',
+    bgGradient: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 50%, #1E3A8A 100%)',
+    textColor: '#FFFFFF',
+    glowColor: 'rgba(59, 130, 246, 0.4)',
+    accentBg: 'rgba(255, 255, 255, 0.22)',
+  },
+  {
+    id: 'green',
+    name: 'Green Screen',
+    bgGradient: 'linear-gradient(135deg, #10B981 0%, #047857 50%, #064E3B 100%)',
+    textColor: '#FFFFFF',
+    glowColor: 'rgba(16, 185, 129, 0.4)',
+    accentBg: 'rgba(255, 255, 255, 0.22)',
+  },
+  {
+    id: 'yellow',
+    name: 'Yellow Screen',
+    bgGradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 50%, #78350F 100%)',
+    textColor: '#FFFFFF',
+    glowColor: 'rgba(245, 158, 11, 0.4)',
+    accentBg: 'rgba(255, 255, 255, 0.22)',
+  },
+  {
+    id: 'purple',
+    name: 'Purple Screen',
+    bgGradient: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 50%, #4C1D95 100%)',
+    textColor: '#FFFFFF',
+    glowColor: 'rgba(139, 92, 246, 0.4)',
+    accentBg: 'rgba(255, 255, 255, 0.22)',
+  },
+  {
+    id: 'cyan',
+    name: 'Cyan Screen',
+    bgGradient: 'linear-gradient(135deg, #06B6D4 0%, #0E7490 50%, #164E63 100%)',
+    textColor: '#FFFFFF',
+    glowColor: 'rgba(6, 182, 212, 0.4)',
+    accentBg: 'rgba(255, 255, 255, 0.22)',
+  },
+];
+
+const SingleFrameColorGallery: React.FC = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const touchStartXRef = useRef<number | null>(null);
+
+  const screens = GALLERY_COLOR_SCREENS;
+
+  const nextSlide = useCallback(() => {
+    setCurrentIndex(prev => (prev + 1) % screens.length);
+  }, [screens.length]);
+
+  const prevSlide = useCallback(() => {
+    setCurrentIndex(prev => (prev - 1 + screens.length) % screens.length);
+  }, [screens.length]);
+
+  // Auto advance every 3 seconds
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      nextSlide();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isPaused, nextSlide]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null) return;
+    const diff = touchStartXRef.current - e.changedTouches[0].clientX;
+    if (diff > 40) {
+      nextSlide();
+    } else if (diff < -40) {
+      prevSlide();
+    }
+    touchStartXRef.current = null;
+  };
+
+  const activeScreen = screens[currentIndex];
+
+  return (
+    <div
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      style={{
+        position: 'relative',
+        width: '100%',
+        maxWidth: 1040,
+        height: 'clamp(340px, 50vh, 520px)',
+        margin: '0 auto',
+        borderRadius: 28,
+        overflow: 'hidden',
+        boxShadow: `0 24px 60px -12px ${activeScreen.glowColor}, 0 12px 28px rgba(15, 23, 42, 0.18)`,
+        transition: 'box-shadow 0.6s ease',
+        background: activeScreen.bgGradient,
+      }}
+    >
+      {/* Dynamic Background Screens */}
+      {screens.map((screen, idx) => {
+        const isActive = idx === currentIndex;
+        return (
+          <div
+            key={screen.id}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: screen.bgGradient,
+              opacity: isActive ? 1 : 0,
+              visibility: isActive ? 'visible' : 'hidden',
+              transition: 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s step-end',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+              userSelect: 'none',
+            }}
+          >
+            <div
+              style={{
+                transform: isActive ? 'scale(1) translateY(0)' : 'scale(0.92) translateY(20px)',
+                opacity: isActive ? 1 : 0,
+                transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s',
+                textAlign: 'center',
+                padding: '24px 40px',
+              }}
+            >
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '6px 18px',
+                  borderRadius: 20,
+                  background: screen.accentBg,
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  color: '#FFFFFF',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  marginBottom: 14,
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+                }}
+              >
+                Slide {idx + 1} of {screens.length}
+              </span>
+
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 'clamp(32px, 5vw, 56px)',
+                  fontWeight: 900,
+                  color: screen.textColor,
+                  letterSpacing: '-0.02em',
+                  fontFamily: "'Inter', sans-serif",
+                  textShadow: '0 6px 24px rgba(0,0,0,0.3)',
+                }}
+              >
+                {screen.name}
+              </h3>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* LEFT ARROW BUTTON */}
+      <button
+        onClick={prevSlide}
+        aria-label="Previous Slide"
+        style={{
+          position: 'absolute',
+          left: 20,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 52,
+          height: 52,
+          borderRadius: '50%',
+          background: 'rgba(15, 23, 42, 0.4)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          border: '1.5px solid rgba(255, 255, 255, 0.35)',
+          color: '#FFFFFF',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          zIndex: 20,
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)';
+          e.currentTarget.style.transform = 'translateY(-50%) scale(1.12)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = 'rgba(15, 23, 42, 0.4)';
+          e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+        }}
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </button>
+
+      {/* RIGHT ARROW BUTTON */}
+      <button
+        onClick={nextSlide}
+        aria-label="Next Slide"
+        style={{
+          position: 'absolute',
+          right: 20,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: 52,
+          height: 52,
+          borderRadius: '50%',
+          background: 'rgba(15, 23, 42, 0.4)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          border: '1.5px solid rgba(255, 255, 255, 0.35)',
+          color: '#FFFFFF',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          zIndex: 20,
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)';
+          e.currentTarget.style.transform = 'translateY(-50%) scale(1.12)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = 'rgba(15, 23, 42, 0.4)';
+          e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+        }}
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+
+      {/* BOTTOM DOT INDICATORS */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 20,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          zIndex: 20,
+          background: 'rgba(15, 23, 42, 0.35)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          padding: '8px 18px',
+          borderRadius: 24,
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+        }}
+      >
+        {screens.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrentIndex(idx)}
+            aria-label={`Go to color screen ${idx + 1}`}
+            style={{
+              width: idx === currentIndex ? 28 : 10,
+              height: 10,
+              borderRadius: 5,
+              background: idx === currentIndex ? '#FFFFFF' : 'rgba(255, 255, 255, 0.45)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              padding: 0,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* TOP TIMED PROGRESS BAR */}
+      <div
+        key={currentIndex + (isPaused ? '-paused' : '-active')}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          height: 4,
+          background: '#FFFFFF',
+          boxShadow: '0 0 12px rgba(255, 255, 255, 0.9)',
+          animation: isPaused ? 'none' : 'galleryProgress 3s linear forwards',
+          width: isPaused ? '0%' : '100%',
+          zIndex: 25,
+        }}
+      />
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════ */
 export const PortfolioView: React.FC = () => {
@@ -451,7 +720,6 @@ export const PortfolioView: React.FC = () => {
   const [enquiryError, setEnquiryError] = useState('');
   const [selectedClip, setSelectedClip] = useState<typeof PAPER_CLIPS[0] | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [galleryFilter, setGalleryFilter] = useState('All');
   const [scrollPct, setScrollPct] = useState(0);
   const [scrolled, setScrolled] = useState(false);
 
@@ -984,148 +1252,11 @@ export const PortfolioView: React.FC = () => {
         </section>
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            CAMPUS INSIGHT GALLERY (PHOTO EXHIBIT & PLACEHOLDERS)
+            CAMPUS INSIGHT GALLERY (SINGLE FRAME COLOR CAROUSEL)
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <section id="campus-gallery" className="section-pad bg-grid-animated" style={{ padding: '72px 16px', background: 'linear-gradient(180deg,#FAFCFF 0%,#F1F5F9 100%)', position: 'relative', borderTop: '1px solid #E2E8F0' }}>
-          <div ref={galleryRef.ref} className="ic">
-            <div className={`reveal ${galleryRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 740, margin: '0 auto 24px' }}>
-              <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>
-                Infrastructure Exhibit
-              </div>
-              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
-                Campus Insight Gallery
-              </h2>
-              <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75 }}>
-                An exclusive visual showcase of our state-of-the-art academic infrastructure, smart classrooms, advanced science laboratories, and residential amenities across our campuses.
-              </p>
-            </div>
-
-            {/* Category Filter Pills */}
-            <div className={`reveal d200 ${galleryRef.visible ? 'visible' : ''}`} style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 36 }}>
-              {['All', 'Smart Classrooms', 'Science Labs', 'Digital Library', 'Residential Hostels', 'Sports & Recreations'].map(cat => {
-                const isActive = galleryFilter === cat;
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setGalleryFilter(cat)}
-                    style={{
-                      padding: '9px 18px',
-                      borderRadius: 20,
-                      fontSize: 12.5,
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      border: isActive ? '1.5px solid #1E3A8A' : '1.5px solid #CBD5E1',
-                      background: isActive ? 'linear-gradient(135deg,#0F172A,#1E3A8A)' : '#FFFFFF',
-                      color: isActive ? '#FFFFFF' : '#475569',
-                      boxShadow: isActive ? '0 4px 14px rgba(30,58,138,0.22)' : '0 2px 6px rgba(0,0,0,0.03)',
-                      transition: 'all 0.22s ease',
-                    }}
-                  >
-                    {cat}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Placeholder Gallery Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 24 }}>
-              {CAMPUS_INSIGHT_ITEMS
-                .filter(item => galleryFilter === 'All' || item.category === galleryFilter)
-                .map((item, i) => (
-                  <div
-                    key={item.id}
-                    className={`ch reveal d${(i + 1) * 100} ${galleryRef.visible ? 'visible' : ''}`}
-                    style={{
-                      background: '#0F172A',
-                      borderRadius: 22,
-                      border: '1.5px solid rgba(255,255,255,0.08)',
-                      overflow: 'hidden',
-                      boxShadow: '0 12px 32px rgba(15,23,42,0.14)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      position: 'relative',
-                    }}
-                  >
-                    {/* Placeholder Media Header Box */}
-                    <div style={{
-                      height: 195,
-                      position: 'relative',
-                      background: 'linear-gradient(135deg, #1E293B 0%, #0F172A 100%)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderBottom: '1px solid rgba(255,255,255,0.06)',
-                      padding: 20,
-                      textAlign: 'center',
-                    }}>
-                      {/* Animated Shimmer Overlay */}
-                      <div style={{
-                        position: 'absolute', inset: 0,
-                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent)',
-                        backgroundSize: '400px 100%',
-                        animation: 'shimmer 2.5s infinite',
-                        pointerEvents: 'none',
-                      }} />
-
-                      {/* Camera / Image Wireframe Icon */}
-                      <div style={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: 16,
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1.5px dashed rgba(245,158,11,0.5)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: 10,
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-                      }}>
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={ACCENT_GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                          <circle cx="8.5" cy="8.5" r="1.5"/>
-                          <polyline points="21 15 16 10 5 21"/>
-                        </svg>
-                      </div>
-
-                      <span style={{
-                        fontSize: 10.5,
-                        fontWeight: 900,
-                        color: ACCENT_GOLD,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                        background: 'rgba(245,158,11,0.12)',
-                        border: '1px solid rgba(245,158,11,0.3)',
-                        padding: '3px 10px',
-                        borderRadius: 12,
-                      }}>
-                        Image Placeholder
-                      </span>
-                    </div>
-
-                    {/* Content Box */}
-                    <div style={{ padding: '20px 22px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: '#93C5FD', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.category}</span>
-                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748B' }}>{item.tag}</span>
-                        </div>
-                        <h3 style={{ fontSize: 16.5, fontWeight: 800, color: '#FFFFFF', margin: '0 0 6px', lineHeight: 1.35 }}>
-                          {item.title}
-                        </h3>
-                        <p style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.6, margin: '0 0 14px' }}>
-                          {item.subtitle}
-                        </p>
-                      </div>
-
-                      <div style={{ paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#CBD5E1' }}>📍 {item.campus}</span>
-                        <span style={{ fontSize: 10.5, fontWeight: 800, color: '#38BDF8', letterSpacing: '0.04em' }}>COMING SOON</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
+          <div ref={galleryRef.ref} className={`ic reveal ${galleryRef.visible ? 'visible' : ''}`}>
+            <SingleFrameColorGallery />
           </div>
         </section>
 

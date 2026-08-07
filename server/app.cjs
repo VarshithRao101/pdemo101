@@ -3188,6 +3188,18 @@ app.get(['/api/admin1/fee-settings', '/api/accountant/fee-settings'], authentica
   }
 });
 
+// --- STATIC FILE SERVING FOR STANDALONE / HOSTINGER DEPLOYMENT ---
+const distPath = path.join(__dirname, '../dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/login')) {
+      return next();
+    }
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
 // Centralized error handler
 app.use((err, req, res, next) => {
   if (err.status !== 403) {

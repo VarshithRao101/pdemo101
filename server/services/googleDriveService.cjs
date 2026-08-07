@@ -2,44 +2,26 @@ const { google } = require('googleapis');
 const stream = require('stream');
 
 async function getGoogleDriveClient() {
-  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
-  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN;
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
 
-  // Use OAuth 2.0 User Credentials (No storage quota restrictions on personal Gmail accounts)
-  if (clientId && clientSecret && refreshToken) {
-    const oauth2Client = new google.auth.OAuth2(
-      clientId.trim(),
-      clientSecret.trim()
-    );
-    oauth2Client.setCredentials({ refresh_token: refreshToken.trim() });
-    return google.drive({ version: 'v3', auth: oauth2Client });
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error('Google Drive OAuth2 credentials missing. Ensure GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, and GOOGLE_OAUTH_REFRESH_TOKEN are set.');
   }
 
-  // Fallback Service Account JWT
-  const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
-  let privateKey = process.env.GOOGLE_PRIVATE_KEY;
-
-  if (!serviceAccountEmail || !privateKey) {
-    throw new Error('Google Drive credentials missing in environment variables. Specify GOOGLE_OAUTH_REFRESH_TOKEN or Service Account details.');
-  }
-
-  privateKey = privateKey.replace(/\\n/g, '\n');
-
-  const auth = new google.auth.JWT({
-    email: serviceAccountEmail.trim(),
-    key: privateKey,
-    scopes: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive']
-  });
-
-  await auth.authorize();
-  return google.drive({ version: 'v3', auth });
+  const oauth2Client = new google.auth.OAuth2(
+    clientId.trim(),
+    clientSecret.trim()
+  );
+  oauth2Client.setCredentials({ refresh_token: refreshToken.trim() });
+  return google.drive({ version: 'v3', auth: oauth2Client });
 }
 
 function getFolderId() {
-  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID || process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID;
+  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
   if (!folderId) {
-    throw new Error('Google Drive folder ID missing in environment variables.');
+    throw new Error('GOOGLE_DRIVE_FOLDER_ID environment variable is missing.');
   }
   return folderId.trim();
 }
