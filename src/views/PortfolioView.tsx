@@ -1804,7 +1804,7 @@ export const PortfolioView: React.FC = () => {
                   <div style={{ position: 'absolute', bottom: -40, left: -20, width: 130, height: 130, borderRadius: '50%', background: 'radial-gradient(circle,rgba(37,99,235,0.2),transparent)', animation: 'orbPulse 4s ease-in-out infinite 1.5s' }} />
 
                   <div style={{ fontSize: 11, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Institutional Excellence</div>
-                  <h3 style={{ fontSize: 21, fontWeight: 900, marginBottom: 8, fontFamily: "'Merriweather',serif", lineHeight: 1.3, position: 'relative' }}>
+                  <h3 style={{ fontSize: 21, fontWeight: 900, color: '#FFFFFF', marginBottom: 8, fontFamily: "'Merriweather',serif", lineHeight: 1.3, position: 'relative' }}>
                     Empowering Young Minds in Hanumakonda
                   </h3>
                   <p style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.65, marginBottom: 20, position: 'relative' }}>
