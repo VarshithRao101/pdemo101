@@ -17,6 +17,13 @@ import mecHall from '../assets/generated/mec_hall.png';
 import mentorshipImg from '../assets/generated/mentorship.png';
 import campusImg from '../assets/generated/campus.png';
 
+import galleryI1 from '../assets/campusgallery/i1.jpeg';
+import galleryI2 from '../assets/campusgallery/i2.jpeg';
+import galleryI3 from '../assets/campusgallery/i3.jpeg';
+import galleryI4 from '../assets/campusgallery/i4.jpeg';
+import galleryI5 from '../assets/campusgallery/i5.jpeg';
+import galleryI6 from '../assets/campusgallery/i6.jpeg';
+
 /* ═══════════════════════════════════════════════════════════════
    INSPIRE JUNIOR COLLEGE — Premium Institutional Portfolio
    Dynamic Rainbow Animations · 4x4 Grid · Background Grids
@@ -432,52 +439,34 @@ function StatCard({ stat, active }: { stat: typeof STAT_CARDS[0]; active: boolea
 ═══════════════════════════════════════════════════════════════ */
 const GALLERY_COLOR_SCREENS = [
   {
-    id: 'red',
-    name: 'Red Screen',
-    bgGradient: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 50%, #7F1D1D 100%)',
-    textColor: '#FFFFFF',
-    glowColor: 'rgba(239, 68, 68, 0.4)',
-    accentBg: 'rgba(255, 255, 255, 0.22)',
-  },
-  {
-    id: 'blue',
-    name: 'Blue Screen',
-    bgGradient: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 50%, #1E3A8A 100%)',
-    textColor: '#FFFFFF',
-    glowColor: 'rgba(59, 130, 246, 0.4)',
-    accentBg: 'rgba(255, 255, 255, 0.22)',
-  },
-  {
-    id: 'green',
-    name: 'Green Screen',
-    bgGradient: 'linear-gradient(135deg, #10B981 0%, #047857 50%, #064E3B 100%)',
-    textColor: '#FFFFFF',
-    glowColor: 'rgba(16, 185, 129, 0.4)',
-    accentBg: 'rgba(255, 255, 255, 0.22)',
-  },
-  {
-    id: 'yellow',
-    name: 'Yellow Screen',
-    bgGradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 50%, #78350F 100%)',
-    textColor: '#FFFFFF',
+    id: 'i5',
+    img: galleryI5,
     glowColor: 'rgba(245, 158, 11, 0.4)',
-    accentBg: 'rgba(255, 255, 255, 0.22)',
   },
   {
-    id: 'purple',
-    name: 'Purple Screen',
-    bgGradient: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 50%, #4C1D95 100%)',
-    textColor: '#FFFFFF',
+    id: 'i4',
+    img: galleryI4,
+    glowColor: 'rgba(37, 99, 235, 0.4)',
+  },
+  {
+    id: 'i3',
+    img: galleryI3,
+    glowColor: 'rgba(16, 185, 129, 0.4)',
+  },
+  {
+    id: 'i6',
+    img: galleryI6,
     glowColor: 'rgba(139, 92, 246, 0.4)',
-    accentBg: 'rgba(255, 255, 255, 0.22)',
   },
   {
-    id: 'cyan',
-    name: 'Cyan Screen',
-    bgGradient: 'linear-gradient(135deg, #06B6D4 0%, #0E7490 50%, #164E63 100%)',
-    textColor: '#FFFFFF',
+    id: 'i2',
+    img: galleryI2,
     glowColor: 'rgba(6, 182, 212, 0.4)',
-    accentBg: 'rgba(255, 255, 255, 0.22)',
+  },
+  {
+    id: 'i1',
+    img: galleryI1,
+    glowColor: 'rgba(239, 68, 68, 0.4)',
   },
 ];
 
@@ -541,7 +530,7 @@ const SingleFrameColorGallery: React.FC = () => {
         background: activeScreen.bgGradient,
       }}
     >
-      {/* Dynamic Background Screens */}
+      {/* Dynamic Photo Screens */}
       {screens.map((screen, idx) => {
         const isActive = idx === currentIndex;
         return (
@@ -550,24 +539,45 @@ const SingleFrameColorGallery: React.FC = () => {
             style={{
               position: 'absolute',
               inset: 0,
-              background: screen.bgGradient,
               opacity: isActive ? 1 : 0,
               visibility: isActive ? 'visible' : 'hidden',
               transition: 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s step-end',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'column',
               userSelect: 'none',
+              background: '#0F172A',
             }}
           >
+            <img
+              src={screen.img}
+              alt={`Campus Gallery Photo ${idx + 1}`}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+                transform: isActive ? 'scale(1)' : 'scale(1.04)',
+                transition: 'transform 0.8s ease-out',
+              }}
+            />
+            {/* Vignette Overlay */}
             <div
               style={{
-                transform: isActive ? 'scale(1) translateY(0)' : 'scale(0.92) translateY(20px)',
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(to top, rgba(15, 23, 42, 0.7) 0%, rgba(15, 23, 42, 0.05) 50%, rgba(15, 23, 42, 0.25) 100%)',
+                pointerEvents: 'none',
+              }}
+            />
+
+            {/* Photo Counter Badge */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 24,
+                left: 24,
+                transform: isActive ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(12px)',
                 opacity: isActive ? 1 : 0,
-                transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s',
-                textAlign: 'center',
-                padding: '24px 40px',
+                transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s',
+                zIndex: 15,
               }}
             >
               <span
@@ -575,35 +585,20 @@ const SingleFrameColorGallery: React.FC = () => {
                   display: 'inline-block',
                   padding: '6px 18px',
                   borderRadius: 20,
-                  background: screen.accentBg,
+                  background: 'rgba(15, 23, 42, 0.65)',
                   backdropFilter: 'blur(10px)',
                   WebkitBackdropFilter: 'blur(10px)',
                   color: '#FFFFFF',
                   fontSize: 12,
                   fontWeight: 800,
-                  letterSpacing: '0.14em',
+                  letterSpacing: '0.12em',
                   textTransform: 'uppercase',
-                  marginBottom: 14,
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
                 }}
               >
-                Slide {idx + 1} of {screens.length}
+                Photo {idx + 1} of {screens.length}
               </span>
-
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: 'clamp(32px, 5vw, 56px)',
-                  fontWeight: 900,
-                  color: screen.textColor,
-                  letterSpacing: '-0.02em',
-                  fontFamily: "'Inter', sans-serif",
-                  textShadow: '0 6px 24px rgba(0,0,0,0.3)',
-                }}
-              >
-                {screen.name}
-              </h3>
             </div>
           </div>
         );
