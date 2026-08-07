@@ -878,6 +878,11 @@ export const PortfolioView: React.FC = () => {
   const [selectedClip, setSelectedClip] = useState<typeof PAPER_CLIPS[0] | null>(null);
   const [enlargedImage, setEnlargedImage] = useState<{ src: string; title?: string } | null>(null);
   const [showAllClips, setShowAllClips] = useState(false);
+  const [highlightTab, setHighlightTab] = useState<'photos' | 'videos'>('photos');
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [videoIndex, setVideoIndex] = useState(0);
+  const [isPhotoPaused, setIsPhotoPaused] = useState(false);
+  const [enlargedMedia, setEnlargedMedia] = useState<{ src: string; isVideo?: boolean; title?: string } | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrollPct, setScrollPct] = useState(0);
   const [scrolled, setScrolled] = useState(false);
@@ -903,6 +908,16 @@ export const PortfolioView: React.FC = () => {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  
+  // Auto scroll photos every 2 seconds
+  useEffect(() => {
+    if (highlightTab !== 'photos' || isPhotoPaused) return;
+    const timer = setInterval(() => {
+      setPhotoIndex(prev => (prev + 1) % CAMPUS_PHOTOS.length);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [highlightTab, isPhotoPaused]);
 
   const portalHash = '#/v1-portal-gate-x89f2a7b';
   const orgPhone = '+91 97043 80320';
@@ -955,530 +970,357 @@ export const PortfolioView: React.FC = () => {
       <div style={{ background: '#FFFFFF', minHeight: '100vh' }}>
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            ANNOUNCEMENT TICKER
+            CAMPUS HIGHLIGHTS (TABBED PHOTOS & VIDEOS WITH ARROWS)
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <div style={{ background: 'linear-gradient(90deg,#0F172A 0%,#1a2744 50%,#0F172A 100%)', borderBottom: '1px solid rgba(245,158,11,0.2)', padding: '0', overflow: 'hidden', position: 'relative' }}>
-          {/* Glowing top edge */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(245,158,11,0.5),transparent)' }} />
-          <div className="ticker-wrap" style={{ padding: '9px 0' }}>
-            <div className="ticker-inner">
-              {[...tickerItems, ...tickerItems].map((t, i) => (
-                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 16, marginRight: 44 }}>
-                  {t.highlight ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 20, padding: '2px 12px', fontSize: 11.5, fontWeight: 900, color: ACCENT_GOLD, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: ACCENT_GOLD, display: 'inline-block', boxShadow: '0 0 6px rgba(245,158,11,0.8)', animation: 'glowPulse 1.4s ease-in-out infinite' }} />
-                      {t.text}
-                    </span>
-                  ) : (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
-                      <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#475569', display: 'inline-block' }} />
-                      {t.text}
-                    </span>
-                  )}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)' }} />
-        </div>
-
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            TOP UTILITY BAR
-        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <div className="desk-top" style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', padding: '11px 0' }}>
-          <div className="ic" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <a href="#hero" style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none' }}>
-              <img src={collegeLogo} alt="Inspire Junior College Logo" style={{ height: 46, width: 'auto', objectFit: 'contain' }} />
-              <div>
-                <div style={{ fontSize: 19, fontWeight: 900, color: NAVBAR_NAVY, fontFamily: "'Merriweather',serif", letterSpacing: '-0.02em' }}>Inspire Junior College</div>
-                <div style={{ fontSize: 10.5, color: '#64748B', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase' }}>Hanumakonda, Telangana · IIT-JEE | NEET | Intermediate</div>
-              </div>
-            </a>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-              {[['#enquiry','Admissions 2026'],['#paper-clips','News & Media'],['#about','About'],['#contact','Contact']].map(([h,l]) => (
-                <a key={h} href={h} style={{ fontSize: 13, fontWeight: 700, color: '#475569', textDecoration: 'none', transition: 'color 0.2s' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#2563EB')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#475569')}>{l}</a>
-              ))}
-            </div>
-            <a href="#enquiry" className="btn-gold pulse" style={{ padding: '9px 22px', fontSize: 13 }}>
-              Enquire Now
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            </a>
-          </div>
-        </div>
-
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            STICKY NAV
-        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <nav style={{
-          background: scrolled ? 'rgba(15,23,42,0.97)' : NAVBAR_NAVY,
-          backdropFilter: scrolled ? 'blur(12px)' : 'none',
-          position: 'sticky', top: 0, zIndex: 200,
-          boxShadow: scrolled ? '0 4px 24px rgba(15,23,42,0.28)' : '0 2px 12px rgba(15,23,42,0.12)',
-          transition: 'background 0.35s, box-shadow 0.35s, backdrop-filter 0.35s',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-        }}>
-          <div className="ic" style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {/* Mobile brand */}
-            <a href="#hero" className="mob-btn" style={{ display: 'none', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-              <img src={collegeLogo} alt="Logo" style={{ height: 34, background: '#fff', padding: '2px 4px', borderRadius: 6 }} />
-              <span style={{ color: '#fff', fontWeight: 900, fontSize: 15, fontFamily: "'Merriweather',serif" }}>Inspire Junior College</span>
-            </a>
-            {/* Desktop links */}
-            <div className="desk-nav" style={{ display: 'flex', alignItems: 'center', gap: 28, width: '100%', justifyContent: 'center' }}>
-              {[['#about','About College'],['#streams','Academic Streams'],['#highlights','Campus Highlights'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#campus-gallery','Insight Gallery'],['#mentorship','Mentorship'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
-                <a key={h} href={h} className="nl">{l}</a>
-              ))}
-            </div>
-            {/* Mobile menu toggle */}
-            <button className="mob-btn" onClick={() => setMobileOpen(o => !o)}
-              style={{ display: 'none', background: 'none', border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: 8, padding: '8px 12px', color: '#fff', cursor: 'pointer', alignItems: 'center', gap: 6, minWidth: 44, minHeight: 44, justifyContent: 'center', transition: 'border-color 0.2s' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                {mobileOpen ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></> : <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>}
-              </svg>
-            </button>
-          </div>
-          {/* Mobile dropdown */}
-          {mobileOpen && (
-            <div style={{ background: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.1)', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 4, animation: 'navSlide 0.28s ease both' }}>
-              {[['#about','About College'],['#streams','Academic Streams'],['#highlights','Campus Highlights'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#campus-gallery','Insight Gallery'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
-                <a key={h} href={h} onClick={() => setMobileOpen(false)} style={{ color: '#CBD5E1', fontSize: 15, fontWeight: 700, textDecoration: 'none', padding: '10px 12px', borderRadius: 8, transition: 'background 0.2s, color 0.2s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#CBD5E1'; }}
-                >{l}</a>
-              ))}
-              <a href="#enquiry" onClick={() => setMobileOpen(false)} className="btn-gold" style={{ marginTop: 8, textAlign: 'center', justifyContent: 'center' }}>Enquire Now</a>
-            </div>
-          )}
-        </nav>
-
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            HERO — DYNAMIC BIG IMAGE SHOWCASE
-        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <section id="hero" className="hero-h" style={{ position: 'relative', height: 640, overflow: 'hidden', background: '#0F172A' }}>
-          {/* Full hero image — clear, responsive, static & clickable */}
-          <img
-            src={heroImg}
-            alt="Inspire Junior College Campus"
-            onClick={() => setEnlargedImage({ src: heroImg, title: 'Inspire Junior College Main Campus HQ' })}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', cursor: 'zoom-in' }}
-          />
-          {/* Zoom hint badge on hero */}
-          <div
-            onClick={() => setEnlargedImage({ src: heroImg, title: 'Inspire Junior College Main Campus HQ' })}
-            style={{
-              position: 'absolute',
-              top: 20,
-              right: 20,
-              background: 'rgba(15, 23, 42, 0.65)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              color: '#FFFFFF',
-              padding: '6px 14px',
-              borderRadius: 20,
-              fontSize: 11.5,
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              zIndex: 10,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Click to Enlarge
-          </div>
-          {/* Light vignette around edges */}
-          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 35%, rgba(15,23,42,0.35) 100%)' }} />
-          {/* Crazy animated glowing light orbs */}
-          <div style={{ position: 'absolute', top: '15%', left: '10%', width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.25), transparent 70%)', animation: 'floatOrb 6s ease-in-out infinite', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', bottom: '20%', right: '12%', width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(66,133,244,0.3), transparent 70%)', animation: 'floatOrb 8s ease-in-out infinite 2s', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', top: '40%', right: '30%', width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,168,83,0.25), transparent 70%)', animation: 'floatOrb 7s ease-in-out infinite 1s', pointerEvents: 'none' }} />
-          {/* Subtle bottom fade */}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top, rgba(15,23,42,0.6), transparent)' }} />
-        </section>
-
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            HERO INFO BAND — below the clear hero image
-        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <div style={{ background: 'linear-gradient(90deg,#0F172A,#0F172A 70%,#1E3A8A)', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'relative' }}>
-          {/* Top Google continuous rainbow accent line */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853,#4285F4)', backgroundSize: '200% 200%', animation: 'rainbowFlow 3s linear infinite' }} />
-          <div className="ic" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-            <div style={{ animation: 'fadeUp 0.8s ease both 0.2s' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <div style={{ width: 28, height: 3, background: 'linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853)', backgroundSize: '200% 200%', animation: 'rainbowFlow 3s linear infinite', borderRadius: 2 }} />
-                <span style={{ fontSize: 10.5, fontWeight: 900, color: ACCENT_GOLD, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Established &amp; Accredited · Hanumakonda, Telangana</span>
-              </div>
-              <h1 className="h1-hero" style={{ fontSize: 'clamp(22px,3.2vw,38px)', fontWeight: 900, color: '#FFFFFF', fontFamily: "'Merriweather',serif", margin: '0 0 4px', lineHeight: 1.2 }}>
-                Inspire Junior College
-              </h1>
-              <p style={{ fontSize: 13.5, color: '#CBD5E1', fontWeight: 600, margin: 0 }}>IIT-JEE Mains &amp; Advanced &nbsp;·&nbsp; NEET Medical &nbsp;·&nbsp; Intermediate Board</p>
-            </div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', animation: 'fadeUp 0.8s ease both 0.4s' }}>
-              <a href="#enquiry" className="btn-gold pulse">
-                Apply for Admission 2026
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-              </a>
-              <a href="#paper-clips" className="btn-ghost">
-                View Rank Clippings
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            ANIMATED STATS BAR
-        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <section className="bg-grid-animated" style={{ padding: '0 16px' }}>
-          <div ref={statsRef.ref} className="ic" style={{ position: 'relative', paddingTop: 28, paddingBottom: 36 }}>
-            <div style={{ background: '#fff', borderRadius: 24, padding: '20px 20px 16px', boxShadow: '0 12px 48px rgba(15,23,42,0.11)', border: '1.5px solid #E2E8F0', position: 'relative', overflow: 'hidden' }}>
-              {/* Rainbow top accent */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3.5, background: 'linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853,#4285F4)', backgroundSize: '200% 200%', animation: 'rainbowFlow 3s linear infinite', borderRadius: '24px 24px 0 0' }} />
-              <div className={`stats-inner ${statsRef.visible ? 'visible' : ''}`} style={{ paddingTop: 8 }}>
-                {STAT_CARDS.map((s, i) => (
-                  <div key={i} className={`reveal d${(i+1)*100} ${statsRef.visible ? 'visible' : ''}`}>
-                    <StatCard stat={s} active={statsRef.visible} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            PAPER CLIPS & MEDIA GALLERY (4x4 GRID LAYOUT)
-        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <section id="paper-clips" className="section-pad bg-grid-animated" style={{ padding: '64px 16px' }}>
-          <div ref={clipsRef.ref} className="ic">
-
-            {/* Section heading */}
-            <div className={`reveal ${clipsRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto' }}>
-              <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Media Press &amp; Rank Clippings</div>
-              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
-                Our Paper Clips &amp; Rank Achievements
-              </h2>
-              <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75, maxWidth: 620, margin: '0 auto' }}>
-                Authentic newspaper releases, press coverage, and rank felicitation highlights — Inspire Junior College students dominating national and state competitive entrance exams.
-              </p>
-            </div>
-
-            <div className={`dec-divider reveal ${clipsRef.visible ? 'visible' : ''} d200`} style={{ marginTop: 24 }}>
-              <div className="dec-divider-line" />
-              <div className="dec-divider-gem" />
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>CLICK ANY CLIPPING TO ENLARGE</div>
-              <div className="dec-divider-gem" />
-              <div className="dec-divider-line" />
-            </div>
-
-            {/* 8-image clippings grid in optimized 4-column layout */}
-            <div className="clips-grid">
-              {(showAllClips ? PAPER_CLIPS : PAPER_CLIPS.slice(0, 12)).map((clip, i) => (
-                <div
-                  key={clip.id}
-                  onClick={() => setSelectedClip(clip)}
-                  className={`ch clip-wrap reveal d${Math.min((i%4+1)*100,400)} ${clipsRef.visible ? 'visible' : ''}`}
-                  style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', border: '1.5px solid #E2E8F0', cursor: 'pointer', boxShadow: '0 4px 18px rgba(15,23,42,0.06)', display: 'flex', flexDirection: 'column', position: 'relative' }}
-                >
-                  {/* Image */}
-                  <div style={{ height: 260, overflow: 'hidden', position: 'relative', background: '#F1F5F9' }}>
-                    <img src={clip.src} alt={clip.title} className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    {/* Gradient overlay at bottom of image */}
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top,rgba(15,23,42,0.65),transparent)' }} />
-                    {/* Tag badge */}
-                    <div style={{ position: 'absolute', bottom: 12, left: 14, background: ACCENT_GOLD, color: '#0F172A', padding: '4px 10px', borderRadius: 20, fontSize: 10.5, fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                      {clip.tag}
-                    </div>
-                    {/* Zoom icon */}
-                    <div style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: '50%', background: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    </div>
-                  </div>
-
-                  {/* Card body */}
-                  <div style={{ padding: '20px 22px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10 }}>
-                    <h4 style={{ fontSize: 15.5, fontWeight: 800, color: DARK_TEXT, lineHeight: 1.4, margin: 0 }}>{clip.title}</h4>
-                    <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.65, margin: 0 }}>{clip.subtitle}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#2563EB', fontSize: 12.5, fontWeight: 800, marginTop: 4, paddingTop: 12, borderTop: '1px solid #F1F5F9' }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                      View Full Clipping
-                    </div>
-                  </div>
-
-                  {/* Bottom border accent */}
-                  <div style={{ height: 3, background: 'linear-gradient(90deg,#F59E0B,#2563EB)', borderRadius: '0 0 20px 20px' }} />
-                </div>
-              ))}
-            </div>
-
-            {/* Show More / Show Less Toggle Button */}
-            {PAPER_CLIPS.length > 12 && (
-              <div style={{ textAlign: 'center', marginTop: 36 }}>
-                <button
-                  onClick={() => {
-                    if (showAllClips) {
-                      setShowAllClips(false);
-                      const el = document.getElementById('paper-clips');
-                      if (el) el.scrollIntoView({ behavior: 'smooth' });
-                    } else {
-                      setShowAllClips(true);
-                    }
-                  }}
-                  className="btn-gold pulse"
-                  style={{
-                    padding: '14px 36px',
-                    fontSize: 15,
-                    fontWeight: 900,
-                    borderRadius: 12,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    cursor: 'pointer',
-                    boxShadow: '0 8px 24px rgba(217, 119, 6, 0.35)',
-                    border: 'none',
-                  }}
-                >
-                  {showAllClips ? (
-                    <>
-                      <span>Show Less</span>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="18 15 12 9 6 15" />
-                      </svg>
-                    </>
-                  ) : (
-                    <>
-                      <span>Show More ({PAPER_CLIPS.length - 12} More Clippings)</span>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            ACADEMIC STREAMS (COURSES) — HIGH CONTRAST WHITE TEXT
-        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <section id="streams" className="section-pad bg-grid-animated" style={{ padding: '64px 16px', position: 'relative', overflow: 'hidden' }}>
-          {/* Decorative background geometry */}
-          <div style={{ position: 'absolute', top: -80, right: -80, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle,rgba(37,99,235,0.08),transparent 70%)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', bottom: -60, left: -60, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle,rgba(245,158,11,0.08),transparent 70%)', pointerEvents: 'none' }} />
-
-          <div ref={streamsRef.ref} className="ic">
-            <div className={`reveal ${streamsRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 20px' }}>
-              <div className="section-label" style={{ color: ACCENT_GOLD, justifyContent: 'center' }}>Future-Ready Education</div>
-              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
-                Academic Programs Offered
-              </h2>
-              <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75 }}>
-                Specialized 2-year Intermediate programs combining Board curriculum with targeted competitive exam coaching — personalized for every student.
-              </p>
-            </div>
-
-            <div className={`dec-divider reveal ${streamsRef.visible ? 'visible' : ''} d200`} style={{ marginTop: 24 }}>
-              <div className="dec-divider-line" /><div className="dec-divider-gem" /><div className="dec-divider-line" />
-            </div>
-
-            <div className="streams-grid">
-              {PROGRAM_CARDS.map((prog, idx) => (
-                <div key={idx} className={`ch reveal d${(idx+1)*200} ${streamsRef.visible ? 'visible' : ''}`}
-                  style={{ background: '#0F172A', borderRadius: 22, overflow: 'hidden', border: '1.5px solid rgba(255,255,255,0.1)', boxShadow: '0 12px 36px rgba(15,23,42,0.22)', display: 'flex', flexDirection: 'column' }}>
-
-                  {/* Top generated stream photo */}
-                  <div className="clip-wrap" style={{ height: 180, overflow: 'hidden', position: 'relative', background: '#0F172A' }}>
-                    <img src={prog.img} alt={prog.title} className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, ${prog.gradA} 0%, transparent 80%)` }} />
-                    <span style={{ position: 'absolute', bottom: 12, left: 16, background: prog.accent, color: '#FFFFFF', padding: '4px 12px', borderRadius: 20, fontSize: 10.5, fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
-                      {prog.tag}
-                    </span>
-                  </div>
-
-                  {/* Header content — WHITE TEXT */}
-                  <div style={{ padding: '22px 24px 18px', background: `linear-gradient(160deg,${prog.gradA},${prog.gradB})`, color: '#FFFFFF', position: 'relative', overflow: 'hidden' }}>
-                    <h3 style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', margin: '0 0 4px', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{prog.title}</h3>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: prog.accent, marginBottom: 10, letterSpacing: '0.03em' }}>{prog.subtitle}</div>
-                    <p style={{ fontSize: 13.5, color: '#FFFFFF', lineHeight: 1.65, margin: 0, opacity: 0.9 }}>{prog.body}</p>
-                  </div>
-
-                  {/* Highlights — WHITE & HIGH CONTRAST TEXT */}
-                  <div style={{ padding: '20px 24px', flex: 1, display: 'flex', flexDirection: 'column', gap: 14, background: '#0F172A' }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Program Highlights</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {prog.highlights.map((h, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 20, height: 20, borderRadius: 6, background: `${prog.accent}30`, border: `1px solid ${prog.accent}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={prog.accent} strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>
-                          </div>
-                          <span style={{ fontSize: 13.5, fontWeight: 700, color: '#FFFFFF' }}>{h}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ paddingTop: 14, borderTop: '1px dashed rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#94A3B8' }}>2 Academic Years</span>
-                      <a href="#enquiry" style={{ color: prog.accent, fontWeight: 900, fontSize: 13.5, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, transition: 'gap 0.2s' }}
-                        onMouseEnter={e => (e.currentTarget.style.gap = '8px')} onMouseLeave={e => (e.currentTarget.style.gap = '4px')}>
-                        Apply Stream
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-                {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            CAMPUS HIGHLIGHTS (VIDEOS & PHOTOS)
-        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <section id="highlights" className="section-pad bg-grid-animated" style={{ padding: '72px 16px', background: 'linear-gradient(180deg, #FAFCFF 0%, #F8FAFC 100%)', position: 'relative' }}>
+        <section id="highlights" className="section-pad bg-grid-animated" style={{ padding: '64px 16px', background: 'linear-gradient(180deg, #FAFCFF 0%, #F8FAFC 100%)', position: 'relative' }}>
           <div ref={highlightsRef.ref} className={`ic reveal ${highlightsRef.visible ? 'visible' : ''}`}>
             
             {/* Header */}
-            <div style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 28px' }}>
+            <div style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 20px' }}>
               <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Media &amp; VIP Felicitations</div>
-              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
+              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 12px', lineHeight: 1.2 }}>
                 Highlights of Our Campus
               </h2>
               <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75 }}>
-                Key moments, dignitary visits, and Video/Photo features celebrating State 1st Ranker Teegala Sai Shreshtitha and Inspire Junior College toppers.
+                Explore VIP visits, minister felicitations, and student achievement features in full uncropped photos and videos.
               </p>
             </div>
 
-            <div className="dec-divider" style={{ marginTop: 20, marginBottom: 40 }}>
+            <div className="dec-divider" style={{ marginTop: 16, marginBottom: 28 }}>
               <div className="dec-divider-line" />
               <div className="dec-divider-gem" />
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>VIDEOS &amp; FULL PHOTO EXHIBITS</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>SELECT MEDIA TAB</div>
               <div className="dec-divider-gem" />
               <div className="dec-divider-line" />
             </div>
 
-            {/* SLOT 1: VIDEO HIGHLIGHTS */}
-            <div style={{ marginBottom: 54 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 20, fontWeight: 900, color: DARK_TEXT, margin: 0, fontFamily: "'Merriweather',serif" }}>Video Highlights &amp; Dignitary Visits</h3>
-                  <div style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600 }}>Watch official video coverages, minister felicitations &amp; student interactive sessions</div>
-                </div>
-              </div>
-
-              {/* Video Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
-                {CAMPUS_VIDEOS.map((vid) => (
-                  <div
-                    key={vid.id}
-                    className="ch"
-                    style={{
-                      background: '#0F172A',
-                      borderRadius: 20,
-                      overflow: 'hidden',
-                      border: '1.5px solid rgba(255,255,255,0.1)',
-                      boxShadow: '0 10px 30px rgba(15,23,42,0.18)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                    }}
-                  >
-                    <div style={{ position: 'relative', width: '100%', background: '#000', borderRadius: '20px 20px 0 0', overflow: 'hidden' }}>
-                      <video
-                        controls
-                        preload="metadata"
-                        style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block', background: '#000' }}
-                      >
-                        <source src={vid.src} type="video/mp4" />
-                        Your browser does not support the video tag.
-                      </video>
-                      <div style={{ position: 'absolute', top: 12, left: 14, background: 'rgba(245, 158, 11, 0.95)', color: '#0F172A', padding: '4px 10px', borderRadius: 16, fontSize: 10.5, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em', zIndex: 5, pointerEvents: 'none' }}>
-                        {vid.tag}
-                      </div>
-                    </div>
-
-                    <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8, background: '#0F172A' }}>
-                      <h4 style={{ fontSize: 15, fontWeight: 800, color: '#FFFFFF', margin: 0, lineHeight: 1.4 }}>{vid.title}</h4>
-                      <p style={{ fontSize: 12.5, color: '#94A3B8', margin: 0, lineHeight: 1.6 }}>{vid.subtitle}</p>
-                    </div>
-
-                    <div style={{ height: 3, background: 'linear-gradient(90deg, #F59E0B, #2563EB)' }} />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* SLOT 2: PHOTO HIGHLIGHTS (FULL PHOTO DISPLAY - 100% VISIBLE) */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #10B981, #059669)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 20, fontWeight: 900, color: DARK_TEXT, margin: 0, fontFamily: "'Merriweather',serif" }}>Photo Highlights &amp; Dignitary Honors</h3>
-                  <div style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600 }}>Complete uncropped photos of VIP visits, official posters &amp; rank celebrations</div>
-                </div>
-              </div>
-
-              {/* Photo Gallery Grid (Full Image Fitted with object-fit contain) */}
-              <div
-                className="campuses-grid"
+            {/* TAB SELECTOR BUTTONS: PHOTOS vs VIDEOS */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginBottom: 36, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setHighlightTab('photos')}
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                  gap: 22,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '12px 32px',
+                  borderRadius: 30,
+                  fontSize: 15,
+                  fontWeight: 900,
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  border: highlightTab === 'photos' ? 'none' : '1.5px solid #CBD5E1',
+                  background: highlightTab === 'photos' ? 'linear-gradient(135deg, #10B981, #059669)' : '#FFFFFF',
+                  color: highlightTab === 'photos' ? '#FFFFFF' : '#475569',
+                  boxShadow: highlightTab === 'photos' ? '0 8px 24px rgba(16,185,129,0.35)' : '0 2px 8px rgba(0,0,0,0.05)',
                 }}
               >
-                {CAMPUS_PHOTOS.map((pho) => (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                Photos ({CAMPUS_PHOTOS.length})
+              </button>
+
+              <button
+                onClick={() => setHighlightTab('videos')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '12px 32px',
+                  borderRadius: 30,
+                  fontSize: 15,
+                  fontWeight: 900,
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  border: highlightTab === 'videos' ? 'none' : '1.5px solid #CBD5E1',
+                  background: highlightTab === 'videos' ? 'linear-gradient(135deg, #2563EB, #1D4ED8)' : '#FFFFFF',
+                  color: highlightTab === 'videos' ? '#FFFFFF' : '#475569',
+                  boxShadow: highlightTab === 'videos' ? '0 8px 24px rgba(37,99,235,0.35)' : '0 2px 8px rgba(0,0,0,0.05)',
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                Videos ({CAMPUS_VIDEOS.length})
+              </button>
+            </div>
+
+            {/* TAB CONTENT: PHOTOS ONLY */}
+            {highlightTab === 'photos' && (
+              <div
+                onMouseEnter={() => setIsPhotoPaused(true)}
+                onMouseLeave={() => setIsPhotoPaused(false)}
+                style={{ position: 'relative', width: '100%', maxWidth: 1140, margin: '0 auto' }}
+              >
+                {/* Photo Display Card with Left & Right Arrows */}
+                <div style={{ position: 'relative', borderRadius: 24, overflow: 'hidden', background: '#0F172A', boxShadow: '0 20px 50px rgba(15,23,42,0.22)', border: '1.5px solid rgba(255,255,255,0.1)' }}>
+                  
+                  {/* Photo Canvas — object-fit contain so full photo is 100% visible on both desktop & mobile */}
                   <div
-                    key={pho.id}
-                    onClick={() => setEnlargedImage({ src: pho.src, title: pho.title })}
-                    className="ch clip-wrap"
+                    onClick={() => setEnlargedMedia({ src: CAMPUS_PHOTOS[photoIndex].src, title: CAMPUS_PHOTOS[photoIndex].title })}
                     style={{
-                      background: '#0F172A',
-                      borderRadius: 20,
-                      overflow: 'hidden',
-                      border: '1.5px solid rgba(255,255,255,0.1)',
-                      boxShadow: '0 8px 24px rgba(15,23,42,0.14)',
-                      cursor: 'pointer',
+                      width: '100%',
+                      height: 'clamp(360px, 60vh, 560px)',
+                      background: '#070A14',
                       display: 'flex',
-                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      position: 'relative',
+                      cursor: 'zoom-in',
+                      padding: 16,
                     }}
                   >
-                    {/* Full photo container with object-fit: contain to ensure complete photo is visible without crop */}
-                    <div style={{ width: '100%', height: 260, background: '#090D1A', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', padding: 8 }}>
-                      <img
-                        src={pho.src}
-                        alt={pho.title}
-                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block', borderRadius: 8 }}
-                      />
-                      <div style={{ position: 'absolute', top: 12, left: 14, background: ACCENT_GOLD, color: '#0F172A', padding: '3px 10px', borderRadius: 14, fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        {pho.tag}
-                      </div>
-                      <div style={{ position: 'absolute', top: 12, right: 14, width: 30, height: 30, borderRadius: '50%', background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                      </div>
+                    <img
+                      src={CAMPUS_PHOTOS[photoIndex].src}
+                      alt={CAMPUS_PHOTOS[photoIndex].title}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                        objectFit: 'contain',
+                        display: 'block',
+                        borderRadius: 12,
+                        filter: 'drop-shadow(0 10px 24px rgba(0,0,0,0.5))',
+                        transition: 'opacity 0.4s ease',
+                      }}
+                    />
+
+                    {/* Tag badge */}
+                    <div style={{ position: 'absolute', top: 20, left: 20, background: ACCENT_GOLD, color: '#0F172A', padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', zIndex: 10 }}>
+                      {CAMPUS_PHOTOS[photoIndex].tag}
                     </div>
 
-                    <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8, background: '#0F172A' }}>
-                      <h4 style={{ fontSize: 14.5, fontWeight: 800, color: '#FFFFFF', margin: 0, lineHeight: 1.4 }}>{pho.title}</h4>
-                      <p style={{ fontSize: 12.5, color: '#94A3B8', margin: 0, lineHeight: 1.6 }}>{pho.subtitle}</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#38BDF8', fontSize: 12, fontWeight: 800, marginTop: 4, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        Click for Fullview
-                      </div>
+                    {/* Counter badge */}
+                    <div style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(10px)', color: '#FFFFFF', padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 800, border: '1px solid rgba(255,255,255,0.2)', zIndex: 10 }}>
+                      Photo {photoIndex + 1} of {CAMPUS_PHOTOS.length}
                     </div>
-
-                    <div style={{ height: 3, background: 'linear-gradient(90deg, #10B981, #3B82F6)' }} />
                   </div>
-                ))}
+
+                  {/* LEFT ARROW BUTTON */}
+                  <button
+                    onClick={() => setPhotoIndex(prev => (prev - 1 + CAMPUS_PHOTOS.length) % CAMPUS_PHOTOS.length)}
+                    aria-label="Previous Photo"
+                    style={{
+                      position: 'absolute',
+                      left: 16,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 48,
+                      height: 48,
+                      borderRadius: '50%',
+                      background: 'rgba(15, 23, 42, 0.65)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1.5px solid rgba(255, 255, 255, 0.35)',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+                      transition: 'all 0.22s ease',
+                      zIndex: 20,
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-50%) scale(1.12)')}
+                    onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(-50%) scale(1)')}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+
+                  {/* RIGHT ARROW BUTTON */}
+                  <button
+                    onClick={() => setPhotoIndex(prev => (prev + 1) % CAMPUS_PHOTOS.length)}
+                    aria-label="Next Photo"
+                    style={{
+                      position: 'absolute',
+                      right: 16,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 48,
+                      height: 48,
+                      borderRadius: '50%',
+                      background: 'rgba(15, 23, 42, 0.65)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1.5px solid rgba(255, 255, 255, 0.35)',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+                      transition: 'all 0.22s ease',
+                      zIndex: 20,
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-50%) scale(1.12)')}
+                    onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(-50%) scale(1)')}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+
+                  {/* Photo Title & Description Bar */}
+                  <div style={{ padding: '20px 26px', background: '#0F172A', color: '#FFFFFF', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                    <div>
+                      <h4 style={{ fontSize: 18, fontWeight: 900, color: '#FFFFFF', margin: '0 0 4px', fontFamily: "'Merriweather',serif" }}>{CAMPUS_PHOTOS[photoIndex].title}</h4>
+                      <p style={{ fontSize: 13.5, color: '#CBD5E1', margin: 0, lineHeight: 1.5 }}>{CAMPUS_PHOTOS[photoIndex].subtitle}</p>
+                    </div>
+                    <button
+                      onClick={() => setEnlargedMedia({ src: CAMPUS_PHOTOS[photoIndex].src, title: CAMPUS_PHOTOS[photoIndex].title })}
+                      className="btn-gold"
+                      style={{ padding: '8px 20px', fontSize: 12.5 }}
+                    >
+                      Enlarge Photo
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bottom Dots Indicator */}
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 18 }}>
+                  {CAMPUS_PHOTOS.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setPhotoIndex(idx)}
+                      aria-label={`Go to photo ${idx + 1}`}
+                      style={{
+                        width: idx === photoIndex ? 24 : 8,
+                        height: 8,
+                        borderRadius: 4,
+                        background: idx === photoIndex ? '#2563EB' : '#CBD5E1',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* TAB CONTENT: VIDEOS ONLY (SHOW 2 VIDEOS AT A TIME WITH LEFT & RIGHT ARROWS) */}
+            {highlightTab === 'videos' && (
+              <div style={{ position: 'relative', width: '100%', maxWidth: 1140, margin: '0 auto' }}>
+                
+                {/* Header info */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 800, color: '#475569' }}>
+                    Showing Videos {videoIndex + 1} &amp; {Math.min(videoIndex + 2, CAMPUS_VIDEOS.length)} of {CAMPUS_VIDEOS.length}
+                  </div>
+                  
+                  {/* LEFT & RIGHT NAV ARROWS */}
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={() => setVideoIndex(prev => Math.max(0, prev - 2))}
+                      disabled={videoIndex === 0}
+                      aria-label="Previous Videos"
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: '50%',
+                        background: videoIndex === 0 ? '#E2E8F0' : '#2563EB',
+                        color: videoIndex === 0 ? '#94A3B8' : '#FFFFFF',
+                        border: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: videoIndex === 0 ? 'not-allowed' : 'pointer',
+                        boxShadow: videoIndex === 0 ? 'none' : '0 4px 14px rgba(37,99,235,0.3)',
+                        transition: 'all 0.22s ease',
+                      }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+
+                    <button
+                      onClick={() => setVideoIndex(prev => Math.min(CAMPUS_VIDEOS.length - 2, prev + 2))}
+                      disabled={videoIndex >= CAMPUS_VIDEOS.length - 2}
+                      aria-label="Next Videos"
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: '50%',
+                        background: videoIndex >= CAMPUS_VIDEOS.length - 2 ? '#E2E8F0' : '#2563EB',
+                        color: videoIndex >= CAMPUS_VIDEOS.length - 2 ? '#94A3B8' : '#FFFFFF',
+                        border: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: videoIndex >= CAMPUS_VIDEOS.length - 2 ? 'not-allowed' : 'pointer',
+                        boxShadow: videoIndex >= CAMPUS_VIDEOS.length - 2 ? 'none' : '0 4px 14px rgba(37,99,235,0.3)',
+                        transition: 'all 0.22s ease',
+                      }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2-Column Video Grid (Uncropped Vertical & Landscape Video player container) */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
+                  {CAMPUS_VIDEOS.slice(videoIndex, videoIndex + 2).map((vid) => (
+                    <div
+                      key={vid.id}
+                      className="ch"
+                      style={{
+                        background: '#0F172A',
+                        borderRadius: 22,
+                        overflow: 'hidden',
+                        border: '1.5px solid rgba(255,255,255,0.12)',
+                        boxShadow: '0 12px 36px rgba(15,23,42,0.2)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      {/* Video Player Box — object-fit contain on black canvas to ensure full vertical & horizontal video fits uncropped! */}
+                      <div style={{ position: 'relative', width: '100%', height: 380, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <video
+                          controls
+                          preload="metadata"
+                          playsInline
+                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block', background: '#000' }}
+                        >
+                          <source src={vid.src} type="video/mp4" />
+                          Your browser does not support the video tag.
+                        </video>
+
+                        <div style={{ position: 'absolute', top: 12, left: 14, background: 'rgba(245, 158, 11, 0.95)', color: '#0F172A', padding: '4px 12px', borderRadius: 16, fontSize: 10.5, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em', zIndex: 5, pointerEvents: 'none' }}>
+                          {vid.tag}
+                        </div>
+
+                        {/* Fullscreen Expand Video Button */}
+                        <button
+                          onClick={() => setEnlargedMedia({ src: vid.src, isVideo: true, title: vid.title })}
+                          aria-label="Expand Video Fullscreen"
+                          style={{
+                            position: 'absolute',
+                            top: 12,
+                            right: 14,
+                            background: 'rgba(15,23,42,0.8)',
+                            backdropFilter: 'blur(8px)',
+                            border: '1px solid rgba(255,255,255,0.25)',
+                            color: '#FFFFFF',
+                            padding: '4px 10px',
+                            borderRadius: 16,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            zIndex: 10,
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                          Fullscreen
+                        </button>
+                      </div>
+
+                      <div style={{ padding: '20px 22px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8, background: '#0F172A' }}>
+                        <h4 style={{ fontSize: 16, fontWeight: 800, color: '#FFFFFF', margin: 0, lineHeight: 1.4 }}>{vid.title}</h4>
+                        <p style={{ fontSize: 13, color: '#94A3B8', margin: 0, lineHeight: 1.6 }}>{vid.subtitle}</p>
+                      </div>
+
+                      <div style={{ height: 3.5, background: 'linear-gradient(90deg, #F59E0B, #2563EB)' }} />
+                    </div>
+                  ))}
+                </div>
+
+              </div>
+            )}
 
           </div>
         </section>
@@ -1911,13 +1753,13 @@ export const PortfolioView: React.FC = () => {
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             FULLSCREEN IMAGE LIGHTBOX MODAL WITH CROSS (X) BUTTON
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        {(enlargedImage || selectedClip) && (
+        {(enlargedImage || selectedClip || enlargedMedia) && (
           <div
             style={{
               position: 'fixed',
               inset: 0,
               zIndex: 999999,
-              background: 'rgba(7, 11, 25, 0.94)',
+              background: 'rgba(7, 11, 25, 0.95)',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
               display: 'flex',
@@ -1930,6 +1772,7 @@ export const PortfolioView: React.FC = () => {
             onClick={() => {
               setEnlargedImage(null);
               setSelectedClip(null);
+              setEnlargedMedia(null);
             }}
           >
             {/* PROMINENT CROSS (X) CLOSE BUTTON */}
@@ -1938,6 +1781,7 @@ export const PortfolioView: React.FC = () => {
                 e.stopPropagation();
                 setEnlargedImage(null);
                 setSelectedClip(null);
+                setEnlargedMedia(null);
               }}
               aria-label="Close Enlarged View"
               style={{
@@ -1990,16 +1834,34 @@ export const PortfolioView: React.FC = () => {
                 alignItems: 'center',
               }}
             >
-              <img
-                src={enlargedImage ? enlargedImage.src : selectedClip?.src}
-                alt={enlargedImage ? (enlargedImage.title || 'Enlarged View') : selectedClip?.title}
-                style={{
-                  maxWidth: '100%',
-                  maxHeight: '80vh',
-                  objectFit: 'contain',
-                  display: 'block',
-                }}
-              />
+              {enlargedMedia?.isVideo ? (
+                <video
+                  controls
+                  autoPlay
+                  playsInline
+                  style={{
+                    maxWidth: '85vw',
+                    maxHeight: '78vh',
+                    objectFit: 'contain',
+                    display: 'block',
+                    background: '#000',
+                  }}
+                >
+                  <source src={enlargedMedia.src} type="video/mp4" />
+                </video>
+              ) : (
+                <img
+                  src={enlargedMedia ? enlargedMedia.src : (enlargedImage ? enlargedImage.src : selectedClip?.src)}
+                  alt={enlargedMedia ? (enlargedMedia.title || 'Enlarged View') : (enlargedImage ? (enlargedImage.title || 'Enlarged View') : selectedClip?.title)}
+                  style={{
+                    maxWidth: '88vw',
+                    maxHeight: '78vh',
+                    objectFit: 'contain',
+                    display: 'block',
+                  }}
+                />
+              )}
+
               <div
                 style={{
                   width: '100%',
@@ -2013,7 +1875,7 @@ export const PortfolioView: React.FC = () => {
                   letterSpacing: '0.02em',
                 }}
               >
-                {enlargedImage ? (enlargedImage.title || 'Enlarged View') : selectedClip?.title}
+                {enlargedMedia ? enlargedMedia.title : (enlargedImage ? (enlargedImage.title || 'Enlarged View') : selectedClip?.title)}
               </div>
             </div>
           </div>
