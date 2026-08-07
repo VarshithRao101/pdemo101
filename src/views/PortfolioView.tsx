@@ -29,6 +29,29 @@ import clip24 from '../assets/paperclips/h.jpeg';
 import clip25 from '../assets/paperclips/lpoki.jpeg';
 import clip26 from '../assets/paperclips/pp.jpeg';
 import clip27 from '../assets/paperclips/qw.jpeg';
+// Campus Highlights Media Imports
+import videoPonnamPrabhakar from '../assets/campus_highlights/Minister Ponnam Prabhakar goud garu.mp4';
+import videoHigh1 from '../assets/campus_highlights/WhatsApp Video 2026-08-07 at 1.51.01 PM.mp4';
+import videoHigh2 from '../assets/campus_highlights/WhatsApp Video 2026-08-07 at 1.51.02 PM.mp4';
+import videoHigh3 from '../assets/campus_highlights/WhatsApp Video 2026-08-07 at 1.51.06 PM.mp4';
+import videoHigh4 from '../assets/campus_highlights/WhatsApp Video 2026-08-07 at 1.51.08 PM.mp4';
+import videoHigh5 from '../assets/campus_highlights/WhatsApp Video 2026-08-07 at 1.51.10 PM.mp4';
+import videoHigh6 from '../assets/campus_highlights/WhatsApp Video 2026-08-07 at 1.51.20 PM.mp4';
+import videoHigh7 from '../assets/campus_highlights/WhatsApp Video 2026-08-07 at 1.51.31 PM.mp4';
+import videoHigh8 from '../assets/campus_highlights/WhatsApp Video 2026-08-07 at 1.55.06 PM.mp4';
+
+import photoRaoPadma from '../assets/campus_highlights/BJP Dist President Rao Padma garu.jpeg';
+import photoEatalaRajender from '../assets/campus_highlights/Malkajgiri MP Eatala Rajender garu.jpeg';
+import photoBandiSanjay from '../assets/campus_highlights/Union Minister Bandi Sanjay garu.jpeg';
+import photoNainiRajender from '../assets/campus_highlights/Warangal west mla Nanini Rajendar reddy.jpeg';
+import photoNagaraju from '../assets/campus_highlights/Wardhannapet mla Nagaraju garu.jpeg';
+import photoHarishRao from '../assets/campus_highlights/state topper Teegala Sai Shreshtitha  Felicitation by ex minister Harish Rao.jpeg';
+import photoResultsPoster from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 1.41..jpeg';
+import photoTrioAchievers from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 1.41.4.jpeg';
+import photoStateNews from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 1.41.42 PM.jpeg';
+import photoArchanaPoster from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 1.41.44 PM.jpeg';
+import photoPonnamFelicitation from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 2.46.25 PM.jpeg';
+
 
 import mpcLab from '../assets/generated/mpc_lab.png';
 import bipcLab from '../assets/generated/bipc_lab.png';
@@ -50,33 +73,60 @@ import galleryI6 from '../assets/campusgallery/i6.jpeg';
 ═══════════════════════════════════════════════════════════════ */
 
 const PAPER_CLIPS = [
-  { id: 1, src: clip1, title: 'Press Coverage — Top State Ranks', subtitle: 'Students shine with top AIR & State ranks in JEE & NEET entrance exams.', tag: 'JEE / NEET' },
-  { id: 2, src: clip2, title: 'Achievers Announcement — Board Exam Records', subtitle: 'State record-breaking marks scored by Inspire Junior College students.', tag: 'Board Exams' },
-  { id: 3, src: clip3, title: 'National Talent Felicitation Media Release', subtitle: 'Grand felicitation honoring state toppers and national rank holders.', tag: 'Felicitation' },
-  { id: 4, src: clip4, title: 'Academic Excellence & Mentorship Award', subtitle: 'Recognized for individual mentorship and specialized doubt clarification.', tag: 'Award' },
-  { id: 5, src: clip5, title: 'NEET Medical Entrance Record Ranks', subtitle: 'Highest selection percentage in NEET Medical across Warangal & Hanamkonda.', tag: 'NEET Medical' },
-  { id: 6, src: clip6, title: 'IIT-JEE Mains & Advanced Top Scorers', subtitle: 'Students secure 99+ percentile in JEE Mains — top admissions into IITs & NITs.', tag: 'IIT-JEE' },
-  { id: 7, src: clip7, title: 'Inspire Annual Results Newspaper Feature', subtitle: 'Comprehensive feature showcasing stellar rankers and campus achievements.', tag: 'Annual Results' },
-  { id: 8, src: clip8, title: 'Super 60 Intensive Batch Success Story', subtitle: 'Specialized focus batch produces remarkable entrance exam scores.', tag: 'Super 60' },
-  { id: 9, src: clip9, title: 'State Merit List Record Ranks', subtitle: 'Inspire students secure top positions in state-level merit honors.', tag: 'State Ranks' },
-  { id: 10, src: clip10, title: 'JEE Advanced All India Ranks Feature', subtitle: 'Outstanding performance by MPC batch students in JEE Advanced.', tag: 'JEE Advanced' },
-  { id: 11, src: clip11, title: 'Medical Entrance NEET Rank Celebration', subtitle: 'BiPC toppers felicitated in presence of academic dignitaries.', tag: 'NEET Medical' },
-  { id: 12, src: clip12, title: 'TG EAPCET Top Rankers Media Coverage', subtitle: 'Top engineering ranks in Telangana EAPCET entrance exam.', tag: 'TG EAPCET' },
-  { id: 13, src: clip13, title: 'Intermediate Board Toppers Distinction', subtitle: 'Outstanding 98%+ scores in MPC & BiPC Board Examinations.', tag: 'Board Distinction' },
-  { id: 14, src: clip14, title: 'State Level Academic Excellence Release', subtitle: 'Media feature covering consistent annual rank improvements.', tag: 'Media Release' },
-  { id: 15, src: clip15, title: 'Rank Holders Grand Felicitation Ceremony', subtitle: 'Celebrating student dedication, faculty guidance, and parental support.', tag: 'Felicitation' },
-  { id: 16, src: clip16, title: 'National Talent Search Exam Achievements', subtitle: 'Inspire scholars shine in competitive Olympiads and Talent Tests.', tag: 'Olympiad' },
-  { id: 17, src: clip17, title: 'Telangana State Top Percentiles Release', subtitle: 'Highest concentration of 99+ percentile scorers in Hanamkonda.', tag: 'Percentile Tops' },
-  { id: 18, src: clip18, title: 'Specialized Mentorship Impact Report', subtitle: 'How 1-on-1 doubt clearing transformed student learning outcomes.', tag: 'Mentorship' },
-  { id: 19, src: clip19, title: 'IIT & NIT Admissions Victory Roll', subtitle: 'Proud alumni entering prestigious national institutes of technology.', tag: 'IIT Admissions' },
-  { id: 20, src: clip20, title: 'Grand Rankers Triumph Announcement', subtitle: 'Front page newspaper feature highlighting campus rankers.', tag: 'Triumph' },
-  { id: 21, src: clip21, title: 'Commerce & Civils Base Distinction', subtitle: 'MEC & CEC stream students excel in CA Foundation groundwork.', tag: 'CA & Civils' },
-  { id: 22, src: clip22, title: 'Inspire Educational Excellence Spotlight', subtitle: 'Leading junior college of Hanamkonda highlighted in state press.', tag: 'Spotlight' },
-  { id: 23, src: clip23, title: 'Competitive Entrance Mock Diagnostic Winners', subtitle: 'Statewide mock test toppers awarded institutional scholarships.', tag: 'Mock Tests' },
-  { id: 24, src: clip24, title: 'Parent & Faculty Trust Media Feature', subtitle: 'Testimonials from parents praising campus discipline and care.', tag: 'Parent Trust' },
-  { id: 25, src: clip25, title: 'Digital Classrooms & Science Labs Spotlight', subtitle: 'Modern learning infrastructure boosting competitive readiness.', tag: 'Infrastructure' },
-  { id: 26, src: clip26, title: 'BiPC Medical Batch Outstanding Results', subtitle: 'Record medical college seats secured by Inspire BiPC students.', tag: 'Medical Ranks' },
-  { id: 27, src: clip27, title: 'Inspire Junior College Annual Achievers Wall', subtitle: 'Comprehensive honor roll of top rankers across all streams.', tag: 'Honor Roll' },
+  { id: 1, src: clip1, title: 'BITS Pilani Seat for Inspire Student Sai Shreshtitha', subtitle: 'V6 Velugu: State 1st ranker (997/1000) achieves prestigious admission at BITS Pilani.', tag: 'BITS Pilani' },
+  { id: 2, src: clip2, title: 'Namasthe Telangana: Sai Shreshtitha Bags BITS Pilani Seat', subtitle: 'Erragattu Gutta Inspire student praised by Chairman Bharath Kumar Goud & Principal Sriram Reddy.', tag: 'State Distinction' },
+  { id: 3, src: clip3, title: 'Praja Veekshanam: National Institute Entry for Inspire Scholar', subtitle: 'Scoring 997/1000 in Board exams, Sai Shreshtitha brings glory to Warangal & Hanamkonda.', tag: 'National Merit' },
+  { id: 4, src: clip4, title: 'Neti Sattha Feature: BITS Pilani Entrance Triumph', subtitle: 'Inspire Junior College faculty & management honor state topper for remarkable academic streak.', tag: 'Academic Peak' },
+  { id: 5, src: clip5, title: 'Eenadu Telangana: BITS Pilani Selection Announcement', subtitle: 'Official press release on Sai Shreshtitha securing top engineering seat at BITS Pilani.', tag: 'Eenadu Feature' },
+  { id: 6, src: clip6, title: 'Sakshi News: BITS Pilani Admission Honors', subtitle: 'Chairman Teegala Bharath Goud highlights campus academic discipline and personalized coaching.', tag: 'Sakshi Feature' },
+  { id: 7, src: clip7, title: 'Official Poster: BITS Pilani Admission Confirmed', subtitle: 'Teegala Sai Shreshtitha — State 1st Topper Intermediate 2026 MPC (997/1000).', tag: 'State Topper' },
+  { id: 8, src: clip8, title: 'Times of India: TG-EAPCET Top Ranks Secured', subtitle: 'Historic rank domination in TG-EAPCET competitive entrance examinations.', tag: 'EAPCET Tops' },
+  { id: 9, src: clip9, title: 'Eenadu: Inspire Students Outshine in Inter Results', subtitle: 'Sai Shreshtitha (997), Nishitha (988), Sai Priya (987), Amulya (467), Archana (427), Sreeja (483).', tag: 'Board Records' },
+  { id: 10, src: clip10, title: 'Namasthe Telangana: Girls Dominate State Merit List', subtitle: 'Teegala Sai Shreshtitha leads Telangana state 2nd-year MPC with 997 out of 1000 marks.', tag: 'State Rank 1' },
+  { id: 11, src: clip11, title: 'Sakshi: Inspire Secures State 1st Rank in Inter Results', subtitle: 'Campus celebrations & firecrackers as students achieve top marks across MPC, BiPC & CEC.', tag: 'State Victory' },
+  { id: 12, src: clip12, title: 'Nava Telangana: EAPCET Results Wave by Inspire Toppers', subtitle: 'P. Yogi Raj (Rank 1190), P. Sai Priya (6994), S. Archana (8389), T. Sai Shreshtitha (9614).', tag: 'EAPCET Ranks' },
+  { id: 13, src: clip13, title: 'Namasthe Telangana: EAPCET Rankers Triumph Feature', subtitle: 'Erragattu Gutta Cross campus rankers felicitated by directors & subject experts.', tag: 'EAPCET Triumph' },
+  { id: 14, src: clip14, title: 'ABN Andhra Jyothi: Stellar Performance Across Streams', subtitle: 'Bheemaram & Erragattu campus students excel in 1st & 2nd year Intermediate exams.', tag: 'Andhra Jyothi' },
+  { id: 15, src: clip15, title: 'Namasthe Telangana: Grand Felicitation Ceremony', subtitle: 'Inspire Chairman Bharath Goud & Directors honor toppers for exemplary dedication.', tag: 'Felicitation' },
+  { id: 16, src: clip16, title: 'Telangana Anukshanam: State Level 1st Rank Achievement', subtitle: 'High-contrast coverage of Inspire Junior College dominating Telangana Inter Board results.', tag: 'State Merit' },
+  { id: 17, src: clip17, title: 'Namasthe Telangana Page 1: Girls Clean Sweep State Tops', subtitle: 'Front page spotlight on Sai Shreshtitha (MPC 997), Hafsa Begum (BiPC 997), K. Jyothsna (BiPC 997).', tag: 'Front Page' },
+  { id: 18, src: clip18, title: 'Eenadu Main Edition: 75.61% Pass Rate — All Toppers Girls', subtitle: 'State board officials release results highlighting top 997 score by Inspire student.', tag: 'Board Official' },
+  { id: 19, src: clip19, title: 'Mana Telangana Interview: "My Goal is to Become an IAS Officer"', subtitle: 'State 1st ranker Sai Shreshtitha shares her vision to clear UPSC Civils and serve society.', tag: 'IAS Ambition' },
+  { id: 20, src: clip20, title: 'Praja Veekshanam: Record Breaking Academic Excellence', subtitle: 'Inspire Junior College sets state record with top scores in MPC, BiPC & CEC streams.', tag: 'Record Ranks' },
+  { id: 21, src: clip21, title: 'Namasthe Telangana Banner: IPE 997 & JEE Main 95.59%', subtitle: 'Full-page celebration banner featuring top rankers and 2026 admissions open.', tag: 'JEE & IPE' },
+  { id: 22, src: clip22, title: 'Namasthe Telangana: Chairman & Principal Congratulate Toppers', subtitle: 'Inspire leadership presenting awards and mementos to merit scholars.', tag: 'Leadership' },
+  { id: 23, src: clip23, title: 'Andhra Jyothi: EAPCET 2026 Glorious Victory Roll', subtitle: 'P Yogi Raj (1190) and team celebrated at campus press conference.', tag: 'Victory Roll' },
+  { id: 24, src: clip24, title: 'Mana Telangana: EAPCET Top Rankers Felicitation', subtitle: 'Warangal & Hanamkonda press highlights student hard work & faculty mentorship.', tag: 'Press Release' },
+  { id: 25, src: clip25, title: 'Nava Telangana: "This Victory is Our Foundation for Future"', subtitle: 'Chairman Teegala Bharath Goud outlines vision for national-level academic excellence.', tag: 'Vision 2026' },
+  { id: 26, src: clip26, title: 'Praja Sakshi: BiPC Stream Topper Archana Secures Campus 1st', subtitle: 'Peddapalli district native S. Archana (427 marks) honored by family & institution.', tag: 'BiPC Topper' },
+  { id: 27, src: clip27, title: 'Andhra Prabha: Inspire College Students Shine in Inter Board', subtitle: 'Statewide feature on 997/1000 record score and individual doubt clearing desks.', tag: 'Andhra Prabha' },
+];
+
+
+const CAMPUS_VIDEOS = [
+  { id: 1, src: videoPonnamPrabhakar, title: 'BC Welfare Minister Ponnam Prabhakar Goud Garu Visit', subtitle: 'Honorable Minister visiting Inspire Junior College and felicitating State 1st Topper Teegala Sai Shreshtitha.', tag: 'VIP Visit' },
+  { id: 2, src: videoHigh1, title: 'State 1st Ranker Grand Press Felicitation', subtitle: 'Leadership team & faculty celebrating record 997/1000 score with dignitaries.', tag: 'Press Coverage' },
+  { id: 3, src: videoHigh2, title: 'Dignitaries & Academic Leadership Address', subtitle: 'Keynotes on individual mentorship and competitive exam preparation strategies.', tag: 'Keynote' },
+  { id: 4, src: videoHigh3, title: 'State Rankers Celebratory Ceremony', subtitle: 'Inspire Junior College campus celebration with faculty, parents & toppers.', tag: 'Celebration' },
+  { id: 5, src: videoHigh4, title: 'Student Interaction & Mentorship Desk Session', subtitle: 'Live interaction demonstrating daily doubt clarification and ranker mentorship.', tag: 'Mentorship' },
+  { id: 6, src: videoHigh5, title: 'National Level Entrance Rankers Announcement', subtitle: 'Showcasing IIT-JEE & NEET top rank holders from Hanamkonda & Warangal.', tag: 'National Ranks' },
+  { id: 7, src: videoHigh6, title: 'Inspire Junior College Infrastructure & Labs', subtitle: 'Walkthrough of AC classrooms, science laboratories, and digital study blocks.', tag: 'Infrastructure' },
+  { id: 8, src: videoHigh7, title: 'Annual Achievers & Parents Meet Highlights', subtitle: 'Honoring parental trust and student commitment across all campuses.', tag: 'Annual Meet' },
+  { id: 9, src: videoHigh8, title: 'Dignitaries Congratulating State Toppers', subtitle: 'Ministers & MPs extending warm wishes to Inspire Junior College leadership.', tag: 'Dignitary Wishes' },
+];
+
+const CAMPUS_PHOTOS = [
+  { id: 1, src: photoPonnamFelicitation, title: 'BC Welfare Minister Ponnam Prabhakar Goud Garu Personal Visit', subtitle: 'Minister personally visiting to honor State 1st Ranker Teegala Sai Shreshtitha & family.', tag: 'Minister Visit' },
+  { id: 2, src: photoHarishRao, title: 'Felicitation by Former Minister T. Harish Rao Garu', subtitle: 'Former Minister T. Harish Rao Garu presenting honors to State Topper Teegala Sai Shreshtitha.', tag: 'Minister Honors' },
+  { id: 3, src: photoBandiSanjay, title: 'Felicitation by Union Minister Bandi Sanjay Kumar Garu', subtitle: 'Union Minister Bandi Sanjay Kumar Garu honoring Inspire Junior College rankers.', tag: 'Union Minister' },
+  { id: 4, src: photoEatalaRajender, title: 'Felicitation by Malkajgiri MP Eatala Rajender Garu', subtitle: 'MP Eatala Rajender Garu congratulating State Topper Teegala Sai Shreshtitha and leadership.', tag: 'MP Felicitation' },
+  { id: 5, src: photoNainiRajender, title: 'Felicitation by Warangal West MLA Naini Rajender Reddy Garu', subtitle: 'MLA Naini Rajender Reddy Garu presenting traditional honors to State Ranker.', tag: 'MLA Visit' },
+  { id: 6, src: photoNagaraju, title: 'Felicitation by Wardhannapet MLA K.R. Nagaraju Garu', subtitle: 'MLA K.R. Nagaraju Garu felicitating rank holders at official ceremony.', tag: 'MLA Honors' },
+  { id: 7, src: photoRaoPadma, title: 'Felicitation by BJP District President Rao Padma Garu', subtitle: 'District President Rao Padma Garu presenting awards to top performing students.', tag: 'Dignitary Visit' },
+  { id: 8, src: photoResultsPoster, title: 'Official Board & Competitive Entrance Results Poster', subtitle: 'Showcasing JEE Main 95.59%, JEE Advanced 2006 AIR, and EAPCET 1190 Rank.', tag: 'Results Poster' },
+  { id: 9, src: photoTrioAchievers, title: 'Outstanding Rankers Achievement Honor Roll', subtitle: 'P Yogi Raj (1190), P Sai Priya (6994), and T Sai Shreshtitha (9614).', tag: 'Achievers Roll' },
+  { id: 10, src: photoStateNews, title: 'State 1st Rank 997/1000 Media Spotlight Feature', subtitle: 'Newspaper & media coverage highlighting 15-hour daily study routine & mentorship.', tag: 'State Rank 1' },
+  { id: 11, src: photoArchanaPoster, title: 'Jarpula Archana — JEE Advanced 2026 AIR 2006 Feature', subtitle: 'Proud moment celebrating outstanding national rank in JEE Advanced.', tag: 'JEE Advanced' },
 ];
 
 const PROGRAM_CARDS = [
@@ -838,6 +888,7 @@ export const PortfolioView: React.FC = () => {
   const streamsRef = useReveal(0.1);
   const aboutRef = useReveal(0.1);
   const campusesRef = useReveal(0.1);
+  const highlightsRef = useReveal(0.1);
   const galleryRef = useReveal(0.1);
   const enquiryReveal = useReveal(0.1);
 
@@ -976,7 +1027,7 @@ export const PortfolioView: React.FC = () => {
             </a>
             {/* Desktop links */}
             <div className="desk-nav" style={{ display: 'flex', alignItems: 'center', gap: 28, width: '100%', justifyContent: 'center' }}>
-              {[['#about','About College'],['#streams','Academic Streams'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#campus-gallery','Insight Gallery'],['#mentorship','Mentorship'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
+              {[['#about','About College'],['#streams','Academic Streams'],['#highlights','Campus Highlights'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#campus-gallery','Insight Gallery'],['#mentorship','Mentorship'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
                 <a key={h} href={h} className="nl">{l}</a>
               ))}
             </div>
@@ -991,7 +1042,7 @@ export const PortfolioView: React.FC = () => {
           {/* Mobile dropdown */}
           {mobileOpen && (
             <div style={{ background: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.1)', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 4, animation: 'navSlide 0.28s ease both' }}>
-              {[['#about','About College'],['#streams','Academic Streams'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#campus-gallery','Insight Gallery'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
+              {[['#about','About College'],['#streams','Academic Streams'],['#highlights','Campus Highlights'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#campus-gallery','Insight Gallery'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
                 <a key={h} href={h} onClick={() => setMobileOpen(false)} style={{ color: '#CBD5E1', fontSize: 15, fontWeight: 700, textDecoration: 'none', padding: '10px 12px', borderRadius: 8, transition: 'background 0.2s, color 0.2s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#CBD5E1'; }}
@@ -1281,6 +1332,154 @@ export const PortfolioView: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+                {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            CAMPUS HIGHLIGHTS (VIDEOS & PHOTOS)
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section id="highlights" className="section-pad bg-grid-animated" style={{ padding: '72px 16px', background: 'linear-gradient(180deg, #FAFCFF 0%, #F8FAFC 100%)', position: 'relative' }}>
+          <div ref={highlightsRef.ref} className={`ic reveal ${highlightsRef.visible ? 'visible' : ''}`}>
+            
+            {/* Header */}
+            <div style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 28px' }}>
+              <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Media &amp; VIP Felicitations</div>
+              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
+                Highlights of Our Campus
+              </h2>
+              <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75 }}>
+                Key moments, dignitary visits, and Video/Photo features celebrating State 1st Ranker Teegala Sai Shreshtitha and Inspire Junior College toppers.
+              </p>
+            </div>
+
+            <div className="dec-divider" style={{ marginTop: 20, marginBottom: 40 }}>
+              <div className="dec-divider-line" />
+              <div className="dec-divider-gem" />
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>VIDEOS &amp; FULL PHOTO EXHIBITS</div>
+              <div className="dec-divider-gem" />
+              <div className="dec-divider-line" />
+            </div>
+
+            {/* SLOT 1: VIDEO HIGHLIGHTS */}
+            <div style={{ marginBottom: 54 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 20, fontWeight: 900, color: DARK_TEXT, margin: 0, fontFamily: "'Merriweather',serif" }}>Video Highlights &amp; Dignitary Visits</h3>
+                  <div style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600 }}>Watch official video coverages, minister felicitations &amp; student interactive sessions</div>
+                </div>
+              </div>
+
+              {/* Video Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
+                {CAMPUS_VIDEOS.map((vid) => (
+                  <div
+                    key={vid.id}
+                    className="ch"
+                    style={{
+                      background: '#0F172A',
+                      borderRadius: 20,
+                      overflow: 'hidden',
+                      border: '1.5px solid rgba(255,255,255,0.1)',
+                      boxShadow: '0 10px 30px rgba(15,23,42,0.18)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <div style={{ position: 'relative', width: '100%', background: '#000', borderRadius: '20px 20px 0 0', overflow: 'hidden' }}>
+                      <video
+                        controls
+                        preload="metadata"
+                        style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block', background: '#000' }}
+                      >
+                        <source src={vid.src} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+                      <div style={{ position: 'absolute', top: 12, left: 14, background: 'rgba(245, 158, 11, 0.95)', color: '#0F172A', padding: '4px 10px', borderRadius: 16, fontSize: 10.5, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em', zIndex: 5, pointerEvents: 'none' }}>
+                        {vid.tag}
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8, background: '#0F172A' }}>
+                      <h4 style={{ fontSize: 15, fontWeight: 800, color: '#FFFFFF', margin: 0, lineHeight: 1.4 }}>{vid.title}</h4>
+                      <p style={{ fontSize: 12.5, color: '#94A3B8', margin: 0, lineHeight: 1.6 }}>{vid.subtitle}</p>
+                    </div>
+
+                    <div style={{ height: 3, background: 'linear-gradient(90deg, #F59E0B, #2563EB)' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* SLOT 2: PHOTO HIGHLIGHTS (FULL PHOTO DISPLAY - 100% VISIBLE) */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #10B981, #059669)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 20, fontWeight: 900, color: DARK_TEXT, margin: 0, fontFamily: "'Merriweather',serif" }}>Photo Highlights &amp; Dignitary Honors</h3>
+                  <div style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600 }}>Complete uncropped photos of VIP visits, official posters &amp; rank celebrations</div>
+                </div>
+              </div>
+
+              {/* Photo Gallery Grid (Full Image Fitted with object-fit contain) */}
+              <div
+                className="campuses-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                  gap: 22,
+                }}
+              >
+                {CAMPUS_PHOTOS.map((pho) => (
+                  <div
+                    key={pho.id}
+                    onClick={() => setEnlargedImage({ src: pho.src, title: pho.title })}
+                    className="ch clip-wrap"
+                    style={{
+                      background: '#0F172A',
+                      borderRadius: 20,
+                      overflow: 'hidden',
+                      border: '1.5px solid rgba(255,255,255,0.1)',
+                      boxShadow: '0 8px 24px rgba(15,23,42,0.14)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    {/* Full photo container with object-fit: contain to ensure complete photo is visible without crop */}
+                    <div style={{ width: '100%', height: 260, background: '#090D1A', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', padding: 8 }}>
+                      <img
+                        src={pho.src}
+                        alt={pho.title}
+                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block', borderRadius: 8 }}
+                      />
+                      <div style={{ position: 'absolute', top: 12, left: 14, background: ACCENT_GOLD, color: '#0F172A', padding: '3px 10px', borderRadius: 14, fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        {pho.tag}
+                      </div>
+                      <div style={{ position: 'absolute', top: 12, right: 14, width: 30, height: 30, borderRadius: '50%', background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8, background: '#0F172A' }}>
+                      <h4 style={{ fontSize: 14.5, fontWeight: 800, color: '#FFFFFF', margin: 0, lineHeight: 1.4 }}>{pho.title}</h4>
+                      <p style={{ fontSize: 12.5, color: '#94A3B8', margin: 0, lineHeight: 1.6 }}>{pho.subtitle}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#38BDF8', fontSize: 12, fontWeight: 800, marginTop: 4, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        Click for Fullview
+                      </div>
+                    </div>
+
+                    <div style={{ height: 3, background: 'linear-gradient(90deg, #10B981, #3B82F6)' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
         </section>
 
