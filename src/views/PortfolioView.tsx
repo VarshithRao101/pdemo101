@@ -918,6 +918,34 @@ export const PortfolioView: React.FC = () => {
     return () => clearInterval(timer);
   }, [highlightTab, isPhotoPaused]);
 
+  const touchStartXRef = useRef<number | null>(null);
+
+  const handleTouchStartMedia = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEndPhoto = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null) return;
+    const diff = touchStartXRef.current - e.changedTouches[0].clientX;
+    if (diff > 40) {
+      setPhotoIndex(prev => (prev + 1) % CAMPUS_PHOTOS.length);
+    } else if (diff < -40) {
+      setPhotoIndex(prev => (prev - 1 + CAMPUS_PHOTOS.length) % CAMPUS_PHOTOS.length);
+    }
+    touchStartXRef.current = null;
+  };
+
+  const handleTouchEndVideo = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null) return;
+    const diff = touchStartXRef.current - e.changedTouches[0].clientX;
+    if (diff > 40) {
+      setVideoIndex(prev => Math.min(CAMPUS_VIDEOS.length - 1, prev + 1));
+    } else if (diff < -40) {
+      setVideoIndex(prev => Math.max(0, prev - 1));
+    }
+    touchStartXRef.current = null;
+  };
+
   const portalHash = '#/v1-portal-gate-x89f2a7b';
   const orgPhone = '+91 97043 80320';
   const orgEmail = 'admissions@inspirejuniorcollege.edu.in';
@@ -1428,7 +1456,9 @@ export const PortfolioView: React.FC = () => {
               <div
                 onMouseEnter={() => setIsPhotoPaused(true)}
                 onMouseLeave={() => setIsPhotoPaused(false)}
-                style={{ position: 'relative', width: '100%', maxWidth: 1140, margin: '0 auto' }}
+                onTouchStart={handleTouchStartMedia}
+                onTouchEnd={handleTouchEndPhoto}
+                style={{ position: 'relative', width: '100%', maxWidth: 1140, margin: '0 auto', touchAction: 'pan-y' }}
               >
                 {/* Photo Display Card with Left & Right Arrows */}
                 <div style={{ position: 'relative', borderRadius: 24, overflow: 'hidden', background: '#0F172A', boxShadow: '0 20px 50px rgba(15,23,42,0.22)', border: '1.5px solid rgba(255,255,255,0.1)' }}>
@@ -1438,14 +1468,14 @@ export const PortfolioView: React.FC = () => {
                     onClick={() => setEnlargedMedia({ src: CAMPUS_PHOTOS[photoIndex].src, title: CAMPUS_PHOTOS[photoIndex].title })}
                     style={{
                       width: '100%',
-                      height: 'clamp(360px, 60vh, 560px)',
+                      height: 'clamp(280px, 50vh, 560px)',
                       background: '#070A14',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       position: 'relative',
                       cursor: 'zoom-in',
-                      padding: 16,
+                      padding: 12,
                     }}
                   >
                     <img
@@ -1463,12 +1493,12 @@ export const PortfolioView: React.FC = () => {
                     />
 
                     {/* Tag badge */}
-                    <div style={{ position: 'absolute', top: 20, left: 20, background: ACCENT_GOLD, color: '#0F172A', padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', zIndex: 10 }}>
+                    <div style={{ position: 'absolute', top: 16, left: 16, background: ACCENT_GOLD, color: '#0F172A', padding: '4px 12px', borderRadius: 20, fontSize: 10.5, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', zIndex: 10 }}>
                       {CAMPUS_PHOTOS[photoIndex].tag}
                     </div>
 
                     {/* Counter badge */}
-                    <div style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(10px)', color: '#FFFFFF', padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 800, border: '1px solid rgba(255,255,255,0.2)', zIndex: 10 }}>
+                    <div style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(10px)', color: '#FFFFFF', padding: '4px 12px', borderRadius: 20, fontSize: 11.5, fontWeight: 800, border: '1px solid rgba(255,255,255,0.2)', zIndex: 10 }}>
                       Photo {photoIndex + 1} of {CAMPUS_PHOTOS.length}
                     </div>
                   </div>
@@ -1479,13 +1509,13 @@ export const PortfolioView: React.FC = () => {
                     aria-label="Previous Photo"
                     style={{
                       position: 'absolute',
-                      left: 16,
+                      left: 12,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      width: 48,
-                      height: 48,
+                      width: 44,
+                      height: 44,
                       borderRadius: '50%',
-                      background: 'rgba(15, 23, 42, 0.65)',
+                      background: 'rgba(15, 23, 42, 0.75)',
                       backdropFilter: 'blur(12px)',
                       border: '1.5px solid rgba(255, 255, 255, 0.35)',
                       color: '#FFFFFF',
@@ -1500,7 +1530,7 @@ export const PortfolioView: React.FC = () => {
                     onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-50%) scale(1.12)')}
                     onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(-50%) scale(1)')}
                   >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="15 18 9 12 15 6"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="15 18 9 12 15 6"/></svg>
                   </button>
 
                   {/* RIGHT ARROW BUTTON */}
@@ -1509,13 +1539,13 @@ export const PortfolioView: React.FC = () => {
                     aria-label="Next Photo"
                     style={{
                       position: 'absolute',
-                      right: 16,
+                      right: 12,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      width: 48,
-                      height: 48,
+                      width: 44,
+                      height: 44,
                       borderRadius: '50%',
-                      background: 'rgba(15, 23, 42, 0.65)',
+                      background: 'rgba(15, 23, 42, 0.75)',
                       backdropFilter: 'blur(12px)',
                       border: '1.5px solid rgba(255, 255, 255, 0.35)',
                       color: '#FFFFFF',
@@ -1530,19 +1560,19 @@ export const PortfolioView: React.FC = () => {
                     onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-50%) scale(1.12)')}
                     onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(-50%) scale(1)')}
                   >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="9 18 15 12 9 6"/></svg>
                   </button>
 
                   {/* Photo Title & Description Bar */}
-                  <div style={{ padding: '20px 26px', background: '#0F172A', color: '#FFFFFF', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ padding: '16px 20px', background: '#0F172A', color: '#FFFFFF', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
                     <div>
-                      <h4 style={{ fontSize: 18, fontWeight: 900, color: '#FFFFFF', margin: '0 0 4px', fontFamily: "'Merriweather',serif" }}>{CAMPUS_PHOTOS[photoIndex].title}</h4>
-                      <p style={{ fontSize: 13.5, color: '#CBD5E1', margin: 0, lineHeight: 1.5 }}>{CAMPUS_PHOTOS[photoIndex].subtitle}</p>
+                      <h4 style={{ fontSize: 16, fontWeight: 900, color: '#FFFFFF', margin: '0 0 4px', fontFamily: "'Merriweather',serif" }}>{CAMPUS_PHOTOS[photoIndex].title}</h4>
+                      <p style={{ fontSize: 12.5, color: '#CBD5E1', margin: 0, lineHeight: 1.5 }}>{CAMPUS_PHOTOS[photoIndex].subtitle}</p>
                     </div>
                     <button
                       onClick={() => setEnlargedMedia({ src: CAMPUS_PHOTOS[photoIndex].src, title: CAMPUS_PHOTOS[photoIndex].title })}
                       className="btn-gold"
-                      style={{ padding: '8px 20px', fontSize: 12.5 }}
+                      style={{ padding: '8px 18px', fontSize: 12 }}
                     >
                       Enlarge Photo
                     </button>
@@ -1550,15 +1580,15 @@ export const PortfolioView: React.FC = () => {
                 </div>
 
                 {/* Bottom Dots Indicator */}
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 18 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
                   {CAMPUS_PHOTOS.map((_, idx) => (
                     <button
                       key={idx}
                       onClick={() => setPhotoIndex(idx)}
                       aria-label={`Go to photo ${idx + 1}`}
                       style={{
-                        width: idx === photoIndex ? 24 : 8,
-                        height: 8,
+                        width: idx === photoIndex ? 22 : 7,
+                        height: 7,
                         borderRadius: 4,
                         background: idx === photoIndex ? '#2563EB' : '#CBD5E1',
                         border: 'none',
@@ -1571,25 +1601,29 @@ export const PortfolioView: React.FC = () => {
               </div>
             )}
 
-            {/* TAB CONTENT: VIDEOS ONLY (SHOW 2 VIDEOS AT A TIME WITH LEFT & RIGHT ARROWS) */}
+            {/* TAB CONTENT: VIDEOS ONLY (SHOW 2 VIDEOS ON DESKTOP, SWIPEABLE ON MOBILE) */}
             {highlightTab === 'videos' && (
-              <div style={{ position: 'relative', width: '100%', maxWidth: 1140, margin: '0 auto' }}>
+              <div
+                onTouchStart={handleTouchStartMedia}
+                onTouchEnd={handleTouchEndVideo}
+                style={{ position: 'relative', width: '100%', maxWidth: 1140, margin: '0 auto', touchAction: 'pan-y' }}
+              >
                 
                 {/* Header info */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 800, color: '#475569' }}>
-                    Showing Videos {videoIndex + 1} &amp; {Math.min(videoIndex + 2, CAMPUS_VIDEOS.length)} of {CAMPUS_VIDEOS.length}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#475569' }}>
+                    Showing Videos {videoIndex + 1} &amp; {Math.min(videoIndex + 2, CAMPUS_VIDEOS.length)} of {CAMPUS_VIDEOS.length} <span style={{ color: '#94A3B8', fontWeight: 600 }}>(Swipe on phone)</span>
                   </div>
                   
                   {/* LEFT & RIGHT NAV ARROWS */}
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button
-                      onClick={() => setVideoIndex(prev => Math.max(0, prev - 2))}
+                      onClick={() => setVideoIndex(prev => Math.max(0, prev - 1))}
                       disabled={videoIndex === 0}
-                      aria-label="Previous Videos"
+                      aria-label="Previous Video"
                       style={{
-                        width: 44,
-                        height: 44,
+                        width: 42,
+                        height: 42,
                         borderRadius: '50%',
                         background: videoIndex === 0 ? '#E2E8F0' : '#2563EB',
                         color: videoIndex === 0 ? '#94A3B8' : '#FFFFFF',
@@ -1606,21 +1640,21 @@ export const PortfolioView: React.FC = () => {
                     </button>
 
                     <button
-                      onClick={() => setVideoIndex(prev => Math.min(CAMPUS_VIDEOS.length - 2, prev + 2))}
-                      disabled={videoIndex >= CAMPUS_VIDEOS.length - 2}
-                      aria-label="Next Videos"
+                      onClick={() => setVideoIndex(prev => Math.min(CAMPUS_VIDEOS.length - 1, prev + 1))}
+                      disabled={videoIndex >= CAMPUS_VIDEOS.length - 1}
+                      aria-label="Next Video"
                       style={{
-                        width: 44,
-                        height: 44,
+                        width: 42,
+                        height: 42,
                         borderRadius: '50%',
-                        background: videoIndex >= CAMPUS_VIDEOS.length - 2 ? '#E2E8F0' : '#2563EB',
-                        color: videoIndex >= CAMPUS_VIDEOS.length - 2 ? '#94A3B8' : '#FFFFFF',
+                        background: videoIndex >= CAMPUS_VIDEOS.length - 1 ? '#E2E8F0' : '#2563EB',
+                        color: videoIndex >= CAMPUS_VIDEOS.length - 1 ? '#94A3B8' : '#FFFFFF',
                         border: 'none',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        cursor: videoIndex >= CAMPUS_VIDEOS.length - 2 ? 'not-allowed' : 'pointer',
-                        boxShadow: videoIndex >= CAMPUS_VIDEOS.length - 2 ? 'none' : '0 4px 14px rgba(37,99,235,0.3)',
+                        cursor: videoIndex >= CAMPUS_VIDEOS.length - 1 ? 'not-allowed' : 'pointer',
+                        boxShadow: videoIndex >= CAMPUS_VIDEOS.length - 1 ? 'none' : '0 4px 14px rgba(37,99,235,0.3)',
                         transition: 'all 0.22s ease',
                       }}
                     >
