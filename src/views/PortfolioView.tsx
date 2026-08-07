@@ -909,7 +909,6 @@ export const PortfolioView: React.FC = () => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  
   // Auto scroll photos every 2 seconds
   useEffect(() => {
     if (highlightTab !== 'photos' || isPhotoPaused) return;
@@ -970,6 +969,387 @@ export const PortfolioView: React.FC = () => {
       <div style={{ background: '#FFFFFF', minHeight: '100vh' }}>
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            ANNOUNCEMENT TICKER
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <div style={{ background: 'linear-gradient(90deg,#0F172A 0%,#1a2744 50%,#0F172A 100%)', borderBottom: '1px solid rgba(245,158,11,0.2)', padding: '0', overflow: 'hidden', position: 'relative' }}>
+          {/* Glowing top edge */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(245,158,11,0.5),transparent)' }} />
+          <div className="ticker-wrap" style={{ padding: '9px 0' }}>
+            <div className="ticker-inner">
+              {[...tickerItems, ...tickerItems].map((t, i) => (
+                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 16, marginRight: 44 }}>
+                  {t.highlight ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 20, padding: '2px 12px', fontSize: 11.5, fontWeight: 900, color: ACCENT_GOLD, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: ACCENT_GOLD, display: 'inline-block', boxShadow: '0 0 6px rgba(245,158,11,0.8)', animation: 'glowPulse 1.4s ease-in-out infinite' }} />
+                      {t.text}
+                    </span>
+                  ) : (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+                      <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#475569', display: 'inline-block' }} />
+                      {t.text}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent)' }} />
+        </div>
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            TOP UTILITY BAR
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <div className="desk-top" style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', padding: '11px 0' }}>
+          <div className="ic" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <a href="#hero" style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none' }}>
+              <img src={collegeLogo} alt="Inspire Junior College Logo" style={{ height: 46, width: 'auto', objectFit: 'contain' }} />
+              <div>
+                <div style={{ fontSize: 19, fontWeight: 900, color: NAVBAR_NAVY, fontFamily: "'Merriweather',serif", letterSpacing: '-0.02em' }}>Inspire Junior College</div>
+                <div style={{ fontSize: 10.5, color: '#64748B', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase' }}>Hanumakonda, Telangana · IIT-JEE | NEET | Intermediate</div>
+              </div>
+            </a>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+              {[['#enquiry','Admissions 2026'],['#paper-clips','News & Media'],['#about','About'],['#contact','Contact']].map(([h,l]) => (
+                <a key={h} href={h} style={{ fontSize: 13, fontWeight: 700, color: '#475569', textDecoration: 'none', transition: 'color 0.2s' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#2563EB')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#475569')}>{l}</a>
+              ))}
+            </div>
+            <a href="#enquiry" className="btn-gold pulse" style={{ padding: '9px 22px', fontSize: 13 }}>
+              Enquire Now
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+          </div>
+        </div>
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            STICKY NAV
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <nav style={{
+          background: scrolled ? 'rgba(15,23,42,0.97)' : NAVBAR_NAVY,
+          backdropFilter: scrolled ? 'blur(12px)' : 'none',
+          position: 'sticky', top: 0, zIndex: 200,
+          boxShadow: scrolled ? '0 4px 24px rgba(15,23,42,0.28)' : '0 2px 12px rgba(15,23,42,0.12)',
+          transition: 'background 0.35s, box-shadow 0.35s, backdrop-filter 0.35s',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <div className="ic" style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Mobile brand */}
+            <a href="#hero" className="mob-btn" style={{ display: 'none', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+              <img src={collegeLogo} alt="Logo" style={{ height: 34, background: '#fff', padding: '2px 4px', borderRadius: 6 }} />
+              <span style={{ color: '#fff', fontWeight: 900, fontSize: 15, fontFamily: "'Merriweather',serif" }}>Inspire Junior College</span>
+            </a>
+            {/* Desktop links */}
+            <div className="desk-nav" style={{ display: 'flex', alignItems: 'center', gap: 28, width: '100%', justifyContent: 'center' }}>
+              {[['#about','About College'],['#streams','Academic Streams'],['#highlights','Campus Highlights'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#campus-gallery','Insight Gallery'],['#mentorship','Mentorship'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
+                <a key={h} href={h} className="nl">{l}</a>
+              ))}
+            </div>
+            {/* Mobile menu toggle */}
+            <button className="mob-btn" onClick={() => setMobileOpen(o => !o)}
+              style={{ display: 'none', background: 'none', border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: 8, padding: '8px 12px', color: '#fff', cursor: 'pointer', alignItems: 'center', gap: 6, minWidth: 44, minHeight: 44, justifyContent: 'center', transition: 'border-color 0.2s' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                {mobileOpen ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></> : <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>}
+              </svg>
+            </button>
+          </div>
+          {/* Mobile dropdown */}
+          {mobileOpen && (
+            <div style={{ background: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.1)', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 4, animation: 'navSlide 0.28s ease both' }}>
+              {[['#about','About College'],['#streams','Academic Streams'],['#highlights','Campus Highlights'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#campus-gallery','Insight Gallery'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
+                <a key={h} href={h} onClick={() => setMobileOpen(false)} style={{ color: '#CBD5E1', fontSize: 15, fontWeight: 700, textDecoration: 'none', padding: '10px 12px', borderRadius: 8, transition: 'background 0.2s, color 0.2s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#CBD5E1'; }}
+                >{l}</a>
+              ))}
+              <a href="#enquiry" onClick={() => setMobileOpen(false)} className="btn-gold" style={{ marginTop: 8, textAlign: 'center', justifyContent: 'center' }}>Enquire Now</a>
+            </div>
+          )}
+        </nav>
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            HERO — DYNAMIC BIG IMAGE SHOWCASE
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section id="hero" className="hero-h" style={{ position: 'relative', height: 640, overflow: 'hidden', background: '#0F172A' }}>
+          {/* Full hero image — clear, responsive, static & clickable */}
+          <img
+            src={heroImg}
+            alt="Inspire Junior College Campus"
+            onClick={() => setEnlargedImage({ src: heroImg, title: 'Inspire Junior College Main Campus HQ' })}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', cursor: 'zoom-in' }}
+          />
+          {/* Zoom hint badge on hero */}
+          <div
+            onClick={() => setEnlargedImage({ src: heroImg, title: 'Inspire Junior College Main Campus HQ' })}
+            style={{
+              position: 'absolute',
+              top: 20,
+              right: 20,
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              color: '#FFFFFF',
+              padding: '6px 14px',
+              borderRadius: 20,
+              fontSize: 11.5,
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              zIndex: 10,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Click to Enlarge
+          </div>
+          {/* Light vignette around edges */}
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 35%, rgba(15,23,42,0.35) 100%)' }} />
+          {/* Crazy animated glowing light orbs */}
+          <div style={{ position: 'absolute', top: '15%', left: '10%', width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.25), transparent 70%)', animation: 'floatOrb 6s ease-in-out infinite', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: '20%', right: '12%', width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(66,133,244,0.3), transparent 70%)', animation: 'floatOrb 8s ease-in-out infinite 2s', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: '40%', right: '30%', width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,168,83,0.25), transparent 70%)', animation: 'floatOrb 7s ease-in-out infinite 1s', pointerEvents: 'none' }} />
+          {/* Subtle bottom fade */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top, rgba(15,23,42,0.6), transparent)' }} />
+        </section>
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            HERO INFO BAND — below the clear hero image
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <div style={{ background: 'linear-gradient(90deg,#0F172A,#0F172A 70%,#1E3A8A)', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'relative' }}>
+          {/* Top Google continuous rainbow accent line */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853,#4285F4)', backgroundSize: '200% 200%', animation: 'rainbowFlow 3s linear infinite' }} />
+          <div className="ic" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+            <div style={{ animation: 'fadeUp 0.8s ease both 0.2s' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 28, height: 3, background: 'linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853)', backgroundSize: '200% 200%', animation: 'rainbowFlow 3s linear infinite', borderRadius: 2 }} />
+                <span style={{ fontSize: 10.5, fontWeight: 900, color: ACCENT_GOLD, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Established &amp; Accredited · Hanumakonda, Telangana</span>
+              </div>
+              <h1 className="h1-hero" style={{ fontSize: 'clamp(22px,3.2vw,38px)', fontWeight: 900, color: '#FFFFFF', fontFamily: "'Merriweather',serif", margin: '0 0 4px', lineHeight: 1.2 }}>
+                Inspire Junior College
+              </h1>
+              <p style={{ fontSize: 13.5, color: '#CBD5E1', fontWeight: 600, margin: 0 }}>IIT-JEE Mains &amp; Advanced &nbsp;·&nbsp; NEET Medical &nbsp;·&nbsp; Intermediate Board</p>
+            </div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', animation: 'fadeUp 0.8s ease both 0.4s' }}>
+              <a href="#enquiry" className="btn-gold pulse">
+                Apply for Admission 2026
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </a>
+              <a href="#paper-clips" className="btn-ghost">
+                View Rank Clippings
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            ANIMATED STATS BAR
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section className="bg-grid-animated" style={{ padding: '0 16px' }}>
+          <div ref={statsRef.ref} className="ic" style={{ position: 'relative', paddingTop: 28, paddingBottom: 36 }}>
+            <div style={{ background: '#fff', borderRadius: 24, padding: '20px 20px 16px', boxShadow: '0 12px 48px rgba(15,23,42,0.11)', border: '1.5px solid #E2E8F0', position: 'relative', overflow: 'hidden' }}>
+              {/* Rainbow top accent */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3.5, background: 'linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853,#4285F4)', backgroundSize: '200% 200%', animation: 'rainbowFlow 3s linear infinite', borderRadius: '24px 24px 0 0' }} />
+              <div className={`stats-inner ${statsRef.visible ? 'visible' : ''}`} style={{ paddingTop: 8 }}>
+                {STAT_CARDS.map((s, i) => (
+                  <div key={i} className={`reveal d${(i+1)*100} ${statsRef.visible ? 'visible' : ''}`}>
+                    <StatCard stat={s} active={statsRef.visible} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            PAPER CLIPS & MEDIA GALLERY (4x4 GRID LAYOUT)
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section id="paper-clips" className="section-pad bg-grid-animated" style={{ padding: '64px 16px' }}>
+          <div ref={clipsRef.ref} className="ic">
+
+            {/* Section heading */}
+            <div className={`reveal ${clipsRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto' }}>
+              <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Media Press &amp; Rank Clippings</div>
+              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
+                Our Paper Clips &amp; Rank Achievements
+              </h2>
+              <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75, maxWidth: 620, margin: '0 auto' }}>
+                Authentic newspaper releases, press coverage, and rank felicitation highlights — Inspire Junior College students dominating national and state competitive entrance exams.
+              </p>
+            </div>
+
+            <div className={`dec-divider reveal ${clipsRef.visible ? 'visible' : ''} d200`} style={{ marginTop: 24 }}>
+              <div className="dec-divider-line" />
+              <div className="dec-divider-gem" />
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>CLICK ANY CLIPPING TO ENLARGE</div>
+              <div className="dec-divider-gem" />
+              <div className="dec-divider-line" />
+            </div>
+
+            {/* 8-image clippings grid in optimized 4-column layout */}
+            <div className="clips-grid">
+              {(showAllClips ? PAPER_CLIPS : PAPER_CLIPS.slice(0, 12)).map((clip, i) => (
+                <div
+                  key={clip.id}
+                  onClick={() => setSelectedClip(clip)}
+                  className={`ch clip-wrap reveal d${Math.min((i%4+1)*100,400)} ${clipsRef.visible ? 'visible' : ''}`}
+                  style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', border: '1.5px solid #E2E8F0', cursor: 'pointer', boxShadow: '0 4px 18px rgba(15,23,42,0.06)', display: 'flex', flexDirection: 'column', position: 'relative' }}
+                >
+                  {/* Image */}
+                  <div style={{ height: 260, overflow: 'hidden', position: 'relative', background: '#F1F5F9' }}>
+                    <img src={clip.src} alt={clip.title} className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    {/* Gradient overlay at bottom of image */}
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top,rgba(15,23,42,0.65),transparent)' }} />
+                    {/* Tag badge */}
+                    <div style={{ position: 'absolute', bottom: 12, left: 14, background: ACCENT_GOLD, color: '#0F172A', padding: '4px 10px', borderRadius: 20, fontSize: 10.5, fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      {clip.tag}
+                    </div>
+                    {/* Zoom icon */}
+                    <div style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: '50%', background: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    </div>
+                  </div>
+
+                  {/* Card body */}
+                  <div style={{ padding: '20px 22px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10 }}>
+                    <h4 style={{ fontSize: 15.5, fontWeight: 800, color: DARK_TEXT, lineHeight: 1.4, margin: 0 }}>{clip.title}</h4>
+                    <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.65, margin: 0 }}>{clip.subtitle}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#2563EB', fontSize: 12.5, fontWeight: 800, marginTop: 4, paddingTop: 12, borderTop: '1px solid #F1F5F9' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                      View Full Clipping
+                    </div>
+                  </div>
+
+                  {/* Bottom border accent */}
+                  <div style={{ height: 3, background: 'linear-gradient(90deg,#F59E0B,#2563EB)', borderRadius: '0 0 20px 20px' }} />
+                </div>
+              ))}
+            </div>
+
+            {/* Show More / Show Less Toggle Button */}
+            {PAPER_CLIPS.length > 12 && (
+              <div style={{ textAlign: 'center', marginTop: 36 }}>
+                <button
+                  onClick={() => {
+                    if (showAllClips) {
+                      setShowAllClips(false);
+                      const el = document.getElementById('paper-clips');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    } else {
+                      setShowAllClips(true);
+                    }
+                  }}
+                  className="btn-gold pulse"
+                  style={{
+                    padding: '14px 36px',
+                    fontSize: 15,
+                    fontWeight: 900,
+                    borderRadius: 12,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    cursor: 'pointer',
+                    boxShadow: '0 8px 24px rgba(217, 119, 6, 0.35)',
+                    border: 'none',
+                  }}
+                >
+                  {showAllClips ? (
+                    <>
+                      <span>Show Less</span>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="18 15 12 9 6 15" />
+                      </svg>
+                    </>
+                  ) : (
+                    <>
+                      <span>Show More ({PAPER_CLIPS.length - 12} More Clippings)</span>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            ACADEMIC STREAMS (COURSES) — HIGH CONTRAST WHITE TEXT
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <section id="streams" className="section-pad bg-grid-animated" style={{ padding: '64px 16px', position: 'relative', overflow: 'hidden' }}>
+          {/* Decorative background geometry */}
+          <div style={{ position: 'absolute', top: -80, right: -80, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle,rgba(37,99,235,0.08),transparent 70%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: -60, left: -60, width: 260, height: 260, borderRadius: '50%', background: 'radial-gradient(circle,rgba(245,158,11,0.08),transparent 70%)', pointerEvents: 'none' }} />
+
+          <div ref={streamsRef.ref} className="ic">
+            <div className={`reveal ${streamsRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 20px' }}>
+              <div className="section-label" style={{ color: ACCENT_GOLD, justifyContent: 'center' }}>Future-Ready Education</div>
+              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
+                Academic Programs Offered
+              </h2>
+              <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75 }}>
+                Specialized 2-year Intermediate programs combining Board curriculum with targeted competitive exam coaching — personalized for every student.
+              </p>
+            </div>
+
+            <div className={`dec-divider reveal ${streamsRef.visible ? 'visible' : ''} d200`} style={{ marginTop: 24 }}>
+              <div className="dec-divider-line" /><div className="dec-divider-gem" /><div className="dec-divider-line" />
+            </div>
+
+            <div className="streams-grid">
+              {PROGRAM_CARDS.map((prog, idx) => (
+                <div key={idx} className={`ch reveal d${(idx+1)*200} ${streamsRef.visible ? 'visible' : ''}`}
+                  style={{ background: '#0F172A', borderRadius: 22, overflow: 'hidden', border: '1.5px solid rgba(255,255,255,0.1)', boxShadow: '0 12px 36px rgba(15,23,42,0.22)', display: 'flex', flexDirection: 'column' }}>
+
+                  {/* Top generated stream photo */}
+                  <div className="clip-wrap" style={{ height: 180, overflow: 'hidden', position: 'relative', background: '#0F172A' }}>
+                    <img src={prog.img} alt={prog.title} className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, ${prog.gradA} 0%, transparent 80%)` }} />
+                    <span style={{ position: 'absolute', bottom: 12, left: 16, background: prog.accent, color: '#FFFFFF', padding: '4px 12px', borderRadius: 20, fontSize: 10.5, fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+                      {prog.tag}
+                    </span>
+                  </div>
+
+                  {/* Header content — WHITE TEXT */}
+                  <div style={{ padding: '22px 24px 18px', background: `linear-gradient(160deg,${prog.gradA},${prog.gradB})`, color: '#FFFFFF', position: 'relative', overflow: 'hidden' }}>
+                    <h3 style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', margin: '0 0 4px', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{prog.title}</h3>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: prog.accent, marginBottom: 10, letterSpacing: '0.03em' }}>{prog.subtitle}</div>
+                    <p style={{ fontSize: 13.5, color: '#FFFFFF', lineHeight: 1.65, margin: 0, opacity: 0.9 }}>{prog.body}</p>
+                  </div>
+
+                  {/* Highlights — WHITE & HIGH CONTRAST TEXT */}
+                  <div style={{ padding: '20px 24px', flex: 1, display: 'flex', flexDirection: 'column', gap: 14, background: '#0F172A' }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Program Highlights</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {prog.highlights.map((h, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 20, height: 20, borderRadius: 6, background: `${prog.accent}30`, border: `1px solid ${prog.accent}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={prog.accent} strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                          <span style={{ fontSize: 13.5, fontWeight: 700, color: '#FFFFFF' }}>{h}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ paddingTop: 14, borderTop: '1px dashed rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#94A3B8' }}>2 Academic Years</span>
+                      <a href="#enquiry" style={{ color: prog.accent, fontWeight: 900, fontSize: 13.5, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, transition: 'gap 0.2s' }}
+                        onMouseEnter={e => (e.currentTarget.style.gap = '8px')} onMouseLeave={e => (e.currentTarget.style.gap = '4px')}>
+                        Apply Stream
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+                {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             CAMPUS HIGHLIGHTS (TABBED PHOTOS & VIDEOS WITH ARROWS)
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <section id="highlights" className="section-pad bg-grid-animated" style={{ padding: '64px 16px', background: 'linear-gradient(180deg, #FAFCFF 0%, #F8FAFC 100%)', position: 'relative' }}>
