@@ -527,7 +527,7 @@ const SingleFrameColorGallery: React.FC = () => {
         overflow: 'hidden',
         boxShadow: `0 24px 60px -12px ${activeScreen.glowColor}, 0 12px 28px rgba(15, 23, 42, 0.18)`,
         transition: 'box-shadow 0.6s ease',
-        background: activeScreen.bgGradient,
+        background: '#0F172A',
       }}
     >
       {/* Dynamic Photo Screens */}
