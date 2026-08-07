@@ -4,11 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server/start.cjs",
-    "server": "node server/start.cjs",
-    "start:server": "node server/start.cjs",
+    "dev": "node server.js",
+    "server": "node server.js",
+    "start:server": "node server.js",
     "build": "vite build",
-    "start": "node server/start.cjs",
+    "start": "node server.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },

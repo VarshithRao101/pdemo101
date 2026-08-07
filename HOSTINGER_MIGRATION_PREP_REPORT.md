@@ -11,8 +11,8 @@
 The application has been prepared to transition from Vercel's serverless function architecture to Hostinger's persistent Node.js process environment.
 
 Key updates implemented:
-1. **Persistent Entry Point (`server/start.cjs`)**: Created a standalone entry point that initializes the MongoDB connection, sets up internal cron scheduling, and listens on `process.env.PORT || 3000`.
-2. **Package Scripts Update (`package.json`)**: Updated `"start"` script to `node server/start.cjs` and `"build"` script to `vite build`.
+1. **Persistent Entry Point (`server.js`)**: Created a root entry point (`server.js`) bridging Hostinger's default expected startup file to `server/start.cjs`.
+2. **Package Scripts Update (`package.json`)**: Updated `"start"` script to `node server.js` and `"build"` script to `vite build`.
 3. **Internalized Backup Scheduler**: Added `node-cron` to execute daily automated database backups at **00:00 UTC** directly inside the persistent Node.js process, replacing Vercel HTTP crons.
 4. **Standalone Static Asset & SPA Serving**: Updated `server/app.cjs` to serve `dist/` static files and fallback non-API routes to `dist/index.html`.
 5. **Retained Vercel Artifacts**: Kept `api/index.js` and `vercel.json` intact for immediate rollback capability if ever required.
@@ -28,7 +28,7 @@ When setting up the Node.js Web Application in the Hostinger Dashboard, use the 
 | :--- | :--- |
 | **Node.js Version** | `18.x` or `20.x` (LTS) |
 | **Application Root** | `/` (Project Root) |
-| **Application Startup File / Start Command** | `node server/start.cjs` (or `npm start`) |
+| **Application Startup File / Start Command** | `server.js` (or `node server.js`) |
 | **Build Command** | `npm run build` |
 
 ---
