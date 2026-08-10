@@ -485,7 +485,7 @@ async function authenticateToken(req, res, next) {
   let decoded;
   try {
     decoded = jwt.verify(token, JWT_SECRET);
-  } catch (err) {
+  } catch {
     return res.status(401).json({
       status: 'error',
       message: 'Invalid or expired access token.'
@@ -1058,8 +1058,10 @@ const createStudentHandler = async (req, res) => {
   try {
     await connectToDatabase();
     const body = req.body || {};
+    // Only non-text fields are read here. Every text field goes through
+    // cleanTextFields below and is used from text.values, never the raw body.
     const {
-      name, admissionNumber, course, section, branch, mobile, fatherName, motherName, parentMobile, dob, address, previousSchool, previousBoard,
+      admissionNumber, branch, mobile, parentMobile,
       tuitionFee = 0, hostelFee = 0, transportFee = 0, miscellaneousFee = 0, previousPending = 0, customFeeSlots = [], academicYear = '2026-2027'
     } = body;
 
@@ -1081,13 +1083,13 @@ const createStudentHandler = async (req, res) => {
 
     // Mobile number validation (optional fields but must be valid if provided)
     if (mobile && mobile !== '') {
-      const mobileDigits = String(mobile).replace(/[\s\-]/g, '');
+      const mobileDigits = String(mobile).replace(/[\s-]/g, '');
       if (!/^\d{10}$/.test(mobileDigits)) {
         return res.status(400).json({ status: 'error', message: 'Mobile number must be exactly 10 digits.' });
       }
     }
     if (parentMobile && parentMobile !== '') {
-      const parentMobileDigits = String(parentMobile).replace(/[\s\-]/g, '');
+      const parentMobileDigits = String(parentMobile).replace(/[\s-]/g, '');
       if (!/^\d{10}$/.test(parentMobileDigits)) {
         return res.status(400).json({ status: 'error', message: 'Parent mobile number must be exactly 10 digits.' });
       }
@@ -1219,13 +1221,13 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
 
     // Mobile validation on edit
     if (req.body.mobile !== undefined && req.body.mobile !== '') {
-      const mobileDigits = String(req.body.mobile).replace(/[\s\-]/g, '');
+      const mobileDigits = String(req.body.mobile).replace(/[\s-]/g, '');
       if (!/^\d{10}$/.test(mobileDigits)) {
         return res.status(400).json({ status: 'error', message: 'Mobile number must be exactly 10 digits.' });
       }
     }
     if (req.body.parentMobile !== undefined && req.body.parentMobile !== '') {
-      const parentMobileDigits = String(req.body.parentMobile).replace(/[\s\-]/g, '');
+      const parentMobileDigits = String(req.body.parentMobile).replace(/[\s-]/g, '');
       if (!/^\d{10}$/.test(parentMobileDigits)) {
         return res.status(400).json({ status: 'error', message: 'Parent mobile number must be exactly 10 digits.' });
       }
@@ -1487,7 +1489,7 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
 
     // Mobile validation for teacher (optional but must be valid if provided)
     if (mobile && mobile !== '') {
-      const teacherMobileDigits = String(mobile).replace(/[\s\-]/g, '');
+      const teacherMobileDigits = String(mobile).replace(/[\s-]/g, '');
       if (!/^\d{10}$/.test(teacherMobileDigits)) {
         return res.status(400).json({ status: 'error', message: 'Mobile number must be exactly 10 digits.' });
       }
@@ -1515,6 +1517,7 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
 
     return res.status(201).json({ status: 'success', data: teacher });
   } catch (err) {
+    console.error('[Teachers]: Create failed:', err.message);
     return res.status(500).json({ status: 'error', message: 'Database write failure.' });
   }
 });
@@ -1537,7 +1540,7 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
 
     // Mobile validation on teacher edit
     if (req.body.mobile !== undefined && req.body.mobile !== '') {
-      const editMobileDigits = String(req.body.mobile).replace(/[\s\-]/g, '');
+      const editMobileDigits = String(req.body.mobile).replace(/[\s-]/g, '');
       if (!/^\d{10}$/.test(editMobileDigits)) {
         return res.status(400).json({ status: 'error', message: 'Mobile number must be exactly 10 digits.' });
       }
@@ -1872,6 +1875,7 @@ app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'ad
 
     return res.status(201).json({ status: 'success', data: expenditure });
   } catch (err) {
+    console.error('[Expenditures]: Create failed:', err.message);
     return res.status(500).json({ status: 'error', message: 'Database write failure.' });
   }
 });
@@ -2016,6 +2020,7 @@ app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1',
 
     return res.status(201).json({ status: 'success', data: payment });
   } catch (err) {
+    console.error('[WorkerPayments]: Create failed:', err.message);
     return res.status(500).json({ status: 'error', message: 'Database write failure.' });
   }
 });
@@ -2409,7 +2414,7 @@ app.get('/api/system/run-backup', mongoRateLimiter, async (req, res) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         userRole = decoded.role;
         username = decoded.username;
-      } catch (e) {
+      } catch {
         return res.status(401).json({ status: 'error', message: 'Invalid token.' });
       }
 
@@ -2919,7 +2924,7 @@ app.post('/api/enquiries', async (req, res) => {
     const { studentName, parentName, email, stream, preferredCampus, currentGrade, notes } = text.values;
 
     // Mobile validation for enquiry
-    const enquiryMobileDigits = String(mobile).replace(/[\s\-]/g, '');
+    const enquiryMobileDigits = String(mobile).replace(/[\s-]/g, '');
     if (!/^\d{10}$/.test(enquiryMobileDigits)) {
       return res.status(400).json({ status: 'error', message: 'Mobile number must be exactly 10 digits.' });
     }
@@ -3455,7 +3460,7 @@ app.use((req, res, next) => {
 // Clients get a generic message plus a correlation id; the detail and stack go
 // to the server log only. Returning err.message verbatim leaked raw Mongo and
 // driver text to anyone who could trigger a failure.
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   const status = err.status || 500;
   const errorId = crypto.randomBytes(6).toString('hex');
 

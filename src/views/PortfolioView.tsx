@@ -958,7 +958,7 @@ export const PortfolioView: React.FC = () => {
     e.preventDefault();
     if (!stuName.trim() || !stuMobile.trim()) { setEnquiryError('Please enter Student Name and Contact Mobile Number.'); return; }
     // Mobile validation: exactly 10 digits (spaces/dashes stripped)
-    const mobileDigits = stuMobile.replace(/[\s\-]/g, '');
+    const mobileDigits = stuMobile.replace(/[\s-]/g, '');
     if (!/^\d{10}$/.test(mobileDigits)) { setEnquiryError('Mobile number must be exactly 10 digits.'); return; }
     setIsSubmitting(true); setEnquiryError('');
     try {

@@ -1,7 +1,6 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const mongoose = require('mongoose');
 
 const Student = require('../models/Student.cjs');
 const Teacher = require('../models/Teacher.cjs');
@@ -79,7 +78,7 @@ function decryptPayload(encryptedJsonString) {
   let parsed;
   try {
     parsed = typeof encryptedJsonString === 'string' ? JSON.parse(encryptedJsonString) : encryptedJsonString;
-  } catch (err) {
+  } catch {
     throw new Error('Invalid encrypted backup file format. Expected JSON containing ciphertext.');
   }
 

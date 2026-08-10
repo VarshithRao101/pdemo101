@@ -202,14 +202,21 @@ interface Teacher {
   salaryPaymentDate?: string;
   tempPassword?: string;
   branch?: string;
-  monthlySalaries?: Record<string, {
-    month: string;
-    status: 'Paid' | 'Unpaid';
-    amountPaid: number;
-    paymentDate: string;
-    paymentMode?: string;
-    note?: string;
-  }>;
+  monthlySalaries?: Record<string, MonthlySalaryRecord>;
+  // Per-academic-year ledger: { '2026-2027': { June: {...}, July: {...} } }.
+  // The Mongoose model has always stored this; the interface simply never
+  // declared it, so every read had to be cast through `any`.
+  salaryLedger?: Record<string, Record<string, MonthlySalaryRecord>>;
+}
+
+interface MonthlySalaryRecord {
+  month?: string;
+  status?: 'Paid' | 'Unpaid';
+  paid?: boolean;
+  amountPaid?: number;
+  paymentDate?: string;
+  paymentMode?: string;
+  note?: string;
 }
 
 const matchesStudentQuery = (student: Student, query: string) => {
@@ -234,7 +241,7 @@ const matchesStudentQuery = (student: Student, query: string) => {
 // Mobile: optional strips spaces/dashes then checks for exactly 10 digits
 const validateMobile = (val: string): string | null => {
   if (!val || val.trim() === '') return null; // empty is allowed (optional field)
-  const digits = val.replace(/[\s\-]/g, '');
+  const digits = val.replace(/[\s-]/g, '');
   if (!/^\d{10}$/.test(digits)) return 'Mobile number must be exactly 10 digits.';
   return null;
 };
@@ -369,7 +376,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [facActionType, setFacActionType] = useState<'add' | 'edit' | 'delete' | 'salary_payment'>('edit');
   const [isAddTeacherModalOpen, setIsAddTeacherModalOpen] = useState(false);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
-  const [assignSub] = useState('Physics');
 
   // Admission Enquiries States
   const [enquiriesList, setEnquiriesList] = useState<any[]>([]);
@@ -863,7 +869,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
     const generatedDate = new Date().toLocaleString('en-IN');
     const customSlots: Array<[string, number]> = (student.customFeeSlots || []).map((s: any) => [s.name, Number(s.amount || 0)]);
-    const feeRows: Array<[string, number]> = [
+    const allFeeRows: Array<[string, number]> = [
       ['Tuition Fee', Number(student.tuitionFee || 0)],
       ['Hostel Fee', Number(student.hostelFee || 0)],
       ['Miscellaneous Fee', Number(student.miscellaneousFee || 0)],
@@ -875,7 +881,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       ['Lab Fee', Number(student.labFees || 0)],
       ['Bus Fee', Number(student.busFees || 0)],
       ...customSlots
-    ].filter(([, amount]) => amount > 0);
+    ];
+    const feeRows = allFeeRows.filter(([, amount]) => amount > 0);
 
     const tuitionWaiver = Number(student.tuitionWaiver || 0);
     const hostelWaiver = Number(student.hostelWaiver || 0);
@@ -1493,7 +1500,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const handlePermanentDeleteStudent = async (keyToUse?: string) => {
+  const handlePermanentDeleteStudent = async () => {
     const targetStu = selectedStudent || editStudent;
     if (!targetStu) {
       triggerToast('No student selected for deletion.');
@@ -1574,7 +1581,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
     const stdKeys = ['tuitionFee', 'hostelFee', 'transportFee', 'miscellaneousFee', 'previousPending'];
     const finalCustomSlots = activeSlots
-      .filter(s => s.isCustom || (!stdKeys.includes(s.id) && !stdKeys.includes(s.key)))
+      // `key` is optional on a slot, and includes() will not accept undefined.
+      // An absent key simply cannot collide with a standard key.
+      .filter(s => s.isCustom || (!stdKeys.includes(s.id) && !stdKeys.includes(s.key ?? '')))
       .map(s => ({
         id: s.id,
         key: s.key,
@@ -1658,7 +1667,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const submitFacOtp = async (keyToUse?: string) => {
+  const submitFacOtp = async () => {
     setIsProcessingUpload(true);
     try {
       /* security PIN is collected by apiClient on demand */
@@ -1705,8 +1714,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         setFacOtpInput('');
         triggerToast('Faculty record permanently deleted.');
         await fetchTeachers();
-      } else if (facActionType === 'salary_payment' && (editTeacher || selectedTeacher) && selectedStaffMonthForEdit) {
+      } else if (facActionType === 'salary_payment' && selectedStaffMonthForEdit) {
+        // Narrow once, here, rather than relying on a truthiness check in the
+        // branch condition — TypeScript cannot carry that guard across the
+        // separate assignment below, which is why every use of targetObj was
+        // flagged as possibly null.
         const targetObj = editTeacher || selectedTeacher;
+        if (!targetObj) {
+          triggerToast('No faculty member is selected.');
+          return;
+        }
         const targetId = targetObj._id || targetObj.id || '';
         const res = await admin1Service.payTeacherSalary(targetId, {
           academicYear: selectedAcademicYear,
@@ -1734,8 +1751,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const handleConfirmDeleteStudent = async (otpToUse?: string) => {
-    await handlePermanentDeleteStudent(otpToUse);
+  const handleConfirmDeleteStudent = async () => {
+    await handlePermanentDeleteStudent();
   };
 
   const handleSaveAcademicFees = async (otpToUse?: string) => {
@@ -2707,7 +2724,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
                   <button
-                    onClick={() => handleConfirmDeleteStudent(undefined)}
+                    onClick={() => handleConfirmDeleteStudent()}
                     style={{ ...styles.modalConfirmBtn, backgroundColor: '#DC2626', color: '#FFF', opacity: 1 }}
                     className="press-interactive"
                   >
@@ -3313,8 +3330,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px' }}>
                     {monthsList.map(mName => {
-                      const ledgerObj = (editTeacher.salaryLedger as any)?.[selectedAcademicYear] || {};
-                      const mRec = ledgerObj[mName] || (editTeacher.monthlySalaries as any)?.[mName] || { status: 'Unpaid', amountPaid: 0, paymentDate: '—', paymentMode: '—' };
+                      const ledgerObj = editTeacher.salaryLedger?.[selectedAcademicYear] || {};
+                      const mRec: MonthlySalaryRecord = ledgerObj[mName] || editTeacher.monthlySalaries?.[mName] || { status: 'Unpaid', amountPaid: 0, paymentDate: '—', paymentMode: '—' };
                       const isPaid = mRec.status === 'Paid' || mRec.paid === true;
                       const amtPaid = Number(mRec.amountPaid || (isPaid ? editTeacher.salary || 0 : 0));
                       const isSelectedForEdit = selectedStaffMonthForEdit === mName;
@@ -3660,7 +3677,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                   <button onClick={() => { setIsFacOtpModalOpen(false); setFacOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
-                  <button onClick={() => submitFacOtp(undefined)} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Yes, Proceed</button>
+                  <button onClick={() => submitFacOtp()} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Yes, Proceed</button>
                 </div>
               </GlassCard>
             </div>

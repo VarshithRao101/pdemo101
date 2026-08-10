@@ -212,14 +212,6 @@ interface Student {
   customFeeSlots?: Array<{ id?: string; name: string; amount: number }>;
 }
 
-interface Attendee {
-  id: string;
-  name: string;
-  type: 'student' | 'faculty';
-  section?: string;
-  status: 'present' | 'absent' | 'late' | 'leave';
-}
-
 
 //  MAIN CONSOLIDATED ACCOUNTANT COCKPIT VIEW
 const RECEIPT_INSTITUTION_NAME = 'Inspire Royal Residential Junior College';
@@ -434,8 +426,6 @@ export const AccountantDashboardView: React.FC = () => {
     return [...baseSlots, ...custom];
   }, []);
 
-  // Attendance management parameters
-  const [attendanceRoster, setAttendanceRoster] = useState<Attendee[]>([]);
 
 
   // Settings & Rules parameters
@@ -1003,7 +993,7 @@ export const AccountantDashboardView: React.FC = () => {
 
     const generatedDate = new Date().toLocaleString('en-IN');
     const customSlots: Array<[string, number]> = ((student as any).customFeeSlots || []).map((s: any) => [s.name, Number(s.amount || 0)]);
-    const feeRows: Array<[string, number]> = [
+    const allFeeRows: Array<[string, number]> = [
       ['Tuition Fee', Number(student.tuitionFee || 0)],
       ['Hostel Fee', Number(student.hostelFee || 0)],
       ['Miscellaneous Fee', Number(student.miscellaneousFee || 0)],
@@ -1015,7 +1005,8 @@ export const AccountantDashboardView: React.FC = () => {
       ['Lab Fee', Number((student as any).labFees || 0)],
       ['Bus Fee', Number((student as any).busFees || 0)],
       ...customSlots
-    ].filter(([, amount]) => amount > 0);
+    ];
+    const feeRows = allFeeRows.filter(([, amount]) => amount > 0);
 
     const tuitionWaiver = Number((student as any).tuitionWaiver || 0);
     const hostelWaiver = Number((student as any).hostelWaiver || 0);

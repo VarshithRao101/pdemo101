@@ -37,11 +37,18 @@ export interface Teacher {
   salaryStatus?: 'paid' | 'pending';
   salaryPaidAmount?: number;
   branch?: string;
+  // Every field here is optional because the shape comes straight from the
+  // API, where a month record may carry only some of them. Requiring them
+  // made this type incompatible with the caller's Teacher for no benefit —
+  // this component only reads amountPaid and status.
   monthlySalaries?: Record<string, {
-    month: string;
-    status: 'Paid' | 'Unpaid';
-    amountPaid: number;
-    paymentDate: string;
+    month?: string;
+    status?: 'Paid' | 'Unpaid';
+    paid?: boolean;
+    amountPaid?: number;
+    paymentDate?: string;
+    paymentMode?: string;
+    note?: string;
   }>;
 }
 
