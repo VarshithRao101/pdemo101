@@ -16,7 +16,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const { connectToDatabase, isDatabaseTemporarilyBlocked } = require('./db.cjs');
+const { connectToDatabase } = require('./db.cjs');
 const User = require('./models/User.cjs');
 const RefreshToken = require('./models/RefreshToken.cjs');
 const RateLimit = require('./models/RateLimit.cjs');
@@ -33,8 +33,7 @@ const {
   wipeDataCollections,
   restoreBackupFromFile,
   getBackupLogs,
-  getAllAvailableBackupFiles,
-  listBackupFiles
+  getAllAvailableBackupFiles
 } = require('./services/backupService.cjs');
 
 const app = express();
@@ -155,13 +154,6 @@ function isValidPositiveNumber(val) {
   if (val === undefined || val === null) return false;
   const num = Number(val);
   return !isNaN(num) && num >= 0;
-}
-
-// Mobile validation: strip spaces and dashes, require exactly 10 digits
-function isValidMobile(val) {
-  if (!val && val !== 0) return false;
-  const digits = String(val).replace(/[\s\-]/g, '');
-  return /^\d{10}$/.test(digits);
 }
 
 // Strict 24-hex-character ObjectId check (prevents CastError on 12-char non-hex strings like ADM-ACC-1104)
@@ -321,24 +313,6 @@ function safeBcryptCompare(input, hash) {
   }
 }
 
-
-function resolveUsername(inputUser) {
-  if (!inputUser || typeof inputUser !== 'string') return '';
-  return inputUser.trim().toLowerCase();
-}
-
-async function findUserAccount(resolvedUsername) {
-  if (!resolvedUsername) return null;
-  if (mongoose.connection.readyState !== 1 || isDatabaseTemporarilyBlocked()) {
-    return null;
-  }
-  try {
-    return await User.findOne({ username: resolvedUsername });
-  } catch (dbErr) {
-    console.warn('⚠️ [Auth]: Mongo query error during findUserAccount:', dbErr.message);
-    return null;
-  }
-}
 
 // NOTE: there is deliberately no in-source credential list here.
 // Passwords and PINs exist only as bcrypt hashes in MongoDB. A previous

@@ -4,7 +4,6 @@ import { GlassCard } from '../components/common/GlassCard';
 import { InspireLogo } from '../components/common/InspireLogo';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import collegeLogo from '../assets/college logo.png';
-import { setGlobalSecurityKey } from '../services/apiClient';
 import * as accountantService from '../services/accountantService';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 
@@ -224,7 +223,6 @@ interface Attendee {
 
 //  MAIN CONSOLIDATED ACCOUNTANT COCKPIT VIEW
 const RECEIPT_INSTITUTION_NAME = 'Inspire Royal Residential Junior College';
-const RECEIPT_INSTITUTION_ADDRESS = '12-4-98, Gold Avenue, Saraswathi Nagar, Vijayawada, Andhra Pradesh 520008';
 
 const numberToReceiptWords = (amount: number) => {
   const cleanAmount = Math.max(0, Math.floor(amount));
@@ -293,40 +291,6 @@ const matchesStudentSearch = (student: Student, query: string) => {
   ].some((field) => String(field || '').toLowerCase().includes(normalizedQuery));
 };
 
-const getAccountantActiveFeeSlots = (stu: any, breakdown?: any) => {
-  if (!stu) return [];
-  if (stu.customFeeSlots && Array.isArray(stu.customFeeSlots) && stu.customFeeSlots.length > 0) {
-    return stu.customFeeSlots.map((c: any, idx: number) => ({
-      id: c.id ? `${c.id}_${idx}` : `${c.name}_${idx}`,
-      name: c.name,
-      amount: Number(c.amount) || 0
-    }));
-  }
-  const baseSlots = [];
-  const tuition = breakdown ? breakdown.tuitionFee : (stu?.tuitionFee || 0);
-  const hostel = breakdown ? breakdown.hostelFee : (stu?.hostelFee || 0);
-  const misc = breakdown ? breakdown.miscellaneousFee : (stu?.miscellaneousFee || 0);
-  const prevPending = breakdown ? breakdown.previousPending : (stu?.previousPending || 0);
-
-  if (Number(tuition) > 0) baseSlots.push({ id: 'tuitionFee', name: 'Tuition Fee', amount: Number(tuition) });
-  if (Number(hostel) > 0) baseSlots.push({ id: 'hostelFee', name: 'Hostel Fee', amount: Number(hostel) });
-  if (Number(misc) > 0) baseSlots.push({ id: 'miscFee', name: 'Miscellaneous Fee', amount: Number(misc) });
-  if (Number(prevPending) > 0) baseSlots.push({ id: 'previousPending', name: 'Previous Pending', amount: Number(prevPending) });
-
-  if (Number(stu?.booksFee) > 0) baseSlots.push({ id: 'booksFee', name: 'Books Fee', amount: Number(stu.booksFee) });
-  if (Number(stu?.uniformFees) > 0) baseSlots.push({ id: 'uniformFees', name: 'Uniform Fees', amount: Number(stu.uniformFees) });
-  if (Number(stu?.hndFees) > 0) baseSlots.push({ id: 'hndFees', name: 'HND Fees', amount: Number(stu.hndFees) });
-  if (Number(stu?.internalExamFees) > 0) baseSlots.push({ id: 'internalExamFees', name: 'Internal Exam', amount: Number(stu.internalExamFees) });
-  if (Number(stu?.annualExamFees) > 0) baseSlots.push({ id: 'annualExamFees', name: 'Annual Exam', amount: Number(stu.annualExamFees) });
-  if (Number(stu?.partyFees) > 0) baseSlots.push({ id: 'partyFees', name: 'Party Fees', amount: Number(stu.partyFees) });
-  if (Number(stu?.busFees) > 0) baseSlots.push({ id: 'busFees', name: 'Bus Fees', amount: Number(stu.busFees) });
-  if (Number(stu?.labFees) > 0) baseSlots.push({ id: 'labFees', name: 'Lab Fees', amount: Number(stu.labFees) });
-  if (Number(stu?.handLoan) > 0) baseSlots.push({ id: 'handLoan', name: 'Hand Loan', amount: Number(stu.handLoan) });
-  if (Number(stu?.othersFee) > 0) baseSlots.push({ id: 'othersFee', name: 'Others Fee', amount: Number(stu.othersFee) });
-
-  return baseSlots;
-};
-
 export const AccountantDashboardView: React.FC = () => {
   const { user, activeTab: globalActiveTab } = useNavigation();
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
@@ -358,10 +322,10 @@ export const AccountantDashboardView: React.FC = () => {
   const [newStuFormPage, setNewStuFormPage] = useState<1 | 2 | 3>(1);
   const [isDeleteConfirmModalOpen, setIsDeleteConfirmModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
-  const [deleteOtpInput, setDeleteOtpInput] = useState('');
+  const [, setDeleteOtpInput] = useState('');
   const [registryPage, setRegistryPage] = useState(1);
   const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
-  const [regStuOtpInput, setRegStuOtpInput] = useState('');
+  const [, setRegStuOtpInput] = useState('');
   const [regStuError, setRegStuError] = useState('');
   const [isSubmittingStudent, setIsSubmittingStudent] = useState(false);
   const [auditPage, setAuditPage] = useState(1);
@@ -424,7 +388,7 @@ export const AccountantDashboardView: React.FC = () => {
   const [editStudent, setEditStudent] = useState<Student | null>(null);
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [isStuOtpModalOpen, setIsStuOtpModalOpen] = useState(false);
-  const [stuOtpInput, setStuOtpInput] = useState('');
+  const [, setStuOtpInput] = useState('');
 
   // Fee collection parameters
   const [feeCollectAdm, setFeeCollectAdm] = useState('');
@@ -437,13 +401,10 @@ export const AccountantDashboardView: React.FC = () => {
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [activeOverlay, setActiveOverlay] = useState<string | null>(null);
   const [isPayOtpModalOpen, setIsPayOtpModalOpen] = useState(false);
-  const [payOtpInput, setPayOtpInput] = useState('');
+  const [, setPayOtpInput] = useState('');
   const [pendingPayType, setPendingPayType] = useState<'partial' | 'full' | 'collect'>('collect');
 
   // Custom Fee Slot Management State
-  const [newSlotName, setNewSlotName] = useState('');
-  const [newSlotAmount, setNewSlotAmount] = useState('');
-  const [isAddingSlot, setIsAddingSlot] = useState(false);
 
   const getActiveFeeSlots = React.useCallback((stu: any) => {
     if (!stu) return [];
@@ -473,77 +434,19 @@ export const AccountantDashboardView: React.FC = () => {
     return [...baseSlots, ...custom];
   }, []);
 
-  const handleAddFeeSlot = () => {
-    if (!newSlotName.trim()) {
-      triggerToast('Please enter a section slot name.');
-      return;
-    }
-    if (!selectedStudent) return;
-    const amt = parseFloat(newSlotAmount) || 0;
-    const newSlot = {
-      id: 'slot_' + Date.now(),
-      name: newSlotName.trim(),
-      amount: amt
-    };
-    const updatedSlots = [...((selectedStudent as any).customFeeSlots || []), newSlot];
-    const updatedStudent = {
-      ...selectedStudent,
-      customFeeSlots: updatedSlots
-    };
-    setSelectedStudent(updatedStudent as any);
-    if (editStudent && editStudent._id === selectedStudent._id) {
-      setEditStudent({
-        ...editStudent,
-        customFeeSlots: updatedSlots
-      } as any);
-    }
-    setNewSlotName('');
-    setNewSlotAmount('');
-    setIsAddingSlot(false);
-    triggerToast(`Fee section slot "${newSlot.name}" added successfully.`);
-  };
-
-  const handleRemoveFeeSlot = (slotId: string) => {
-    if (!selectedStudent) return;
-    const updatedSlots = ((selectedStudent as any).customFeeSlots || []).filter((s: any) => s.id !== slotId);
-    const updatedStudent = {
-      ...selectedStudent,
-      customFeeSlots: updatedSlots
-    };
-    setSelectedStudent(updatedStudent as any);
-    if (editStudent && editStudent._id === selectedStudent._id) {
-      setEditStudent({
-        ...editStudent,
-        customFeeSlots: updatedSlots
-      } as any);
-    }
-    triggerToast('Fee section slot removed.');
-  };
-
   // Attendance management parameters
-  const [attTab, setAttTab] = useState<'students' | 'faculty' | 'summary'>('students');
-  const [selectedSection, setSelectedSection] = useState('MPC-A');
-  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendanceRoster, setAttendanceRoster] = useState<Attendee[]>([]);
 
 
   // Settings & Rules parameters
-  const [settings, setSettings] = useState({
+  const [settings] = useState({
     academicYear: '2026-27',
     installments: '3 Installments',
     lateFeeRules: '',
     scholarshipRules: '',
     discountRules: 'Sibling: 10% waiver'
   });
-  const [editSettings, setEditSettings] = useState({
-    academicYear: '2026-27',
-    installments: '3 Installments',
-    lateFeeRules: '',
-    scholarshipRules: '',
-    discountRules: 'Sibling: 10% waiver'
-  });
-
-  const [dashboardSummary, setDashboardSummary] = useState({
+  const [, setDashboardSummary] = useState({
     collectionToday: 0,
     pendingCount: 0,
     pendingAmount: 0,
@@ -664,15 +567,6 @@ export const AccountantDashboardView: React.FC = () => {
   };
 
 
-  const openStudentRegOtpModal = () => {
-    if (!newStudentData.name.trim() || !newStudentData.admissionNumber.trim()) {
-      triggerToast('Student Name and Admission Number are required.');
-      return;
-    }
-    setRegStuOtpInput('');
-    setIsRegStuOtpModalOpen(true);
-  };
-
   const submitStudentRegistrationWithOtp = async () => {
     setIsSubmittingStudent(true);
     /* security PIN is collected by apiClient on demand */
@@ -778,11 +672,6 @@ export const AccountantDashboardView: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleToggleAttendance = (id: string, newStatus: 'present' | 'absent' | 'late' | 'leave') => {
-    const next = attendanceRoster.map(a => a.id === id ? { ...a, status: newStatus } : a);
-    setAttendanceRoster(next);
   };
 
   const handleLogout = () => {
@@ -1227,8 +1116,6 @@ export const AccountantDashboardView: React.FC = () => {
   };
 
   // Stats calculations
-  const feeCollectedToday = dashboardSummary.collectionToday;
-  const pendingFeesTotal = dashboardSummary.pendingAmount;
 
   if (isLoading) {
     return (

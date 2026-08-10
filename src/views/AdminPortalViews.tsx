@@ -5,7 +5,6 @@ import { InspireLogo } from '../components/common/InspireLogo';
 import { apiClient, setGlobalSecurityKey } from '../services/apiClient';
 import { admin1Service } from '../services/admin1Service';
 import { admin2Service } from '../services/admin2Service';
-import * as accountantService from '../services/accountantService';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import { AdminDataAnalytics } from '../components/AdminDataAnalytics';
 import collegeLogo from '../assets/college logo.png';
@@ -230,25 +229,6 @@ const matchesStudentQuery = (student: Student, query: string) => {
   ].some((field) => String(field || '').toLowerCase().includes(normalizedQuery));
 };
 
-interface Bulletin {
-  _id?: string;
-  id?: string;
-  category: 'announcement' | 'gallery' | 'event' | 'circular' | 'notice' | 'holiday';
-  title: string;
-  date?: string;
-  content: string;
-}
-
-interface ExamItem {
-  _id?: string;
-  id?: string;
-  name: string;
-  date: string;
-  class: string;
-  status: 'Scheduled' | 'Results Published' | string;
-  resultsPublished: boolean;
-}
-
 
 // --- Input Validation Helpers ---
 // Mobile: optional strips spaces/dashes then checks for exactly 10 digits
@@ -268,14 +248,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [activePage, setActivePage] = useState<string>('menu');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [livePulseKey, setLivePulseKey] = useState<'students' | 'attendance' | 'bulletins' | 'fees' | 'finance' | null>(null);
+  const [, setLivePulseKey] = useState<'students' | 'attendance' | 'bulletins' | 'fees' | 'finance' | null>(null);
   const [securityKey, setSecurityKey] = useState('');
   const [admin1Tab, setAdmin1Tab] = useState<'dashboard' | 'overview'>('dashboard');
 
   // States
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [bulletins, setBulletins] = useState<Bulletin[]>([]);
 
   // Edit Buffer States (prevents keypress auto-save)
   const [searchAdm, setSearchAdm] = useState('');
@@ -324,7 +303,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [newStuSlotAmount, setNewStuSlotAmount] = useState('');
 
   const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
-  const [regStuOtpInput, setRegStuOtpInput] = useState('');
+  const [, setRegStuOtpInput] = useState('');
   const [regStuError, setRegStuError] = useState('');
   const [isSubmittingStudent, setIsSubmittingStudent] = useState(false);
 
@@ -386,12 +365,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [filterFacCampus, setFilterFacCampus] = useState('All');
   const [filterFacSubject, setFilterFacSubject] = useState('All');
   const [isFacOtpModalOpen, setIsFacOtpModalOpen] = useState(false);
-  const [facOtpInput, setFacOtpInput] = useState('');
+  const [, setFacOtpInput] = useState('');
   const [facActionType, setFacActionType] = useState<'add' | 'edit' | 'delete' | 'salary_payment'>('edit');
   const [isAddTeacherModalOpen, setIsAddTeacherModalOpen] = useState(false);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
-  const [assignClass, setAssignClass] = useState('Junior MPC');
-  const [assignSec, setAssignSec] = useState('Section A');
   const [assignSub] = useState('Physics');
 
   // Admission Enquiries States
@@ -399,7 +376,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [searchEnquiry, setSearchEnquiry] = useState('');
   const [filterEnquiryCampus, setFilterEnquiryCampus] = useState('All');
   const [filterEnquiryStatus, setFilterEnquiryStatus] = useState('All');
-  const [isLoadingEnquiries, setIsLoadingEnquiries] = useState(false);
+  const [, setIsLoadingEnquiries] = useState(false);
 
   const fetchEnquiries = async () => {
     setIsLoadingEnquiries(true);
@@ -430,15 +407,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [filterStaffClassification, setFilterStaffClassification] = useState('All');
 
   // Notices Composer States
-  const [pubCat, setPubCat] = useState<'announcement' | 'gallery' | 'event' | 'circular' | 'notice' | 'holiday'>('announcement');
-  const [newPubTitle, setNewPubTitle] = useState('');
-  const [newPubContent, setNewPubContent] = useState('');
-  const [editingPubId, setEditingPubId] = useState<string | null>(null);
 
   // Exam list States
-  const [exams, setExams] = useState<ExamItem[]>([]);
-  const [newExamName, setNewExamName] = useState('');
-  const [newExamDate, setNewExamDate] = useState('');
 
   const [feeRates, setFeeRates] = useState({
     tuition: 0,
@@ -450,7 +420,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [selectedFeeBranch, setSelectedFeeBranch] = useState<'Erragattugutta C1' | 'Erragattugutta C2' | 'Beemaram C1' | 'Beemaram C2'>(loggedInCampus as any);
   const [isEditingFees, setIsEditingFees] = useState(false);
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
-  const [otpInput, setOtpInput] = useState('');
+  const [, setOtpInput] = useState('');
 
   // Marks Registry States
   const [studentMarksList, setStudentMarksList] = useState<any[]>([]);
@@ -460,37 +430,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [markFinal, setMarkFinal] = useState('');
 
   // Calendars logs
-  const [calendarEvents, setCalendarEvents] = useState<{ title: string; date: string }[]>([]);
-  const [newCalTitle, setNewCalTitle] = useState('');
-  const [newCalDate, setNewCalDate] = useState('');
 
 
   // Timetables and sections states
-  const [timetable, setTimetable] = useState<any[]>([]);
-  const [timetableSection, setTimetableSection] = useState('Section A');
-  const [attendanceSummary, setAttendanceSummary] = useState<any[]>([]);
+  const [timetableSection] = useState('Section A');
   const [_reportsData, setReportsData] = useState<any>(null); // kept for fetchReports compat
 
   // Attendance marking states (moved from accountant portal)
-  const [attTab, setAttTab] = useState<'students' | 'faculty' | 'summary'>('students');
-  const [selectedSection, setSelectedSection] = useState('MPC-A');
-  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
-  const [attendanceRoster, setAttendanceRoster] = useState<any[]>([]);
+  const [attendanceDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Manual timetable scheduling states
-  const [newSlotDay, setNewSlotDay] = useState('Monday');
-  const [newSlotPeriod, setNewSlotPeriod] = useState('');
-  const [newSlotSubject, setNewSlotSubject] = useState('');
-  const [newSlotTeacher, setNewSlotTeacher] = useState('');
 
   // Selected files for Timetable & Results
-  const [timetableFile, setTimetableFile] = useState<File | null>(null);
-  const [resultsFile, setResultsFile] = useState<File | null>(null);
 
-  const [timetableUploadStatus, setTimetableUploadStatus] = useState<any>(null);
-  const [timetableUploading, setTimetableUploading] = useState(false);
-  const [examUploadStatus, setExamUploadStatus] = useState<any>(null);
-  const [examUploading, setExamUploading] = useState(false);
 
   // --- ADMIN 2 FINANCE & Overheads States ---
   const [expenditures, setExpenditures] = useState<ExpenditureItem[]>([]);
@@ -502,14 +454,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [newExpDate, setNewExpDate] = useState(new Date().toISOString().split('T')[0]);
   const [pendingExpDelete, setPendingExpDelete] = useState<ExpenditureItem | null>(null);
   const [isExpDeleteOtpOpen, setIsExpDeleteOtpOpen] = useState(false);
-  const [expDeleteOtpInput, setExpDeleteOtpInput] = useState('');
+  const [, setExpDeleteOtpInput] = useState('');
 
   const [editTuitionRate, setEditTuitionRate] = useState('120000');
   const [editHostelRate, setEditHostelRate] = useState('85000');
   const [editMiscRate, setEditMiscRate] = useState('5000');
 
   const [isDeleteStuOtpOpen, setIsDeleteStuOtpOpen] = useState(false);
-  const [deleteStuOtpInput, setDeleteStuOtpInput] = useState('');
+  const [, setDeleteStuOtpInput] = useState('');
 
   const [workers, setWorkers] = useState<WorkerItem[]>([]);
   const [salaryPage, setSalaryPage] = useState(1);
@@ -527,9 +479,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [editSlotWaivers, setEditSlotWaivers] = useState<Record<string, number>>({});
 
   // Admin Custom Fee Slot Management
-  const [adminNewSlotName, setAdminNewSlotName] = useState('');
-  const [adminNewSlotAmount, setAdminNewSlotAmount] = useState('');
-  const [adminIsAddingSlot, setAdminIsAddingSlot] = useState(false);
 
   const getAdminActiveFeeSlots = (stu: any, breakdown?: any) => {
     if (!stu && !breakdown) return [];
@@ -573,55 +522,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     return baseSlots;
   };
 
-  const handleAdminAddFeeSlot = () => {
-    if (!adminNewSlotName.trim()) {
-      triggerToast('Please enter a section slot name.');
-      return;
-    }
-    if (!selectedFeeStudent) return;
-    const amt = parseFloat(adminNewSlotAmount) || 0;
-    const newSlot = {
-      id: 'slot_' + Date.now(),
-      name: adminNewSlotName.trim(),
-      amount: amt
-    };
-    const updatedSlots = [...((selectedFeeStudent as any).customFeeSlots || []), newSlot];
-    const updatedStudent = {
-      ...selectedFeeStudent,
-      customFeeSlots: updatedSlots
-    };
-    setSelectedFeeStudent(updatedStudent as any);
-    setAdminNewSlotName('');
-    setAdminNewSlotAmount('');
-    setAdminIsAddingSlot(false);
-    triggerToast(`Fee section slot "${newSlot.name}" added successfully.`);
-  };
-
-  const handleAdminRemoveFeeSlot = (slotId: string) => {
-    if (!selectedFeeStudent) return;
-    const updatedSlots = ((selectedFeeStudent as any).customFeeSlots || []).filter((s: any) => s.id !== slotId);
-    const updatedStudent = {
-      ...selectedFeeStudent,
-      customFeeSlots: updatedSlots
-    };
-    setSelectedFeeStudent(updatedStudent as any);
-    triggerToast('Fee section slot removed.');
-  };
-
   // OTP modal state for each guarded action
   const [isFeeOtpOpen, setIsFeeOtpOpen] = useState(false);
-  const [feeOtpInput, setFeeOtpInput] = useState('');
+  const [, setFeeOtpInput] = useState('');
   const [isAcadFeeOtpOpen, setIsAcadFeeOtpOpen] = useState(false);
-  const [acadFeeOtpInput, setAcadFeeOtpInput] = useState('');
+  const [, setAcadFeeOtpInput] = useState('');
   const [isUnlockFeeOtpOpen, setIsUnlockFeeOtpOpen] = useState(false);
-  const [unlockFeeOtpInput, setUnlockFeeOtpInput] = useState('');
+  const [, setUnlockFeeOtpInput] = useState('');
   const [isExpOtpOpen, setIsExpOtpOpen] = useState(false);
-  const [expOtpInput, setExpOtpInput] = useState('');
+  const [, setExpOtpInput] = useState('');
   const [isWorkerOtpOpen, setIsWorkerOtpOpen] = useState(false);
-  const [workerOtpInput, setWorkerOtpInput] = useState('');
+  const [, setWorkerOtpInput] = useState('');
   const [workerPendingAction, setWorkerPendingAction] = useState<any>(null);
 
-  const [otpCountdown, setOtpCountdown] = useState('');
+  const [, setOtpCountdown] = useState('');
   useEffect(() => {
     const updateTimer = () => {
       const now = new Date();
@@ -653,8 +567,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   //  Admin2 Live Wiring State
   const [feeBreakdownData, setFeeBreakdownData] = useState<any>(null);
-  const [lateFeeRulesText, setLateFeeRulesText] = useState('Loading...');
-  const [scholarshipRulesText, setScholarshipRulesText] = useState('Loading...');
 
   const [workerSearch, setWorkerSearch] = useState('');
   const [workerPage, setWorkerPage] = useState(1);
@@ -1310,22 +1222,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
 
 
-  const handleUploadTimetable = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setTimetableFile(file);
-      triggerToast(`Selected Timetable: ${file.name}`);
-    }
-  };
-
-  const handleUploadResults = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setResultsFile(file);
-      triggerToast(`Selected Results: ${file.name}`);
-    }
-  };
-
   const fetchStudents = async (query = '', suppressToast = false) => {
     try {
       const branchParam = role === 'admin2' ? loggedInCampus : '';
@@ -1387,11 +1283,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   };
 
   const fetchSections = fetchTeachers;
-
-  const handleToggleAttendance = (id: string, newStatus: 'present' | 'absent' | 'late' | 'leave') => {
-    const next = attendanceRoster.map(a => a.id === id ? { ...a, status: newStatus } : a);
-    setAttendanceRoster(next);
-  };
 
   const fetchReports = async () => {
     try {
@@ -1643,15 +1534,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     setIsFacOtpModalOpen(true);
   };
 
-  const openStudentRegOtpModal = () => {
-    if (!newStuName.trim() || !newStuAdmissionNumber.trim() || !newStuMobile.trim() || !newStuCourse.trim() || !newStuBranch.trim()) {
-      triggerToast('Please complete Name, Admission Number, Mobile, Course, and Campus.');
-      return;
-    }
-    setRegStuOtpInput('');
-    setIsRegStuOtpModalOpen(true);
-  };
-
   const submitStudentRegistrationWithOtp = async () => {
     setIsSubmittingStudent(true);
     try {
@@ -1776,19 +1658,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const handleAddTeacher = async () => {
-    if (!newFacName.trim() || !newFacSub.trim() || !newFacSal || !newFacMobile.trim() || !newFacBranch.trim()) {
-      triggerToast('Please complete name, role, salary, mobile, and branch.');
-      return;
-    }
-    // Mobile validation
-    const facMobileErr = validateMobile(newFacMobile);
-    if (facMobileErr) { triggerToast(facMobileErr); return; }
-    setFacActionType('add');
-    setFacOtpInput('');
-    setIsFacOtpModalOpen(true);
-  };
-
   const submitFacOtp = async (keyToUse?: string) => {
     setIsProcessingUpload(true);
     try {
@@ -1867,17 +1736,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const handleConfirmDeleteStudent = async (otpToUse?: string) => {
     await handlePermanentDeleteStudent(otpToUse);
-  };
-
-  const handleAddCalendar = () => {
-    if (!newCalTitle || !newCalDate) {
-      triggerToast('Event name and date required.');
-      return;
-    }
-    setCalendarEvents([...calendarEvents, { title: newCalTitle, date: newCalDate }]);
-    setNewCalTitle('');
-    setNewCalDate('');
-    triggerToast('Academic Calendar timeline additions submitted.');
   };
 
   const handleSaveAcademicFees = async (otpToUse?: string) => {
@@ -4283,7 +4141,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         const transportWaiver = Number(editSlotWaivers['transportFee'] ?? editSlotWaivers['transport'] ?? 0);
         const miscWaiver = Number(editSlotWaivers['miscFee'] ?? editSlotWaivers['miscellaneousFee'] ?? editSlotWaivers['misc'] ?? editMiscWaiver ?? 0);
 
-        const activeSlots = getAdminActiveFeeSlots(selectedFeeStudent, feeBreakdownData);
         let updatedCustomSlots: any[] = [];
 
         if (selectedFeeStudent.customFeeSlots && Array.isArray(selectedFeeStudent.customFeeSlots) && selectedFeeStudent.customFeeSlots.length > 0) {

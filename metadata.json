@@ -1,6 +1,0 @@
-{
-  "name": "Inspire Educational Institutions Gateway",
-  "description": "Administrative portal gateway of Inspire Educational Institutions. Secure login for Rector, Principal, Accountants, and Authenticator systems.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

@@ -28,7 +28,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Newly issued PINs, held in component state only. Never persisted to
   // localStorage: they are the live credentials for every portal account.
   const [issuedPins, setIssuedPins] = useState<Record<string, string> | null>(null);
-  const [isRestoring, setIsRestoring] = useState(false);
+  const [, setIsRestoring] = useState(false);
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
   const [stats, setStats] = useState<AuthenticatorStats>({
     totalStudents: 0,
@@ -89,9 +89,9 @@ export const AuthenticatorDashboardView: React.FC = () => {
   });
   const [isLoadingBackups, setIsLoadingBackups] = useState<boolean>(false);
   const [activeRestoreCategory, setActiveRestoreCategory] = useState<'Students_Data' | 'Teachers_Data' | 'Expenditures_Data'>('Students_Data');
-  const [restoringCampus, setRestoringCampus] = useState<string | null>(null);
-  const [restoreProgress, setRestoreProgress] = useState<number>(0);
-  const [restoreStatusText, setRestoreStatusText] = useState<string>('Initializing restoration pipeline...');
+  const [restoringCampus] = useState<string | null>(null);
+  const [restoreProgress] = useState<number>(0);
+  const [restoreStatusText] = useState<string>('Initializing restoration pipeline...');
 
   // Fetch Available Backups from Server/Google Drive
   const loadAvailableBackups = async () => {
