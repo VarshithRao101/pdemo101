@@ -894,14 +894,25 @@ export const AccountantDashboardView: React.FC = () => {
         transactionRef: collectTransactionRef
       }, otp || securityKey);
 
-      // Update the selected student display immediately, merging server response into existing profile
-      const updatedStudent = {
-        ...selectedStudent,
-        ...res.student,
-        remainingBalance: res.student?.remainingBalance ?? Math.max(0, selectedStudent.remainingBalance - paymentAmount),
-        totalPaid: res.student?.totalPaid ?? (selectedStudent.totalPaid + paymentAmount),
-        receipts: res.student?.receipts || selectedStudent.receipts
-      };
+      // Money figures come from the server or not at all.
+      //
+      // This used to fall back to a locally-computed balance
+      // (selectedStudent.remainingBalance - paymentAmount) whenever the
+      // response lacked the field. That silently displayed a figure the
+      // database did not hold — and it would be wrong for any payment the
+      // server had adjusted, deduplicated, or rejected part of. If the server
+      // did not send a student back, we refetch instead of inventing one.
+      if (!res.student || typeof res.student.remainingBalance !== 'number') {
+        triggerToast('Payment recorded. Refreshing balances from the server...');
+        await triggerFreshnessRefetch();
+        setCollectAmount('');
+        setCollectTransactionRef('');
+        setIsPayOtpModalOpen(false);
+        setPayOtpInput('');
+        return;
+      }
+
+      const updatedStudent = { ...selectedStudent, ...res.student };
       setSelectedStudent(updatedStudent as any);
       setEditStudent(updatedStudent as any);
       setCollectAmount('');

@@ -1,72 +1,96 @@
 const mongoose = require('mongoose');
 
-// Configure global Mongoose settings for serverless environments
+/**
+ * MongoDB connection for a PERSISTENT Node process (Hostinger), not a
+ * serverless one.
+ *
+ * What changed and why:
+ *
+ *  - The old module kept its cache on `global.mongoose`. That pattern exists to
+ *    survive serverless invocation boundaries; in a long-lived process it just
+ *    obscures ownership of the connection. It is now module-local.
+ *
+ *  - The old module had a 30-second `databaseBlockedUntil` circuit breaker:
+ *    after a SINGLE failed connection attempt, every subsequent call threw
+ *    immediately for 30 seconds, even after the database had recovered. On a
+ *    persistent process that turns a one-second blip into a half-minute
+ *    outage, and it fights mongoose's own reconnection logic. Removed —
+ *    the driver already handles retry and backoff.
+ *
+ *  - `bufferCommands` stays false on purpose. When the connection is down we
+ *    want queries to fail fast so the fail-closed route gate can return 503,
+ *    rather than hanging until a timeout and holding the request open.
+ */
+
 mongoose.set('bufferCommands', false);
-mongoose.set('bufferTimeoutMS', 3000);
+mongoose.set('strictQuery', true);
+
+// Index builds are not run automatically: on a large collection an unexpected
+// build can stall startup. Indexes are created deliberately by
+// scripts/rotateCredentials.cjs (and any future migration script).
 mongoose.set('autoIndex', false);
 
-let cached = global.mongoose;
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
-}
+let connectionPromise = null;
 
-let databaseBlockedUntil = 0;
-const DATABASE_BLOCK_COOLDOWN_MS = 30 * 1000;
-
-function isDatabaseTemporarilyBlocked() {
-  return Date.now() < databaseBlockedUntil;
-}
+mongoose.connection.on('connected', () => {
+  console.log(`[Database]: Connected to MongoDB (${mongoose.connection.name})`);
+});
+mongoose.connection.on('disconnected', () => {
+  console.warn('[Database]: Disconnected from MongoDB. The driver will keep retrying.');
+});
+mongoose.connection.on('error', (err) => {
+  console.error('[Database]: Connection error:', err.message);
+});
 
 async function connectToDatabase() {
-  if (isDatabaseTemporarilyBlocked()) {
-    throw new Error('MongoDB temporarily unavailable. Falling back to managed portal cache.');
+  // readyState 1 = connected. Reuse it; this is the hot path on every request.
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
+  // A connection attempt is already in flight — join it rather than opening a
+  // second one and racing.
+  if (connectionPromise) {
+    return connectionPromise;
   }
 
   const MONGODB_URI = process.env.MONGODB_URI;
   if (!MONGODB_URI) {
+    // No fallback URI, deliberately: a default here is how an app ends up
+    // silently reading and writing the wrong database.
     throw new Error('MONGODB_URI is not configured for this deployment.');
   }
 
-  if (cached.conn && mongoose.connection.readyState === 1) {
-    databaseBlockedUntil = 0;
-    return cached.conn;
-  }
-
-  if (!cached.promise || (mongoose.connection && mongoose.connection.readyState === 0)) {
-    const opts = {
+  connectionPromise = mongoose
+    .connect(MONGODB_URI, {
       dbName: process.env.MONGODB_DB_NAME || 'jc_erp_prod',
       bufferCommands: false,
       maxPoolSize: 10,
+      minPoolSize: 1,
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 5000,
-      socketTimeoutMS: 15000,
-    };
+      socketTimeoutMS: 45000,
+      heartbeatFrequencyMS: 10000
+    })
+    .then((m) => {
+      connectionPromise = null;
+      return m.connection;
+    })
+    .catch((err) => {
+      // Clear the promise so the next request retries instead of being handed
+      // a permanently rejected one.
+      connectionPromise = null;
+      console.error('[Database]: Connection attempt failed:', err.message);
+      throw err;
+    });
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts)
-      .then((mongooseInstance) => {
-        databaseBlockedUntil = 0;
-        console.log('✅ [Database]: Connected to MongoDB (' + (process.env.MONGODB_DB_NAME || 'jc_erp_prod') + ')');
-        return mongooseInstance.connection;
-      })
-      .catch((err) => {
-        databaseBlockedUntil = Date.now() + DATABASE_BLOCK_COOLDOWN_MS;
-        cached.promise = null;
-        global.mongoose.promise = null;
-        console.error('❌ [Database]: MongoDB connection error:', err.message);
-        throw err;
-      });
-    global.mongoose.promise = cached.promise;
-  }
+  return connectionPromise;
+}
 
-  try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    global.mongoose.promise = null;
-    throw e;
-  }
-
-  return cached.conn;
+// Retained for callers that still import it. There is no artificial block
+// window any more, so this reflects only the real connection state.
+function isDatabaseTemporarilyBlocked() {
+  return mongoose.connection.readyState !== 1;
 }
 
 module.exports = { connectToDatabase, isDatabaseTemporarilyBlocked };

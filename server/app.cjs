@@ -87,7 +87,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-security-pin']
 }));
 
-app.use(express.json());
+// Cap the request body. Without a limit a single request can pin memory and
+// push arbitrarily large strings into the database.
+app.use(express.json({ limit: '100kb' }));
 app.use(morgan('dev'));
 
 // URL Path Normalization Middleware (Fixes double /api/api/ prefixing & serverless routing quirks)
@@ -166,6 +168,92 @@ function isValidMobile(val) {
 function isValidObjectId(val) {
   if (!val) return false;
   return /^[0-9a-fA-F]{24}$/.test(String(val).trim());
+}
+
+// --- TEXT FIELD VALIDATION ---
+//
+// Two gaps a deliberate-failure test exposed:
+//  - A 50,000-character student name was accepted and stored. There were no
+//    length limits on any text field.
+//  - A nested object passed as `studentName` was accepted, because
+//    String(value) turns {a:{b:1}} into the literal "[object Object]" rather
+//    than rejecting it. Every text field went through that coercion.
+const MAX_TEXT = { short: 100, medium: 250, long: 2000 };
+
+// Accepts only real scalars. Objects and arrays are rejected outright instead
+// of being coerced into a meaningless string.
+function cleanText(value, { field, max = MAX_TEXT.short, required = false }) {
+  if (value === undefined || value === null || value === '') {
+    if (required) return { error: `${field} is required.` };
+    return { value: '' };
+  }
+  if (typeof value === 'object') {
+    return { error: `${field} must be text, not an object or list.` };
+  }
+  const s = String(value).trim();
+  if (required && !s) return { error: `${field} is required.` };
+  if (s.length > max) return { error: `${field} must be ${max} characters or fewer.` };
+  return { value: s };
+}
+
+// Validates a batch of text fields; returns the first error, or the cleaned values.
+function cleanTextFields(body, spec) {
+  const out = {};
+  for (const [field, opts] of Object.entries(spec)) {
+    const r = cleanText(body[field], { field, ...opts });
+    if (r.error) return { error: r.error };
+    out[field] = r.value;
+  }
+  return { values: out };
+}
+
+// --- FIELD ALLOWLISTING FOR UPDATES ---
+//
+// Update handlers used to do `Object.assign(doc, req.body)`. That let a caller
+// write ANY schema field through an unrelated endpoint — most dangerously
+// `branch`, which is the column every campus-isolation check reads. A campus
+// accountant could move a record into their own campus, or out of it, through
+// a routine edit. Updates now copy only the fields named here, each validated.
+//
+// spec: { field: 'string' | 'number' | 'nonNegativeNumber' | 'boolean' | 'date' | 'raw' }
+function applyAllowedFields(doc, body, spec) {
+  const applied = [];
+  for (const [field, kind] of Object.entries(spec)) {
+    if (body[field] === undefined) continue;
+    const v = body[field];
+
+    switch (kind) {
+      case 'number':
+      case 'nonNegativeNumber': {
+        if (!isValidPositiveNumber(v)) {
+          return { error: `${field} must be a valid non-negative number.` };
+        }
+        doc[field] = Number(v);
+        break;
+      }
+      case 'boolean':
+        doc[field] = Boolean(v);
+        break;
+      case 'date': {
+        const d = new Date(v);
+        if (isNaN(d.getTime())) return { error: `${field} must be a valid date.` };
+        doc[field] = d;
+        break;
+      }
+      case 'string': {
+        const r = cleanText(v, { field, max: MAX_TEXT.long });
+        if (r.error) return { error: r.error };
+        doc[field] = r.value;
+        break;
+      }
+      case 'raw':
+      default:
+        doc[field] = v;
+        break;
+    }
+    applied.push(field);
+  }
+  return { applied };
 }
 
 // Fee cap constants
@@ -981,8 +1069,20 @@ const createStudentHandler = async (req, res) => {
       tuitionFee = 0, hostelFee = 0, transportFee = 0, miscellaneousFee = 0, previousPending = 0, customFeeSlots = [], academicYear = '2026-2027'
     } = body;
 
-    if (!name || !admissionNumber) {
-      return res.status(400).json({ status: 'error', message: 'Student name and admission number are required.' });
+    // Reject over-long and non-scalar values before anything reaches the
+    // database. This previously accepted a 50,000-character name.
+    const text = cleanTextFields(body, {
+      name: { required: true, max: MAX_TEXT.short },
+      admissionNumber: { required: true, max: 50 },
+      fatherName: { max: MAX_TEXT.short }, motherName: { max: MAX_TEXT.short },
+      course: { max: MAX_TEXT.short }, section: { max: MAX_TEXT.short },
+      rollNumber: { max: 50 }, email: { max: MAX_TEXT.short },
+      dob: { max: 50 }, address: { max: MAX_TEXT.long },
+      previousSchool: { max: MAX_TEXT.medium }, previousBoard: { max: MAX_TEXT.short },
+      mobile: { max: 20 }, parentMobile: { max: 20 }
+    });
+    if (text.error) {
+      return res.status(400).json({ status: 'error', message: text.error });
     }
 
     // Mobile number validation (optional fields but must be valid if provided)
@@ -1049,24 +1149,26 @@ const createStudentHandler = async (req, res) => {
     const randomPin = String(Math.floor(100000 + Math.random() * 900000));
     const studentId = `STU-${Date.now().toString().slice(-6)}`;
 
+    // Use the validated, length-capped values rather than the raw body.
+    const t = text.values;
     const newStudent = await Student.create({
       studentId,
-      admissionNumber: String(admissionNumber).trim(),
-      name: String(name).trim(),
-      fatherName: fatherName || '',
-      motherName: motherName || '',
-      mobile: mobile || '',
-      parentMobile: parentMobile || '',
-      email: body.email || '',
-      course: course || '',
-      section: section || '',
+      admissionNumber: t.admissionNumber,
+      name: t.name,
+      fatherName: t.fatherName,
+      motherName: t.motherName,
+      mobile: t.mobile,
+      parentMobile: t.parentMobile,
+      email: t.email,
+      course: t.course,
+      section: t.section,
       branch: targetBranch,
-      rollNumber: body.rollNumber || '',
+      rollNumber: t.rollNumber,
       status: 'Active',
-      dob: dob || '',
-      previousSchool: previousSchool || '',
-      previousBoard: previousBoard || '',
-      address: address || '',
+      dob: t.dob,
+      previousSchool: t.previousSchool,
+      previousBoard: t.previousBoard,
+      address: t.address,
       hostelStatus: body.hostelStatus || 'Day Scholar',
       transportStatus: body.transportStatus || 'Self Transport',
       tuitionFee: Number(tuitionFee),
@@ -1152,11 +1254,39 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
       });
     }
 
-    const updateData = { ...req.body };
-    delete updateData._id;
-    delete updateData.id;
+    // `branch` is deliberately absent: moving a student between campuses is
+    // not a routine profile edit, and allowing it here would let a
+    // campus-scoped account pull records across the isolation boundary.
+    const result = applyAllowedFields(student, req.body, {
+      name: 'string', fatherName: 'string', motherName: 'string',
+      mobile: 'string', parentMobile: 'string', email: 'string',
+      course: 'string', section: 'string', rollNumber: 'string',
+      dob: 'string', address: 'string',
+      previousSchool: 'string', previousBoard: 'string',
+      status: 'string', hostelStatus: 'string', transportStatus: 'string',
+      academicYear: 'string',
+      tuitionFee: 'nonNegativeNumber', hostelFee: 'nonNegativeNumber',
+      transportFee: 'nonNegativeNumber', miscellaneousFee: 'nonNegativeNumber',
+      previousPending: 'nonNegativeNumber',
+      tuitionWaiver: 'nonNegativeNumber', hostelWaiver: 'nonNegativeNumber',
+      transportWaiver: 'nonNegativeNumber', miscWaiver: 'nonNegativeNumber',
+      customFeeSlots: 'raw'
+    });
+    if (result.error) {
+      return res.status(400).json({ status: 'error', message: result.error });
+    }
+    if (req.body.customFeeSlots !== undefined) student.markModified('customFeeSlots');
 
-    Object.assign(student, updateData);
+    // Keep the derived balance consistent with whatever fees just changed,
+    // rather than leaving a stale figure on the record.
+    const slotTotal = (student.customFeeSlots || []).reduce((a, s) => a + Number(s.amount || 0), 0);
+    const gross = Number(student.tuitionFee || 0) + Number(student.hostelFee || 0)
+      + Number(student.transportFee || 0) + Number(student.miscellaneousFee || 0)
+      + Number(student.previousPending || 0) + slotTotal;
+    const waivers = Number(student.tuitionWaiver || 0) + Number(student.hostelWaiver || 0)
+      + Number(student.transportWaiver || 0) + Number(student.miscWaiver || 0);
+    student.remainingBalance = Math.max(0, Math.round((gross - waivers - Number(student.totalPaid || 0)) * 100) / 100);
+
     await student.save();
 
     return res.json({ status: 'success', data: student });
@@ -1415,7 +1545,22 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
       updatePayload.salary = Number(updatePayload.salary) || 0;
     }
 
-    Object.assign(teacher, updatePayload);
+    // Only admin1 may move a staff member between campuses; for a
+    // campus-scoped admin2 that would be a way out of their own boundary.
+    if (updatePayload.branch !== undefined && String(req.user.campus || '').toLowerCase() !== 'all') {
+      return res.status(403).json({ status: 'error', message: 'Only a Rector-level account can move staff between campuses.' });
+    }
+
+    const result = applyAllowedFields(teacher, updatePayload, {
+      name: 'string', subject: 'string', mobile: 'string', email: 'string',
+      role: 'string', classification: 'string', status: 'string',
+      branch: 'string',
+      salary: 'nonNegativeNumber',
+      salaryLedger: 'raw', monthlySalaries: 'raw'
+    });
+    if (result.error) {
+      return res.status(400).json({ status: 'error', message: result.error });
+    }
     if (updatePayload.salaryLedger) teacher.markModified('salaryLedger');
     if (updatePayload.monthlySalaries) teacher.markModified('monthlySalaries');
 
@@ -1732,7 +1877,21 @@ app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1'
       }
     }
 
-    Object.assign(exp, req.body);
+    // `branch` omitted on purpose: re-homing an expenditure to another campus
+    // through an edit would move money across the isolation boundary.
+    const result = applyAllowedFields(exp, req.body, {
+      category: 'string',
+      description: 'string',
+      amount: 'nonNegativeNumber',
+      date: 'date'
+    });
+    if (result.error) {
+      return res.status(400).json({ status: 'error', message: result.error });
+    }
+    if (req.body.amount !== undefined && Number(req.body.amount) <= 0) {
+      return res.status(400).json({ status: 'error', message: 'Amount must be a valid positive number.' });
+    }
+
     await exp.save();
 
     return res.json({ status: 'success', data: exp });
@@ -1862,7 +2021,21 @@ app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('adm
       }
     }
 
-    Object.assign(wrk, req.body);
+    // `branch` omitted for the same reason as expenditures.
+    const result = applyAllowedFields(wrk, req.body, {
+      workerName: 'string',
+      role: 'string',
+      monthPeriod: 'string',
+      amount: 'nonNegativeNumber',
+      paid: 'boolean'
+    });
+    if (result.error) {
+      return res.status(400).json({ status: 'error', message: result.error });
+    }
+    if (req.body.amount !== undefined && Number(req.body.amount) <= 0) {
+      return res.status(400).json({ status: 'error', message: 'Amount must be a valid positive number.' });
+    }
+
     await wrk.save();
 
     return res.json({ status: 'success', data: wrk });
@@ -2243,7 +2416,6 @@ app.get('/api/system/run-backup', mongoRateLimiter, async (req, res) => {
  */
 const handleGetAvailableBackups = async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
     let driveFiles = [];
     try { driveFiles = await getAllAvailableBackupFiles(); } catch (e) { console.warn('Drive list notice:', e.message); }
     const logs = getBackupLogs();
@@ -2263,8 +2435,8 @@ const handleGetAvailableBackups = async (req, res) => {
     return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 };
-app.get('/api/authenticator/available-backups', authenticateToken, requireRole('authenticator', 'admin1'), handleGetAvailableBackups);
-app.get('/api/authenticator/backups', authenticateToken, requireRole('authenticator', 'admin1'), handleGetAvailableBackups);
+app.get('/api/authenticator/available-backups', authenticateToken, requireRole('authenticator', 'admin1'), requireDatabase, handleGetAvailableBackups);
+app.get('/api/authenticator/backups', authenticateToken, requireRole('authenticator', 'admin1'), requireDatabase, handleGetAvailableBackups);
 
 /**
  * GET /api/authenticator/keys
@@ -2375,21 +2547,15 @@ app.post('/api/authenticator/regenerate-keys', authenticateToken, requireRole('a
 /**
  * GET /api/authenticator/stats
  */
-app.get('/api/authenticator/stats', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
+app.get('/api/authenticator/stats', authenticateToken, requireRole('authenticator', 'admin1'), requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
-    let totalStudents = 0;
-    let totalTeachers = 0;
-    let totalStaff = defaultUsers.length;
-    if (mongoose.connection.readyState === 1) {
-      try {
-        [totalStudents, totalTeachers, totalStaff] = await Promise.all([
-          Student.countDocuments(),
-          Teacher.countDocuments(),
-          User.countDocuments()
-        ]);
-      } catch {}
-    }
+    // A failure here used to be swallowed, leaving the dashboard showing zeros
+    // that were indistinguishable from a genuinely empty system.
+    const [totalStudents, totalTeachers, totalStaff] = await Promise.all([
+      Student.countDocuments(),
+      Teacher.countDocuments(),
+      User.countDocuments()
+    ]);
     return res.json({
       status: 'success',
       data: {
@@ -2450,11 +2616,6 @@ app.post('/api/authenticator/accounts', authenticateToken, requireRole('authenti
       return res.status(403).json({ status: 'error', message: 'Creating new portal IDs is disabled. Update an existing portal slot only.' });
     }
 
-    try { await connectToDatabase(); } catch {}
-    if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({ status: 'error', message: 'Database unavailable. Cannot update portal account now.' });
-    }
-
     const existing = await User.findOne({ username: normalizedUsername });
     if (!existing) {
       return res.status(404).json({ status: 'error', message: 'Portal slot not found. Restore the default seeded account first.' });
@@ -2481,9 +2642,8 @@ app.post('/api/authenticator/accounts', authenticateToken, requireRole('authenti
   }
 });
 
-app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
+app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authenticator', 'admin1'), requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
     const { id } = req.params;
     const { username: bodyUsername, password, name, email, mobile, department } = req.body || {};
     const normalizedUsername = String(bodyUsername || '').trim().toLowerCase();
@@ -2626,11 +2786,13 @@ app.post('/api/authenticator/reset-password', authenticateToken, requireRole('au
 /**
  * DELETE /api/authenticator/purge-student-faculty-data & POST /api/system/purge-drive
  */
-app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, requireRole('authenticator'), async (req, res) => {
+app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, requireRole('authenticator'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
+    // Erases every student, teacher and payment. It previously required
+    // nothing beyond the role, and silently reported success with zeros if the
+    // database happened to be unreachable.
     let students = 0, teachers = 0, payments = 0;
-    if (mongoose.connection.readyState === 1) {
+    {
       const sRes = await Student.deleteMany({});
       const tRes = await Teacher.deleteMany({});
       const pRes = await Payment.deleteMany({});
@@ -2734,11 +2896,25 @@ app.post('/api/authenticator/restore-backup', authenticateToken, requireRole('au
 app.post('/api/enquiries', async (req, res) => {
   try {
     await connectToDatabase();
-    const { studentName, parentName, mobile, email, stream, preferredCampus, currentGrade, notes } = req.body;
+    const { mobile } = req.body || {};
 
-    if (!studentName || !mobile || !preferredCampus) {
-      return res.status(400).json({ status: 'error', message: 'Student Name, Mobile Number, and Preferred Campus are required.' });
+    // This is a PUBLIC endpoint — anyone on the internet can post to it, so it
+    // gets the strictest treatment. It previously accepted a nested object as
+    // studentName and stored the string "[object Object]".
+    const text = cleanTextFields(req.body || {}, {
+      studentName: { required: true, max: MAX_TEXT.short },
+      preferredCampus: { required: true, max: MAX_TEXT.short },
+      parentName: { max: MAX_TEXT.short },
+      email: { max: MAX_TEXT.short },
+      stream: { max: 50 },
+      currentGrade: { max: 50 },
+      notes: { max: MAX_TEXT.long },
+      mobile: { required: true, max: 20 }
+    });
+    if (text.error) {
+      return res.status(400).json({ status: 'error', message: text.error });
     }
+    const { studentName, parentName, email, stream, preferredCampus, currentGrade, notes } = text.values;
 
     // Mobile validation for enquiry
     const enquiryMobileDigits = String(mobile).replace(/[\s\-]/g, '');
@@ -2751,14 +2927,14 @@ app.post('/api/enquiries', async (req, res) => {
 
     const newEnquiry = await Enquiry.create({
       referenceCode,
-      studentName: String(studentName).trim(),
-      parentName: String(parentName || '').trim(),
-      mobile: String(mobile).trim(),
-      email: String(email || '').trim(),
-      stream: String(stream || 'MPC').trim(),
-      preferredCampus: String(preferredCampus).trim(),
-      currentGrade: String(currentGrade || '10th Class').trim(),
-      notes: String(notes || '').trim()
+      studentName,
+      parentName,
+      mobile: text.values.mobile,
+      email,
+      stream: stream || 'MPC',
+      preferredCampus,
+      currentGrade: currentGrade || '10th Class',
+      notes
     });
 
     return res.status(201).json({
