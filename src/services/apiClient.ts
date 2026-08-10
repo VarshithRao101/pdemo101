@@ -2,16 +2,23 @@
 // Real Production HTTP Client connecting to Express/MongoDB backend API
 // Manages real JWT auth tokens, refreshToken auto-renewal, headers, rate limit handling, and campus isolation errors.
 
+/**
+ * Where the API lives.
+ *
+ * Same origin by default. A previous version hardcoded
+ * `http://127.0.0.1:3000/api` whenever the page was served from any localhost
+ * port other than 3000 — so running the built app on any other port silently
+ * pointed every request at a server that wasn't there, and the Content
+ * Security Policy (correctly) blocked the cross-origin call on top of that.
+ *
+ * If you genuinely need a split origin — a separate dev server on another
+ * port — set VITE_API_BASE_URL explicitly and add that origin to both
+ * ALLOWED_ORIGINS and the CSP's connect-src. Guessing a port is not a
+ * substitute for configuring one.
+ */
 export const getApiBaseUrl = (): string => {
   if (import.meta.env && import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
-  }
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname.toLowerCase();
-    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-    if (isLocalhost && window.location.port && window.location.port !== '3000') {
-      return 'http://127.0.0.1:3000/api';
-    }
   }
   return '/api';
 };

@@ -3355,6 +3355,192 @@ app.get('/api/admin1/sections', authenticateToken, requireRole('admin1', 'admin2
 // Reports were entirely invented (a fixed 120 enrolled / 45,00,000 revenue /
 // 12,00,000 expenses, split evenly across four campuses). These are now
 // computed from the real collections.
+/**
+ * GET /api/admin1/analytics
+ *
+ * Everything the analytics dashboard renders, computed here in one round trip.
+ *
+ * The frontend deliberately does no arithmetic on these numbers — it displays
+ * them. Re-deriving a total in the browser is how a dashboard ends up
+ * disagreeing with the ledger it is supposed to describe.
+ *
+ * Campus-scoped: admin1 sees the whole organisation, everyone else sees only
+ * their own campus, enforced by the same campusScopeFilter used everywhere.
+ */
+app.get('/api/admin1/analytics', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
+  try {
+    const scope = campusScopeFilter(req);
+    const campuses = scope.branch ? [scope.branch] : VALID_CAMPUSES;
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 7), 180);
+
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    since.setDate(since.getDate() - (days - 1));
+
+    const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+    const match = scope.branch ? [{ $match: scope }] : [];
+
+    const [
+      studentAgg, paymentAgg, dailyAgg, campusStudents, campusPaid,
+      expenditureAgg, enquiryStatusAgg, enquiryStreamAgg, teacherAgg,
+      workerAgg, modeAgg, recentPayments
+    ] = await Promise.all([
+      // Billed vs paid across the scope. `billed` is gross fees minus waivers,
+      // computed from the stored fields rather than trusting remainingBalance.
+      Student.aggregate([
+        ...match,
+        { $project: {
+          branch: 1, status: 1, totalPaid: { $ifNull: ['$totalPaid', 0] },
+          remainingBalance: { $ifNull: ['$remainingBalance', 0] },
+          billed: {
+            $subtract: [
+              { $add: [
+                { $ifNull: ['$tuitionFee', 0] }, { $ifNull: ['$hostelFee', 0] },
+                { $ifNull: ['$transportFee', 0] }, { $ifNull: ['$miscellaneousFee', 0] },
+                { $ifNull: ['$previousPending', 0] },
+                { $sum: { $map: { input: { $ifNull: ['$customFeeSlots', []] }, as: 's', in: { $ifNull: ['$$s.amount', 0] } } } }
+              ] },
+              { $add: [
+                { $ifNull: ['$tuitionWaiver', 0] }, { $ifNull: ['$hostelWaiver', 0] },
+                { $ifNull: ['$transportWaiver', 0] }, { $ifNull: ['$miscWaiver', 0] }
+              ] }
+            ]
+          }
+        } },
+        { $group: {
+          _id: null,
+          students: { $sum: 1 },
+          active: { $sum: { $cond: [{ $eq: ['$status', 'Active'] }, 1, 0] } },
+          billed: { $sum: '$billed' },
+          paid: { $sum: '$totalPaid' },
+          outstanding: { $sum: '$remainingBalance' },
+          clear: { $sum: { $cond: [{ $lte: ['$remainingBalance', 0] }, 1, 0] } },
+          over50k: { $sum: { $cond: [{ $gt: ['$remainingBalance', 50000] }, 1, 0] } },
+          mid: { $sum: { $cond: [{ $and: [{ $gt: ['$remainingBalance', 0] }, { $lte: ['$remainingBalance', 50000] }] }, 1, 0] } }
+        } }
+      ]),
+
+      Payment.aggregate([...match, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
+
+      // Daily collections for the sparkline / trend chart.
+      Payment.aggregate([
+        { $match: { ...scope, date: { $gte: since } } },
+        { $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
+          amount: { $sum: '$amount' }, count: { $sum: 1 }
+        } },
+        { $sort: { _id: 1 } }
+      ]),
+
+      Student.aggregate([...match, { $group: { _id: '$branch', students: { $sum: 1 }, outstanding: { $sum: { $ifNull: ['$remainingBalance', 0] } }, paid: { $sum: { $ifNull: ['$totalPaid', 0] } } } }]),
+      Payment.aggregate([...match, { $group: { _id: '$branch', collected: { $sum: '$amount' }, receipts: { $sum: 1 } } }]),
+      Expenditure.aggregate([...match, { $group: { _id: '$category', amount: { $sum: '$amount' }, count: { $sum: 1 } } }, { $sort: { amount: -1 } }]),
+
+      // Enquiries carry preferredCampus rather than branch, so the campus
+      // filter has to be applied on that field instead of the shared scope.
+      Enquiry.aggregate([
+        ...(scope.branch ? [{ $match: { preferredCampus: new RegExp(String(scope.branch).split(' ')[0], 'i') } }] : []),
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      Enquiry.aggregate([
+        ...(scope.branch ? [{ $match: { preferredCampus: new RegExp(String(scope.branch).split(' ')[0], 'i') } }] : []),
+        { $group: { _id: '$stream', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+
+      Teacher.aggregate([...match, { $group: { _id: null, count: { $sum: 1 }, salary: { $sum: { $ifNull: ['$salary', 0] } }, teaching: { $sum: { $cond: [{ $eq: ['$classification', 'Teaching'] }, 1, 0] } } } }]),
+      WorkerPayment.aggregate([...match, { $group: { _id: null, amount: { $sum: '$amount' }, count: { $sum: 1 } } }]),
+      Payment.aggregate([...match, { $group: { _id: '$paymentMode', amount: { $sum: '$amount' }, count: { $sum: 1 } } }, { $sort: { amount: -1 } }]),
+      Payment.find(scope).sort({ date: -1 }).limit(8).select('receiptNumber studentName amount date paymentMode branch').lean()
+    ]);
+
+    const s = studentAgg[0] || {};
+    const billed = round2(s.billed);
+    const collected = round2(paymentAgg[0] ? paymentAgg[0].total : 0);
+    const outstanding = round2(s.outstanding);
+    const expenditureTotal = round2(expenditureAgg.reduce((a, e) => a + e.amount, 0));
+    const payrollTotal = round2(workerAgg[0] ? workerAgg[0].amount : 0);
+
+    // Fill every day in the window so the trend line has no invisible gaps.
+    const byDay = new Map(dailyAgg.map(d => [d._id, d]));
+    const series = [];
+    for (let i = 0; i < days; i++) {
+      const d = new Date(since);
+      d.setDate(d.getDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      const hit = byDay.get(key);
+      series.push({ date: key, amount: round2(hit ? hit.amount : 0), count: hit ? hit.count : 0 });
+    }
+
+    const studentsBy = new Map(campusStudents.map(c => [c._id, c]));
+    const paidBy = new Map(campusPaid.map(c => [c._id, c]));
+    const campusBreakdown = campuses.map(c => {
+      const st = studentsBy.get(c) || {};
+      const pd = paidBy.get(c) || {};
+      const cCollected = round2(pd.collected);
+      const cOutstanding = round2(st.outstanding);
+      const cBilled = round2(cCollected + cOutstanding);
+      return {
+        campus: c,
+        students: st.students || 0,
+        collected: cCollected,
+        outstanding: cOutstanding,
+        billed: cBilled,
+        receipts: pd.receipts || 0,
+        recoveryRate: cBilled > 0 ? Math.round((cCollected / cBilled) * 1000) / 10 : 0
+      };
+    });
+
+    const funnelOrder = ['Pending', 'Contacted', 'Enrolled', 'Closed', 'Archived'];
+    const statusBy = new Map(enquiryStatusAgg.map(e => [e._id, e.count]));
+    const enquiryFunnel = funnelOrder
+      .map(stage => ({ stage, count: statusBy.get(stage) || 0 }))
+      .filter(x => x.count > 0 || x.stage === 'Pending');
+
+    return res.json({
+      status: 'success',
+      data: {
+        scope: scope.branch || 'All campuses',
+        windowDays: days,
+        headline: {
+          students: s.students || 0,
+          activeStudents: s.active || 0,
+          billed,
+          collected,
+          outstanding,
+          recoveryRate: billed > 0 ? Math.round((round2(s.paid) / billed) * 1000) / 10 : 0,
+          expenditure: expenditureTotal,
+          payroll: payrollTotal,
+          netPosition: round2(collected - expenditureTotal - payrollTotal),
+          receipts: paymentAgg[0] ? paymentAgg[0].count : 0,
+          teachers: teacherAgg[0] ? teacherAgg[0].count : 0,
+          monthlySalaryCommitment: round2(teacherAgg[0] ? teacherAgg[0].salary : 0),
+          enquiries: enquiryStatusAgg.reduce((a, e) => a + e.count, 0)
+        },
+        collections: series,
+        campusBreakdown,
+        feeStatus: [
+          { label: 'Fully paid', count: s.clear || 0 },
+          { label: 'Owes up to 50k', count: s.mid || 0 },
+          { label: 'Owes over 50k', count: s.over50k || 0 }
+        ],
+        enquiryFunnel,
+        enquiryByStream: enquiryStreamAgg.map(e => ({ stream: e._id || 'Unspecified', count: e.count })),
+        expenditureByCategory: expenditureAgg.map(e => ({ category: e._id || 'Uncategorised', amount: round2(e.amount), count: e.count })),
+        paymentModes: modeAgg.map(m => ({ mode: m._id || 'Unspecified', amount: round2(m.amount), count: m.count })),
+        recentPayments: recentPayments.map(p => ({
+          receiptNumber: p.receiptNumber, studentName: p.studentName,
+          amount: round2(p.amount), date: p.date, mode: p.paymentMode, branch: p.branch
+        }))
+      }
+    });
+  } catch (err) {
+    console.error('[Analytics]: Failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to build analytics.' });
+  }
+});
+
+
 app.get('/api/admin1/reports', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
   try {
     const scope = campusScopeFilter(req);

@@ -1,6 +1,7 @@
 @import './theme.css';
 @import './glass.css';
 @import './animations.css';
+@import './analytics.css';
 
 /* Global Resets & Minimalist Body Configuration */
 * {

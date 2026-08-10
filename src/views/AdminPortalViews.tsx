@@ -6,7 +6,7 @@ import { apiClient, setGlobalSecurityKey } from '../services/apiClient';
 import { admin1Service } from '../services/admin1Service';
 import { admin2Service } from '../services/admin2Service';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
-import { AdminDataAnalytics } from '../components/AdminDataAnalytics';
+import { AnalyticsDashboard } from '../components/AnalyticsDashboard';
 import collegeLogo from '../assets/college logo.png';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 
@@ -602,28 +602,28 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       <style>
         @page { size: A4; margin: 12mm }
         * { box-sizing: border-box }
-        body { margin: 0; color: #0F172A; background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+        body { margin: 0; color: var(--ink); background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
         .page { max-width: 182mm; margin: 0 auto; padding: 4px }
-        .hdr { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-radius: 16px; margin-bottom: 20px; border-bottom: 3px solid #D4AF37 }
+        .hdr { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: linear-gradient(135deg, var(--ink) 0%, var(--ink) 100%); border-radius: 16px; margin-bottom: 20px; border-bottom: 3px solid var(--accent) }
         .brand { display: flex; align-items: center; gap: 14px }
-        .logo { width: 44px; height: 44px; object-fit: contain; background: #FFF; border-radius: 10px; padding: 4px; border: 1px solid #D4AF37 }
+        .logo { width: 44px; height: 44px; object-fit: contain; background: #FFF; border-radius: 10px; padding: 4px; border: 1px solid var(--accent) }
         .iname { color: #FFF; font-size: 15px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase }
-        .iaddr { color: #94A3B8; font-size: 10px; line-height: 1.4; margin-top: 2px }
+        .iaddr { color: var(--ink-muted); font-size: 10px; line-height: 1.4; margin-top: 2px }
         .slbl strong { display: block; color: #FFF; font-size: 16px; font-weight: 900; text-transform: uppercase; text-align: right; letter-spacing: 0.04em }
-        .slbl span { color: #F59E0B; font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-top: 2px }
-        .scard { background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(3,1fr); gap: 16px }
-        .fl { font-size: 9px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.06em; display: block }
-        .fv { font-size: 13.5px; font-weight: 800; color: #0F172A; display: block; margin-top: 4px }
+        .slbl span { color: var(--warning); font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-top: 2px }
+        .scard { background: var(--surface-sunken); border: 1.5px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(3,1fr); gap: 16px }
+        .fl { font-size: 9px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; letter-spacing: 0.06em; display: block }
+        .fv { font-size: 13.5px; font-weight: 800; color: var(--ink); display: block; margin-top: 4px }
         .sgrid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 16px }
-        .sc { border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 16px; background: #FFF }
-        .sc.hi { border-color: #D4AF37; background: #FFFDF4 }
-        .sc .sl { font-size: 9px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.06em }
-        .sc .sv { font-size: 19px; font-weight: 900; color: #0F172A; display: block; margin-top: 6px }
-        .sc.pd .sv { color: #059669 }
-        .sc.hi .sv { color: #D97706 }
-        .ftr { margin-top: 32px; padding-top: 16px; border-top: 1.5px dashed #CBD5E1; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: #64748B }
-        .sig { border-top: 1.5px solid #0F172A; padding-top: 6px; font-size: 9px; font-weight: 800; color: #0F172A; text-transform: uppercase; margin-top: 32px; text-align: center; width: 140px }
-        .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 20px; padding: 12px 26px; background: linear-gradient(135deg, #0F172A, #1E293B); color: #FFF; border: none; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,0.15) }
+        .sc { border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; background: #FFF }
+        .sc.hi { border-color: var(--accent); background: var(--surface-sunken) }
+        .sc .sl { font-size: 9px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; letter-spacing: 0.06em }
+        .sc .sv { font-size: 19px; font-weight: 900; color: var(--ink); display: block; margin-top: 6px }
+        .sc.pd .sv { color: var(--good) }
+        .sc.hi .sv { color: var(--warning) }
+        .ftr { margin-top: 32px; padding-top: 16px; border-top: 1.5px dashed var(--line-strong); display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: var(--ink-secondary) }
+        .sig { border-top: 1.5px solid var(--ink); padding-top: 6px; font-size: 9px; font-weight: 800; color: var(--ink); text-transform: uppercase; margin-top: 32px; text-align: center; width: 140px }
+        .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 20px; padding: 12px 26px; background: linear-gradient(135deg, var(--ink), var(--ink)); color: #FFF; border: none; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,0.15) }
         @media print { .pbtn { display: none } }
       </style></head><body>
       <div class="page">
@@ -646,7 +646,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div><span class="fl">Role / Designation</span><span class="fv">${escapeHtml(role)}</span></div>
           <div><span class="fl">Payroll Period</span><span class="fv">${escapeHtml(month)}</span></div>
           <div><span class="fl">Campus Branch</span><span class="fv">${escapeHtml(loggedInCampus)}</span></div>
-          <div><span class="fl">Payment Status</span><span class="fv" style="color:${w.paid ? '#059669' : '#DC2626'}">${statusText}</span></div>
+          <div><span class="fl">Payment Status</span><span class="fv" style="color:${w.paid ? 'var(--good)' : 'var(--critical)'}">${statusText}</span></div>
           <div><span class="fl">Reference Voucher</span><span class="fv">${escapeHtml(w._id || w.id || 'WRK-REC')}</span></div>
         </div>
         <div class="sgrid">
@@ -691,17 +691,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       const wSal = Number(w.amount || w.salary || 0);
       const wPaid = Number(w.amountPaid !== undefined ? w.amountPaid : (w.paid ? wSal : 0));
       const wBal = Math.max(0, wSal - wPaid);
-      const stColor = w.paid ? '#059669' : '#DC2626';
+      const stColor = w.paid ? 'var(--good)' : 'var(--critical)';
 
       return '<tr>'
         + '<td style="text-align:center;font-weight:700;">' + (idx + 1) + '</td>'
-        + '<td style="font-weight:800;color:#0F172A;">' + escapeHtml(wName) + '</td>'
+        + '<td style="font-weight:800;color:var(--ink);">' + escapeHtml(wName) + '</td>'
         + '<td>' + escapeHtml(wRole) + '</td>'
         + '<td>' + escapeHtml(wMonth) + '</td>'
         + '<td class="tr">Rs. ' + wSal.toLocaleString('en-IN') + '</td>'
-        + '<td class="tr" style="color:#059669;font-weight:800;">Rs. ' + wPaid.toLocaleString('en-IN') + '</td>'
-        + '<td class="tr" style="color:' + (wBal > 0 ? '#DC2626' : '#059669') + ';font-weight:800;">Rs. ' + wBal.toLocaleString('en-IN') + '</td>'
-        + '<td style="text-align:center;"><span style="color:' + stColor + ';font-weight:900;padding:3px 8px;border-radius:6px;background:' + (w.paid ? '#ECFDF5' : '#FEF2F2') + ';font-size:9.5px;letter-spacing:0.04em;">' + (w.paid ? 'PAID' : 'UNPAID') + '</span></td>'
+        + '<td class="tr" style="color:var(--good);font-weight:800;">Rs. ' + wPaid.toLocaleString('en-IN') + '</td>'
+        + '<td class="tr" style="color:' + (wBal > 0 ? 'var(--critical)' : 'var(--good)') + ';font-weight:800;">Rs. ' + wBal.toLocaleString('en-IN') + '</td>'
+        + '<td style="text-align:center;"><span style="color:' + stColor + ';font-weight:900;padding:3px 8px;border-radius:6px;background:' + (w.paid ? 'var(--good-wash)' : 'var(--critical-wash)') + ';font-size:9.5px;letter-spacing:0.04em;">' + (w.paid ? 'PAID' : 'UNPAID') + '</span></td>'
         + '</tr>';
     }).join('');
 
@@ -709,31 +709,31 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       <style>
         @page { size: A4 landscape; margin: 10mm }
         * { box-sizing: border-box }
-        body { margin: 0; color: #0F172A; background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+        body { margin: 0; color: var(--ink); background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
         .page { max-width: 275mm; margin: 0 auto; padding: 4px }
-        .hdr { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-radius: 14px; margin-bottom: 16px; border-bottom: 3px solid #D4AF37 }
+        .hdr { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; background: linear-gradient(135deg, var(--ink) 0%, var(--ink) 100%); border-radius: 14px; margin-bottom: 16px; border-bottom: 3px solid var(--accent) }
         .brand { display: flex; align-items: center; gap: 12px }
-        .logo { width: 42px; height: 42px; object-fit: contain; background: #FFF; border-radius: 10px; padding: 4px; border: 1px solid #D4AF37 }
+        .logo { width: 42px; height: 42px; object-fit: contain; background: #FFF; border-radius: 10px; padding: 4px; border: 1px solid var(--accent) }
         .iname { color: #FFF; font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em }
-        .iaddr { color: #94A3B8; font-size: 10px; margin-top: 2px }
+        .iaddr { color: var(--ink-muted); font-size: 10px; margin-top: 2px }
         .slbl strong { display: block; color: #FFF; font-size: 15px; font-weight: 900; text-transform: uppercase; text-align: right }
-        .slbl span { color: #F59E0B; font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-top: 2px }
+        .slbl span { color: var(--warning); font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-top: 2px }
         .sgrid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 16px }
-        .sc { border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 12px 16px; background: #F8FAFC }
-        .sc.hi { border-color: #D4AF37; background: #FFFDF4 }
-        .sc .sl { font-size: 9px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.06em }
-        .sc .sv { font-size: 18px; font-weight: 900; color: #0F172A; display: block; margin-top: 4px }
-        .sc.pd .sv { color: #059669 }
-        .sc.hi .sv { color: #D97706 }
-        .tbl { width: 100%; border-collapse: collapse; border: 1.5px solid #CBD5E1; border-radius: 12px; overflow: hidden; font-size: 10.5px }
-        .tbl th { padding: 10px 12px; background: #F1F5F9; color: #475569; font-size: 8.5px; text-transform: uppercase; text-align: left; border-bottom: 1.5px solid #CBD5E1; font-weight: 800; letter-spacing: 0.06em }
-        .tbl td { padding: 9px 12px; border-bottom: 1px solid #E2E8F0 }
+        .sc { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 16px; background: var(--surface-sunken) }
+        .sc.hi { border-color: var(--accent); background: var(--surface-sunken) }
+        .sc .sl { font-size: 9px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; letter-spacing: 0.06em }
+        .sc .sv { font-size: 18px; font-weight: 900; color: var(--ink); display: block; margin-top: 4px }
+        .sc.pd .sv { color: var(--good) }
+        .sc.hi .sv { color: var(--warning) }
+        .tbl { width: 100%; border-collapse: collapse; border: 1.5px solid var(--line-strong); border-radius: 12px; overflow: hidden; font-size: 10.5px }
+        .tbl th { padding: 10px 12px; background: var(--surface-sunken); color: var(--ink-secondary); font-size: 8.5px; text-transform: uppercase; text-align: left; border-bottom: 1.5px solid var(--line-strong); font-weight: 800; letter-spacing: 0.06em }
+        .tbl td { padding: 9px 12px; border-bottom: 1px solid var(--line) }
         .tbl tr:last-child td { border-bottom: none }
         .tbl tr:nth-child(even) td { background: #FAFBFC }
         .tr { text-align: right }
-        .ftr { margin-top: 20px; padding-top: 12px; border-top: 1.5px dashed #CBD5E1; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: #64748B }
-        .sig { border-top: 1.5px solid #0F172A; padding-top: 6px; font-size: 9px; font-weight: 800; color: #0F172A; text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
-        .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 16px; padding: 10px 24px; background: linear-gradient(135deg, #0F172A, #1E293B); color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,0.15) }
+        .ftr { margin-top: 20px; padding-top: 12px; border-top: 1.5px dashed var(--line-strong); display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: var(--ink-secondary) }
+        .sig { border-top: 1.5px solid var(--ink); padding-top: 6px; font-size: 9px; font-weight: 800; color: var(--ink); text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
+        .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 16px; padding: 10px 24px; background: linear-gradient(135deg, var(--ink), var(--ink)); color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,0.15) }
         @media print { .pbtn { display: none } }
       </style></head><body>
       <div class="page">
@@ -787,13 +787,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
     const rowsHtml = workerPaymentsHistory.map((item: any) => `
       <tr>
-        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; font-weight:700;">${new Date(item.createdAt || Date.now()).toLocaleDateString('en-IN')}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; font-weight:800; color:#0F172A;">${escapeHtml(item.workerName || item.name || 'Staff Member')}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0;">${escapeHtml(item.role || 'Staff')}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; font-weight:900; color:#059669; text-align:right;">Rs. ${Number(item.amount || 0).toLocaleString('en-IN')}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; text-align:center;">${escapeHtml(item.monthPeriod || 'N/A')}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; text-align:center;">${escapeHtml(item.branch || loggedInCampus)}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; text-align:center;"><span style="background:#D1FAE5; color:#065F46; padding:3px 8px; border-radius:6px; font-weight:900; font-size:10px;">DISBURSED</span></td>
+        <td style="padding:10px 12px; border-bottom:1px solid var(--line); font-weight:700;">${new Date(item.createdAt || Date.now()).toLocaleDateString('en-IN')}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid var(--line); font-weight:800; color:var(--ink);">${escapeHtml(item.workerName || item.name || 'Staff Member')}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid var(--line);">${escapeHtml(item.role || 'Staff')}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid var(--line); font-weight:900; color:var(--good); text-align:right;">Rs. ${Number(item.amount || 0).toLocaleString('en-IN')}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid var(--line); text-align:center;">${escapeHtml(item.monthPeriod || 'N/A')}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid var(--line); text-align:center;">${escapeHtml(item.branch || loggedInCampus)}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid var(--line); text-align:center;"><span style="background:var(--good-wash); color:var(--good); padding:3px 8px; border-radius:6px; font-weight:900; font-size:10px;">DISBURSED</span></td>
       </tr>
     `).join('');
 
@@ -801,20 +801,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     <style>
       @page { size: A4; margin: 12mm }
       * { box-sizing: border-box }
-      body { margin: 0; color: #0F172A; background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+      body { margin: 0; color: var(--ink); background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
       .page { max-width: 182mm; margin: 0 auto; padding: 4px }
       .top-logo-block { text-align: center; margin-bottom: 16px }
       .top-logo-block img { height: 74px; width: auto; display: block; margin: 0 auto 6px; object-fit: contain }
-      .top-logo-title { font-size: 22px; font-weight: 900; color: #0F172A; text-transform: uppercase; letter-spacing: 0.06em }
-      .top-logo-sub { font-size: 11px; font-weight: 800; color: #D4AF37; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
-      .scard { background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(3,1fr); gap: 12px }
-      .fl { font-size: 8.5px; font-weight: 800; color: #64748B; text-transform: uppercase; display: block }
-      .fv { font-size: 13px; font-weight: 800; color: #0F172A; display: block; margin-top: 3px }
-      table { width: 100%; border-collapse: collapse; border: 1.5px solid #CBD5E1; border-radius: 10px; overflow: hidden }
-      th { background: #F1F5F9; color: #475569; padding: 10px 12px; font-size: 8.5px; text-transform: uppercase; text-align: left; font-weight: 800; border-bottom: 1.5px solid #CBD5E1 }
-      .ftr { margin-top: 24px; padding-top: 12px; border-top: 1.5px dashed #CBD5E1; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: #64748B }
-      .sig { border-top: 1.5px solid #0F172A; padding-top: 6px; font-size: 9px; font-weight: 800; color: #0F172A; text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
-      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; padding: 10px 24px; background: #0F172A; color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; }
+      .top-logo-title { font-size: 22px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: 0.06em }
+      .top-logo-sub { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
+      .scard { background: var(--surface-sunken); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(3,1fr); gap: 12px }
+      .fl { font-size: 8.5px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; display: block }
+      .fv { font-size: 13px; font-weight: 800; color: var(--ink); display: block; margin-top: 3px }
+      table { width: 100%; border-collapse: collapse; border: 1.5px solid var(--line-strong); border-radius: 10px; overflow: hidden }
+      th { background: var(--surface-sunken); color: var(--ink-secondary); padding: 10px 12px; font-size: 8.5px; text-transform: uppercase; text-align: left; font-weight: 800; border-bottom: 1.5px solid var(--line-strong) }
+      .ftr { margin-top: 24px; padding-top: 12px; border-top: 1.5px dashed var(--line-strong); display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: var(--ink-secondary) }
+      .sig { border-top: 1.5px solid var(--ink); padding-top: 6px; font-size: 9px; font-weight: 800; color: var(--ink); text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
+      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; padding: 10px 24px; background: var(--ink); color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; }
       @media print { .pbtn { display: none } }
     </style></head>
     <body>
@@ -827,7 +827,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         </div>
         <div class="scard">
           <div><span class="fl">Total Disbursed Records</span><span class="fv">${workerPaymentsHistory.length} Transactions</span></div>
-          <div><span class="fl">Total Amount Disbursed</span><span class="fv" style="color:#059669">Rs. ${totalAmount.toLocaleString('en-IN')}</span></div>
+          <div><span class="fl">Total Amount Disbursed</span><span class="fv" style="color:var(--good)">Rs. ${totalAmount.toLocaleString('en-IN')}</span></div>
           <div><span class="fl">Generated On</span><span class="fv">${escapeHtml(generatedDate)}</span></div>
         </div>
         <table>
@@ -912,7 +912,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       : `<tr><td>Baseline Academic Course Fee</td><td class="tr">Rs. ${totalBaseFee.toLocaleString('en-IN')}</td></tr>`;
 
     const waiverTableRows = waiverRows.map(([label, amount]) =>
-      `<tr class="wr" style="background:#F0FFF4;color:#166534;font-weight:800;"><td>${escapeHtml(label)}</td><td class="tr" style="color:#16A34A;">&minus; Rs. ${amount.toLocaleString('en-IN')}</td></tr>`
+      `<tr class="wr" style="background:var(--good-wash);color:var(--good);font-weight:800;"><td>${escapeHtml(label)}</td><td class="tr" style="color:var(--good);">&minus; Rs. ${amount.toLocaleString('en-IN')}</td></tr>`
     ).join('');
 
     const receiptLogRows = receipts.length > 0
@@ -922,13 +922,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             <td>${escapeHtml(r.date)}</td>
             <td>${escapeHtml(r.category || 'Tuition')} &middot; ${escapeHtml(r.installment || 'Installment')}</td>
             <td>${escapeHtml(r.mode || 'Cash')}</td>
-            <td class="tr" style="color:#059669;font-weight:900;">Rs. ${Number(r.amount || 0).toLocaleString('en-IN')}</td>
-            <td class="tr" style="font-weight:800;color:#0F172A;">Rs. ${Number(r.balance || 0).toLocaleString('en-IN')}</td>
+            <td class="tr" style="color:var(--good);font-weight:900;">Rs. ${Number(r.amount || 0).toLocaleString('en-IN')}</td>
+            <td class="tr" style="font-weight:800;color:var(--ink);">Rs. ${Number(r.balance || 0).toLocaleString('en-IN')}</td>
           </tr>
         `).join('')
-      : `<tr><td colspan="6" style="text-align:center;color:#94A3B8;padding:12px;">No payment receipts logged yet.</td></tr>`;
+      : `<tr><td colspan="6" style="text-align:center;color:var(--ink-muted);padding:12px;">No payment receipts logged yet.</td></tr>`;
 
-    const css = `@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:#0F172A;background:#fff;font-family:'Inter','Segoe UI',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:11px}.page{max-width:182mm;margin:0 auto;padding:4px}.hdr{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,#0F172A,#1E293B);border-radius:14px;margin-bottom:16px;border-bottom:3px solid #D4AF37}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;object-fit:contain;background:#fff;border-radius:10px;padding:4px;border:1px solid #D4AF37}.iname{color:#fff;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}.iaddr{color:#94A3B8;font-size:9.5px;line-height:1.3;margin-top:2px}.slbl strong{display:block;color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;text-align:right}.slbl span{color:#FBBF24;font-size:9.5px;font-weight:800;text-transform:uppercase}.scard{background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.fl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase;display:block}.fv{font-size:12.5px;font-weight:800;color:#0F172A;display:block;margin-top:3px}.stit{font-size:9.5px;font-weight:900;color:#0F172A;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 8px;border-bottom:1.5px solid #E2E8F0;padding-bottom:4px}.ftbl{width:100%;border-collapse:collapse;border:1.5px solid #CBD5E1;border-radius:10px;overflow:hidden;font-size:11px}.ftbl th{padding:8px 10px;background:#F1F5F9;color:#475569;font-size:8.5px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid #CBD5E1;font-weight:800}.ftbl td{padding:8px 10px;border-bottom:1px solid #E2E8F0}.ftbl tr:last-child td{border-bottom:none}.tr{text-align:right;font-weight:800}.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.sc{border:1.5px solid #E2E8F0;border-radius:10px;padding:12px 14px;background:#FFF}.sc.hi{border-color:#D4AF37;background:#FFFDF4}.sc .sl{font-size:8.5px;font-weight:800;color:#64748B;text-transform:uppercase}.sc .sv{font-size:16px;font-weight:900;color:#0F172A;display:block;margin-top:4px}.sc.pd .sv{color:#059669}.sc.hi .sv{color:#D97706}.ftr{margin-top:24px;padding-top:12px;border-top:1.5px dashed #CBD5E1;display:flex;justify-content:space-between;align-items:flex-end;font-size:9px;color:#64748B}.sig{border-top:1.5px solid #0F172A;padding-top:4px;font-size:8px;font-weight:800;color:#0F172A;text-transform:uppercase;margin-top:24px;text-align:center;width:130px}.pbtn{display:flex;align-items:center;justify-content:center;margin:0 auto 16px;padding:10px 24px;background:linear-gradient(135deg,#0F172A,#1E293B);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer}@media print{.pbtn{display:none}}`;
+    const css = `@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:#fff;font-family:'Inter','Segoe UI',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:11px}.page{max-width:182mm;margin:0 auto;padding:4px}.hdr{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,var(--ink),var(--ink));border-radius:14px;margin-bottom:16px;border-bottom:3px solid var(--accent)}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;object-fit:contain;background:#fff;border-radius:10px;padding:4px;border:1px solid var(--accent)}.iname{color:#fff;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}.iaddr{color:var(--ink-muted);font-size:9.5px;line-height:1.3;margin-top:2px}.slbl strong{display:block;color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;text-align:right}.slbl span{color:var(--warning);font-size:9.5px;font-weight:800;text-transform:uppercase}.scard{background:var(--surface-sunken);border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.fl{font-size:8.5px;font-weight:800;color:var(--ink-secondary);text-transform:uppercase;display:block}.fv{font-size:12.5px;font-weight:800;color:var(--ink);display:block;margin-top:3px}.stit{font-size:9.5px;font-weight:900;color:var(--ink);text-transform:uppercase;letter-spacing:.08em;margin:16px 0 8px;border-bottom:1.5px solid var(--line);padding-bottom:4px}.ftbl{width:100%;border-collapse:collapse;border:1.5px solid var(--line-strong);border-radius:10px;overflow:hidden;font-size:11px}.ftbl th{padding:8px 10px;background:var(--surface-sunken);color:var(--ink-secondary);font-size:8.5px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid var(--line-strong);font-weight:800}.ftbl td{padding:8px 10px;border-bottom:1px solid var(--line)}.ftbl tr:last-child td{border-bottom:none}.tr{text-align:right;font-weight:800}.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.sc{border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;background:#FFF}.sc.hi{border-color:var(--accent);background:var(--surface-sunken)}.sc .sl{font-size:8.5px;font-weight:800;color:var(--ink-secondary);text-transform:uppercase}.sc .sv{font-size:16px;font-weight:900;color:var(--ink);display:block;margin-top:4px}.sc.pd .sv{color:var(--good)}.sc.hi .sv{color:var(--warning)}.ftr{margin-top:24px;padding-top:12px;border-top:1.5px dashed var(--line-strong);display:flex;justify-content:space-between;align-items:flex-end;font-size:9px;color:var(--ink-secondary)}.sig{border-top:1.5px solid var(--ink);padding-top:4px;font-size:8px;font-weight:800;color:var(--ink);text-transform:uppercase;margin-top:24px;text-align:center;width:130px}.pbtn{display:flex;align-items:center;justify-content:center;margin:0 auto 16px;padding:10px 24px;background:linear-gradient(135deg,var(--ink),var(--ink));color:#fff;border:none;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer}@media print{.pbtn{display:none}}`;
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fee Statement - ${escapeHtml(student.admissionNumber || student.name)}</title><style>${css}</style></head><body><div class="page">
       <button class="pbtn" onclick="window.print()">Print Complete Fee Statement PDF</button>
@@ -960,9 +960,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       </table>
       <div class="sgrid">
         <div class="sc"><span class="sl">Gross Base Fee</span><span class="sv">Rs. ${totalBaseFee.toLocaleString('en-IN')}</span></div>
-        <div class="sc" style="border-color:#16A34A; background:#F0FFF4;"><span class="sl" style="color:#166534;">Waivers Applied</span><span class="sv" style="color:#166534;">- Rs. ${totalWaiver.toLocaleString('en-IN')}</span></div>
-        <div class="sc"><span class="sl" style="color:#059669">Total Paid</span><span class="sv" style="color:#059669">Rs. ${totalPaid.toLocaleString('en-IN')}</span></div>
-        <div class="sc hi"><span class="sl" style="color:#B88708">Outstanding Balance</span><span class="sv" style="color:#B88708">Rs. ${remaining.toLocaleString('en-IN')}</span></div>
+        <div class="sc" style="border-color:var(--good); background:var(--good-wash);"><span class="sl" style="color:var(--good);">Waivers Applied</span><span class="sv" style="color:var(--good);">- Rs. ${totalWaiver.toLocaleString('en-IN')}</span></div>
+        <div class="sc"><span class="sl" style="color:var(--good)">Total Paid</span><span class="sv" style="color:var(--good)">Rs. ${totalPaid.toLocaleString('en-IN')}</span></div>
+        <div class="sc hi"><span class="sl" style="color:var(--warning)">Outstanding Balance</span><span class="sv" style="color:var(--warning)">Rs. ${remaining.toLocaleString('en-IN')}</span></div>
       </div>
       <div class="stit">Complete Receipt & Payment Transaction History</div>
       <table class="ftbl">
@@ -1005,25 +1005,25 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     <style>
       @page { size: A4; margin: 12mm }
       * { box-sizing: border-box }
-      body { margin: 0; color: #0F172A; background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+      body { margin: 0; color: var(--ink); background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
       .page { max-width: 182mm; margin: 0 auto; padding: 4px }
       .top-logo-block { text-align: center; margin-bottom: 16px }
       .top-logo-block img { height: 74px; width: auto; display: block; margin: 0 auto 6px; object-fit: contain }
-      .top-logo-title { font-size: 22px; font-weight: 900; color: #0F172A; text-transform: uppercase; letter-spacing: 0.06em }
-      .top-logo-sub { font-size: 11px; font-weight: 800; color: #D4AF37; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
-      .scard { background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(3,1fr); gap: 16px }
-      .fl { font-size: 9px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.06em; display: block }
-      .fv { font-size: 13.5px; font-weight: 800; color: #0F172A; display: block; margin-top: 4px }
+      .top-logo-title { font-size: 22px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: 0.06em }
+      .top-logo-sub { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
+      .scard { background: var(--surface-sunken); border: 1.5px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(3,1fr); gap: 16px }
+      .fl { font-size: 9px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; letter-spacing: 0.06em; display: block }
+      .fv { font-size: 13.5px; font-weight: 800; color: var(--ink); display: block; margin-top: 4px }
       .sgrid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 16px }
-      .sc { border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 16px; background: #FFF }
-      .sc.hi { border-color: #D4AF37; background: #FFFDF4 }
-      .sc .sl { font-size: 9px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.06em }
-      .sc .sv { font-size: 19px; font-weight: 900; color: #0F172A; display: block; margin-top: 6px }
-      .sc.pd .sv { color: #059669 }
-      .sc.hi .sv { color: #D97706 }
-      .ftr { margin-top: 32px; padding-top: 16px; border-top: 1.5px dashed #CBD5E1; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: #64748B }
-      .sig { border-top: 1.5px solid #0F172A; padding-top: 6px; font-size: 9px; font-weight: 800; color: #0F172A; text-transform: uppercase; margin-top: 32px; text-align: center; width: 140px }
-      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; padding: 12px 26px; background: #0F172A; color: #FFF; border: none; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; }
+      .sc { border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; background: #FFF }
+      .sc.hi { border-color: var(--accent); background: var(--surface-sunken) }
+      .sc .sl { font-size: 9px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; letter-spacing: 0.06em }
+      .sc .sv { font-size: 19px; font-weight: 900; color: var(--ink); display: block; margin-top: 6px }
+      .sc.pd .sv { color: var(--good) }
+      .sc.hi .sv { color: var(--warning) }
+      .ftr { margin-top: 32px; padding-top: 16px; border-top: 1.5px dashed var(--line-strong); display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: var(--ink-secondary) }
+      .sig { border-top: 1.5px solid var(--ink); padding-top: 6px; font-size: 9px; font-weight: 800; color: var(--ink); text-transform: uppercase; margin-top: 32px; text-align: center; width: 140px }
+      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; padding: 12px 26px; background: var(--ink); color: #FFF; border: none; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; }
       @media print { .pbtn { display: none } }
     </style></head>
     <body>
@@ -1047,7 +1047,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div class="sc pd"><span class="sl">Amount Disbursed</span><span class="sv">Rs. ${paidAmt.toLocaleString('en-IN')}</span></div>
           <div class="sc hi"><span class="sl">Status / Balance</span><span class="sv">${monthlyRec.status === 'Paid' ? 'PAID' : `DUE Rs. ${dueAmt.toLocaleString('en-IN')}`}</span></div>
         </div>
-        <div style="margin-top:20px; padding:16px; background:#F8FAFC; border:1.5px solid #E2E8F0; border-radius:12px; font-size:11.5px;">
+        <div style="margin-top:20px; padding:16px; background:var(--surface-sunken); border:1.5px solid var(--line); border-radius:12px; font-size:11.5px;">
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
             <div><strong>Payment Mode:</strong> ${escapeHtml(monthlyRec.paymentMode || 'Bank Transfer')}</div>
             <div><strong>Payment Date:</strong> ${escapeHtml(monthlyRec.paymentDate || monthlyRec.paidAt ? new Date(monthlyRec.paidAt).toLocaleDateString('en-IN') : 'N/A')}</div>
@@ -1085,11 +1085,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       const amt = Number(rec.amountPaid || (rec.status === 'Paid' ? baseSal : 0));
       totalDisbursed += amt;
       return `<tr>
-        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; font-weight:700; color:#0F172A">${m}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; color:${rec.status === 'Paid' ? '#059669' : '#DC2626'}; font-weight:800">${rec.status || 'Unpaid'}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; text-align:right; font-weight:800; color:#0F172A">Rs. ${amt.toLocaleString('en-IN')}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; text-align:center">${rec.paymentDate || '—'}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid #E2E8F0; text-align:center">${rec.paymentMode || '—'}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid var(--line); font-weight:700; color:var(--ink)">${m}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid var(--line); color:${rec.status === 'Paid' ? 'var(--good)' : 'var(--critical)'}; font-weight:800">${rec.status || 'Unpaid'}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; color:var(--ink)">Rs. ${amt.toLocaleString('en-IN')}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid var(--line); text-align:center">${rec.paymentDate || '—'}</td>
+        <td style="padding:10px 12px; border-bottom:1px solid var(--line); text-align:center">${rec.paymentMode || '—'}</td>
       </tr>`;
     }).join('');
 
@@ -1099,20 +1099,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     <style>
       @page { size: A4; margin: 12mm }
       * { box-sizing: border-box }
-      body { margin: 0; color: #0F172A; background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
+      body { margin: 0; color: var(--ink); background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
       .page { max-width: 182mm; margin: 0 auto; padding: 4px }
       .top-logo-block { text-align: center; margin-bottom: 16px }
       .top-logo-block img { height: 74px; width: auto; display: block; margin: 0 auto 6px; object-fit: contain }
-      .top-logo-title { font-size: 22px; font-weight: 900; color: #0F172A; text-transform: uppercase; letter-spacing: 0.06em }
-      .top-logo-sub { font-size: 11px; font-weight: 800; color: #D4AF37; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
-      .scard { background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(4,1fr); gap: 12px }
-      .fl { font-size: 8.5px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.06em; display: block }
-      .fv { font-size: 12px; font-weight: 800; color: #0F172A; display: block; margin-top: 3px }
-      table { width: 100%; border-collapse: collapse; border: 1.5px solid #CBD5E1; border-radius: 12px; overflow: hidden; margin-top: 12px }
-      th { background: #F1F5F9; color: #475569; padding: 10px 12px; font-size: 8.5px; text-transform: uppercase; text-align: left; font-weight: 800; letter-spacing: 0.06em; border-bottom: 1.5px solid #CBD5E1 }
-      .ftr { margin-top: 24px; padding-top: 12px; border-top: 1.5px dashed #CBD5E1; display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: #64748B }
-      .sig { border-top: 1.5px solid #0F172A; padding-top: 6px; font-size: 9px; font-weight: 800; color: #0F172A; text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
-      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; padding: 10px 24px; background: #0F172A; color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; }
+      .top-logo-title { font-size: 22px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: 0.06em }
+      .top-logo-sub { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
+      .scard { background: var(--surface-sunken); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(4,1fr); gap: 12px }
+      .fl { font-size: 8.5px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; letter-spacing: 0.06em; display: block }
+      .fv { font-size: 12px; font-weight: 800; color: var(--ink); display: block; margin-top: 3px }
+      table { width: 100%; border-collapse: collapse; border: 1.5px solid var(--line-strong); border-radius: 12px; overflow: hidden; margin-top: 12px }
+      th { background: var(--surface-sunken); color: var(--ink-secondary); padding: 10px 12px; font-size: 8.5px; text-transform: uppercase; text-align: left; font-weight: 800; letter-spacing: 0.06em; border-bottom: 1.5px solid var(--line-strong) }
+      .ftr { margin-top: 24px; padding-top: 12px; border-top: 1.5px dashed var(--line-strong); display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: var(--ink-secondary) }
+      .sig { border-top: 1.5px solid var(--ink); padding-top: 6px; font-size: 9px; font-weight: 800; color: var(--ink); text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
+      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; padding: 10px 24px; background: var(--ink); color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; }
       @media print { .pbtn { display: none } }
     </style></head>
     <body>
@@ -1859,8 +1859,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 setIsStudentHoverModalOpen(true);
               }}
               style={{
-                backgroundColor: '#059669',
-                color: '#FFFFFF',
+                backgroundColor: 'var(--good)',
+                color: 'var(--surface)',
                 padding: '10px 20px',
                 borderRadius: '12px',
                 fontWeight: 850,
@@ -1875,7 +1875,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               }}
               className="press-interactive"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
               + Add New Student Admission
             </button>
           </div>
@@ -1886,10 +1886,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div style={{ ...styles.readOnlyBlock, zIndex: 1, marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div>
-                <h4 style={{ ...styles.sectionSubtitle, margin: 0, fontSize: '15px', fontWeight: 900, color: '#0F172A' }}>
+                <h4 style={{ ...styles.sectionSubtitle, margin: 0, fontSize: '15px', fontWeight: 900, color: 'var(--ink)' }}>
                   Register New Student Admission
                 </h4>
-                <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: '#64748B' }}>
+                <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'var(--ink-secondary)' }}>
                   Quick single-bar surface entry. Fill basic info and click submit to open detailed hover modal.
                 </p>
               </div>
@@ -1981,8 +1981,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     marginTop: 0,
                     width: '100%',
                     padding: '8px 16px',
-                    backgroundColor: '#059669',
-                    color: '#FFFFFF',
+                    backgroundColor: 'var(--good)',
+                    color: 'var(--surface)',
                     fontSize: '12.5px',
                     fontWeight: 800,
                     display: 'flex',
@@ -2015,25 +2015,25 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               padding: '20px'
             }}>
               <div style={{
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'var(--surface)',
                 borderRadius: '20px',
                 width: '100%',
                 maxWidth: '920px',
                 maxHeight: '90vh',
                 overflowY: 'auto',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                border: '1.5px solid #CBD5E1',
+                border: '1.5px solid var(--line-strong)',
                 display: 'flex',
                 flexDirection: 'column'
               }} className="anim-scale-up">
                 {/* Modal Header */}
                 <div style={{
                   padding: '16px 24px',
-                  borderBottom: '1.5px solid #E2E8F0',
+                  borderBottom: '1.5px solid var(--line)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  backgroundColor: '#F8FAFC',
+                  backgroundColor: 'var(--surface-sunken)',
                   borderTopLeftRadius: '20px',
                   borderTopRightRadius: '20px',
                   position: 'sticky',
@@ -2044,7 +2044,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                       INSPIRE JUNIOR COLLEGE • STUDENT ADMISSION REGISTRATION
                     </span>
-                    <h3 style={{ margin: '2px 0 0', fontSize: '17px', fontWeight: 900, color: '#0F172A' }}>
+                    <h3 style={{ margin: '2px 0 0', fontSize: '17px', fontWeight: 900, color: 'var(--ink)' }}>
                       {newStuFormPage === 1 ? 'Screen 1 of 3: Basic Academic Information' : newStuFormPage === 2 ? 'Screen 2 of 3: Personal & Family Information' : 'Screen 3 of 3: Fee Structure & Bill Format'}
                     </h3>
                   </div>
@@ -2055,8 +2055,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         borderRadius: '20px',
                         fontSize: '11px',
                         fontWeight: 800,
-                        backgroundColor: newStuFormPage === 1 ? '#0F172A' : '#E2E8F0',
-                        color: newStuFormPage === 1 ? '#FFFFFF' : '#475569'
+                        backgroundColor: newStuFormPage === 1 ? 'var(--ink)' : 'var(--line)',
+                        color: newStuFormPage === 1 ? 'var(--surface)' : 'var(--ink-secondary)'
                       }}>
                         1. Basic Info
                       </span>
@@ -2065,8 +2065,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         borderRadius: '20px',
                         fontSize: '11px',
                         fontWeight: 800,
-                        backgroundColor: newStuFormPage === 2 ? '#0F172A' : '#E2E8F0',
-                        color: newStuFormPage === 2 ? '#FFFFFF' : '#475569'
+                        backgroundColor: newStuFormPage === 2 ? 'var(--ink)' : 'var(--line)',
+                        color: newStuFormPage === 2 ? 'var(--surface)' : 'var(--ink-secondary)'
                       }}>
                         2. Personal & Family
                       </span>
@@ -2075,8 +2075,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         borderRadius: '20px',
                         fontSize: '11px',
                         fontWeight: 800,
-                        backgroundColor: newStuFormPage === 3 ? '#0F172A' : '#E2E8F0',
-                        color: newStuFormPage === 3 ? '#FFFFFF' : '#475569'
+                        backgroundColor: newStuFormPage === 3 ? 'var(--ink)' : 'var(--line)',
+                        color: newStuFormPage === 3 ? 'var(--surface)' : 'var(--ink-secondary)'
                       }}>
                         3. Fee Structure
                       </span>
@@ -2084,7 +2084,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <button
                       onClick={() => setIsStudentHoverModalOpen(false)}
                       style={{
-                        background: '#E2E8F0',
+                        background: 'var(--line)',
                         border: 'none',
                         borderRadius: '50%',
                         width: '32px',
@@ -2094,7 +2094,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         justifyContent: 'center',
                         cursor: 'pointer',
                         fontWeight: 900,
-                        color: '#334155'
+                        color: 'var(--ink-secondary)'
                       }}
                       title="Close Modal"
                     >
@@ -2109,7 +2109,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div>
                       {/* Screen 1: Basic Information */}
                       <div style={{ marginBottom: '18px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px', marginBottom: '12px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
                           1. Basic Academic Information
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
@@ -2151,11 +2151,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         </div>
                       </div>
 
-                      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #E2E8F0', paddingTop: '14px' }}>
+                      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid var(--line)', paddingTop: '14px' }}>
                         <button
                           type="button"
                           onClick={() => setIsStudentHoverModalOpen(false)}
-                          style={{ ...styles.actionItemBtn, backgroundColor: '#E2E8F0', color: '#475569', padding: '10px 20px', border: 'none' }}
+                          style={{ ...styles.actionItemBtn, backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', padding: '10px 20px', border: 'none' }}
                           className="press-interactive"
                         >
                           Cancel
@@ -2169,7 +2169,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                             }
                             setNewStuFormPage(2);
                           }}
-                          style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: '#0F172A', color: '#FFFFFF', fontWeight: 800 }}
+                          style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: 'var(--ink)', color: 'var(--surface)', fontWeight: 800 }}
                           className="press-interactive"
                         >
                           Next: Personal & Family Info (Screen 2 of 3) →
@@ -2180,7 +2180,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div>
                       {/* Screen 2: Personal & Family Information */}
                       <div style={{ marginBottom: '18px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px', marginBottom: '12px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
                           2. Personal & Family Information
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
@@ -2220,11 +2220,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         </div>
                       </div>
 
-                      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #E2E8F0', paddingTop: '14px' }}>
+                      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--line)', paddingTop: '14px' }}>
                         <button
                           type="button"
                           onClick={() => setNewStuFormPage(1)}
-                          style={{ ...styles.actionItemBtn, backgroundColor: '#E2E8F0', color: '#1E293B', padding: '10px 18px', fontWeight: 800 }}
+                          style={{ ...styles.actionItemBtn, backgroundColor: 'var(--line)', color: 'var(--ink)', padding: '10px 18px', fontWeight: 800 }}
                           className="press-interactive"
                         >
                           ← Back to Basic Info (Screen 1)
@@ -2232,7 +2232,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         <button
                           type="button"
                           onClick={() => setNewStuFormPage(3)}
-                          style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: '#0F172A', color: '#FFFFFF', fontWeight: 800 }}
+                          style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: 'var(--ink)', color: 'var(--surface)', fontWeight: 800 }}
                           className="press-interactive"
                         >
                           Next: Fee Structure & Bill Format (Screen 3 of 3) →
@@ -2243,36 +2243,36 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div>
                       {/* Screen 3: Fee Structure */}
                       <div style={{
-                        backgroundColor: '#FFFFFF',
-                        border: '1.5px solid #CBD5E1',
+                        backgroundColor: 'var(--surface)',
+                        border: '1.5px solid var(--line-strong)',
                         borderRadius: '16px',
                         padding: '16px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '8px'
                       }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #E2E8F0', paddingBottom: '8px', marginBottom: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid var(--line)', paddingBottom: '8px', marginBottom: '4px' }}>
                           <div>
                             <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                               INSPIRE JUNIOR COLLEGE
                             </span>
-                            <h4 style={{ margin: '1px 0 0', fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>
+                            <h4 style={{ margin: '1px 0 0', fontSize: '14px', fontWeight: 900, color: 'var(--ink)' }}>
                               Fee Structure & Bill Format Breakdown
                             </h4>
                           </div>
                           <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>Live Accumulated Total:</span>
-                            <span style={{ fontSize: '14px', fontWeight: 900, color: '#059669', marginLeft: '6px' }}>
+                            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--ink-secondary)' }}>Live Accumulated Total:</span>
+                            <span style={{ fontSize: '14px', fontWeight: 900, color: 'var(--good)', marginLeft: '6px' }}>
                               Rs.{newStuFeeSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0).toLocaleString('en-IN')}
                             </span>
                           </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 32px', gap: '8px', paddingBottom: '4px', borderBottom: '1px solid #CBD5E1' }}>
-                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 32px', gap: '8px', paddingBottom: '4px', borderBottom: '1px solid var(--line-strong)' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>
                             Fee Section Description
                           </span>
-                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', textAlign: 'right' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', textAlign: 'right' }}>
                             Amount (Rs)
                           </span>
                           <span></span>
@@ -2280,16 +2280,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '320px', overflowY: 'auto' }}>
                           {newStuFeeSlots.length === 0 ? (
-                            <div style={{ padding: '16px', textAlign: 'center', color: '#64748B', fontSize: '12px', fontStyle: 'italic' }}>
+                            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--ink-secondary)', fontSize: '12px', fontStyle: 'italic' }}>
                               All fee slots removed. Click "+ Add Fee Section Slot" below to add slots.
                             </div>
                           ) : (
                             newStuFeeSlots.map((slot) => (
                               <div key={slot.id} style={{ display: 'grid', gridTemplateColumns: '1fr 160px 32px', gap: '8px', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#1E293B' }}>{slot.name}</label>
+                                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink)' }}>{slot.name}</label>
                                   {slot.isCustom && (
-                                    <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--royal-gold)', backgroundColor: '#FFFDF5', padding: '1px 4px', borderRadius: '4px' }}>Custom</span>
+                                    <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--royal-gold)', backgroundColor: 'var(--surface-sunken)', padding: '1px 4px', borderRadius: '4px' }}>Custom</span>
                                   )}
                                 </div>
                                 <input
@@ -2305,7 +2305,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveNewStuFeeSlot(slot.id)}
-                                  style={{ backgroundColor: '#FEE2E2', color: '#DC2626', border: '1px solid #FCA5A5', borderRadius: '4px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 800, fontSize: '11px' }}
+                                  style={{ backgroundColor: 'var(--critical-wash)', color: 'var(--critical)', border: '1px solid var(--critical-wash)', borderRadius: '4px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 800, fontSize: '11px' }}
                                   title="Delete Fee Slot"
                                 >
                                   ✕
@@ -2316,7 +2316,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         </div>
 
                         {newStuIsAddingSlot ? (
-                          <div style={{ display: 'flex', gap: '8px', padding: '8px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px dashed #CBD5E1', marginTop: '4px' }}>
+                          <div style={{ display: 'flex', gap: '8px', padding: '8px', backgroundColor: 'var(--surface-sunken)', borderRadius: '8px', border: '1px dashed var(--line-strong)', marginTop: '4px' }}>
                             <input
                               type="text"
                               placeholder="Fee Section Description"
@@ -2334,14 +2334,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                             <button
                               type="button"
                               onClick={handleAddNewStuCustomSlot}
-                              style={{ ...styles.actionItemBtn, backgroundColor: '#059669', color: '#fff', border: 'none', padding: '4px 12px', fontSize: '12px', fontWeight: 800 }}
+                              style={{ ...styles.actionItemBtn, backgroundColor: 'var(--good)', color: '#fff', border: 'none', padding: '4px 12px', fontSize: '12px', fontWeight: 800 }}
                             >
                               Add
                             </button>
                             <button
                               type="button"
                               onClick={() => { setNewStuIsAddingSlot(false); setNewStuSlotName(''); setNewStuSlotAmount(''); }}
-                              style={{ ...styles.actionItemBtn, backgroundColor: '#E2E8F0', color: '#475569', border: 'none', padding: '4px 8px', fontSize: '12px' }}
+                              style={{ ...styles.actionItemBtn, backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none', padding: '4px 8px', fontSize: '12px' }}
                             >
                               Cancel
                             </button>
@@ -2356,8 +2356,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                               padding: '6px 12px',
                               borderRadius: '6px',
                               border: '1px dashed var(--royal-gold)',
-                              backgroundColor: '#FFFDF5',
-                              color: '#7C5A00',
+                              backgroundColor: 'var(--surface-sunken)',
+                              color: 'var(--warning)',
                               fontSize: '11px',
                               fontWeight: 800,
                               cursor: 'pointer'
@@ -2368,11 +2368,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           </button>
                         )}
 
-                        <div style={{ borderTop: '2px solid #0F172A', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>
+                        <div style={{ borderTop: '2px solid var(--ink)', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 900, color: 'var(--ink)' }}>
                             GROSS BASE FEES TOTAL:
                           </span>
-                          <span style={{ fontSize: '16px', fontWeight: 900, color: '#059669', backgroundColor: '#ECFDF5', padding: '4px 14px', borderRadius: '8px', border: '1px solid #A7F3D0' }}>
+                          <span style={{ fontSize: '16px', fontWeight: 900, color: 'var(--good)', backgroundColor: 'var(--good-wash)', padding: '4px 14px', borderRadius: '8px', border: '1px solid var(--good-wash)' }}>
                             Rs. {newStuFeeSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0).toLocaleString('en-IN')}
                           </span>
                         </div>
@@ -2382,7 +2382,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         <button
                           type="button"
                           onClick={() => setNewStuFormPage(2)}
-                          style={{ ...styles.actionItemBtn, backgroundColor: '#E2E8F0', color: '#1E293B', padding: '10px 18px', fontWeight: 800 }}
+                          style={{ ...styles.actionItemBtn, backgroundColor: 'var(--line)', color: 'var(--ink)', padding: '10px 18px', fontWeight: 800 }}
                           className="press-interactive"
                         >
                           ← Back to Personal & Family Info (Screen 2)
@@ -2390,7 +2390,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         <button
                           type="button"
                           onClick={handleRegisterStudent}
-                          style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: '#059669', color: '#FFFFFF', fontWeight: 900 }}
+                          style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: 'var(--good)', color: 'var(--surface)', fontWeight: 900 }}
                           className="press-interactive"
                         >
                           Submit & Create Student Profile Directly
@@ -2453,7 +2453,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         height: '40px',
                         borderRadius: '12px',
                         backgroundColor: 'rgba(16, 185, 129, 0.12)',
-                        color: '#059669',
+                        color: 'var(--good)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -2475,7 +2475,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         </div>
                       </div>
                     </div>
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: student.status === 'Active' ? '#10B981' : '#EF4444' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: student.status === 'Active' ? 'var(--good)' : 'var(--critical)' }}>
                       {student.status}
                     </span>
                   </div>
@@ -2490,8 +2490,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       style={{
                         padding: '8px 12px',
                         border: '1.5px solid var(--royal-gold)',
-                        color: '#8A6500',
-                        backgroundColor: '#FFFDF5',
+                        color: 'var(--warning)',
+                        backgroundColor: 'var(--surface-sunken)',
                         borderRadius: '10px',
                         fontWeight: 800,
                         fontSize: '11px',
@@ -2539,10 +2539,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           {selectedStudent && editStudent ? (
             <div style={styles.modalOverlay} className="anim-fade-in">
               <div style={{ ...styles.overlaySheet, maxWidth: '960px', maxHeight: '92vh', overflowY: 'auto' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--line)', paddingBottom: '12px' }}>
                   <div>
                     <h3 style={styles.modalTitle}>Student Master Profile & Details Editor</h3>
-                    <p style={{ fontSize: '11px', color: '#64748B', margin: 0 }}>
+                    <p style={{ fontSize: '11px', color: 'var(--ink-secondary)', margin: 0 }}>
                       Modify student profile, family information, and campus itemized fee structure details below.
                     </p>
                   </div>
@@ -2556,9 +2556,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {/* Top Student Banner */}
-                  <div style={{ ...styles.readOnlyBlock, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F8FAFC' }}>
+                  <div style={{ ...styles.readOnlyBlock, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface-sunken)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: '#10B981', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 900 }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: 'var(--good)', color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 900 }}>
                         {(editStudent.name || 'S').charAt(0).toUpperCase()}
                       </div>
                       <div>
@@ -2567,10 +2567,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 800, padding: '4px 10px', borderRadius: '6px', backgroundColor: '#E0E7FF', color: '#3730A3' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 800, padding: '4px 10px', borderRadius: '6px', backgroundColor: '#E0E7FF', color: 'var(--accent)' }}>
                         {editStudent.branch || 'Campus'}
                       </span>
-                      <span style={{ fontSize: '11px', fontWeight: 800, padding: '4px 10px', borderRadius: '6px', backgroundColor: '#ECFDF5', color: '#065F46' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 800, padding: '4px 10px', borderRadius: '6px', backgroundColor: 'var(--good-wash)', color: 'var(--good)' }}>
                         {editStudent.course || 'Course'}
                       </span>
                     </div>
@@ -2656,7 +2656,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   </div>
 
                   {/* Actions Bar */}
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '14px', borderTop: '1px solid #E2E8F0', paddingTop: '14px' }}>
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '14px', borderTop: '1px solid var(--line)', paddingTop: '14px' }}>
                     <button
                       onClick={() => handleStudentSave(editStudent, undefined)}
                       style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0 }}
@@ -2667,7 +2667,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     {(role === 'admin1' || role === 'admin2' || role === 'accountant') && (
                       <button
                         onClick={() => { setDeleteStuOtpInput(''); setIsDeleteStuOtpOpen(true); }}
-                        style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#DC2626', color: '#fff', border: 'none' }}
+                        style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'var(--critical)', color: '#fff', border: 'none' }}
                         className="press-interactive"
                       >
                         Delete Student
@@ -2690,7 +2690,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <p style={{ fontSize: '13px', color: 'var(--dark-charcoal)', marginBottom: '16px', lineHeight: 1.5, fontWeight: 600 }}>
                   Are you sure you want to finalize student registration for <strong>{newStuName}</strong> (Adm No: <strong>{newStuAdmissionNumber || `ADM2400${students.length + 1}`}</strong>)?
                 </p>
-                {regStuError && <div style={{ marginBottom: '14px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', fontSize: '12px', fontWeight: 700 }}>{regStuError}</div>}
+                {regStuError && <div style={{ marginBottom: '14px', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'var(--critical-wash)', border: '1px solid var(--critical-wash)', color: 'var(--critical)', fontSize: '12px', fontWeight: 700 }}>{regStuError}</div>}
 
                 {isSubmittingStudent ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0' }}>
@@ -2714,9 +2714,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <GlassCard hoverable={false} style={styles.modalContentCard} className="anim-scale-in glass-gold-ring">
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                   <div style={{ ...styles.modalIconBadge, backgroundColor: 'rgba(239,68,68,0.1)', border: '2px solid rgba(239,68,68,0.4)' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 900, color: '#DC2626' }}>DELETE</span>
+                    <span style={{ fontSize: '13px', fontWeight: 900, color: 'var(--critical)' }}>DELETE</span>
                   </div>
-                  <h3 style={{ ...styles.modalHeading, color: '#DC2626' }}>Confirm Student Deletion</h3>
+                  <h3 style={{ ...styles.modalHeading, color: 'var(--critical)' }}>Confirm Student Deletion</h3>
                   <p style={styles.modalSubText}>
                     Are you sure you want to permanently delete student <strong>{editStudent.name}</strong> ({editStudent.admissionNumber || editStudent.studentId}) from the system?
                   </p>
@@ -2725,7 +2725,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
                   <button
                     onClick={() => handleConfirmDeleteStudent()}
-                    style={{ ...styles.modalConfirmBtn, backgroundColor: '#DC2626', color: '#FFF', opacity: 1 }}
+                    style={{ ...styles.modalConfirmBtn, backgroundColor: 'var(--critical)', color: '#FFF', opacity: 1 }}
                     className="press-interactive"
                   >
                     Yes, Purge Student
@@ -2878,8 +2878,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   borderRadius: '10px',
                   fontWeight: 900,
                   fontSize: '12px',
-                  backgroundColor: employeeTab === 'employees' ? '#0F172A' : 'transparent',
-                  color: employeeTab === 'employees' ? '#FFFFFF' : '#475569',
+                  backgroundColor: employeeTab === 'employees' ? 'var(--ink)' : 'transparent',
+                  color: employeeTab === 'employees' ? 'var(--surface)' : 'var(--ink-secondary)',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
@@ -2896,8 +2896,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   borderRadius: '10px',
                   fontWeight: 900,
                   fontSize: '12px',
-                  backgroundColor: employeeTab === 'history' ? '#0F172A' : 'transparent',
-                  color: employeeTab === 'history' ? '#FFFFFF' : '#475569',
+                  backgroundColor: employeeTab === 'history' ? 'var(--ink)' : 'transparent',
+                  color: employeeTab === 'history' ? 'var(--surface)' : 'var(--ink-secondary)',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
@@ -2920,7 +2920,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={fetchWorkerPaymentsHistory} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '11px', backgroundColor: '#0F172A', color: '#fff' }} className="press-interactive">
+                    <button onClick={fetchWorkerPaymentsHistory} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '11px', backgroundColor: 'var(--ink)', color: '#fff' }} className="press-interactive">
                       Refresh Log
                     </button>
                     <button onClick={handleDownloadDisbursementLogPDF} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '11px', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
@@ -2937,7 +2937,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                       <thead>
-                        <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '2px solid #E2E8F0', textAlign: 'left' }}>
+                        <tr style={{ backgroundColor: 'var(--surface-sunken)', borderBottom: '2px solid var(--line)', textAlign: 'left' }}>
                           <th style={{ padding: '10px', fontWeight: 900 }}>Disbursement Date</th>
                           <th style={{ padding: '10px', fontWeight: 900 }}>Employee Name</th>
                           <th style={{ padding: '10px', fontWeight: 900 }}>Role / Designation</th>
@@ -2949,15 +2949,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       </thead>
                       <tbody>
                         {workerPaymentsHistory.map((item: any, idx: number) => (
-                          <tr key={item._id || item.id || idx} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                          <tr key={item._id || item.id || idx} style={{ borderBottom: '1px solid var(--line)' }}>
                             <td style={{ padding: '10px', fontWeight: 700 }}>{new Date(item.createdAt || Date.now()).toLocaleDateString('en-IN')}</td>
                             <td style={{ padding: '10px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{item.workerName || item.name}</td>
                             <td style={{ padding: '10px' }}>{item.role}</td>
-                            <td style={{ padding: '10px', fontWeight: 900, color: '#059669' }}>₹{Number(item.amount || 0).toLocaleString('en-IN')}</td>
+                            <td style={{ padding: '10px', fontWeight: 900, color: 'var(--good)' }}>₹{Number(item.amount || 0).toLocaleString('en-IN')}</td>
                             <td style={{ padding: '10px' }}>{item.monthPeriod}</td>
                             <td style={{ padding: '10px' }}>{item.branch}</td>
                             <td style={{ padding: '10px' }}>
-                              <span style={{ backgroundColor: '#D1FAE5', color: '#065F46', padding: '3px 8px', borderRadius: '6px', fontWeight: 900, fontSize: '10px' }}>
+                              <span style={{ backgroundColor: 'var(--good-wash)', color: 'var(--good)', padding: '3px 8px', borderRadius: '6px', fontWeight: 900, fontSize: '10px' }}>
                                 DISBURSED
                               </span>
                             </td>
@@ -2978,16 +2978,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div style={{ fontSize: '10px', color: 'var(--royal-gold)', fontWeight: 700, marginTop: '2px' }}>Active Staff & Faculty Roster</div>
                   </GlassCard>
 
-                  <GlassCard style={{ padding: '16px', borderRadius: '16px', border: '1.5px solid #10B981', backgroundColor: 'rgba(236, 253, 245, 0.6)' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#047857', textTransform: 'uppercase' }}>Salary Given This Month ({currentMonth})</div>
-                    <div style={{ fontSize: '22px', fontWeight: 900, color: '#065F46', marginTop: '4px' }}>₹{thisMonthTotalPaid.toLocaleString('en-IN')}</div>
-                    <div style={{ fontSize: '10px', color: '#047857', fontWeight: 700, marginTop: '2px' }}>Disbursed in Current Month</div>
+                  <GlassCard style={{ padding: '16px', borderRadius: '16px', border: '1.5px solid var(--good)', backgroundColor: 'rgba(236, 253, 245, 0.6)' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--good)', textTransform: 'uppercase' }}>Salary Given This Month ({currentMonth})</div>
+                    <div style={{ fontSize: '22px', fontWeight: 900, color: 'var(--good)', marginTop: '4px' }}>₹{thisMonthTotalPaid.toLocaleString('en-IN')}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--good)', fontWeight: 700, marginTop: '2px' }}>Disbursed in Current Month</div>
                   </GlassCard>
 
-                  <GlassCard style={{ padding: '16px', borderRadius: '16px', border: '1.5px solid #D4AF37', backgroundColor: 'rgba(255, 253, 244, 0.7)' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#B88708', textTransform: 'uppercase' }}>Total Salary Given (All 12 Months)</div>
+                  <GlassCard style={{ padding: '16px', borderRadius: '16px', border: '1.5px solid var(--accent)', backgroundColor: 'rgba(255, 253, 244, 0.7)' }}>
+                    <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--warning)', textTransform: 'uppercase' }}>Total Salary Given (All 12 Months)</div>
                     <div style={{ fontSize: '22px', fontWeight: 900, color: '#855E00', marginTop: '4px' }}>₹{overallTotalPaid.toLocaleString('en-IN')}</div>
-                    <div style={{ fontSize: '10px', color: '#B88708', fontWeight: 700, marginTop: '2px' }}>Cumulative Annual Disbursement</div>
+                    <div style={{ fontSize: '10px', color: 'var(--warning)', fontWeight: 700, marginTop: '2px' }}>Cumulative Annual Disbursement</div>
                   </GlassCard>
                 </div>
 
@@ -3004,9 +3004,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           borderRadius: '999px',
                           fontSize: '11px',
                           fontWeight: 800,
-                          border: filterFacCampus === cName ? '1.5px solid #0F172A' : '1px solid rgba(0,0,0,0.1)',
-                          backgroundColor: filterFacCampus === cName ? '#0F172A' : '#fff',
-                          color: filterFacCampus === cName ? '#FFFFFF' : 'var(--dark-charcoal)',
+                          border: filterFacCampus === cName ? '1.5px solid var(--ink)' : '1px solid rgba(0,0,0,0.1)',
+                          backgroundColor: filterFacCampus === cName ? 'var(--ink)' : '#fff',
+                          color: filterFacCampus === cName ? 'var(--surface)' : 'var(--dark-charcoal)',
                           cursor: 'pointer'
                         }}
                         className="press-interactive"
@@ -3107,14 +3107,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                             padding: '3px 8px',
                             borderRadius: '999px',
                             backgroundColor: (t.classification || 'Teaching') === 'Teaching' ? 'rgba(59,130,246,0.1)' : 'rgba(139,92,246,0.1)',
-                            color: (t.classification || 'Teaching') === 'Teaching' ? '#2563EB' : '#7C3AED',
+                            color: (t.classification || 'Teaching') === 'Teaching' ? 'var(--accent)' : '#7C3AED',
                             border: '1px solid rgba(0,0,0,0.05)'
                           }}>
                             {t.classification || 'Teaching'}
                           </span>
                         </div>
 
-                        <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#F8FAFC', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px' }}>
+                        <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'var(--surface-sunken)', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span style={{ color: 'var(--muted-gray)', fontWeight: 700 }}>Emp ID:</span>
                             <span style={{ fontWeight: 800, color: 'var(--dark-charcoal)' }}>{t.id || t._id}</span>
@@ -3125,7 +3125,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span style={{ color: 'var(--muted-gray)', fontWeight: 700 }}>Monthly Salary:</span>
-                            <span style={{ fontWeight: 900, color: '#059669' }}>₹{baseSal.toLocaleString('en-IN')}</span>
+                            <span style={{ fontWeight: 900, color: 'var(--good)' }}>₹{baseSal.toLocaleString('en-IN')}</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span style={{ color: 'var(--muted-gray)', fontWeight: 700 }}>Mobile:</span>
@@ -3141,8 +3141,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                               fontWeight: 900,
                               padding: '2px 8px',
                               borderRadius: '6px',
-                              backgroundColor: isCurPaid ? '#ECFDF5' : '#FEF2F2',
-                              color: isCurPaid ? '#059669' : '#DC2626'
+                              backgroundColor: isCurPaid ? 'var(--good-wash)' : 'var(--critical-wash)',
+                              color: isCurPaid ? 'var(--good)' : 'var(--critical)'
                             }}>
                               {isCurPaid ? 'PAID' : 'UNPAID'}
                             </span>
@@ -3215,7 +3215,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
 
                 {/* Top Details Section */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '14px', border: '1.5px solid #E2E8F0', marginBottom: '18px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--surface-sunken)', padding: '16px', borderRadius: '14px', border: '1.5px solid var(--line)', marginBottom: '18px' }}>
                   <div style={{ fontSize: '12px', fontWeight: 900, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>Employee Profile & Salary Info</div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
@@ -3351,8 +3351,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           style={{
                             padding: '12px',
                             borderRadius: '12px',
-                            border: isSelectedForEdit ? '2px solid var(--royal-gold)' : '1.5px solid #E2E8F0',
-                            backgroundColor: isSelectedForEdit ? '#FFFDF4' : isPaid ? '#F0FDF4' : '#FEF2F2',
+                            border: isSelectedForEdit ? '2px solid var(--royal-gold)' : '1.5px solid var(--line)',
+                            backgroundColor: isSelectedForEdit ? 'var(--surface-sunken)' : isPaid ? '#F0FDF4' : 'var(--critical-wash)',
                             cursor: canEditFaculty ? 'pointer' : 'default',
                             transition: 'all 0.15s ease'
                           }}
@@ -3365,14 +3365,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                               fontWeight: 900,
                               padding: '2px 6px',
                               borderRadius: '4px',
-                              backgroundColor: isPaid ? '#10B981' : '#EF4444',
+                              backgroundColor: isPaid ? 'var(--good)' : 'var(--critical)',
                               color: '#fff'
                             }}>
                               {isPaid ? 'PAID' : 'UNPAID'}
                             </span>
                           </div>
 
-                          <div style={{ fontSize: '14px', fontWeight: 900, color: isPaid ? '#059669' : '#DC2626', marginTop: '6px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: 900, color: isPaid ? 'var(--good)' : 'var(--critical)', marginTop: '6px' }}>
                             ₹{amtPaid.toLocaleString('en-IN')}
                           </div>
 
@@ -3394,7 +3394,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 {/* MONTH PAYMENT EDITOR (Appears when a month is clicked) */}
                 {selectedStaffMonthForEdit && canEditFaculty && (
-                  <div style={{ backgroundColor: '#FFFDF4', border: '2px solid var(--royal-gold)', borderRadius: '14px', padding: '16px', marginBottom: '18px' }} className="anim-slide-up">
+                  <div style={{ backgroundColor: 'var(--surface-sunken)', border: '2px solid var(--royal-gold)', borderRadius: '14px', padding: '16px', marginBottom: '18px' }} className="anim-slide-up">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                       <div style={{ fontSize: '13px', fontWeight: 900, color: '#855E00' }}>
                         Edit Salary Disbursement for {selectedStaffMonthForEdit} 2026
@@ -3478,11 +3478,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 )}
 
                 {/* BOTTOM BILL GENERATOR & ACTIONS */}
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', borderTop: '1.5px solid #E2E8F0', paddingTop: '14px' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', borderTop: '1.5px solid var(--line)', paddingTop: '14px' }}>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <button
                       onClick={() => handleDownloadStaffPayslip(editTeacher, currentMonth)}
-                      style={{ ...styles.actionItemBtn, padding: '10px 16px', fontSize: '11px', fontWeight: 900, backgroundColor: '#0F172A', color: '#fff' }}
+                      style={{ ...styles.actionItemBtn, padding: '10px 16px', fontSize: '11px', fontWeight: 900, backgroundColor: 'var(--ink)', color: '#fff' }}
                       className="press-interactive"
                     >
                       Download Payslip ({currentMonth})
@@ -3505,7 +3505,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         setFacOtpInput('');
                         setIsFacOtpModalOpen(true);
                       }}
-                      style={{ ...styles.actionItemBtn, padding: '10px 16px', fontSize: '11px', fontWeight: 900, backgroundColor: '#DC2626', color: '#fff' }}
+                      style={{ ...styles.actionItemBtn, padding: '10px 16px', fontSize: '11px', fontWeight: 900, backgroundColor: 'var(--critical)', color: '#fff' }}
                       className="press-interactive"
                     >
                       Delete Staff Record
@@ -3755,13 +3755,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     style={{
                       padding: '10px 4px',
                       borderRadius: '10px',
-                      border: isActive ? '2px solid #0F172A' : '1px solid var(--card-border)',
-                      background: isActive ? '#0F172A' : 'rgba(255,255,255,0.6)',
+                      border: isActive ? '2px solid var(--ink)' : '1px solid var(--card-border)',
+                      background: isActive ? 'var(--ink)' : 'rgba(255,255,255,0.6)',
                       textAlign: 'center',
                       cursor: 'pointer',
                       fontWeight: 700,
                       fontSize: '10px',
-                      color: isActive ? '#FFFFFF' : 'var(--dark-charcoal)'
+                      color: isActive ? 'var(--surface)' : 'var(--dark-charcoal)'
                     }}
                     className="press-interactive"
                   >
@@ -3775,7 +3775,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Rector Baseline: {selectedFeeBranch}</h4>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: locked ? '#EF4444' : 'var(--royal-gold)', backgroundColor: locked ? 'rgba(239,68,68,0.06)' : 'rgba(212,175,55,0.06)', border: `1.5px solid ${locked ? '#EF4444' : 'var(--royal-gold)'}`, padding: '4px 8px', borderRadius: '8px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: locked ? 'var(--critical)' : 'var(--royal-gold)', backgroundColor: locked ? 'rgba(239,68,68,0.06)' : 'rgba(212,175,55,0.06)', border: `1.5px solid ${locked ? 'var(--critical)' : 'var(--royal-gold)'}`, padding: '4px 8px', borderRadius: '8px' }}>
                 {locked ? 'Locked  Rates Finalized' : 'Edit Mode Active'}
               </span>
             </div>
@@ -3978,12 +3978,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px', zIndex: 1 }}>
             {filteredEnquiries.map(enq => {
               const statusColorMap: Record<string, { bg: string; text: string; border: string }> = {
-                Pending: { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-                New: { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-                Contacted: { bg: '#EFF6FF', text: '#1E40AF', border: '#3B82F6' },
-                Enrolled: { bg: '#ECFDF5', text: '#065F46', border: '#10B981' },
-                Closed: { bg: '#F1F5F9', text: '#475569', border: '#94A3B8' },
-                Archived: { bg: '#F1F5F9', text: '#475569', border: '#94A3B8' }
+                Pending: { bg: 'var(--warning-wash)', text: 'var(--warning)', border: 'var(--warning)' },
+                New: { bg: 'var(--warning-wash)', text: 'var(--warning)', border: 'var(--warning)' },
+                Contacted: { bg: 'var(--accent-wash)', text: 'var(--accent)', border: 'var(--accent)' },
+                Enrolled: { bg: 'var(--good-wash)', text: 'var(--good)', border: 'var(--good)' },
+                Closed: { bg: 'var(--surface-sunken)', text: 'var(--ink-secondary)', border: 'var(--ink-muted)' },
+                Archived: { bg: 'var(--surface-sunken)', text: 'var(--ink-secondary)', border: 'var(--ink-muted)' }
               };
               const badgeStyle = statusColorMap[enq.status] || statusColorMap.Pending;
 
@@ -4028,14 +4028,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     </span>
                   </div>
 
-                  <div style={{ padding: '10px', backgroundColor: '#F8FAFC', borderRadius: '10px', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ padding: '10px', backgroundColor: 'var(--surface-sunken)', borderRadius: '10px', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--muted-gray)', fontWeight: 700 }}>Preferred Campus:</span>
-                      <span style={{ fontWeight: 800, color: '#0F172A' }}>{enq.preferredCampus}</span>
+                      <span style={{ fontWeight: 800, color: 'var(--ink)' }}>{enq.preferredCampus}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--muted-gray)', fontWeight: 700 }}>Stream Choice:</span>
-                      <span style={{ fontWeight: 800, color: '#2563EB' }}>{enq.stream}</span>
+                      <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{enq.stream}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--muted-gray)', fontWeight: 700 }}>Current Grade:</span>
@@ -4043,23 +4043,23 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--muted-gray)', fontWeight: 700 }}>Mobile Number:</span>
-                      <a href={`tel:${enq.mobile}`} style={{ fontWeight: 900, color: '#059669', textDecoration: 'none' }}>{enq.mobile}</a>
+                      <a href={`tel:${enq.mobile}`} style={{ fontWeight: 900, color: 'var(--good)', textDecoration: 'none' }}>{enq.mobile}</a>
                     </div>
                     {enq.email && (
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ color: 'var(--muted-gray)', fontWeight: 700 }}>Email Address:</span>
-                        <span style={{ fontWeight: 700, color: '#475569' }}>{enq.email}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--ink-secondary)' }}>{enq.email}</span>
                       </div>
                     )}
                   </div>
 
                   {enq.notes && (
-                    <div style={{ fontSize: '11px', color: '#334155', fontStyle: 'italic', backgroundColor: '#FFFDF4', padding: '8px 10px', borderRadius: '8px', border: '1px solid #FEF08A' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--ink-secondary)', fontStyle: 'italic', backgroundColor: 'var(--surface-sunken)', padding: '8px 10px', borderRadius: '8px', border: '1px solid #FEF08A' }}>
                       "{enq.notes}"
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', paddingTop: '8px', borderTop: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', paddingTop: '8px', borderTop: '1px solid var(--line)' }}>
                     <span style={{ fontSize: '9.5px', color: 'var(--muted-gray)', fontWeight: 700 }}>
                       Received: {new Date(enq.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -4258,7 +4258,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         height: '40px',
                         borderRadius: '12px',
                         backgroundColor: 'rgba(212,175,55,0.14)',
-                        color: '#8A6500',
+                        color: 'var(--warning)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -4280,7 +4280,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         </div>
                       </div>
                     </div>
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: Number(student.remainingBalance || 0) > 0 ? '#EF4444' : '#10B981', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: Number(student.remainingBalance || 0) > 0 ? 'var(--critical)' : 'var(--good)', whiteSpace: 'nowrap' }}>
                       {Number(student.remainingBalance || 0) > 0 ? `Due: Rs.${Number(student.remainingBalance || 0).toLocaleString('en-IN')}` : 'Settled'}
                     </span>
                   </div>
@@ -4294,8 +4294,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       style={{
                         padding: '8px 12px',
                         border: '1.5px solid var(--royal-gold)',
-                        color: '#8A6500',
-                        backgroundColor: '#FFFDF5',
+                        color: 'var(--warning)',
+                        backgroundColor: 'var(--surface-sunken)',
                         borderRadius: '10px',
                         fontWeight: 800,
                         fontSize: '11px',
@@ -4366,8 +4366,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                     {/* Bill Format Statement Card */}
                     <div style={{
-                      background: '#FFFFFF',
-                      border: '1.5px solid #CBD5E1',
+                      background: 'var(--surface)',
+                      border: '1.5px solid var(--line-strong)',
                       borderRadius: '16px',
                       padding: '18px',
                       boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)',
@@ -4379,14 +4379,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        borderBottom: '1.5px solid #E2E8F0',
+                        borderBottom: '1.5px solid var(--line)',
                         paddingBottom: '10px'
                       }}>
                         <div>
                           <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                             INSPIRE JUNIOR COLLEGE
                           </span>
-                          <h4 style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>
+                          <h4 style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 900, color: 'var(--ink)' }}>
                             Fee Structure & Bill Format
                           </h4>
                         </div>
@@ -4395,9 +4395,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           fontWeight: 800,
                           padding: '3px 8px',
                           borderRadius: '20px',
-                          backgroundColor: (feeBreakdownData.remainingBalance || 0) > 0 ? '#FEF2F2' : '#ECFDF5',
-                          color: (feeBreakdownData.remainingBalance || 0) > 0 ? '#DC2626' : '#059669',
-                          border: (feeBreakdownData.remainingBalance || 0) > 0 ? '1px solid #FCA5A5' : '1px solid #A7F3D0'
+                          backgroundColor: (feeBreakdownData.remainingBalance || 0) > 0 ? 'var(--critical-wash)' : 'var(--good-wash)',
+                          color: (feeBreakdownData.remainingBalance || 0) > 0 ? 'var(--critical)' : 'var(--good)',
+                          border: (feeBreakdownData.remainingBalance || 0) > 0 ? '1px solid var(--critical-wash)' : '1px solid var(--good-wash)'
                         }}>
                           {(feeBreakdownData.remainingBalance || 0) > 0 ? 'BALANCE DUE' : 'FULLY SETTLED'}
                         </span>
@@ -4405,7 +4405,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                       {/* Left: Description, Right: Amount Slots */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', borderBottom: '1px solid #F1F5F9', paddingBottom: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', borderBottom: '1px solid var(--surface-sunken)', paddingBottom: '4px' }}>
                           <span>Fee Section Description</span>
                           <span>Amount (Rs)</span>
                         </div>
@@ -4415,16 +4415,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           const waiverAmt = Number(editSlotWaivers[slotKey]) || 0;
                           const netSlotAmt = Math.max(0, slot.amount - waiverAmt);
                           return (
-                            <div key={slot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px', padding: '4px 0', borderBottom: '1px dashed #F1F5F9' }}>
-                              <span style={{ color: '#334155', fontWeight: 600 }}>
+                            <div key={slot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px', padding: '4px 0', borderBottom: '1px dashed var(--surface-sunken)' }}>
+                              <span style={{ color: 'var(--ink-secondary)', fontWeight: 600 }}>
                                 {slot.name}
                               </span>
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                <strong style={{ color: '#0F172A', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                                <strong style={{ color: 'var(--ink)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                                   Rs.{netSlotAmt.toLocaleString('en-IN')}
                                 </strong>
                                 {waiverAmt > 0 && (
-                                  <span style={{ fontSize: '9.5px', color: '#059669', fontWeight: 700 }}>
+                                  <span style={{ fontSize: '9.5px', color: 'var(--good)', fontWeight: 700 }}>
                                     (Waiver: -Rs.{waiverAmt.toLocaleString('en-IN')})
                                   </span>
                                 )}
@@ -4435,7 +4435,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       </div>
 
                       {/* Horizontal Dashed Separator */}
-                      <div style={{ borderTop: '1.5px dashed #CBD5E1', margin: '4px 0' }} />
+                      <div style={{ borderTop: '1.5px dashed var(--line-strong)', margin: '4px 0' }} />
 
                       {/* Breakdown Calculations */}
                       {(() => {
@@ -4449,26 +4449,26 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         return (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                              <span style={{ color: '#475569', fontWeight: 700 }}>Total Base Fee</span>
-                              <strong style={{ color: '#0F172A', fontWeight: 800 }}>
+                              <span style={{ color: 'var(--ink-secondary)', fontWeight: 700 }}>Total Base Fee</span>
+                              <strong style={{ color: 'var(--ink)', fontWeight: 800 }}>
                                 Rs.{baseFee.toLocaleString('en-IN')}
                               </strong>
                             </div>
 
                             {totalDeduction > 0 && (
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#059669' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--good)' }}>
                                 <span>Fee Waivers / Deductions</span>
                                 <strong style={{ fontWeight: 800 }}>- Rs.{totalDeduction.toLocaleString('en-IN')}</strong>
                               </div>
                             )}
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#059669' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--good)' }}>
                               <span>Total Paid by Student</span>
                               <strong style={{ fontWeight: 800 }}>- Rs.{paid.toLocaleString('en-IN')}</strong>
                             </div>
 
                             {/* Horizontal Double Line */}
-                            <div style={{ borderTop: '2px solid #0F172A', margin: '4px 0 2px' }} />
+                            <div style={{ borderTop: '2px solid var(--ink)', margin: '4px 0 2px' }} />
 
                             {/* Net Remaining Balance Banner */}
                             <div style={{
@@ -4477,13 +4477,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                               alignItems: 'center',
                               padding: '10px 12px',
                               borderRadius: '10px',
-                              backgroundColor: netRemaining > 0 ? '#FFFBEB' : '#ECFDF5',
-                              border: netRemaining > 0 ? '1.5px solid #FCD34D' : '1.5px solid #A7F3D0'
+                              backgroundColor: netRemaining > 0 ? 'var(--warning-wash)' : 'var(--good-wash)',
+                              border: netRemaining > 0 ? '1.5px solid #FCD34D' : '1.5px solid var(--good-wash)'
                             }}>
-                              <span style={{ fontSize: '11px', fontWeight: 800, color: netRemaining > 0 ? '#B45309' : '#047857', textTransform: 'uppercase' }}>
+                              <span style={{ fontSize: '11px', fontWeight: 800, color: netRemaining > 0 ? 'var(--warning)' : 'var(--good)', textTransform: 'uppercase' }}>
                                 Remaining Balance
                               </span>
-                              <strong style={{ fontSize: '16px', fontWeight: 900, color: netRemaining > 0 ? '#D97706' : '#059669' }}>
+                              <strong style={{ fontSize: '16px', fontWeight: 900, color: netRemaining > 0 ? 'var(--warning)' : 'var(--good)' }}>
                                 Rs.{netRemaining.toLocaleString('en-IN')}
                               </strong>
                             </div>
@@ -4502,7 +4502,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         </div>
                         <button
                           onClick={() => handleDownloadStudentHistoryPDF(selectedFeeStudent)}
-                          style={{ ...styles.actionItemBtn, padding: '8px 16px', fontSize: '11px', fontWeight: 900, backgroundColor: '#0F172A', color: '#FFF' }}
+                          style={{ ...styles.actionItemBtn, padding: '8px 16px', fontSize: '11px', fontWeight: 900, backgroundColor: 'var(--ink)', color: '#FFF' }}
                           className="press-interactive"
                         >
                           Download History
@@ -4514,7 +4514,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           const slotKey = slot.id || slot.name;
                           return (
                             <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <label style={{ ...styles.formLabel, fontWeight: 700, color: '#1E293B' }}>
+                              <label style={{ ...styles.formLabel, fontWeight: 700, color: 'var(--ink)' }}>
                                 {slot.name} Waiver (Rs)
                               </label>
                               <input
@@ -4529,7 +4529,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                                 }}
                                 style={styles.textInputBox}
                               />
-                              <div style={{ fontSize: '10px', color: '#64748B', fontWeight: 600 }}>
+                              <div style={{ fontSize: '10px', color: 'var(--ink-secondary)', fontWeight: 600 }}>
                                 Slot Base: Rs.{slot.amount.toLocaleString('en-IN')}
                               </div>
                             </div>
@@ -4646,8 +4646,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         const y = 30 + index * 24;
 
         svgBars += `
-          <text x="10" y="${y + 12}" font-size="9" font-weight="bold" fill="#475569">${cat}</text>
-          <rect x="90" y="${y}" width="280" height="14" rx="4" fill="#cbd5e1" />
+          <text x="10" y="${y + 12}" font-size="9" font-weight="bold" fill="var(--ink-secondary)">${cat}</text>
+          <rect x="90" y="${y}" width="280" height="14" rx="4" fill="var(--line-strong)" />
           <rect x="90" y="${y}" width="${width}" height="14" rx="4" fill="#0D9488" />
           <text x="${95 + width}" y="${y + 11}" font-size="8.5" font-weight="bold" fill="#0D9488">Rs.${amt.toLocaleString('en-IN')}</text>
         `;
@@ -4655,7 +4655,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
       const chartHeight = 40 + categories.length * 24;
       const svgChart = `
-        <svg width="100%" height="${chartHeight}" viewBox="0 0 400 ${chartHeight}" xmlns="http://www.w3.org/2000/svg" style="font-family: sans-serif; background: #fafafa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+        <svg width="100%" height="${chartHeight}" viewBox="0 0 400 ${chartHeight}" xmlns="http://www.w3.org/2000/svg" style="font-family: sans-serif; background: #fafafa; border: 1px solid var(--line); border-radius: 8px; padding: 10px;">
           <text x="10" y="18" font-size="11" font-weight="bold" fill="#0F766E">CAMPUS EXPENDITURES BY CATEGORY</text>
           ${svgBars}
         </svg>
@@ -4669,22 +4669,22 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <style>
             @page { size: A4; margin: 12mm; }
             * { box-sizing: border-box; }
-            body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; color: #0F172A; margin: 0; padding: 0; background: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; color: var(--ink); margin: 0; padding: 0; background: var(--surface); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .page { max-width: 182mm; margin: 0 auto; padding: 4px; }
-            .hdr { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-radius: 16px; margin-bottom: 20px; border-bottom: 3px solid #D4AF37; }
+            .hdr { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: linear-gradient(135deg, var(--ink) 0%, var(--ink) 100%); border-radius: 16px; margin-bottom: 20px; border-bottom: 3px solid var(--accent); }
             .brand { display: flex; align-items: center; gap: 14px; }
-            .logo { width: 44px; height: 44px; object-fit: contain; background: #FFF; border-radius: 10px; padding: 4px; border: 1px solid #D4AF37; }
+            .logo { width: 44px; height: 44px; object-fit: contain; background: #FFF; border-radius: 10px; padding: 4px; border: 1px solid var(--accent); }
             .iname { color: #FFF; font-size: 15px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; }
-            .iaddr { color: #94A3B8; font-size: 10px; line-height: 1.4; margin-top: 2px; }
+            .iaddr { color: var(--ink-muted); font-size: 10px; line-height: 1.4; margin-top: 2px; }
             .slbl strong { display: block; color: #FFF; font-size: 16px; font-weight: 900; text-transform: uppercase; text-align: right; letter-spacing: 0.04em; }
-            .slbl span { color: #F59E0B; font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-top: 2px; }
+            .slbl span { color: var(--warning); font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-top: 2px; }
             .chart-container { margin: 20px 0; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; border: 1.5px solid #CBD5E1; border-radius: 12px; overflow: hidden; }
-            th, td { border-bottom: 1px solid #E2E8F0; padding: 10px 12px; text-align: left; }
-            th { background: #F1F5F9; color: #475569; font-size: 8.5px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.06em; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; border: 1.5px solid var(--line-strong); border-radius: 12px; overflow: hidden; }
+            th, td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; }
+            th { background: var(--surface-sunken); color: var(--ink-secondary); font-size: 8.5px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.06em; }
             td { font-size: 11px; }
-            .total-row { font-weight: 900; background: #F8FAFC; border-top: 2px solid #D4AF37; font-size: 12px; }
-            .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 20px; padding: 12px 26px; background: linear-gradient(135deg, #0F172A, #1E293B); color: #FFF; border: none; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,0.15); }
+            .total-row { font-weight: 900; background: var(--surface-sunken); border-top: 2px solid var(--accent); font-size: 12px; }
+            .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 20px; padding: 12px 26px; background: linear-gradient(135deg, var(--ink), var(--ink)); color: #FFF; border: none; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,0.15); }
             @media print {
               .pbtn { display: none !important; }
             }
@@ -4708,7 +4708,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             </div>
 
             <div class="chart-container">
-              ${list.length > 0 ? svgChart : '<div style="padding: 20px; text-align: center; color: #64748B;">No category chart data available.</div>'}
+              ${list.length > 0 ? svgChart : '<div style="padding: 20px; text-align: center; color: var(--ink-secondary);">No category chart data available.</div>'}
             </div>
 
             <table>
@@ -4724,14 +4724,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 ${list.map(e => `
                   <tr>
                     <td>${typeof e.date === 'string' ? e.date.split('T')[0] : e.date}</td>
-                    <td><strong style="color:#0F172A">${escapeHtml(e.category)}</strong></td>
+                    <td><strong style="color:var(--ink)">${escapeHtml(e.category)}</strong></td>
                     <td>${escapeHtml(e.description)}</td>
-                    <td style="text-align: right; font-weight: 800; color: #0F172A">Rs. ${e.amount.toLocaleString('en-IN')}</td>
+                    <td style="text-align: right; font-weight: 800; color: var(--ink)">Rs. ${e.amount.toLocaleString('en-IN')}</td>
                   </tr>
                 `).join('')}
                 <tr class="total-row">
                   <td colspan="3">Grand Total Campus Expenditures</td>
-                  <td style="text-align: right; color:#D97706">Rs. ${total.toLocaleString('en-IN')}</td>
+                  <td style="text-align: right; color:var(--warning)">Rs. ${total.toLocaleString('en-IN')}</td>
                 </tr>
               </tbody>
             </table>
@@ -4762,32 +4762,32 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:'Inter',sans-serif;background:#fff;color:#1a1a1a;padding:40px;}
-    .page{max-width:720px;margin:auto;border:2px solid #D4AF37;border-radius:16px;overflow:hidden;}
+    body{font-family:'Inter',sans-serif;background:#fff;color:var(--ink);padding:40px;}
+    .page{max-width:720px;margin:auto;border:2px solid var(--accent);border-radius:16px;overflow:hidden;}
     .header{background:linear-gradient(135deg,#1a1a2e 0%,#0d1b2a 100%);padding:32px 40px;display:flex;justify-content:space-between;align-items:center;}
-    .logo-text{color:#D4AF37;font-size:22px;font-weight:900;letter-spacing:0.04em;}
+    .logo-text{color:var(--accent);font-size:22px;font-weight:900;letter-spacing:0.04em;}
     .logo-sub{color:rgba(212,175,55,0.6);font-size:11px;font-weight:700;margin-top:2px;}
     .bill-no{color:rgba(212,175,55,0.8);font-size:12px;font-weight:700;text-align:right;}
     .body{padding:36px 40px;}
-    .title{font-size:28px;font-weight:900;color:#1a1a1a;margin-bottom:4px;}
+    .title{font-size:28px;font-weight:900;color:var(--ink);margin-bottom:4px;}
     .sub{font-size:13px;color:#666;margin-bottom:32px;}
     .row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f0f0;font-size:14px;}
     .row:last-of-type{border-bottom:none;}
     .row span{color:#888;}
-    .row strong{font-weight:700;color:#1a1a1a;}
-    .total-row{display:flex;justify-content:space-between;align-items:center;background:#fffbea;border:2px solid #D4AF37;border-radius:12px;padding:16px 20px;margin-top:20px;}
-    .total-label{font-size:14px;font-weight:700;color:#1a1a1a;}
-    .total-amt{font-size:28px;font-weight:900;color:#D4AF37;}
+    .row strong{font-weight:700;color:var(--ink);}
+    .total-row{display:flex;justify-content:space-between;align-items:center;background:#fffbea;border:2px solid var(--accent);border-radius:12px;padding:16px 20px;margin-top:20px;}
+    .total-label{font-size:14px;font-weight:700;color:var(--ink);}
+    .total-amt{font-size:28px;font-weight:900;color:var(--accent);}
     .footer{background:#f9f9f9;padding:20px 40px;border-top:1px solid #eee;text-align:center;font-size:11px;color:#999;}
-    .stamp{display:inline-block;border:2px solid #D4AF37;border-radius:8px;padding:6px 16px;font-size:11px;font-weight:700;color:#D4AF37;margin-top:10px;}
+    .stamp{display:inline-block;border:2px solid var(--accent);border-radius:8px;padding:6px 16px;font-size:11px;font-weight:700;color:var(--accent);margin-top:10px;}
   </style>
 </head>
 <body>
 <div class="page">
   <div class="header" style="text-align: center; display: block;">
     <img src="${collegeLogo}" style="height: 60px; width: auto; display: block; margin: 0 auto 6px;" alt="Inspire College Logo"/>
-    <div class="logo-text" style="font-size: 20px; font-weight: 900; color: #0F172A; text-transform: uppercase;">INSPIRE COLLEGE</div>
-    <div class="logo-sub" style="font-size: 11px; font-weight: 800; color: #D4AF37; text-transform: uppercase; margin-top: 2px;">Expenditure Audit System</div>
+    <div class="logo-text" style="font-size: 20px; font-weight: 900; color: var(--ink); text-transform: uppercase;">INSPIRE COLLEGE</div>
+    <div class="logo-sub" style="font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; margin-top: 2px;">Expenditure Audit System</div>
   </div>
   <div class="body">
     <div class="title" style="margin-top: 14px;">Expenditure Voucher Bill</div>
@@ -4854,9 +4854,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 const total = getBranchTotal(b);
                 const isActive = selectedExpBranch === b;
                 return (
-                  <div key={b} onClick={() => setSelectedExpBranch(b as any)} style={{ padding: '12px 10px', borderRadius: '12px', border: isActive ? '2px solid #0F172A' : '1px solid rgba(255,255,255,0.1)', background: isActive ? '#0F172A' : 'rgba(255,255,255,0.03)', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }} className="press-interactive">
-                    <div style={{ fontSize: '10px', color: isActive ? '#FFFFFF' : 'var(--muted-gray)', fontWeight: 800 }}>{b}</div>
-                    <strong style={{ fontSize: '14px', color: isActive ? '#38BDF8' : '#EF4444', display: 'block', marginTop: '4px' }}>Rs.{total.toLocaleString('en-IN')}</strong>
+                  <div key={b} onClick={() => setSelectedExpBranch(b as any)} style={{ padding: '12px 10px', borderRadius: '12px', border: isActive ? '2px solid var(--ink)' : '1px solid rgba(255,255,255,0.1)', background: isActive ? 'var(--ink)' : 'rgba(255,255,255,0.03)', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }} className="press-interactive">
+                    <div style={{ fontSize: '10px', color: isActive ? 'var(--surface)' : 'var(--muted-gray)', fontWeight: 800 }}>{b}</div>
+                    <strong style={{ fontSize: '14px', color: isActive ? '#38BDF8' : 'var(--critical)', display: 'block', marginTop: '4px' }}>Rs.{total.toLocaleString('en-IN')}</strong>
                   </div>
                 );
               })}
@@ -4941,9 +4941,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{typeof exp.date === 'string' ? exp.date.split('T')[0] : exp.date}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                      <strong style={{ fontSize: '14px', color: '#EF4444' }}>Rs.{exp.amount.toLocaleString('en-IN')}</strong>
+                      <strong style={{ fontSize: '14px', color: 'var(--critical)' }}>Rs.{exp.amount.toLocaleString('en-IN')}</strong>
                       <button onClick={() => handleDownloadBill(exp)} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(212,175,55,0.4)', backgroundColor: 'rgba(212,175,55,0.06)', color: 'var(--royal-gold)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }} title="Download Bill">Bill</button>
-                      <button onClick={() => { setPendingExpDelete(exp); setIsExpDeleteOtpOpen(true); }} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
+                      <button onClick={() => { setPendingExpDelete(exp); setIsExpDeleteOtpOpen(true); }} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: 'var(--critical)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
                     </div>
                   </div>
                 ))
@@ -4957,7 +4957,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '400px', padding: '28px', borderRadius: '20px', margin: '0 16px' }} className="anim-slide-up glass-gold-ring">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px', marginBottom: '16px' }}>
                   <div>
-                    <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.1rem', color: '#DC2626' }}>Confirm Expenditure Deletion</h3>
+                    <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.1rem', color: 'var(--critical)' }}>Confirm Expenditure Deletion</h3>
                     <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--muted-gray)' }}>Are you sure you want to delete this expenditure record?</p>
                   </div>
                   <button onClick={() => { setIsExpDeleteOtpOpen(false); setPendingExpDelete(null); setExpDeleteOtpInput(''); }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}>×</button>
@@ -4965,7 +4965,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <div style={{ padding: '12px', borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.6)', marginBottom: '14px' }}>
                   <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{pendingExpDelete.category}</div>
                   <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '3px' }}>{pendingExpDelete.description}</div>
-                  <div style={{ fontSize: '14px', fontWeight: 900, color: '#EF4444', marginTop: '4px' }}>Rs.{pendingExpDelete.amount.toLocaleString('en-IN')}</div>
+                  <div style={{ fontSize: '14px', fontWeight: 900, color: 'var(--critical)', marginTop: '4px' }}>Rs.{pendingExpDelete.amount.toLocaleString('en-IN')}</div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button
@@ -4977,7 +4977,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   </button>
                   <button
                     onClick={() => handleDeleteExpenditure(pendingExpDelete, undefined)}
-                    style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: '#DC2626', color: '#fff', opacity: 1 }}
+                    style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'var(--critical)', color: '#fff', opacity: 1 }}
                     className="press-interactive"
                   >
                     Yes, Delete Entry
@@ -4996,7 +4996,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Are you sure you want to log this expenditure entry?</p>
                   <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '10px', fontSize: '12px', textAlign: 'left' }}>
                     <div style={{ fontWeight: 700 }}>{newExpCat} • {newExpDesc}</div>
-                    <div style={{ color: '#EF4444', fontWeight: 900, fontSize: '16px', marginTop: '4px' }}>Rs.{Number(newExpAmt).toLocaleString('en-IN')}</div>
+                    <div style={{ color: 'var(--critical)', fontWeight: 900, fontSize: '16px', marginTop: '4px' }}>Rs.{Number(newExpAmt).toLocaleString('en-IN')}</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -5065,11 +5065,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px', marginBottom: '12px', zIndex: 1, width: '100%' }}>
             <GlassCard hoverable={false} style={{ padding: '16px', border: '1px solid rgba(16,185,129,0.18)' }}>
               <div style={styles.metricLabel}>Total Paid Amount</div>
-              <strong style={{ ...styles.metricValue, color: '#10B981', fontSize: '22px' }}>₹{totalPaidAmount.toLocaleString('en-IN')}</strong>
+              <strong style={{ ...styles.metricValue, color: 'var(--good)', fontSize: '22px' }}>₹{totalPaidAmount.toLocaleString('en-IN')}</strong>
             </GlassCard>
             <GlassCard hoverable={false} style={{ padding: '16px', border: '1px solid rgba(239,68,68,0.18)' }}>
               <div style={styles.metricLabel}>Total Unpaid Amount</div>
-              <strong style={{ ...styles.metricValue, color: '#EF4444', fontSize: '22px' }}>₹{totalUnpaidAmount.toLocaleString('en-IN')}</strong>
+              <strong style={{ ...styles.metricValue, color: 'var(--critical)', fontSize: '22px' }}>₹{totalUnpaidAmount.toLocaleString('en-IN')}</strong>
             </GlassCard>
           </div>
 
@@ -5089,7 +5089,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Faculty Roster  {teacherList.length} Members</h4>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981', backgroundColor: 'rgba(16,185,129,0.08)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--good)', backgroundColor: 'rgba(16,185,129,0.08)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)' }}>
                 Total: ₹{teacherList.reduce((s, t) => s + (t.salary || 0), 0).toLocaleString('en-IN')} / mo
               </span>
             </div>
@@ -5101,7 +5101,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <div style={{ fontSize: '14px', fontWeight: 900, color: 'var(--dark-charcoal)', lineHeight: 1.25 }}>{t.name}</div>
                       <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '4px' }}>{t.subject || 'Role'}</div>
                     </div>
-                    <span style={{ fontSize: '10px', fontWeight: 800, color: t.salaryStatus === 'paid' ? '#10B981' : '#EF4444', backgroundColor: 'rgba(255,255,255,0.75)', padding: '4px 8px', borderRadius: '999px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: t.salaryStatus === 'paid' ? 'var(--good)' : 'var(--critical)', backgroundColor: 'rgba(255,255,255,0.75)', padding: '4px 8px', borderRadius: '999px' }}>
                       {t.salaryStatus === 'paid' ? 'Paid' : 'Pending'}
                     </span>
                   </div>
@@ -5121,7 +5121,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     </button>
                     <button
                       onClick={() => openSalaryAction(t, 'pending')}
-                      style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)', backgroundColor: 'rgba(239,68,68,0.06)', color: '#EF4444', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)', backgroundColor: 'rgba(239,68,68,0.06)', color: 'var(--critical)', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}
                       className="press-interactive"
                     >
                       Unmark
@@ -5309,7 +5309,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             {workerSearch && (
               <button
                 onClick={() => { setWorkerSearch(''); setWorkerPage(1); }}
-                style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase' }}
+                style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--critical)', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase' }}
               >
                 Clear Search
               </button>
@@ -5322,17 +5322,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           {/* Top Pagination Controls */}
           {workerTotalPages > 1 && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
                 Showing {((workerCurrentPage - 1) * WORKER_PER_PAGE) + 1}-{Math.min(workerCurrentPage * WORKER_PER_PAGE, filteredWorkers.length)} of {filteredWorkers.length}
               </span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => setWorkerPage(p => Math.max(1, p - 1))} disabled={workerCurrentPage === 1}
-                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: workerCurrentPage === 1 ? '#F8FAFC' : '#fff', color: workerCurrentPage === 1 ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === 1 ? 'default' : 'pointer' }}>
+                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: workerCurrentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: workerCurrentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === 1 ? 'default' : 'pointer' }}>
                   â† Prev
                 </button>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', display: 'flex', alignItems: 'center' }}>Page {workerCurrentPage} / {workerTotalPages}</span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)', display: 'flex', alignItems: 'center' }}>Page {workerCurrentPage} / {workerTotalPages}</span>
                 <button onClick={() => setWorkerPage(p => Math.min(workerTotalPages, p + 1))} disabled={workerCurrentPage === workerTotalPages}
-                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #E2E8F0', background: workerCurrentPage === workerTotalPages ? '#F8FAFC' : '#fff', color: workerCurrentPage === workerTotalPages ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === workerTotalPages ? 'default' : 'pointer' }}>
+                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: workerCurrentPage === workerTotalPages ? 'var(--surface-sunken)' : '#fff', color: workerCurrentPage === workerTotalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === workerTotalPages ? 'default' : 'pointer' }}>
                   Next
                 </button>
               </div>
@@ -5376,7 +5376,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       height: '42px',
                       borderRadius: '12px',
                       backgroundColor: w.paid ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                      color: w.paid ? '#059669' : '#DC2626',
+                      color: w.paid ? 'var(--good)' : 'var(--critical)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -5397,30 +5397,30 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           padding: '3px 8px',
                           borderRadius: '999px',
                           backgroundColor: w.paid ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
-                          color: w.paid ? '#059669' : '#DC2626',
+                          color: w.paid ? 'var(--good)' : 'var(--critical)',
                           textTransform: 'uppercase',
                           letterSpacing: '0.06em'
                         }}>
                           {w.paid ? 'PAID' : 'UNPAID'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', fontWeight: 600 }}>
-                        Role: <span style={{ color: '#1E293B', fontWeight: 800 }}>{w.role || 'Staff'}</span> Â· Period: <span style={{ color: '#1E293B', fontWeight: 800 }}>{w.monthPeriod || 'July 2026'}</span>
+                      <div style={{ fontSize: '11px', color: 'var(--ink-secondary)', marginTop: '2px', fontWeight: 600 }}>
+                        Role: <span style={{ color: 'var(--ink)', fontWeight: 800 }}>{w.role || 'Staff'}</span> Â· Period: <span style={{ color: 'var(--ink)', fontWeight: 800 }}>{w.monthPeriod || 'July 2026'}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Financial Details Row */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: '#F8FAFC', padding: '10px 12px', borderRadius: '10px', fontSize: '11.5px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--surface-sunken)', padding: '10px 12px', borderRadius: '10px', fontSize: '11.5px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink-secondary)' }}>
                       <span>Monthly Wage:</span>
                       <strong>Rs.{wWage.toLocaleString('en-IN')}</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--good)' }}>
                       <span>Amount Paid:</span>
                       <strong>Rs.{wPaid.toLocaleString('en-IN')}</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: wDue > 0 ? '#DC2626' : '#059669' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: wDue > 0 ? 'var(--critical)' : 'var(--good)' }}>
                       <span>Balance Due:</span>
                       <strong>Rs.{wDue.toLocaleString('en-IN')}</strong>
                     </div>
@@ -5458,7 +5458,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           flex: 1,
                           padding: '9px 12px',
                           border: '1.5px solid rgba(239, 68, 68, 0.3)',
-                          color: '#DC2626',
+                          color: 'var(--critical)',
                           backgroundColor: 'rgba(254, 242, 242, 0.8)',
                           borderRadius: '8px',
                           fontWeight: 800,
@@ -5475,9 +5475,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       onClick={() => handleDownloadWorkerBill(w)}
                       style={{
                         padding: '9px 12px',
-                        border: '1.5px solid #CBD5E1',
-                        color: '#334155',
-                        backgroundColor: '#F8FAFC',
+                        border: '1.5px solid var(--line-strong)',
+                        color: 'var(--ink-secondary)',
+                        backgroundColor: 'var(--surface-sunken)',
                         borderRadius: '8px',
                         fontWeight: 800,
                         fontSize: '11px',
@@ -5503,12 +5503,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           {workerTotalPages > 1 && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center', zIndex: 1, marginTop: '8px' }}>
               <button onClick={() => setWorkerPage(p => Math.max(1, p - 1))} disabled={workerCurrentPage === 1}
-                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid #E2E8F0', background: workerCurrentPage === 1 ? '#F8FAFC' : '#fff', color: workerCurrentPage === 1 ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === 1 ? 'default' : 'pointer' }}>
+                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid var(--line)', background: workerCurrentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: workerCurrentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === 1 ? 'default' : 'pointer' }}>
                 â† Previous
               </button>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>Page {workerCurrentPage} of {workerTotalPages}</span>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>Page {workerCurrentPage} of {workerTotalPages}</span>
               <button onClick={() => setWorkerPage(p => Math.min(workerTotalPages, p + 1))} disabled={workerCurrentPage === workerTotalPages}
-                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid #E2E8F0', background: workerCurrentPage === workerTotalPages ? '#F8FAFC' : '#fff', color: workerCurrentPage === workerTotalPages ? '#94A3B8' : '#1E293B', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === workerTotalPages ? 'default' : 'pointer' }}>
+                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid var(--line)', background: workerCurrentPage === workerTotalPages ? 'var(--surface-sunken)' : '#fff', color: workerCurrentPage === workerTotalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === workerTotalPages ? 'default' : 'pointer' }}>
                 Next
               </button>
             </div>
@@ -5519,7 +5519,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             <div style={{ ...styles.overlayOverlay, zIndex: 1300 }} className="anim-fade-in">
               <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--royal-gold)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h3 style={{ ...styles.modalTitle, color: '#7C5A00' }}>Record Worker Payment</h3>
+                  <h3 style={{ ...styles.modalTitle, color: 'var(--warning)' }}>Record Worker Payment</h3>
                   <button onClick={() => { setIsPaymentAmountModalOpen(false); setSelectedWorkerForPayment(null); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>×</button>
                 </div>
                 <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '14px' }}>
@@ -5535,7 +5535,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     placeholder="Enter paid amount"
                     value={paymentAmountInput}
                     onChange={(e) => setPaymentAmountInput(e.target.value)}
-                    style={{ ...styles.textInputBox, fontSize: '16px', fontWeight: 800, color: '#059669' }}
+                    style={{ ...styles.textInputBox, fontSize: '16px', fontWeight: 800, color: 'var(--good)' }}
                     autoFocus
                   />
                 </div>
@@ -5642,7 +5642,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--dark-charcoal)' }}>Midterm: <span style={{ color: 'var(--royal-gold)' }}>{subMark.midterm}</span></div>
-                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--dark-charcoal)' }}>Final Exam: <span style={{ color: '#10B981' }}>{subMark.final}</span></div>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--dark-charcoal)' }}>Final Exam: <span style={{ color: 'var(--good)' }}>{subMark.final}</span></div>
                         </div>
                         <button
                           onClick={() => {
@@ -5796,7 +5796,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   return (
     <div style={styles.container} className="anim-slide-up">
-      <PortalDataLoader visible={isPageLoading} colorAccent={role === 'admin2' ? '#3B82F6' : '#FBBF24'} />
+      <PortalDataLoader visible={isPageLoading} colorAccent={role === 'admin2' ? 'var(--accent)' : 'var(--warning)'} />
       {renderBackgroundDesign('gold')}
 
       {/* Top Welcome Title Bar */}
@@ -5843,9 +5843,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             gap: '12px',
             marginBottom: '20px',
             padding: '6px',
-            backgroundColor: '#0F172A',
+            backgroundColor: 'var(--ink)',
             borderRadius: '16px',
-            border: '1px solid #334155'
+            border: '1px solid var(--ink-secondary)'
           }}>
             <button
               onClick={() => setAdmin1Tab('dashboard')}
@@ -5856,8 +5856,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 fontWeight: 900,
                 fontSize: '14px',
                 border: 'none',
-                backgroundColor: admin1Tab === 'dashboard' ? '#2563EB' : '#1E293B',
-                color: '#FFFFFF',
+                backgroundColor: admin1Tab === 'dashboard' ? 'var(--accent)' : 'var(--ink)',
+                color: 'var(--surface)',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 boxShadow: admin1Tab === 'dashboard' ? '0 4px 14px rgba(37,99,235,0.4)' : 'none',
@@ -5868,8 +5868,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               }}
               className="press-interactive"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
-              <span style={{ color: '#FFFFFF' }}>Dashboard (Operations Modules)</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
+              <span style={{ color: 'var(--surface)' }}>Dashboard (Operations Modules)</span>
             </button>
 
             <button
@@ -5881,8 +5881,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 fontWeight: 900,
                 fontSize: '14px',
                 border: 'none',
-                backgroundColor: admin1Tab === 'overview' ? '#2563EB' : '#1E293B',
-                color: '#FFFFFF',
+                backgroundColor: admin1Tab === 'overview' ? 'var(--accent)' : 'var(--ink)',
+                color: 'var(--surface)',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 boxShadow: admin1Tab === 'overview' ? '0 4px 14px rgba(37,99,235,0.4)' : 'none',
@@ -5893,8 +5893,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               }}
               className="press-interactive"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5"><path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" /></svg>
-              <span style={{ color: '#FFFFFF' }}>Overview (Data Science Analytics)</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" strokeWidth="2.5"><path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" /></svg>
+              <span style={{ color: 'var(--surface)' }}>Overview (Data Science Analytics)</span>
             </button>
           </div>
         )}
@@ -5903,14 +5903,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         <section style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {role === 'admin1' ? (
             admin1Tab === 'overview' ? (
-              <AdminDataAnalytics
-                students={students}
-                teachers={teachers}
-                expenditures={expenditures}
-                feeSettings={feeRates}
-              />
+              // Server-computed. The previous component re-derived every total
+              // in the browser from whatever happened to be loaded into
+              // `students`/`expenditures` — so a filtered or partially-loaded
+              // list silently produced different figures from the ledger.
+              <AnalyticsDashboard />
             ) : null
           ) : role === 'admin2' ? (
+            // The same dashboard. The endpoint scopes to the caller's campus
+            // server-side, so an admin2 sees only their own campus without
+            // this component needing to know who is looking at it — and
+            // without the browser re-deriving the totals from a filtered list.
+            <AnalyticsDashboard />
+          ) : role === '__unreachable_legacy_admin2__' ? (
             (() => {
               const localStudents = students.filter(s => s.branch === loggedInCampus);
               const localExpenditures = expenditures.filter(e => e.branch === loggedInCampus);
@@ -5930,13 +5935,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={styles.metricsGrid}>
                     <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
                       <span style={styles.metricLabel}>Total Students</span>
-                      <strong style={{ ...styles.metricValue, color: '#10B981' }}>{totalStudents}</strong>
+                      <strong style={{ ...styles.metricValue, color: 'var(--good)' }}>{totalStudents}</strong>
                       <span style={styles.metricSub}>{loggedInCampus} branch students</span>
                       <span className="glass-status-pill status-paid">Active</span>
                     </GlassCard>
                     <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
                       <span style={styles.metricLabel}>Total Employees</span>
-                      <strong style={{ ...styles.metricValue, color: '#3B82F6' }}>{totalEmployees}</strong>
+                      <strong style={{ ...styles.metricValue, color: 'var(--accent)' }}>{totalEmployees}</strong>
                       <span style={styles.metricSub}>Faculty & staff on campus</span>
                       <span className="glass-status-pill status-warning">Working</span>
                     </GlassCard>
@@ -5944,7 +5949,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={styles.metricsGrid}>
                     <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
                       <span style={styles.metricLabel}>Total Expenses</span>
-                      <strong style={{ ...styles.metricValue, color: '#EF4444' }}>₹{totalExpenses.toLocaleString('en-IN')}</strong>
+                      <strong style={{ ...styles.metricValue, color: 'var(--critical)' }}>₹{totalExpenses.toLocaleString('en-IN')}</strong>
                       <span style={styles.metricSub}>Branch expenses logged</span>
                       <span className="glass-status-pill status-pending">Ledger</span>
                     </GlassCard>
@@ -5963,13 +5968,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <div style={styles.metricsGrid}>
                 <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
                   <span style={styles.metricLabel}>Exams Scheduled</span>
-                  <strong style={{ ...styles.metricValue, color: '#10B981' }}>2</strong>
+                  <strong style={{ ...styles.metricValue, color: 'var(--good)' }}>2</strong>
                   <span style={styles.metricSub}>Active Exam calendars</span>
                   <span className="glass-status-pill status-active">Ready</span>
                 </GlassCard>
                 <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
                   <span style={styles.metricLabel}>Published Results</span>
-                  <strong style={{ ...styles.metricValue, color: '#10B981' }}>24</strong>
+                  <strong style={{ ...styles.metricValue, color: 'var(--good)' }}>24</strong>
                   <span style={styles.metricSub}>Term-wise grades released</span>
                   <span className="glass-status-pill status-paid">Published</span>
                 </GlassCard>
@@ -5983,7 +5988,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </GlassCard>
                 <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
                   <span style={styles.metricLabel}>Active Class Schedules</span>
-                  <strong style={{ ...styles.metricValue, color: '#3B82F6' }}>8</strong>
+                  <strong style={{ ...styles.metricValue, color: 'var(--accent)' }}>8</strong>
                   <span style={styles.metricSub}>Sections fully mapped</span>
                   <span className="glass-status-pill status-active">Active</span>
                 </GlassCard>
@@ -6003,7 +6008,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <div className="grid-container">
                 <div onClick={() => setActivePage('students')} style={styles.moduleCardNew} className="module-card press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><circle cx="12" cy="7" r="4" /><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2"><circle cx="12" cy="7" r="4" /><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg>
                   </div>
                   <h4 style={styles.moduleTitle}>Students Registry</h4>
                   <p style={styles.moduleDesc}>Register admissions, view records across all 4 campuses.</p>
@@ -6011,7 +6016,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 <div onClick={() => { setActivePage('students'); if (!newStuAdmissionNumber.trim()) setNewStuAdmissionNumber(`ADM2400${students.length + 1}`); setNewStuFormPage(1); setIsStudentHoverModalOpen(true); }} style={styles.moduleCardNew} className="module-card press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                   </div>
                   <h4 style={styles.moduleTitle}>+ Add Student Admission</h4>
                   <p style={styles.moduleDesc}>Register new student profile, campus allocation, and fee structure.</p>
@@ -6019,7 +6024,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 <div onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
                   </div>
                   <h4 style={styles.moduleTitle}>Faculty Management</h4>
                   <p style={styles.moduleDesc}>Configure lecturers, allocate subjects, check base salaries.</p>
@@ -6027,7 +6032,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 <div onClick={() => setActivePage('fee_editor')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                   </div>
                   <h4 style={styles.moduleTitle}>Student Fee & Waivers</h4>
                   <p style={styles.moduleDesc}>Configure individual scholarship category fee waivers.</p>
@@ -6043,7 +6048,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 <div onClick={() => setActivePage('enquiries')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.22)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
                   </div>
                   <h4 style={styles.moduleTitle}>Admission Enquiries</h4>
                   <p style={styles.moduleDesc}>View and manage prospective student enquiries from portfolio.</p>
@@ -6051,7 +6056,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-secondary)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                   </div>
                   <h4 style={styles.moduleTitle}>Rector Profile</h4>
                   <p style={styles.moduleDesc}>Review registered principal rector credentials.</p>
@@ -6070,7 +6075,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 <div onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
                   </div>
                   <h4 style={styles.moduleTitle}>Faculty & Staff 12-Month Ledger</h4>
                   <p style={styles.moduleDesc}>Manage campus teachers & 12-month salary ledgers for {loggedInCampus}.</p>
@@ -6078,7 +6083,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 <div onClick={() => setActivePage('enquiries')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.22)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
                   </div>
                   <h4 style={styles.moduleTitle}>Admission Enquiries</h4>
                   <p style={styles.moduleDesc}>View incoming student enquiries for {loggedInCampus}.</p>
@@ -6088,7 +6093,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-secondary)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                   </div>
                   <h4 style={styles.moduleTitle}>Campus Dean Profile</h4>
                   <p style={styles.moduleDesc}>Review {loggedInCampus} principal dean credentials.</p>
@@ -6099,7 +6104,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <div className="grid-container">
                 <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-secondary)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                   </div>
                   <h4 style={styles.moduleTitle}>Publisher Profile</h4>
                   <p style={styles.moduleDesc}>Review Academic Registrar & Publisher credentials.</p>
@@ -6149,20 +6154,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       {/* Permanent Student Delete Confirmation Modal */}
       {isDeleteStuOtpOpen && selectedStudent && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.65)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' }}>
-          <div style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '20px', margin: '0 16px', backgroundColor: 'rgba(255,255,255,0.98)', border: '2px solid #EF4444', boxShadow: '0 25px 60px rgba(239,68,68,0.25)' }} className="anim-slide-up">
+          <div style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '20px', margin: '0 16px', backgroundColor: 'rgba(255,255,255,0.98)', border: '2px solid var(--critical)', boxShadow: '0 25px 60px rgba(239,68,68,0.25)' }} className="anim-slide-up">
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.1)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', fontSize: '20px', fontWeight: 900 }}>!</div>
-              <h3 style={{ margin: '0 0 6px', fontWeight: 900, fontSize: '16px', color: '#DC2626' }}>Confirm Permanent Student Deletion</h3>
+              <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.1)', color: 'var(--critical)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', fontSize: '20px', fontWeight: 900 }}>!</div>
+              <h3 style={{ margin: '0 0 6px', fontWeight: 900, fontSize: '16px', color: 'var(--critical)' }}>Confirm Permanent Student Deletion</h3>
               <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--dark-charcoal)', lineHeight: 1.5, fontWeight: 600 }}>
-                Are you sure you want to <strong>PERMANENTLY DELETE</strong> student record for <strong style={{ color: '#DC2626' }}>{selectedStudent.name}</strong> ({selectedStudent.admissionNumber}) from MongoDB and all portal databases?
+                Are you sure you want to <strong>PERMANENTLY DELETE</strong> student record for <strong style={{ color: 'var(--critical)' }}>{selectedStudent.name}</strong> ({selectedStudent.admissionNumber}) from MongoDB and all portal databases?
               </p>
-              <div style={{ marginTop: '8px', padding: '6px 10px', backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: '8px', fontSize: '10.5px', color: '#B91C1C', fontWeight: 700 }}>
+              <div style={{ marginTop: '8px', padding: '6px 10px', backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: '8px', fontSize: '10.5px', color: 'var(--critical)', fontWeight: 700 }}>
                 THIS ACTION CANNOT BE UNDONE.
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
-              <button onClick={() => handlePermanentDeleteStudent()} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.2, backgroundColor: '#DC2626', color: '#FFF', fontWeight: 900 }} className="press-interactive">Yes, Purge Student</button>
+              <button onClick={() => handlePermanentDeleteStudent()} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.2, backgroundColor: 'var(--critical)', color: '#FFF', fontWeight: 900 }} className="press-interactive">Yes, Purge Student</button>
             </div>
           </div>
         </div>
@@ -6179,21 +6184,21 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#FFFFFF'
+          color: 'var(--surface)'
         }} className="anim-fade-in">
           <div style={{
             width: '56px',
             height: '56px',
             border: '4px solid rgba(251, 191, 36, 0.2)',
-            borderTop: '4px solid #FBBF24',
+            borderTop: '4px solid var(--warning)',
             borderRadius: '50%',
             animation: 'spin 0.8s linear infinite',
             marginBottom: '20px'
           }} />
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: '#FBBF24', letterSpacing: '0.04em' }}>
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: 'var(--warning)', letterSpacing: '0.04em' }}>
             Processing & Uploading...
           </h3>
-          <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#94A3B8', fontWeight: 600 }}>
+          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 600 }}>
             Please wait while your request is being saved to the database.
           </p>
         </div>
@@ -6385,7 +6390,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '13px 20px',
     borderRadius: '10px',
     backgroundColor: 'var(--dark-charcoal)',
-    color: '#ffffff',
+    color: 'var(--surface)',
     fontFamily: 'var(--font-family)',
     fontSize: '12.5px',
     fontWeight: 700,
@@ -6515,7 +6520,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   toastText: {
     fontSize: '12px',
     fontWeight: 700,
-    color: '#ffffff',
+    color: 'var(--surface)',
   },
   heroAvatar: {
     width: '56px',

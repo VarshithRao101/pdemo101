@@ -1,86 +1,171 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* Default Theme Definitions - Global Ultra-Minimalist Design System */
+/*
+  Inspire ERP — design tokens.
+
+  The system is deliberately narrow: two surfaces, one hairline border, four ink
+  weights, a six-step spacing scale and a single accent per portal. Depth comes
+  from borders rather than shadows, so nothing floats and the eye goes to the
+  data instead of the chrome.
+
+  Chart colours live in their own block at the bottom. They are NOT the UI
+  accent — they were validated as a set against the #FFFFFF chart surface for
+  colour-vision separation, so they must not be swapped casually. Re-run the
+  data-viz palette validator before changing any --viz-* value.
+*/
+
 :root {
-  /* Typography */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Global Minimalist Color Palette */
-  --canvas-bg: #F8FAFC;
-  --surface-bg: #FFFFFF;
-  --border-divider: #E2E8F0;
-  --text-primary: #0F172A;
-  --text-secondary: #64748B;
-  --text-disabled: #94A3B8;
-  --status-success: #059669;
-  --status-warning: #D97706;
+  /* --- Surfaces --------------------------------------------------------- */
+  --canvas: #FAFAFA;
+  --surface: #FFFFFF;
+  --surface-sunken: #F5F5F4;
+  --surface-hover: #F7F7F6;
 
-  /* Legacy & Compatibility Mapped Variables */
-  --bg-primary: #F8FAFC;
-  --bg-secondary: #FFFFFF;
-  --bg-surface: #FFFFFF;
-  --bg-surface-strong: #F1F5F9;
+  /* --- Ink -------------------------------------------------------------- */
+  --ink: #18181B;
+  --ink-secondary: #52525B;
+  --ink-muted: #8A8A93;
+  --ink-faint: #B4B4BB;
+  --ink-inverse: #FFFFFF;
 
-  --dark-charcoal: #0F172A;
-  --muted-gray: #64748B;
-  --light-gray: #E2E8F0;
-  --white: #FFFFFF;
+  /* --- Lines ------------------------------------------------------------ */
+  --line: #E7E7E4;
+  --line-strong: #D6D6D2;
 
-  --card-bg: #FFFFFF;
-  --card-border: #E2E8F0;
+  /* --- Status (fixed; never themed, always paired with a label) ---------- */
+  --good: #0CA30C;
+  --warning: #FAB219;
+  --serious: #EC835A;
+  --critical: #D03B3B;
+  --good-wash: #F0FAF0;
+  --critical-wash: #FDF2F2;
+  --warning-wash: #FEF9EC;
 
-  --glass-bg: #FFFFFF;
-  --glass-bg-hover: #F8FAFC;
-  --glass-border: #CBD5E1;
-  --glass-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  /* --- Accent (overridden per portal) ------------------------------------ */
+  --accent: #18181B;
+  --accent-ink: #FFFFFF;
+  --accent-wash: #F4F4F5;
 
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
-  --shadow-lg: 0 10px 24px rgba(15, 23, 42, 0.08);
+  /* --- Spacing (4px base) ------------------------------------------------ */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
 
-  /* Default Portal Accent (Overridden per role) */
-  --portal-accent: #3730A3;
+  /* --- Radius ------------------------------------------------------------ */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-full: 9999px;
 
-  /* Spacing */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
+  /* --- Type scale -------------------------------------------------------- */
+  --t-micro: 10px;
+  --t-caption: 11px;
+  --t-small: 12px;
+  --t-body: 13px;
+  --t-lead: 15px;
+  --t-title: 19px;
+  --t-display: 28px;
+  --t-hero: 40px;
 
-  /* Modern Border Radius */
-  --radius-xs: 4px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
-  --radius-full: 9999px;
+  /* --- Motion ------------------------------------------------------------
+     Modest by intent. Two durations, one curve. Motion signals that something
+     changed; it is never the point. Anything longer than 240ms reads as lag. */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --fast: 130ms;
+  --base: 200ms;
 
-  --royal-gold: #3730A3;
-  --royal-gold-rgb: 55, 48, 163;
-  --gold-gradient: none;
-  --brand-gradient: none;
-  --brand-gradient-soft: none;
+  /* --- Elevation (used sparingly — overlays only) ------------------------ */
+  --pop: 0 8px 24px rgba(24, 24, 27, 0.10), 0 1px 2px rgba(24, 24, 27, 0.06);
 
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* --- Chart palette -----------------------------------------------------
+     Validated for the white chart surface: lightness band, chroma floor,
+     colour-vision separation and normal-vision separation all pass on the
+     adjacent pairlist. Aqua and yellow fall below 3:1 contrast, which is why
+     every chart using them ships direct value labels rather than relying on
+     the swatch alone. */
+  --viz-1: #2A78D6;  /* blue    */
+  --viz-2: #EB6834;  /* orange  */
+  --viz-3: #1BAF7A;  /* aqua    */
+  --viz-4: #EDA100;  /* yellow  */
+  --viz-grid: #EFEFED;
+  --viz-axis: #8A8A93;
+  --viz-surface: #FFFFFF;
+
+  /* Single-hue sequential ramp for magnitude (light -> dark). */
+  --viz-seq-1: #CDE2FB;
+  --viz-seq-2: #86B6EF;
+  --viz-seq-3: #3987E5;
+  --viz-seq-4: #2A78D6;
+  --viz-seq-5: #1C5CAB;
+
+  /* Legacy aliases. The portals still reference these names in ~400 inline
+     style objects; mapping them here restyles everything without touching
+     that markup. Prefer the tokens above in new code. */
+  --canvas-bg: var(--canvas);
+  --surface-bg: var(--surface);
+  --bg-primary: var(--canvas);
+  --bg-secondary: var(--surface);
+  --bg-surface: var(--surface);
+  --bg-surface-strong: var(--surface-sunken);
+  --border-divider: var(--line);
+  --card-bg: var(--surface);
+  --card-border: var(--line);
+  --glass-bg: var(--surface);
+  --glass-bg-hover: var(--surface-hover);
+  --glass-border: var(--line);
+  --glass-shadow: none;
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-secondary);
+  --text-disabled: var(--ink-faint);
+  --dark-charcoal: var(--ink);
+  --muted-gray: var(--ink-secondary);
+  --light-gray: var(--line);
+  --white: #FFFFFF;
+  --status-success: var(--good);
+  --status-warning: var(--warning);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: var(--pop);
+  --portal-accent: var(--accent);
+  --royal-gold: var(--accent);
+  --royal-gold-rgb: 24, 24, 27;
+  --gold-gradient: none;
+  --brand-gradient: none;
+  --brand-gradient-soft: none;
+  --radius-xs: var(--r-sm);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-md);
+  --radius-xl: var(--r-lg);
+  --radius-full: var(--r-full);
+  --spacing-xs: var(--s1);
+  --spacing-sm: var(--s2);
+  --spacing-md: var(--s4);
+  --spacing-lg: var(--s5);
+  --spacing-xl: var(--s6);
 }
 
-/* Portal Specific Accent Rules */
-.portal-admin1, [data-portal="admin1"] {
-  --portal-accent: #3730A3; /* Indigo */
+/*
+  Portal accents. Each is a single deep, low-chroma hue used only for the
+  active state, the focus ring and one identifying line — never as a fill
+  behind large areas, which is what made the previous design feel heavy.
+*/
+.portal-admin1, [data-portal="admin1"] { --accent: #1E3A8A; --accent-wash: #EFF3FC; }
+.portal-admin2, [data-portal="admin2"] { --accent: #0F5D57; --accent-wash: #ECF6F4; }
+.portal-accountant, [data-portal="accountant"] { --accent: #8A4B10; --accent-wash: #FBF3EA; }
+.portal-authenticator, [data-portal="authenticator"] { --accent: #27272A; --accent-wash: #F4F4F5; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --fast: 0ms; --base: 0ms; }
 }
-
-.portal-admin2, [data-portal="admin2"] {
-  --portal-accent: #0F766E; /* Teal */
-}
-
-.portal-accountant, [data-portal="accountant"] {
-  --portal-accent: #B45309; /* Amber */
-}
-
-.portal-authenticator, [data-portal="authenticator"] {
-  --portal-accent: #1C1C1E; /* Neutral Dark */
-}
-
-

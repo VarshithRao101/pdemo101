@@ -258,9 +258,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       title: 'Admin 1',
       subtitle: 'Master Admin',
       badge: 'Super Admin',
-      colorBg: '#0F172A',
-      colorAccent: '#F59E0B',
-      borderColor: '#F59E0B',
+      colorBg: 'var(--ink)',
+      colorAccent: 'var(--warning)',
+      borderColor: 'var(--warning)',
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -272,9 +272,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       title: 'Admin 2',
       subtitle: 'Campus Principal',
       badge: 'Principal',
-      colorBg: '#065F46',
-      colorAccent: '#10B981',
-      borderColor: '#10B981',
+      colorBg: 'var(--good)',
+      colorAccent: 'var(--good)',
+      borderColor: 'var(--good)',
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
@@ -287,7 +287,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       title: 'Accountant',
       subtitle: 'Financial Ledger',
       badge: 'Finance',
-      colorBg: '#3730A3',
+      colorBg: 'var(--accent)',
       colorAccent: '#6366F1',
       borderColor: '#6366F1',
       icon: (
@@ -308,12 +308,12 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
             <InspireLogo size="md" />
           </div>
-          <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em', fontFamily: 'var(--font-family)' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 900, color: 'var(--ink)', margin: 0, letterSpacing: '-0.02em', fontFamily: 'var(--font-family)' }}>
             {currentMode === 'authenticator'
               ? 'Security Authenticator Gateway'
               : 'Inspire ERP Security Gateway'}
           </h2>
-          <p style={{ fontSize: '12px', color: '#64748B', fontWeight: 700, marginTop: '4px', margin: 0 }}>
+          <p style={{ fontSize: '12px', color: 'var(--ink-secondary)', fontWeight: 700, marginTop: '4px', margin: 0 }}>
             Enter password & 6-digit PIN to access administrative portals
           </p>
         </div>
@@ -323,11 +323,11 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '6px',
-          backgroundColor: '#F8FAFC',
+          backgroundColor: 'var(--surface-sunken)',
           padding: '4px',
           borderRadius: '14px',
           marginBottom: '20px',
-          border: '1.5px solid #E2E8F0'
+          border: '1.5px solid var(--line)'
         }}>
           <button
             type="button"
@@ -335,9 +335,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             style={{
               padding: '10px 8px',
               borderRadius: '10px',
-              border: currentMode === 'universal' ? '1.5px solid #0F172A' : '1.5px solid transparent',
-              backgroundColor: currentMode === 'universal' ? '#0F172A' : 'transparent',
-              color: currentMode === 'universal' ? '#FFFFFF' : '#64748B',
+              border: currentMode === 'universal' ? '1.5px solid var(--ink)' : '1.5px solid transparent',
+              backgroundColor: currentMode === 'universal' ? 'var(--ink)' : 'transparent',
+              color: currentMode === 'universal' ? 'var(--surface)' : 'var(--ink-secondary)',
               fontWeight: 800,
               fontSize: '12px',
               cursor: 'pointer',
@@ -350,13 +350,13 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             }}
             className="press-interactive"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: currentMode === 'universal' ? '#FFFFFF' : 'currentColor' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: currentMode === 'universal' ? 'var(--surface)' : 'currentColor' }}>
               <rect x="3" y="3" width="7" height="7" rx="1" />
               <rect x="14" y="3" width="7" height="7" rx="1" />
               <rect x="14" y="14" width="7" height="7" rx="1" />
               <rect x="3" y="14" width="7" height="7" rx="1" />
             </svg>
-            <span style={{ color: currentMode === 'universal' ? '#FFFFFF' : '#64748B', fontWeight: 800 }}>Universal Portal</span>
+            <span style={{ color: currentMode === 'universal' ? 'var(--surface)' : 'var(--ink-secondary)', fontWeight: 800 }}>Universal Portal</span>
           </button>
 
           <button
@@ -365,9 +365,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             style={{
               padding: '10px 8px',
               borderRadius: '10px',
-              border: currentMode === 'authenticator' ? '1.5px solid #F59E0B' : '1.5px solid transparent',
-              backgroundColor: currentMode === 'authenticator' ? '#D97706' : 'transparent',
-              color: currentMode === 'authenticator' ? '#FFFFFF' : '#64748B',
+              border: currentMode === 'authenticator' ? '1.5px solid var(--warning)' : '1.5px solid transparent',
+              backgroundColor: currentMode === 'authenticator' ? 'var(--warning)' : 'transparent',
+              color: currentMode === 'authenticator' ? 'var(--surface)' : 'var(--ink-secondary)',
               fontWeight: 800,
               fontSize: '12px',
               cursor: 'pointer',
@@ -380,19 +380,19 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             }}
             className="press-interactive"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: currentMode === 'authenticator' ? '#FFFFFF' : 'currentColor' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: currentMode === 'authenticator' ? 'var(--surface)' : 'currentColor' }}>
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            <span style={{ color: currentMode === 'authenticator' ? '#FFFFFF' : '#64748B', fontWeight: 800 }}>Authenticator</span>
+            <span style={{ color: currentMode === 'authenticator' ? 'var(--surface)' : 'var(--ink-secondary)', fontWeight: 800 }}>Authenticator</span>
           </button>
         </div>
 
-        <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '14px', border: '1.5px solid #E2E8F0', backgroundColor: '#F8FAFC' }}>
-          <div style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B', marginBottom: '8px' }}>
+        <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '14px', border: '1.5px solid var(--line)', backgroundColor: 'var(--surface-sunken)' }}>
+          <div style={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-secondary)', marginBottom: '8px' }}>
             Login Help
           </div>
-          <div style={{ fontSize: '12px', fontWeight: 700, color: '#334155', lineHeight: 1.5 }}>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)', lineHeight: 1.5 }}>
             Use the assigned User ID and password from your portal admin. Credentials are kept on the server now.
           </div>
         </div>
@@ -400,7 +400,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         {/* Role Quick Selector Grid (Admin 1, Admin 2, Accountant) */}
         {currentMode === 'universal' && (
           <div style={{ marginBottom: '18px' }}>
-            <label style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '8px' }}>
+            <label style={{ fontSize: '11px', color: 'var(--ink-secondary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '8px' }}>
               Select Administrative Role
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '10px' }}>
@@ -417,9 +417,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                     style={{
                       padding: '12px 6px',
                       borderRadius: '14px',
-                      border: isSelected ? `2px solid ${rc.borderColor}` : '1.5px solid #E2E8F0',
-                      backgroundColor: isSelected ? rc.colorBg : '#FFFFFF',
-                      color: isSelected ? '#FFFFFF' : '#0F172A',
+                      border: isSelected ? `2px solid ${rc.borderColor}` : '1.5px solid var(--line)',
+                      backgroundColor: isSelected ? rc.colorBg : 'var(--surface)',
+                      color: isSelected ? 'var(--surface)' : 'var(--ink)',
                       boxShadow: isSelected ? `0 4px 12px rgba(0,0,0,0.12)` : '0 2px 4px rgba(0,0,0,0.02)',
                       cursor: 'pointer',
                       display: 'flex',
@@ -444,18 +444,18 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#FFFFFF'
+                        color: 'var(--surface)'
                       }}>
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                       </div>
                     )}
-                    <div style={{ color: isSelected ? (rc.id === 'admin1' ? '#F59E0B' : rc.colorAccent) : '#64748B' }}>
+                    <div style={{ color: isSelected ? (rc.id === 'admin1' ? 'var(--warning)' : rc.colorAccent) : 'var(--ink-secondary)' }}>
                       {rc.icon}
                     </div>
-                    <div style={{ fontSize: '12px', fontWeight: 800, lineHeight: 1, color: isSelected ? '#FFFFFF' : '#0F172A' }}>{rc.title}</div>
-                    <div style={{ fontSize: '9px', fontWeight: 600, color: isSelected ? '#FFFFFF' : '#94A3B8' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 800, lineHeight: 1, color: isSelected ? 'var(--surface)' : 'var(--ink)' }}>{rc.title}</div>
+                    <div style={{ fontSize: '9px', fontWeight: 600, color: isSelected ? 'var(--surface)' : 'var(--ink-muted)' }}>
                       {rc.subtitle}
                     </div>
                   </button>
@@ -465,8 +465,8 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
             {/* Campus selector pills when Admin 2 or Accountant is active */}
             {userId.includes('admin2') && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: '#F8FAFC', padding: '10px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-                <span style={{ fontSize: '10px', fontWeight: 800, color: '#065F46', textTransform: 'uppercase' }}>Select Admin 2 Campus:</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: 'var(--surface-sunken)', padding: '10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--good)', textTransform: 'uppercase' }}>Select Admin 2 Campus:</span>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                   {[
                     { id: 'admin2_erragattugutta_c1', label: 'Erragattugutta C1' },
@@ -483,9 +483,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                         borderRadius: '8px',
                         fontSize: '11px',
                         fontWeight: 800,
-                        border: userId === c.id ? '1.5px solid #10B981' : '1px solid #CBD5E1',
-                        backgroundColor: userId === c.id ? '#065F46' : '#FFFFFF',
-                        color: userId === c.id ? '#FFFFFF' : '#334155',
+                        border: userId === c.id ? '1.5px solid var(--good)' : '1px solid var(--line-strong)',
+                        backgroundColor: userId === c.id ? 'var(--good)' : 'var(--surface)',
+                        color: userId === c.id ? 'var(--surface)' : 'var(--ink-secondary)',
                         cursor: 'pointer'
                       }}
                     >
@@ -497,8 +497,8 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             )}
 
             {userId.includes('accountant') && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: '#F8FAFC', padding: '10px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-                <span style={{ fontSize: '10px', fontWeight: 800, color: '#3730A3', textTransform: 'uppercase' }}>Select Accountant Campus:</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: 'var(--surface-sunken)', padding: '10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase' }}>Select Accountant Campus:</span>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                   {[
                     { id: 'accountant_erragattugutta_c1_1', label: 'Erragattugutta C1' },
@@ -515,9 +515,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                         borderRadius: '8px',
                         fontSize: '11px',
                         fontWeight: 800,
-                        border: userId === c.id ? '1.5px solid #6366F1' : '1px solid #CBD5E1',
-                        backgroundColor: userId === c.id ? '#3730A3' : '#FFFFFF',
-                        color: userId === c.id ? '#FFFFFF' : '#334155',
+                        border: userId === c.id ? '1.5px solid #6366F1' : '1px solid var(--line-strong)',
+                        backgroundColor: userId === c.id ? 'var(--accent)' : 'var(--surface)',
+                        color: userId === c.id ? 'var(--surface)' : 'var(--ink-secondary)',
                         cursor: 'pointer'
                       }}
                     >
@@ -534,11 +534,11 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         <form onSubmit={handleCredentialsFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {/* User ID / Role Identifier Input */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <label style={{ fontSize: '11px', color: 'var(--ink-secondary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               {currentMode === 'authenticator' ? 'Fixed Authenticator Account ID' : 'User ID / Role Identifier'}
             </label>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <div style={{ position: 'absolute', left: '12px', color: focusedField === 'userId' ? '#D97706' : '#64748B', display: 'flex', alignItems: 'center', transition: 'color 0.15s ease' }}>
+              <div style={{ position: 'absolute', left: '12px', color: focusedField === 'userId' ? 'var(--warning)' : 'var(--ink-secondary)', display: 'flex', alignItems: 'center', transition: 'color 0.15s ease' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
@@ -559,12 +559,12 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                   width: '100%',
                   padding: '14px 14px 14px 40px',
                   borderRadius: '14px',
-                  border: focusedField === 'userId' ? '2px solid #F59E0B' : '1.5px solid #CBD5E1',
-                  backgroundColor: currentMode === 'authenticator' ? '#FEF3C7' : '#FFFFFF',
+                  border: focusedField === 'userId' ? '2px solid var(--warning)' : '1.5px solid var(--line-strong)',
+                  backgroundColor: currentMode === 'authenticator' ? 'var(--warning-wash)' : 'var(--surface)',
                   fontFamily: 'var(--font-family)',
                   fontSize: '14px',
                   fontWeight: 800,
-                  color: '#0F172A',
+                  color: 'var(--ink)',
                   outline: 'none',
                   boxSizing: 'border-box',
                   boxShadow: focusedField === 'userId'
@@ -579,12 +579,12 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           {/* Account Password Input */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              <label style={{ fontSize: '11px', color: 'var(--ink-secondary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Account Password
               </label>
             </div>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <div style={{ position: 'absolute', left: '12px', color: focusedField === 'password' ? '#D97706' : '#64748B', display: 'flex', alignItems: 'center', transition: 'color 0.15s ease' }}>
+              <div style={{ position: 'absolute', left: '12px', color: focusedField === 'password' ? 'var(--warning)' : 'var(--ink-secondary)', display: 'flex', alignItems: 'center', transition: 'color 0.15s ease' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -601,12 +601,12 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                   width: '100%',
                   padding: '14px 44px 14px 40px',
                   borderRadius: '14px',
-                  border: focusedField === 'password' ? '2px solid #F59E0B' : '1.5px solid #CBD5E1',
-                  backgroundColor: '#FFFFFF',
+                  border: focusedField === 'password' ? '2px solid var(--warning)' : '1.5px solid var(--line-strong)',
+                  backgroundColor: 'var(--surface)',
                   fontFamily: 'var(--font-family)',
                   fontSize: '14px',
                   fontWeight: 800,
-                  color: '#0F172A',
+                  color: 'var(--ink)',
                   outline: 'none',
                   boxSizing: 'border-box',
                   boxShadow: focusedField === 'password'
@@ -624,7 +624,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  color: '#64748B',
+                  color: 'var(--ink-secondary)',
                   display: 'flex',
                   alignItems: 'center',
                   padding: '4px'
@@ -652,9 +652,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
               width: '100%',
               padding: '14px',
               borderRadius: '14px',
-              border: '1.5px solid #F59E0B',
-              background: 'linear-gradient(135deg, #D97706, #B45309)',
-              color: '#FFFFFF',
+              border: '1.5px solid var(--warning)',
+              background: 'linear-gradient(135deg, var(--warning), var(--warning))',
+              color: 'var(--surface)',
               fontWeight: 800,
               fontSize: '14px',
               boxShadow: '0 4px 14px rgba(217, 119, 6, 0.35)',
@@ -677,7 +677,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           </button>
         </form>
 
-        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>
+        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: 'var(--ink-secondary)', letterSpacing: '0.05em' }}>
           TRNT BEE Technologies System
         </div>
       </div>
@@ -690,8 +690,8 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     const activeRoleCard = roleCards.find(r => r.id === userId.trim().toLowerCase()) || {
       title: userId || 'Admin User',
       subtitle: 'Authenticated User',
-      colorBg: '#0F172A',
-      colorAccent: '#F59E0B'
+      colorBg: 'var(--ink)',
+      colorAccent: 'var(--warning)'
     };
 
     return (
@@ -702,9 +702,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             onClick={() => setStep('credentials')}
             className="press-interactive"
             style={{
-              border: '1.5px solid #CBD5E1',
-              backgroundColor: '#FFFFFF',
-              color: '#0F172A',
+              border: '1.5px solid var(--line-strong)',
+              backgroundColor: 'var(--surface)',
+              color: 'var(--ink)',
               fontWeight: 800,
               fontSize: '11px',
               cursor: 'pointer',
@@ -727,9 +727,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             onClick={handleResetPin}
             className="press-interactive"
             style={{
-              border: '1.5px solid #CBD5E1',
-              backgroundColor: '#F8FAFC',
-              color: '#475569',
+              border: '1.5px solid var(--line-strong)',
+              backgroundColor: 'var(--surface-sunken)',
+              color: 'var(--ink-secondary)',
               fontWeight: 800,
               fontSize: '11px',
               cursor: 'pointer',
@@ -758,28 +758,28 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            backgroundColor: '#0F172A',
-            color: '#FFFFFF',
+            backgroundColor: 'var(--ink)',
+            color: 'var(--surface)',
             padding: '7px 16px',
             borderRadius: '999px',
-            border: `1.5px solid ${activeRoleCard.colorAccent || '#F59E0B'}`,
+            border: `1.5px solid ${activeRoleCard.colorAccent || 'var(--warning)'}`,
             fontSize: '12.5px',
             fontWeight: 800,
             boxShadow: `0 4px 14px rgba(15, 23, 42, 0.25)`,
             marginBottom: '10px'
           }}>
-            <span style={{ color: activeRoleCard.colorAccent || '#F59E0B', display: 'flex', alignItems: 'center' }}>
+            <span style={{ color: activeRoleCard.colorAccent || 'var(--warning)', display: 'flex', alignItems: 'center' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
             </span>
-            <span style={{ color: '#FFFFFF', fontWeight: 800, letterSpacing: '0.02em' }}>
+            <span style={{ color: 'var(--surface)', fontWeight: 800, letterSpacing: '0.02em' }}>
               {activeRoleCard.title} ({activeRoleCard.subtitle})
             </span>
           </div>
 
-          <p style={{ fontSize: '13px', color: '#0F172A', fontWeight: 850, margin: '4px 0 0' }}>
+          <p style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: 850, margin: '4px 0 0' }}>
             Enter 6-Digit Security PIN
           </p>
         </div>
@@ -795,7 +795,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           isChecking={isChecking}
         />
 
-        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>
+        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: 'var(--ink-secondary)', letterSpacing: '0.05em' }}>
           Physical keyboard numeric entry enabled
         </div>
       </div>
@@ -816,12 +816,12 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           width: '64px',
           height: '64px',
           borderRadius: '20px',
-          backgroundColor: '#FEF2F2',
-          border: '2px solid #EF4444',
+          backgroundColor: 'var(--critical-wash)',
+          border: '2px solid var(--critical)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#DC2626',
+          color: 'var(--critical)',
           marginBottom: '16px',
           boxShadow: '0 4px 14px rgba(239, 68, 68, 0.2)'
         }}>
@@ -832,11 +832,11 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           </svg>
         </div>
 
-        <h3 style={{ fontSize: '20px', fontWeight: 900, color: '#991B1B', margin: 0, fontFamily: 'var(--font-family)' }}>
+        <h3 style={{ fontSize: '20px', fontWeight: 900, color: 'var(--critical)', margin: 0, fontFamily: 'var(--font-family)' }}>
           Account Logged In Elsewhere
         </h3>
 
-        <p style={{ fontSize: '13px', color: '#475569', fontWeight: 700, margin: '10px 0 20px', lineHeight: 1.5, fontFamily: 'var(--font-family)' }}>
+        <p style={{ fontSize: '13px', color: 'var(--ink-secondary)', fontWeight: 700, margin: '10px 0 20px', lineHeight: 1.5, fontFamily: 'var(--font-family)' }}>
           This account (<strong>{userId || 'admin1'}</strong>) is currently active on another device or browser.
         </p>
 
@@ -848,9 +848,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             width: '100%',
             padding: '14px',
             borderRadius: '14px',
-            border: '1.5px solid #DC2626',
-            backgroundColor: '#DC2626',
-            color: '#FFFFFF',
+            border: '1.5px solid var(--critical)',
+            backgroundColor: 'var(--critical)',
+            color: 'var(--surface)',
             fontWeight: 800,
             fontSize: '14px',
             cursor: 'pointer',
@@ -874,9 +874,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             width: '100%',
             padding: '12px',
             borderRadius: '12px',
-            border: '1.5px solid #CBD5E1',
-            backgroundColor: '#F8FAFC',
-            color: '#475569',
+            border: '1.5px solid var(--line-strong)',
+            backgroundColor: 'var(--surface-sunken)',
+            color: 'var(--ink-secondary)',
             fontWeight: 800,
             fontSize: '12px',
             cursor: 'pointer',
@@ -931,9 +931,9 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         display: 'flex',
         flexDirection: 'column',
         padding: '32px 28px',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'var(--surface)',
         border: isError
-          ? '1px solid #B45309'
+          ? '1px solid var(--warning)'
           : isSuccess
           ? '1px solid #2E7D5B'
           : '1px solid #E4E4E1',
@@ -969,7 +969,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#0F172A',
+          backgroundColor: 'var(--ink)',
         }} className="anim-fade-in">
           <style>{`
             .pin-dual-loader {
@@ -1008,8 +1008,8 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           <div style={{
             padding: '12px 18px',
             textAlign: 'center',
-            backgroundColor: '#0F172A',
-            border: isError ? '2px solid #EF4444' : '2px solid #3B82F6',
+            backgroundColor: 'var(--ink)',
+            border: isError ? '2px solid var(--critical)' : '2px solid var(--accent)',
             borderRadius: '12px',
             boxShadow: '0 8px 20px rgba(0,0,0,0.35)',
             display: 'flex',
@@ -1023,7 +1023,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
             </div>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', textAlign: 'left' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--surface)', textAlign: 'left' }}>
               {toastMessage}
             </span>
           </div>
@@ -1040,7 +1040,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: 'var(--ink)',
     padding: '20px',
     position: 'fixed',
     top: 0,
