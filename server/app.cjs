@@ -1312,6 +1312,24 @@ const deleteStudentHandler = async (req, res) => {
 
     const label = `${student.name} (${student.admissionNumber || student.studentId})`;
 
+    // Remove the payment history first.
+    //
+    // Deleting the student alone used to leave its receipts behind as orphans:
+    // rows pointing at a studentId that no longer existed, which still counted
+    // toward every revenue total and dashboard figure. Payments go first so a
+    // failure here aborts before the student is removed — the reverse order
+    // could leave payments stranded with no way to find them again.
+    const paymentResult = await Payment.deleteMany({ studentId: student.studentId });
+
+    const orphanCheck = await Payment.countDocuments({ studentId: student.studentId });
+    if (orphanCheck > 0) {
+      console.error(`[Students]: Aborting delete of ${label}; ${orphanCheck} payment record(s) could not be removed.`);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Could not remove this student\'s payment records. The student was NOT deleted.'
+      });
+    }
+
     // Delete by primary key only. The old handler passed a broad $or of every
     // identifier to deleteMany, which could match and remove unrelated records
     // whose studentId happened to equal another student's admissionNumber.
@@ -1327,8 +1345,12 @@ const deleteStudentHandler = async (req, res) => {
       return res.status(500).json({ status: 'error', message: 'Delete could not be verified. The record may still exist.' });
     }
 
-    console.log(`[Students]: ${label} deleted by [${req.user.username}].`);
-    return res.json({ status: 'success', message: `Student ${label} permanently deleted and verified removed.` });
+    console.log(`[Students]: ${label} and ${paymentResult.deletedCount} payment record(s) deleted by [${req.user.username}].`);
+    return res.json({
+      status: 'success',
+      message: `Student ${label} permanently deleted, along with ${paymentResult.deletedCount} payment record(s).`,
+      deletedPayments: paymentResult.deletedCount
+    });
   } catch (err) {
     console.error('[Students]: Delete failed:', err.message);
     return res.status(500).json({ status: 'error', message: 'Failed to delete the student record.' });
@@ -2586,7 +2608,6 @@ app.get('/api/authenticator/sync-journal', authenticateToken, requireRole('authe
 
 // Reported "Database sync reconciled successfully" without doing anything.
 // There is a single database and no replica to reconcile against.
-app.post('/api/authenticator/reconcile', authenticateToken, requireRole('authenticator', 'admin1'), notImplemented('Sync reconciliation'));
 
 /**
  * GET, POST, PUT, DELETE /api/authenticator/accounts
@@ -2721,17 +2742,6 @@ app.post('/api/authenticator/backup', authenticateToken, requireRole('authentica
   }
 });
 
-// Returned "Data restored successfully" with restoredCount: 0 while restoring
-// nothing — the most dangerous shape of fake success in the app, since an
-// operator could believe a recovery had happened. Real restore lives at
-// POST /api/authenticator/restore-backup, which needs a Drive fileId.
-app.post('/api/authenticator/restore-data', authenticateToken, requireRole('authenticator', 'admin1'), (req, res) => {
-  return res.status(501).json({
-    status: 'error',
-    message: 'This endpoint does not restore anything. Use POST /api/authenticator/restore-backup with a Google Drive fileId.',
-    notImplemented: true
-  });
-});
 
 /**
  * GET /api/authenticator/backup-codes & POST /api/authenticator/reset-password
@@ -2739,7 +2749,6 @@ app.post('/api/authenticator/restore-data', authenticateToken, requireRole('auth
 // Backup codes were generated on the fly from a counter (BC-7890, BC-7891, …)
 // and stored nowhere, so they authenticated nothing. The reset flow below
 // requires the caller's own security PIN instead, which is a real check.
-app.get('/api/authenticator/backup-codes', authenticateToken, requireRole('authenticator', 'admin1'), notImplemented('Backup codes'));
 
 app.post('/api/authenticator/reset-password', authenticateToken, requireRole('authenticator', 'admin1'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
@@ -2808,7 +2817,6 @@ app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, r
 });
 
 // Claimed "Google Drive purged successfully" while never contacting Drive.
-app.post('/api/system/purge-drive', authenticateToken, requireRole('authenticator', 'admin1'), notImplemented('Google Drive purge'));
 
 /**
  * POST /api/authenticator/wipe-database
@@ -3231,7 +3239,6 @@ app.get('/api/admin2/enrollment-stats', authenticateToken, requireRole('admin1',
 // --- LATE FEES & SCHOLARSHIPS SETTINGS ---
 // These were module-level strings mutated in place: an edit lived until the
 // next restart and was invisible to every other instance. Handled by the
-// notImplemented() registrations further down until they have real models.
 
 // --- HOSTEL MANAGEMENT ROUTES ---
 //
@@ -3261,15 +3268,6 @@ app.get('/api/accountant/hostel', authenticateToken, requireRole('accountant', '
     console.error('[Hostel]: List failed:', err.message);
     return res.status(500).json({ status: 'error', message: 'Failed to load hostel residents.' });
   }
-});
-
-// Previously returned a hardcoded success with a fabricated room number while
-// writing nothing at all.
-app.patch('/api/accountant/hostel/:roomId', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  return res.status(501).json({
-    status: 'error',
-    message: 'Room allocation is not implemented. Use the hostel check-in/check-out endpoints to change a student\'s residency status.'
-  });
 });
 
 app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), requireDatabase, async (req, res) => {
@@ -3331,41 +3329,17 @@ app.get('/api/accountant/dashboard-summary', authenticateToken, requireRole('acc
   }
 });
 
-// --- UNIMPLEMENTED FEATURES ---
+// --- REMOVED FEATURES ---
 //
-// Attendance, marks, timetable, exams, sections, bulletins and academic years
-// were all backed by module-level arrays or by handlers that returned a
-// hardcoded success. Nothing they "saved" survived a restart, and each
-// instance of the server had its own divergent copy. Rather than leave
-// endpoints that look like they work, they now answer 501 so a caller — and
-// the UI — can tell the difference between "no data" and "not built".
-//
-// Each of these needs a real Mongoose model before it can be reinstated.
-function notImplemented(feature) {
-  return (req, res) => res.status(501).json({
-    status: 'error',
-    message: `${feature} is not implemented. No data was stored or returned.`,
-    notImplemented: true
-  });
-}
+// Bulletins, timetable, exams, academic years, attendance, student marks,
+// late-fee rules, scholarships and hostel room allocation were never really
+// implemented: they were backed by module-level arrays that lost everything
+// on restart, or by handlers that returned a hardcoded success. Their routes
+// and their UI have been removed outright rather than left as convincing
+// stubs. Unknown /api paths now fall through to the JSON 404 handler.
 
-app.all('/api/accountant/attendance', authenticateToken, notImplemented('Attendance tracking'));
-app.all('/api/admin1/attendance-summary', authenticateToken, notImplemented('Attendance reporting'));
-app.all('/api/admin2/student-marks', authenticateToken, notImplemented('Student marks'));
-app.all(['/api/admin1/bulletins', '/api/bulletins'], authenticateToken, notImplemented('Bulletins'));
-app.all(['/api/admin1/bulletins/:id', '/api/bulletins/:id'], authenticateToken, notImplemented('Bulletins'));
-app.all('/api/admin1/timetable', authenticateToken, notImplemented('Timetable'));
-app.all('/api/admin1/timetable/:id', authenticateToken, notImplemented('Timetable'));
-app.all('/api/admin1/exams', authenticateToken, notImplemented('Exams desk'));
-app.all('/api/admin1/exams/:id', authenticateToken, notImplemented('Exams desk'));
-app.all('/api/admin1/academic-years', authenticateToken, notImplemented('Academic year management'));
-app.all('/api/admin1/academic-years/:yearId/status', authenticateToken, notImplemented('Academic year management'));
-app.all(['/api/admin2/late-fees-settings', '/api/accountant/late-fees-settings'], authenticateToken, notImplemented('Late fee rules'));
-app.all(['/api/admin2/scholarships', '/api/accountant/scholarships'], authenticateToken, notImplemented('Scholarship rules'));
-
-// Section allocation reads real teachers; the stream list is a fixed
-// curriculum constant, which is legitimate reference data rather than
-// stand-in data.
+// Section list: real teachers from the database, plus the fixed curriculum
+// streams. Allocation was never implemented and is not exposed.
 const ACADEMIC_SECTIONS = ['MPC-A', 'MPC-B', 'BiPC-A', 'BiPC-B', 'MEC-A', 'CEC-A'];
 
 app.get('/api/admin1/sections', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
@@ -3378,7 +3352,6 @@ app.get('/api/admin1/sections', authenticateToken, requireRole('admin1', 'admin2
   }
 });
 
-app.post('/api/admin1/sections', authenticateToken, requireRole('admin1', 'admin2'), notImplemented('Section allocation'));
 
 // Reports were entirely invented (a fixed 120 enrolled / 45,00,000 revenue /
 // 12,00,000 expenses, split evenly across four campuses). These are now

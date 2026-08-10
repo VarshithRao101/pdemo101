@@ -1309,17 +1309,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
 
 
-  const fetchLateScholarships = async () => {
-    try {
-      const [lateRes, scholRes] = await Promise.all([
-        admin2Service.getLateFeesSettings(),
-        admin2Service.getScholarships(),
-      ]);
-      setLateFeeRulesText(lateRes.lateFeeRules || 'Not configured');
-      setScholarshipRulesText(scholRes.scholarshipRules || 'Not configured');
-    } catch (err: any) { triggerToast(err.message || 'Failed to load late fee/scholarship settings.'); }
-  };
-
 
   const handleUploadTimetable = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1329,68 +1318,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const submitTimetable = async () => {
-    if (!timetableFile) {
-      triggerToast('Please select a timetable file first.');
-      return;
-    }
-    setTimetableUploading(true);
-    setTimetableUploadStatus(null);
-    try {
-      if (securityKey) setGlobalSecurityKey(securityKey);
-      const res = await admin1Service.uploadTimetable(timetableSection, timetableFile);
-      if (res.status === 'success') {
-        setTimetableUploadStatus(res.data);
-        triggerToast('Timetable parsed and registered successfully!');
-        setTimetableFile(null);
-        setSecurityKey('');
-        fetchTimetable(timetableSection);
-      } else {
-        triggerToast(res.message || 'Failed to upload timetable.');
-      }
-    } catch (err: any) {
-      console.error(err);
-      triggerToast(err.message || 'Error processing spreadsheet.');
-    } finally {
-      setTimetableUploading(false);
-    }
-  };
-
   const handleUploadResults = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setResultsFile(file);
       triggerToast(`Selected Results: ${file.name}`);
-    }
-  };
-
-  const submitResults = async () => {
-    if (!resultsFile) {
-      triggerToast('Please select a CSV or Excel results sheet first.');
-      return;
-    }
-    setExamUploading(true);
-    setExamUploadStatus(null);
-    try {
-      const mockExamName = resultsFile.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
-      const formattedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-      if (securityKey) setGlobalSecurityKey(securityKey);
-      const res = await admin1Service.uploadExamResults(resultsFile, mockExamName, formattedDate);
-      if (res.status === 'success') {
-        setExamUploadStatus(res.data);
-        triggerToast(`Results processed! Succeeded: ${res.data.succeeded}, Failed: ${res.data.failed}`);
-        setResultsFile(null);
-        setSecurityKey('');
-        fetchExams();
-      } else {
-        triggerToast(res.message || 'Failed to upload results.');
-      }
-    } catch (err: any) {
-      console.error(err);
-      triggerToast(err.message || 'Error processing exam results sheet.');
-    } finally {
-      setExamUploading(false);
     }
   };
 
@@ -1413,33 +1345,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       if (!suppressToast) {
         triggerToast(err.message || 'Failed to load students.');
       }
-    }
-  };
-
-  const fetchBulletins = async () => {
-    try {
-      const data = await admin1Service.getBulletins();
-      setBulletins(data);
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to load bulletins.');
-    }
-  };
-
-  const fetchExams = async () => {
-    try {
-      const data = await admin1Service.getExams();
-      setExams(data);
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to load exams.');
-    }
-  };
-
-  const fetchTimetable = async (sec: string) => {
-    try {
-      const data = await admin1Service.getTimetable(sec);
-      setTimetable(data);
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to load timetable.');
     }
   };
 
@@ -1483,40 +1388,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const fetchSections = fetchTeachers;
 
-  const fetchAttendanceSummary = async () => {
-    try {
-      const data = await admin1Service.getAttendanceSummary();
-      setAttendanceSummary(data);
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to load attendance summary.');
-    }
-  };
-
-  const fetchAttendanceRoster = async (dateStr: string) => {
-    try {
-      const roster = await accountantService.getAttendance(dateStr);
-      setAttendanceRoster(roster);
-    } catch (err) {
-      console.error('Failed to load attendance roster:', err);
-    }
-  };
-
   const handleToggleAttendance = (id: string, newStatus: 'present' | 'absent' | 'late' | 'leave') => {
     const next = attendanceRoster.map(a => a.id === id ? { ...a, status: newStatus } : a);
     setAttendanceRoster(next);
-  };
-
-  const handleSaveAttendance = async (type: 'student' | 'faculty') => {
-    setIsLoading(true);
-    try {
-      const filtered = attendanceRoster.filter(a => type === 'student' ? a.type === 'student' && a.section === selectedSection : a.type === 'faculty');
-      await accountantService.saveAttendance(attendanceDate, filtered);
-      triggerToast(`${type === 'student' ? 'Section ' + selectedSection : 'Faculty'} Attendance changes saved for date ${attendanceDate}`);
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to save attendance.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const fetchReports = async () => {
@@ -1533,21 +1407,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     try {
       if (activePage === 'students' || activePage === 'teachers' || activePage === 'sections' || activePage === 'fee_editor') {
         await Promise.all([fetchStudents(), fetchSections()]);
-      } else if (activePage === 'publishing') {
-        await fetchBulletins();
-      } else if (activePage === 'exams') {
-        await Promise.all([fetchExams(), fetchStudents()]);
-      } else if (activePage === 'classes') {
-        await Promise.all([fetchTimetable(timetableSection), fetchSections()]);
-      } else if (activePage === 'attendance') {
-        await fetchAttendanceSummary();
       } else if (activePage === 'reports') {
         await fetchReports();
       } else if (activePage === 'academic_fees') {
         await fetchFeeSettings();
-      } else if (activePage === 'late_scholarships') {
-        await fetchLateScholarships();
-      } else if (activePage === 'expenditure') {
+            } else if (activePage === 'expenditure') {
         await fetchExpenditures();
       } else if (activePage === 'salary_status') {
         await fetchStaffSalaries();
@@ -1557,8 +1421,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         await fetchStudentMarks();
       } else if (pulseKey === 'finance' || pulseKey === 'fees') {
         await Promise.all([fetchFeeSettings(), fetchStudents()]);
-      } else if (pulseKey === 'bulletins') {
-        await fetchBulletins();
       }
     } catch (err: any) {
       triggerToast(err.message || 'Live refresh failed.');
@@ -1577,7 +1439,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         const branchParam = role === 'admin2' ? loggedInCampus : undefined;
         const tasks: Promise<any>[] = [
           fetchStudents('', true), // suppressToast=true: cold-start 404s silently retry
-          fetchBulletins(),
           fetchFeeSettings(branchParam, true),
           fetchExpenditures()
         ];
@@ -1628,25 +1489,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             setNewStuFormPage(1);
             setIsStudentHoverModalOpen(true);
           }
-        } else if (activePage === 'publishing') {
-          await fetchBulletins();
-        } else if (activePage === 'exams') {
-          await Promise.all([fetchExams(), fetchStudents('')]);
-        } else if (activePage === 'classes') {
-          await Promise.all([fetchTimetable(timetableSection), fetchSections()]);
         } else if (activePage === 'sections') {
           await Promise.all([fetchSections(), fetchStudents('')]);
-        } else if (activePage === 'attendance') {
-          await Promise.all([fetchAttendanceSummary(), fetchAttendanceRoster(attendanceDate)]);
         } else if (activePage === 'reports') {
           await fetchReports();
         } else if (activePage === 'academic_fees') {
           await fetchFeeSettings();
         } else if (activePage === 'fee_editor') {
           await fetchStudents('');
-        } else if (activePage === 'late_scholarships') {
-          await fetchLateScholarships();
-        } else if (activePage === 'expenditure') {
+                } else if (activePage === 'expenditure') {
           await fetchExpenditures();
         } else if (activePage === 'salary_status') {
           await fetchStaffSalaries();
@@ -2016,130 +1867,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const handleConfirmDeleteStudent = async (otpToUse?: string) => {
     await handlePermanentDeleteStudent(otpToUse);
-  };
-
-  const handleAssignTeacherDuty = async () => {
-    if (!selectedTeacher || !editTeacher) return;
-    const nextSections = Array.from(new Set([...editTeacher.assignedSections, assignSec]));
-    const nextSubjects = Array.from(new Set([...editTeacher.assignedSubjects, assignSub]));
-    try {
-      await admin1Service.allocateTeacherDuty(selectedTeacher.id, nextSections, nextSubjects);
-      triggerToast('Duty allocation changes submitted.');
-      fetchSections(); // refreshes teachers and sections lists from backend
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to allocate teacher duty.');
-    }
-  };
-
-  const handlePublishBulletin = async () => {
-    if (!newPubTitle || !newPubContent) {
-      triggerToast('Bulletin must contain Title and Body.');
-      return;
-    }
-
-    try {
-      if (securityKey) setGlobalSecurityKey(securityKey);
-      if (editingPubId) {
-        await admin1Service.updateBulletin(editingPubId, { title: newPubTitle, content: newPubContent, category: pubCat });
-        setEditingPubId(null);
-        triggerToast('Notice edits submitted and published.');
-      } else {
-        await admin1Service.createBulletin({
-          category: pubCat,
-          title: newPubTitle,
-          content: newPubContent
-        });
-        triggerToast('Broadcast notice changes submitted!');
-      }
-      setNewPubTitle('');
-      setNewPubContent('');
-      setSecurityKey('');
-      fetchBulletins(); // refreshes bulletins from backend
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to publish bulletin.');
-    }
-  };
-
-  const handleDeleteBulletin = async (id: string) => {
-    try {
-      if (securityKey) setGlobalSecurityKey(securityKey);
-      await admin1Service.deleteBulletin(id);
-      triggerToast('Notice deleted.');
-      setSecurityKey('');
-      fetchBulletins();
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to delete bulletin.');
-    }
-  };
-
-  const handleScheduleExam = async () => {
-    if (!newExamName || !newExamDate) {
-      triggerToast('Exam scheduling fields must be completed.');
-      return;
-    }
-    try {
-      if (securityKey) setGlobalSecurityKey(securityKey);
-      await admin1Service.scheduleExam(newExamName, newExamDate);
-      setNewExamName('');
-      setNewExamDate('');
-      triggerToast('Exam scheduled successfully!');
-      setSecurityKey('');
-      fetchExams();
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to schedule exam.');
-    }
-  };
-
-  const handlePublishResults = async (id: string) => {
-    try {
-      // Find the exam by id to get its name
-      const exam = exams.find(e => e._id === id || e.id === id);
-      if (!exam) return;
-      if (securityKey) setGlobalSecurityKey(securityKey);
-      await apiClient.patch(`/admin1/exams/${exam._id || exam.id}`, { status: 'Results Published', resultsPublished: true });
-      triggerToast('Exam results published and broadcasted to Student portal!');
-      setSecurityKey('');
-      fetchExams();
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to publish exam results.');
-    }
-  };
-
-  const handleCreateTimetableSlot = async () => {
-    if (!newSlotPeriod || !newSlotSubject || !newSlotTeacher) {
-      triggerToast('Please complete all timetable slot fields.');
-      return;
-    }
-    try {
-      if (securityKey) setGlobalSecurityKey(securityKey);
-      await admin1Service.createTimetableEntry({
-        section: timetableSection,
-        day: newSlotDay,
-        period: newSlotPeriod,
-        subject: newSlotSubject,
-        teacherId: newSlotTeacher
-      });
-      setNewSlotPeriod('');
-      setNewSlotSubject('');
-      setNewSlotTeacher('');
-      triggerToast('Timetable entry created.');
-      setSecurityKey('');
-      fetchTimetable(timetableSection);
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to create timetable slot.');
-    }
-  };
-
-  const handleDeleteTimetableSlot = async (id: string) => {
-    try {
-      if (securityKey) setGlobalSecurityKey(securityKey);
-      await admin1Service.deleteTimetableEntry(id);
-      triggerToast('Timetable entry deleted.');
-      setSecurityKey('');
-      fetchTimetable(timetableSection);
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to delete timetable slot.');
-    }
   };
 
   const handleAddCalendar = () => {
@@ -4086,567 +3813,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   }
 
   //  SUBPAGE 3: PUBLISHING CENTER
-  if (activePage === 'publishing') {
-    const list = bulletins.filter(b => b.category === pubCat);
-
-    return (
-      <div style={styles.container} className="anim-slide-up">
-        {renderBackgroundDesign('sapphire')}
-        <header style={styles.header}>
-          <button onClick={() => { setActivePage('menu'); setEditingPubId(null); }} style={styles.backArrowBtn} className="press-interactive">
-            Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Publishing Center</h1>
-          <p style={styles.subtitle}>Broadcast notices, announcements, holiday bulletins to student apps</p>
-        </header>
-
-        <main style={{ ...styles.content, gap: '16px' }}>
-          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', zIndex: 1, paddingBottom: '4px' }}>
-            {(['announcement', 'holiday', 'circular', 'notice', 'event'] as const).map(cat => (
-              <button
-                key={cat}
-                onClick={() => setPubCat(cat)}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '10px',
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  border: pubCat === cat ? '1.5px solid #0F172A' : '1.5px solid var(--card-border)',
-                  backgroundColor: pubCat === cat ? '#0F172A' : 'rgba(255,255,255,0.6)',
-                  color: pubCat === cat ? '#FFFFFF' : 'var(--dark-charcoal)',
-                  whiteSpace: 'nowrap'
-                }}
-                className="press-interactive"
-              >
-                {cat.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
-            <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>{editingPubId ? 'Edit Published Bulletin' : 'Compose New Broadcast'}</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
-              <input
-                type="text"
-                placeholder="Bulletin Heading/Title"
-                value={newPubTitle}
-                onChange={(e) => setNewPubTitle(e.target.value)}
-                style={styles.textInputBox}
-              />
-              <textarea
-                placeholder="Bulletin Content/Body text..."
-                value={newPubContent}
-                onChange={(e) => setNewPubContent(e.target.value)}
-                style={{ ...styles.textInputBox, height: '80px', resize: 'none' }}
-              />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
-                <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
-                <input
-                  type="text"
-                  placeholder="Enter Admin Key (OTP) e.g. ADM-1234"
-                  value={securityKey}
-                  onChange={(e) => setSecurityKey(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handlePublishBulletin()}
-                  style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
-                />
-              </div>
-
-              <button onClick={handlePublishBulletin} style={styles.saveSubmitBtn} className="press-interactive">
-                {editingPubId ? 'Submit Notice Edits' : 'Submit & Broadcast to App'}
-              </button>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1 }}>
-            <h4 style={styles.sectionSubtitle}>Active Published Items ({pubCat.toUpperCase()})</h4>
-            {list.map(b => (
-              <div key={b.id} style={{ ...styles.receiptRowItem, flexDirection: 'column', alignItems: 'stretch', gap: '10px' }} className="anim-fade-in">
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <strong>{b.title}</strong>
-                  <span style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>{b.date}</span>
-                </div>
-                <p style={{ fontSize: '11px', color: 'var(--muted-gray)', lineHeight: '1.4', margin: 0 }}>{b.content}</p>
-                <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                  <button
-                    onClick={() => {
-                      setNewPubTitle(b.title);
-                      setNewPubContent(b.content);
-                      setEditingPubId(b.id || b._id || null);
-                    }}
-                    style={styles.actionItemBtn}
-                    className="press-interactive"
-                  >
-                    Edit
-                  </button>
-                  <button onClick={() => handleDeleteBulletin(b.id || b._id || '')} style={{ ...styles.actionItemBtn, color: '#D32F2F' }} className="press-interactive">Delete</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   //  SUBPAGE 4: TIMETABLES & CALENDAR
-  if (activePage === 'calendar') {
-    return (
-      <div style={styles.container} className="anim-slide-up">
-        {renderBackgroundDesign('ruby')}
-        <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Timetables & Calendar</h1>
-          <p style={styles.subtitle}>Upload timetable worksheets, publish holidays schedule</p>
-        </header>
-
-        <main style={styles.content}>
-          <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
-              <input
-                type="text"
-                placeholder="Enter Academics Key (OTP) e.g. ACD-1234"
-                value={securityKey}
-                onChange={(e) => setSecurityKey(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && submitTimetable()}
-                style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
-              />
-            </div>
-          </div>
-          <label style={{
-            ...styles.readOnlyBlock,
-            zIndex: 1,
-            border: '2px dashed var(--royal-gold)',
-            textAlign: 'center',
-            padding: '30px',
-            cursor: 'pointer',
-            display: 'block'
-          }} className="press-interactive">
-            <input
-              type="file"
-              accept=".csv, .xlsx, .xls"
-              style={{ display: 'none' }}
-              onChange={handleUploadTimetable}
-            />
-            {/* GOLD PLUS ICON */}
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2.5" style={{ margin: 'auto' }}>
-              <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <h4 style={{ ...styles.sectionSubtitle, margin: '8px 0 4px 0' }}>Upload Timetable File</h4>
-            <p style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>
-              {timetableFile ? ` Selected: ${timetableFile.name}` : 'Click here or drag & drop CSV/Excel sheet to upload weekly classes timetables.'}
-            </p>
-            {timetableUploading ? (
-              <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--royal-gold)', fontWeight: 700 }}>
-                Uploading and parsing timetable on backend...
-              </div>
-            ) : timetableFile && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  submitTimetable();
-                }}
-                style={{ ...styles.actionItemBtn, marginTop: '12px', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }}
-                className="press-interactive"
-              >
-                Submit Timetable File
-              </button>
-            )}
-          </label>
-
-          {timetableUploadStatus && (
-            <div style={{
-              ...styles.readOnlyBlock,
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '12px',
-              padding: '16px',
-              marginTop: '12px',
-              fontSize: '12px',
-              backgroundColor: 'rgba(0, 0, 0, 0.2)'
-            }}>
-              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, color: 'var(--royal-gold)' }}>Upload Summary Results</h4>
-              <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
-                <div>Total Rows: <strong>{timetableUploadStatus.total}</strong></div>
-                <div style={{ color: '#2E7D32' }}>Succeeded: <strong>{timetableUploadStatus.succeeded}</strong></div>
-                <div style={{ color: '#D32F2F' }}>Failed: <strong>{timetableUploadStatus.failed}</strong></div>
-              </div>
-              {timetableUploadStatus.errors && timetableUploadStatus.errors.length > 0 && (
-                <div style={{ marginTop: '8px' }}>
-                  <div style={{ fontWeight: 700, color: '#D32F2F', marginBottom: '4px' }}>Errors Checklist:</div>
-                  <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: '4px' }}>
-                    {timetableUploadStatus.errors.map((err: any, idx: number) => (
-                      <div key={idx} style={{ padding: '6px 8px', borderRadius: '6px', backgroundColor: 'rgba(211,47,47,0.1)', borderLeft: '3px solid #D32F2F' }}>
-                        Row {err.row}: {err.reason}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* MANUAL TIMETABLE MANAGER */}
-          <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
-            <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Manual Timetable Entry Manager</h4>
-
-            {/* Section Select Dropdown */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '12px' }}>
-              <label style={styles.formLabel}>Active Section</label>
-              <select
-                value={timetableSection}
-                onChange={(e) => setTimetableSection(e.target.value)}
-                style={styles.selectInput}
-              >
-                <option value="Section A">Section A</option>
-                <option value="Section B">Section B</option>
-                <option value="Section C">Section C</option>
-              </select>
-            </div>
-
-            {/* List of current slots */}
-            <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', padding: '8px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800 }}>Timetable Slots List ({timetable.length}):</span>
-              {timetable.length > 0 ? (
-                timetable.map((slot: any) => (
-                  <div key={slot._id} style={{ ...styles.receiptRowItem, padding: '4px 8px', fontSize: '11px' }}>
-                    <div>
-                      <strong>{slot.day} - {slot.period}</strong>
-                      <div style={{ color: 'var(--muted-gray)', fontSize: '10px' }}>{slot.subject} ({slot.teacher?.name || 'Unknown Teacher'})</div>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteTimetableSlot(slot._id)}
-                      style={{ padding: '2px 6px', backgroundColor: '#EF4444', color: '#FFF', border: 'none', borderRadius: '4px', fontSize: '9px', cursor: 'pointer' }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div style={{ fontSize: '11px', color: 'var(--muted-gray)', textAlign: 'center', padding: '12px' }}>No entries found for this section.</div>
-              )}
-            </div>
-
-            {/* Add manual slot fields */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800 }}>Create New Slot Entry:</span>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Day</label>
-                  <select value={newSlotDay} onChange={(e) => setNewSlotDay(e.target.value)} style={styles.selectInput}>
-                    <option value="Monday">Monday</option>
-                    <option value="Tuesday">Tuesday</option>
-                    <option value="Wednesday">Wednesday</option>
-                    <option value="Thursday">Thursday</option>
-                    <option value="Friday">Friday</option>
-                  </select>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Period Slot</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 09:00 AM - 10:00 AM"
-                    value={newSlotPeriod}
-                    onChange={(e) => setNewSlotPeriod(e.target.value)}
-                    style={styles.textInputBox}
-                  />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Subject</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Physics"
-                    value={newSlotSubject}
-                    onChange={(e) => setNewSlotSubject(e.target.value)}
-                    style={styles.textInputBox}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={styles.formLabel}>Teacher In-Charge</label>
-                  <select value={newSlotTeacher} onChange={(e) => setNewSlotTeacher(e.target.value)} style={styles.selectInput}>
-                    <option value="">-- Choose Teacher --</option>
-                    {teachers.map(t => (
-                      <option key={t.id || t._id} value={t._id}>{t.name} ({t.subject})</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <button onClick={handleCreateTimetableSlot} style={{ ...styles.saveSubmitBtn, marginTop: '8px' }} className="press-interactive">Save Timetable Slot</button>
-            </div>
-          </div>
-
-          <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
-            <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Register Calendar Event</h4>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-              <input type="text" placeholder="Event Name e.g. Preboards" value={newCalTitle} onChange={(e) => setNewCalTitle(e.target.value)} style={styles.textInputBox} />
-              <input type="text" placeholder="Date e.g. 12 Oct" value={newCalDate} onChange={(e) => setNewCalDate(e.target.value)} style={styles.textInputBox} />
-            </div>
-            <button onClick={handleAddCalendar} style={styles.saveSubmitBtn} className="press-interactive">Submit Calendar Event</button>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
-            <h4 style={styles.sectionSubtitle}>Calendar Events Timeline</h4>
-            {calendarEvents.map((evt, idx) => (
-              <div key={idx} style={styles.receiptRowItem}>
-                <strong>{evt.title}</strong>
-                <span style={{ fontWeight: 800, color: 'var(--royal-gold)' }}>{evt.date}</span>
-              </div>
-            ))}
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   //  SUBPAGE 5: CLASS SCHEDULING
-  if (activePage === 'classes') {
-    return (
-      <div style={styles.container} className="anim-slide-up">
-        {renderBackgroundDesign('teal')}
-        <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Class Scheduling</h1>
-          <p style={styles.subtitle}>Assign students to sections and assign faculty to classes</p>
-        </header>
-
-        <main style={styles.content}>
-          <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
-            <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Allocate Student to Section</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={styles.formLabel}>Select Student</label>
-                <select
-                  onChange={(e) => {
-                    const match = students.find(s => s.admissionNumber === e.target.value) || null;
-                    setSelectedStudent(match);
-                    setEditStudent(match ? { ...match } : null);
-                  }}
-                  style={styles.selectInput}
-                >
-                  <option value="">-- Choose Student --</option>
-                  {students.map(s => (
-                    <option key={s.admissionNumber} value={s.admissionNumber}>{s.name} ({s.course})</option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedStudent && editStudent && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }} className="anim-fade-in">
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={styles.formLabel}>Target Section</label>
-                    <select
-                      value={editStudent.section}
-                      onChange={(e) => setEditStudent({ ...editStudent, section: e.target.value })}
-                      style={styles.selectInput}
-                    >
-                      <option value="Section A">Section A</option>
-                      <option value="Section B">Section B</option>
-                      <option value="Section C">Section C</option>
-                    </select>
-                  </div>
-                  <button
-                    onClick={() => { setOtpInput(''); setIsOtpModalOpen(true); }}
-                    style={styles.saveSubmitBtn}
-                    className="press-interactive"
-                  >
-                    Submit Section Allocation
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
-            <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Allocate Teacher Classroom duty</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={styles.formLabel}>Select Lecturer</label>
-                <select
-                  onChange={(e) => {
-                    const match = teachers.find(t => t.id === e.target.value) || null;
-                    setSelectedTeacher(match);
-                    setEditTeacher(match ? { ...match } : null);
-                  }}
-                  style={styles.selectInput}
-                >
-                  <option value="">-- Choose Teacher --</option>
-                  {teachers.map(t => (
-                    <option key={t.id} value={t.id}>{t.name} ({t.subject})</option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedTeacher && editTeacher && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }} className="anim-fade-in">
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <select value={assignClass} onChange={(e) => setAssignClass(e.target.value)} style={styles.selectInput}>
-                      <option value="Junior MPC">Junior MPC</option>
-                      <option value="Senior MPC">Senior MPC</option>
-                    </select>
-                    <select value={assignSec} onChange={(e) => setAssignSec(e.target.value)} style={styles.selectInput}>
-                      <option value="Section A">Section A</option>
-                      <option value="Section B">Section B</option>
-                    </select>
-                  </div>
-                  <button onClick={handleAssignTeacherDuty} style={styles.saveSubmitBtn} className="press-interactive">Submit Teacher Duty Allocation</button>
-                </div>
-              )}
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   //  SUBPAGE 6: EXAMINATION DESK
-  if (activePage === 'exams') {
-    return (
-      <div style={styles.container} className="anim-slide-up">
-        {renderBackgroundDesign('purple')}
-        <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Examination Desk</h1>
-          <p style={styles.subtitle}>Schedule term tests, compile rankings and publish merit lists</p>
-        </header>
-
-        <main style={{ ...styles.content, gap: '16px' }}>
-          <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
-              <input
-                type="text"
-                placeholder="Enter Academics Key (OTP) e.g. ACD-1234"
-                value={securityKey}
-                onChange={(e) => setSecurityKey(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && submitResults()}
-                style={{ ...styles.textInputBox, borderColor: 'var(--royal-gold)', boxShadow: '0 0 8px rgba(212,175,55,0.2)' }}
-              />
-            </div>
-          </div>
-          <label style={{
-            ...styles.readOnlyBlock,
-            zIndex: 1,
-            border: '2px dashed var(--royal-gold)',
-            textAlign: 'center',
-            padding: '30px',
-            cursor: 'pointer',
-            display: 'block'
-          }} className="press-interactive">
-            <input
-              type="file"
-              accept=".csv, .xlsx, .xls"
-              style={{ display: 'none' }}
-              onChange={handleUploadResults}
-            />
-            {/* GOLD PLUS ICON */}
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2.5" style={{ margin: 'auto' }}>
-              <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <h4 style={{ ...styles.sectionSubtitle, margin: '8px 0 4px 0' }}>Upload Exam Results Sheet</h4>
-            <p style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>
-              {resultsFile ? ` Selected: ${resultsFile.name}` : 'Click here or drag & drop CSV/Excel results sheet to upload & parse student grades.'}
-            </p>
-            {examUploading ? (
-              <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--royal-gold)', fontWeight: 700 }}>
-                Uploading and parsing results on backend...
-              </div>
-            ) : resultsFile && (
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  submitResults();
-                }}
-                style={{ ...styles.actionItemBtn, marginTop: '12px', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }}
-                className="press-interactive"
-              >
-                Parse & Upload Results
-              </button>
-            )}
-          </label>
-
-          {examUploadStatus && (
-            <div style={{
-              ...styles.readOnlyBlock,
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '12px',
-              padding: '16px',
-              marginTop: '12px',
-              fontSize: '12px',
-              backgroundColor: 'rgba(0, 0, 0, 0.2)'
-            }}>
-              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, color: 'var(--royal-gold)' }}>Upload Summary Results</h4>
-              <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
-                <div>Total Rows: <strong>{examUploadStatus.total}</strong></div>
-                <div style={{ color: '#2E7D32' }}>Succeeded: <strong>{examUploadStatus.succeeded}</strong></div>
-                <div style={{ color: '#D32F2F' }}>Failed: <strong>{examUploadStatus.failed}</strong></div>
-              </div>
-              {examUploadStatus.errors && examUploadStatus.errors.length > 0 && (
-                <div style={{ marginTop: '8px' }}>
-                  <div style={{ fontWeight: 700, color: '#D32F2F', marginBottom: '4px' }}>Errors Checklist:</div>
-                  <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', paddingRight: '4px' }}>
-                    {examUploadStatus.errors.map((err: any, idx: number) => (
-                      <div key={idx} style={{ padding: '6px 8px', borderRadius: '6px', backgroundColor: 'rgba(211,47,47,0.1)', borderLeft: '3px solid #D32F2F' }}>
-                        Row {err.row}: {err.rollNumber ? `[Roll: ${err.rollNumber}] ` : ''}{err.reason}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div style={{ ...styles.readOnlyBlock, zIndex: 1 }}>
-            <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Schedule New Exam</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
-              <input type="text" placeholder="Exam Name e.g. Preboards" value={newExamName} onChange={(e) => setNewExamName(e.target.value)} style={styles.textInputBox} />
-              <input type="text" placeholder="Date e.g. 15 Aug" value={newExamDate} onChange={(e) => setNewExamDate(e.target.value)} style={styles.textInputBox} />
-              <button onClick={handleScheduleExam} style={styles.saveSubmitBtn} className="press-interactive">Submit & Schedule Exam</button>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1 }}>
-            <h4 style={styles.sectionSubtitle}>Scheduled Examinations</h4>
-            {exams.map(e => (
-              <div key={e.id || e._id} style={styles.receiptRowItem}>
-                <div>
-                  <strong>{e.name}</strong>
-                  <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{e.class}  {e.date}  {e.status}</div>
-                </div>
-                {!e.resultsPublished && (
-                  <button onClick={() => handlePublishResults(e.id || e._id || '')} style={styles.actionItemBtn} className="press-interactive">Submit & Publish Results</button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
-            <h4 style={styles.sectionSubtitle}>Top Performers Merit List</h4>
-            {[
-              { rank: '1', name: 'Varshith Rao', marks: '98.4%', badge: ' Gold' },
-              { rank: '2', name: 'Aaditya Varma', marks: '96.2%', badge: ' Silver' },
-              { rank: '3', name: 'Rahul Khanna', marks: '92.1%', badge: ' Bronze' }
-            ].map((perf, idx) => (
-              <div key={idx} style={styles.receiptRowItem}>
-                <div>
-                  <strong>{perf.rank}. {perf.name}</strong>
-                  <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Rank Award: {perf.badge}</div>
-                </div>
-                <span style={{ fontWeight: 800, color: 'var(--royal-gold)' }}>{perf.marks}</span>
-              </div>
-            ))}
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   //  SUBPAGE 7: ACADEMIC FEES
   if (activePage === 'academic_fees') {
@@ -5049,70 +4221,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   //  Reports Compiler removed per admin directive
 
   //  SUBPAGE 9: ATTENDANCE DASHBOARD & MARKING CONSOLE
-  if (activePage === 'attendance') {
-    const totals = (attendanceSummary as any)?.totals || {
-      studentsPresent: 2735,
-      studentsAbsent: 111,
-      facultyPresent: 180,
-      facultyAbsent: 6
-    };
-    const sectionsList = (attendanceSummary as any)?.sections || [];
-
-    return (
-      <div style={styles.container} className="anim-slide-up">
-        {renderBackgroundDesign('indigo')}
-        <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Attendance Dashboard</h1>
-          <p style={styles.subtitle}>Check summary stats and presenter ratios (Read-only)</p>
-        </header>
-
-        <main style={{ ...styles.content, gap: '16px' }}>
-          <div style={{ ...styles.metricsGrid, zIndex: 1 }}>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Students Present</span>
-              <strong style={{ ...styles.metricValue, color: '#10B981' }}>{totals.studentsPresent.toLocaleString()}</strong>
-            </div>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Students Absent</span>
-              <strong style={{ ...styles.metricValue, color: '#EF4444' }}>{totals.studentsAbsent.toLocaleString()}</strong>
-            </div>
-          </div>
-          <div style={{ ...styles.metricsGrid, zIndex: 1 }}>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Faculty Present</span>
-              <strong style={styles.metricValue}>{totals.facultyPresent.toLocaleString()}</strong>
-            </div>
-            <div style={styles.metricCard}>
-              <span style={styles.metricLabel}>Faculty on Leave</span>
-              <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>{totals.facultyAbsent.toLocaleString()}</strong>
-            </div>
-          </div>
-
-          <h4 style={styles.sectionSubtitle}>Section-wise Attendance Summary</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
-            {sectionsList.length > 0 ? (
-              sectionsList.map((sec: any, idx: number) => (
-                <div key={idx} style={styles.receiptRowItem}>
-                  <span>{sec.section}</span>
-                  <strong>{sec.ratio}% Present</strong>
-                </div>
-              ))
-            ) : (
-              <>
-                <div style={styles.receiptRowItem}><span>MPC - Section A</span><strong>96.2% Present</strong></div>
-                <div style={styles.receiptRowItem}><span>MPC - Section B</span><strong>92.4% Present</strong></div>
-                <div style={styles.receiptRowItem}><span>BiPC - Section A</span><strong>94.8% Present</strong></div>
-                <div style={styles.receiptRowItem}><span>CEC - Section A</span><strong>98.0% Present</strong></div>
-              </>
-            )}
-          </div>
-        </main>
-      </div>
-    );
-  }
 
 
 
@@ -5601,34 +4709,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   }
 
   //  SUBPAGE 13: LATE FEES & SCHOLARSHIPS (Admin 2)
-  if (activePage === 'late_scholarships') {
-    return (
-      <div style={styles.container} className="anim-slide-up">
-        {renderBackgroundDesign('ruby')}
-        <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">Back to Finance Cockpit</button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Late Fees & Scholarships</h1>
-          <p style={styles.subtitle}>View active penalty rates and merit scholarship policies</p>
-        </header>
-        <main style={styles.content}>
-          <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
-            <h4 style={styles.sectionSubtitle}>Late Fee Policy</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-              <div style={styles.metaRow}><span>Current Overdue Policy</span><strong>{lateFeeRulesText}</strong></div>
-            </div>
-            <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '10px', fontStyle: 'italic' }}> Late Fee policies are managed and updated by the Accountant Portal.</p>
-          </GlassCard>
-          <GlassCard hoverable={false} style={{ padding: '20px', marginTop: '14px', zIndex: 1 }}>
-            <h4 style={styles.sectionSubtitle}>Scholarship Merit Policy</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-              <div style={styles.metaRow}><span>Active Rules</span><strong>{scholarshipRulesText}</strong></div>
-            </div>
-            <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '10px', fontStyle: 'italic' }}> Scholarship slabs are configured and maintained by the Accountant Portal.</p>
-          </GlassCard>
-        </main>
-      </div>
-    );
-  }
 
   //  SUBPAGE 14: EXPENDITURE TRACKER (Admin 2)
   if (activePage === 'expenditure') {
@@ -6291,11 +5371,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             workerName: data.workerName || data.name,
             role: data.role || 'Staff Worker',
             amount: Number(data.amountPaid || data.amount || data.salary || 0),
-            monthPeriod: `${currentMonth} 2026`,
+            monthPeriod: new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
             paid: true,
             branch: role === 'admin2' ? loggedInCampus : (data.branch || loggedInCampus)
           };
-          await admin2Service.recordWorkerPayment(payload as any, undefined);
+          await admin2Service.createWorkerPayment(payload as any);
           triggerToast(`Worker payment for ${payload.workerName} recorded successfully!`);
           await fetchWorkerPaymentsHistory();
         }
@@ -7143,46 +6223,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
             ) : (
               <div className="grid-container">
-                <div onClick={() => setActivePage('classes')} style={styles.moduleCardNew} className="module-card press-interactive">
-                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><path d="M22 10v6M2 10v6M12 2l10 5-10 5L2 7l10-5z" /></svg>
-                  </div>
-                  <h4 style={styles.moduleTitle}>Class Scheduling</h4>
-                  <p style={styles.moduleDesc}>Map sections, allocate student groups, and assign duties.</p>
-                </div>
-
-                <div onClick={() => setActivePage('exams')} style={styles.moduleCardNew} className="press-interactive">
-                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /></svg>
-                  </div>
-                  <h4 style={styles.moduleTitle}>Examination Portal</h4>
-                  <p style={styles.moduleDesc}>Create term schedules, upload results, and publish grades.</p>
-                </div>
-
-                <div onClick={() => setActivePage('publishing')} style={styles.moduleCardNew} className="press-interactive">
-                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /></svg>
-                  </div>
-                  <h4 style={styles.moduleTitle}>Publishing Desk</h4>
-                  <p style={styles.moduleDesc}>Compose bulletins, circular notices, and holiday events.</p>
-                </div>
-
-                <div onClick={() => setActivePage('calendar')} style={styles.moduleCardNew} className="press-interactive">
-                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /></svg>
-                  </div>
-                  <h4 style={styles.moduleTitle}>Timetables & Calendars</h4>
-                  <p style={styles.moduleDesc}>Upload and schedule daily class timelines and calendars.</p>
-                </div>
-
-                <div onClick={() => setActivePage('attendance')} style={styles.moduleCardNew} className="press-interactive">
-                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                  </div>
-                  <h4 style={styles.moduleTitle}>Attendance Summary</h4>
-                  <p style={styles.moduleDesc}>Examine section-wise student availability reports.</p>
-                </div>
-
                 <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>

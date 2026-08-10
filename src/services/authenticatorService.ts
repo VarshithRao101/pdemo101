@@ -75,11 +75,6 @@ export const authenticatorService = {
   },
 
   // Get backup codes list
-  async getBackupCodes(): Promise<BackupCodeInfo[]> {
-    const res = await apiClient.get<{ status: string; data: BackupCodeInfo[] }>('/authenticator/backup-codes');
-    return res.data;
-  },
-
   // Reset password with backup code
   async resetPassword(body: { username: string; password: string; backupCode: string }): Promise<{ nextBackupCode: string }> {
     const res = await apiClient.post<{ status: string; nextBackupCode: string }>('/authenticator/reset-password', body);
@@ -124,11 +119,6 @@ export const authenticatorService = {
   },
 
   // Trigger db reconciliation
-  async reconcileDatabase(): Promise<string> {
-    const res = await apiClient.post<{ status: string; message: string }>('/authenticator/reconcile', {});
-    return res.message;
-  },
-
   // Create system database backup (Google Drive 24h rolling)
   async createBackup(securityPin?: string): Promise<any> {
     const res = await apiClient.post<{ status: string; message: string; data: any }>('/authenticator/backup', { securityPin });
@@ -136,17 +126,28 @@ export const authenticatorService = {
   },
 
   // Get available backups list across categories and campuses
+  // Real restore. Downloads the named backup from Google Drive, decrypts it and
+  // replaces the data collections. Requires the authenticator's own password,
+  // verified server-side with bcrypt.
+  //
+  // The UI previously called a `restoreData` endpoint that returned
+  // "Data restored successfully" with restoredCount: 0 and restored nothing —
+  // the most dangerous kind of fake success, since an operator could believe a
+  // recovery had happened. This calls the endpoint that actually does the work.
+  async restoreBackup(fileId: string, password: string): Promise<any> {
+    const res = await apiClient.post<{ status: string; message: string; data: any }>(
+      '/authenticator/restore-backup',
+      { fileId, password }
+    );
+    return res.data;
+  },
+
   async getAvailableBackups(): Promise<any> {
     const res = await apiClient.get<{ status: string; data: any }>('/authenticator/available-backups');
     return res.data;
   },
 
   // Restore data payload for specific category and campus
-  async restoreData(payload: { category: string; campus: string; backupData?: any; backupFileContent?: string; fileId?: string }): Promise<any> {
-    const res = await apiClient.post<{ status: string; data: any }>('/authenticator/restore-data', payload);
-    return res.data;
-  },
-
   // Wipe entire database with Security Passcode
   async wipeEntireDatabase(securityPin: string): Promise<string> {
     const res = await apiClient.post<{ status: string; message: string }>('/authenticator/wipe-database', { password: securityPin, securityPin });

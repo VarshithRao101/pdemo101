@@ -334,10 +334,10 @@ export const AccountantDashboardView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
-  const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'attendance' | 'reports' | 'late_fees' | 'scholarships' | 'profile'>('menu');
+  const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'reports' | 'profile'>('menu');
   const [students, setStudents] = useState<Student[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [livePulseKey, setLivePulseKey] = useState<'students' | 'fees' | 'attendance' | 'settings' | null>(null);
+  const [livePulseKey, setLivePulseKey] = useState<'students' | 'fees' | 'settings' | null>(null);
   const [securityKey] = useState('');
 
   // Sync globalActiveTab from sidebar/navigation drawer into local activeSubPage
@@ -347,7 +347,7 @@ export const AccountantDashboardView: React.FC = () => {
         setActiveSubPage('menu');
       } else if (globalActiveTab === 'add_student') {
         setIsAddStudentModalOpen(true);
-      } else if (['student_search', 'fee_collection', 'attendance', 'reports', 'late_fees', 'scholarships', 'profile'].includes(globalActiveTab)) {
+      } else if (['student_search', 'fee_collection', 'reports', 'profile'].includes(globalActiveTab)) {
         setActiveSubPage(globalActiveTab as any);
       }
     }
@@ -570,33 +570,6 @@ export const AccountantDashboardView: React.FC = () => {
     }
   }, [loggedInCampus]);
 
-  const fetchAttendanceRoster = React.useCallback(async (dateStr: string) => {
-    try {
-      const roster = await accountantService.getAttendance(dateStr);
-      setAttendanceRoster(roster);
-    } catch (err) {
-      console.error('Failed to load attendance roster:', err);
-    }
-  }, []);
-
-
-  const fetchSettings = React.useCallback(async () => {
-    try {
-      const lateData = await accountantService.getLateFees();
-      const schData = await accountantService.getScholarships();
-      const loaded = {
-        academicYear: '2026-27',
-        installments: '3 Installments',
-        lateFeeRules: lateData.lateFeeRules,
-        scholarshipRules: schData.scholarshipRules,
-        discountRules: 'Sibling: 10% waiver'
-      };
-      setSettings(loaded);
-      setEditSettings(loaded);
-    } catch (err) {
-      console.error('Failed to load settings:', err);
-    }
-  }, []);
 
   const refreshWithPulse = React.useCallback(async (pulseKey: typeof livePulseKey) => {
     setLivePulseKey(pulseKey);
@@ -605,11 +578,8 @@ export const AccountantDashboardView: React.FC = () => {
       if (pulseKey === 'students' || pulseKey === 'fees') {
         tasks.push(fetchDashboardSummary(), fetchAllStudents());
       }
-      if (pulseKey === 'attendance') {
-        tasks.push(fetchDashboardSummary(), fetchAttendanceRoster(attendanceDate));
-      }
       if (pulseKey === 'settings') {
-        tasks.push(fetchSettings(), fetchDashboardSummary());
+        tasks.push(fetchDashboardSummary());
       }
       if (tasks.length === 0) {
         tasks.push(fetchDashboardSummary(), fetchAllStudents());
@@ -620,7 +590,7 @@ export const AccountantDashboardView: React.FC = () => {
     } finally {
       window.setTimeout(() => setLivePulseKey(null), 1400);
     }
-  }, [attendanceDate, fetchAllStudents, fetchAttendanceRoster, fetchDashboardSummary, fetchSettings]);
+  }, [fetchAllStudents, fetchDashboardSummary]);
 
   // On mount load dashboard metrics & student list
   useEffect(() => {
@@ -663,24 +633,14 @@ export const AccountantDashboardView: React.FC = () => {
           await Promise.all([fetchDashboardSummary(), fetchAllStudents()]);
         } else if (activeSubPage === 'student_search' || activeSubPage === 'fee_collection' || activeSubPage === 'reports') {
           await fetchAllStudents();
-        } else if (activeSubPage === 'attendance') {
-          await fetchAttendanceRoster(attendanceDate);
-        } else if (activeSubPage === 'late_fees' || activeSubPage === 'scholarships' || activeSubPage === 'profile') {
-          await fetchSettings();
         }
       } finally {
         setIsPageLoading(false);
       }
     };
     loadSubPage();
-  }, [activeSubPage, fetchDashboardSummary, fetchAllStudents, fetchAttendanceRoster, fetchSettings, attendanceDate]);
+  }, [activeSubPage, fetchDashboardSummary, fetchAllStudents]);
 
-  // Refetch attendance when date changes
-  useEffect(() => {
-    if (activeSubPage === 'attendance') {
-      fetchAttendanceRoster(attendanceDate);
-    }
-  }, [attendanceDate, activeSubPage]);
 
 
 
@@ -823,36 +783,6 @@ export const AccountantDashboardView: React.FC = () => {
   const handleToggleAttendance = (id: string, newStatus: 'present' | 'absent' | 'late' | 'leave') => {
     const next = attendanceRoster.map(a => a.id === id ? { ...a, status: newStatus } : a);
     setAttendanceRoster(next);
-  };
-
-  const handleSaveAttendance = async (type: 'student' | 'faculty') => {
-    setIsLoading(true);
-    try {
-      const filtered = attendanceRoster.filter(a => type === 'student' ? a.type === 'student' && a.section === selectedSection : a.type === 'faculty');
-      await accountantService.saveAttendance(attendanceDate, filtered);
-      triggerToast(`${type === 'student' ? 'Section ' + selectedSection : 'Faculty'} Attendance changes saved for date ${attendanceDate}`);
-      fetchDashboardSummary();
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to save attendance.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSettingsSave = async () => {
-    setIsLoading(true);
-    try {
-      await accountantService.updateLateFees(editSettings.lateFeeRules);
-      await accountantService.updateScholarships(editSettings.scholarshipRules);
-      setSettings(editSettings);
-      triggerToast('Settings changes saved successfully.');
-      setActiveSubPage('menu');
-      fetchDashboardSummary();
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to save settings.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleLogout = () => {
@@ -2710,169 +2640,6 @@ export const AccountantDashboardView: React.FC = () => {
   }
 
   //  SUBPAGE 3: ATTENDANCE CONSOLE (Sub-page)
-  if (activeSubPage === 'attendance') {
-    const studentsList = attendanceRoster.filter(a => a.type === 'student' && a.section === selectedSection);
-    const facultyList = attendanceRoster.filter(a => a.type === 'faculty');
-
-    return (
-      <div style={styles.container} className="view-container anim-slide-up">
-        {renderBackgroundDesign('sapphire')}
-        <header style={styles.header}>
-          <button onClick={() => { setActiveSubPage('menu'); }} style={styles.backArrowBtn} className="press-interactive">
-             Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Attendance Marking Console</h1>
-          <p style={styles.subtitle}>Directly log daily presenters, leaves, and absentees timeline</p>
-        </header>
-
-        <main style={{ ...styles.content, gap: '16px' }}>
-          <div style={{ display: 'flex', gap: '8px', zIndex: 1 }}>
-            {['students', 'faculty', 'summary'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setAttTab(tab as any)}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  borderRadius: '12px',
-                  fontSize: '11.5px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  border: '1.5px solid var(--card-border)',
-                  backgroundColor: attTab === tab ? 'var(--royal-gold)' : 'rgba(255,255,255,0.5)',
-                  color: attTab === tab ? '#fff' : 'var(--dark-charcoal)'
-                }}
-                className="press-interactive"
-              >
-                {tab.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', zIndex: 1 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-              <label style={styles.formLabel}>Reporting Date</label>
-              <input
-                type="date"
-                value={attendanceDate}
-                onChange={(e) => setAttendanceDate(e.target.value)}
-                style={styles.textInputBox}
-              />
-            </div>
-            {attTab === 'students' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                <label style={styles.formLabel}>Class Section</label>
-                <select
-                  value={selectedSection}
-                  onChange={(e) => setSelectedSection(e.target.value)}
-                  style={styles.selectInput}
-                >
-                  <option value="MPC-A">MPC - Section A</option>
-                  <option value="MPC-B">MPC - Section B</option>
-                  <option value="BiPC-A">BiPC - Section A</option>
-                  <option value="CEC-A">CEC - Section A</option>
-                </select>
-              </div>
-            )}
-          </div>
-
-          {/* Student list */}
-          {attTab === 'students' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
-              <h4 style={styles.sectionSubtitle}>Student Marking ({selectedSection})</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {studentsList.map((stu) => (
-                  <div key={stu.id} style={styles.receiptRowItem}>
-                    <div>
-                      <strong>{stu.name}</strong>
-                      <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>ID: {stu.id}  Roster Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{stu.status}</span></div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      {(['present', 'absent', 'late'] as const).map((st) => (
-                        <button
-                          key={st}
-                          onClick={() => handleToggleAttendance(stu.id, st)}
-                          style={{
-                            padding: '6px 8px',
-                            fontSize: '9px',
-                            fontWeight: 800,
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            border: '1px solid var(--card-border)',
-                            backgroundColor: stu.status === st ? (st === 'present' ? '#10B981' : st === 'absent' ? '#EF4444' : '#FBBF24') : 'rgba(255,255,255,0.6)',
-                            color: stu.status === st ? '#fff' : 'var(--dark-charcoal)'
-                          }}
-                          className="press-interactive"
-                        >
-                          {st.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {/* EXPLICIT SUBMIT CHANGES BUTTON */}
-              <button onClick={() => handleSaveAttendance('student')} style={styles.saveSubmitBtn} className="press-interactive">Submit Attendance Changes</button>
-            </div>
-          )}
-
-          {/* Faculty list */}
-          {attTab === 'faculty' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
-              <h4 style={styles.sectionSubtitle}>Lecturer Attendance Logs</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {facultyList.map((fac) => (
-                  <div key={fac.id} style={styles.receiptRowItem}>
-                    <div>
-                      <strong>{fac.name}</strong>
-                      <div style={{ fontSize: '9px', color: 'var(--muted-gray)' }}>Code: {fac.id}  Status: <span style={{ textTransform: 'uppercase', fontWeight: 800 }}>{fac.status}</span></div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      {(['present', 'absent', 'leave'] as const).map((st) => (
-                        <button
-                          key={st}
-                          onClick={() => handleToggleAttendance(fac.id, st)}
-                          style={{
-                            padding: '6px 8px',
-                            fontSize: '9px',
-                            fontWeight: 800,
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            border: '1px solid var(--card-border)',
-                            backgroundColor: fac.status === st ? (st === 'present' ? '#10B981' : st === 'absent' ? '#EF4444' : '#8B5CF6') : 'rgba(255,255,255,0.6)',
-                            color: fac.status === st ? '#fff' : 'var(--dark-charcoal)'
-                          }}
-                          className="press-interactive"
-                        >
-                          {st.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {/* EXPLICIT SUBMIT CHANGES BUTTON */}
-              <button onClick={() => handleSaveAttendance('faculty')} style={styles.saveSubmitBtn} className="press-interactive">Submit Faculty Roster Changes</button>
-            </div>
-          )}
-
-          {/* Ratios summary */}
-          {attTab === 'summary' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }} className="anim-fade-in">
-              <div style={styles.readOnlyBlock}>
-                <h4 style={{ ...styles.sectionSubtitle, marginTop: 0 }}>Presenter Statistics Summary</h4>
-                <div style={styles.metaRow}><span>Total Classrooms Tracked</span><strong>4 Sections</strong></div>
-                <div style={styles.metaRow}><span>Average Present Ratio</span><strong>96.2% Present Today</strong></div>
-                <div style={styles.metaRow}><span>Faculty Availability</span><strong>96.8% Available (180/186)</strong></div>
-              </div>
-            </div>
-          )}
-          {renderModals()}
-
-        </main>
-      </div>
-    );
-  }
 
   //  SUBPAGE 4: COLLECTION REPORTS (Sub-page)
   if (activeSubPage === 'reports') {
@@ -3073,70 +2840,8 @@ export const AccountantDashboardView: React.FC = () => {
   }
 
   //  SUBPAGE 6: LATE FEE SETTINGS (Sub-page)
-  if (activeSubPage === 'late_fees') {
-    return (
-      <div style={styles.container} className="view-container anim-slide-up">
-        {renderBackgroundDesign('rose')}
-        <header style={styles.header}>
-          <button onClick={() => setActiveSubPage('menu')} style={styles.backArrowBtn} className="press-interactive">
-             Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Late Fee Rules</h1>
-          <p style={styles.subtitle}>Configure overdue fines and penalties caps</p>
-        </header>
-        <main style={styles.content}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', zIndex: 1 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={styles.formLabel}>Active Late Fee Penalties rules</label>
-              <input
-                type="text"
-                value={editSettings.lateFeeRules}
-                onChange={(e) => setEditSettings({ ...editSettings, lateFeeRules: e.target.value })}
-                style={styles.textInputBox}
-              />
-            </div>
-            {/* EXPLICIT SUBMIT CHANGES BUTTON */}
-            <button onClick={handleSettingsSave} style={styles.saveSubmitBtn} className="press-interactive">Submit Late Fee Changes</button>
-          </div>
-          {renderModals()}
-
-        </main>
-      </div>
-    );
-  }
 
   //  SUBPAGE 7: SCHOLARSHIPS SETTINGS (Sub-page)
-  if (activeSubPage === 'scholarships') {
-    return (
-      <div style={styles.container} className="view-container anim-slide-up">
-        {renderBackgroundDesign('teal')}
-        <header style={styles.header}>
-          <button onClick={() => setActiveSubPage('menu')} style={styles.backArrowBtn} className="press-interactive">
-             Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Scholarships waivers</h1>
-          <p style={styles.subtitle}>Configure student waiver criteria and grants</p>
-        </header>
-        <main style={styles.content}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', zIndex: 1 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={styles.formLabel}>Scholarships & Fee Waivers Criteria</label>
-              <input
-                type="text"
-                value={editSettings.scholarshipRules}
-                onChange={(e) => setEditSettings({ ...editSettings, scholarshipRules: e.target.value })}
-                style={styles.textInputBox}
-              />
-            </div>
-            {/* EXPLICIT SUBMIT CHANGES BUTTON */}
-            <button onClick={handleSettingsSave} style={styles.saveSubmitBtn} className="press-interactive">Submit Scholarships waivers Changes</button>
-          </div>
-          {renderModals()}
-
-        </main>
-      </div>
-    );
-  }
 
   //  SUBPAGE 8: ACCOUNTANT PROFILE (Sub-page)
   if (activeSubPage === 'profile') {

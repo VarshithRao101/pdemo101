@@ -204,13 +204,4 @@ export const admin2Service = {
   },
 
   // 7. Late Fees & Scholarships (Consolidated Read-Only visibility)
-  async getLateFeesSettings(): Promise<{ lateFeeRules: string }> {
-    const res = await apiClient.get<{ status: string; data: { lateFeeRules: string } }>('/admin2/late-fees-settings');
-    return res.data;
-  },
-
-  async getScholarships(): Promise<{ scholarshipRules: string }> {
-    const res = await apiClient.get<{ status: string; data: { scholarshipRules: string } }>('/admin2/scholarships');
-    return res.data;
-  }
 };

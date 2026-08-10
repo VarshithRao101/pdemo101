@@ -109,15 +109,6 @@ export const getHostelAdmissions = async (): Promise<HostelData> => {
   return res.data;
 };
 
-export const allocateRoom = async (roomId: string, studentId: string, securityKey?: string): Promise<{ student: StudentProfile; room: RoomOccupancy }> => {
-  const res = await apiClient.patch<{ status: string; data: { student: StudentProfile; room: RoomOccupancy } }>(
-    `/accountant/hostel/${roomId}`,
-    { studentId },
-    securityKey ? { headers: { 'x-security-pin': securityKey } } : {}
-  );
-  return res.data;
-};
-
 export const checkoutStudent = async (studentId: string, securityKey?: string): Promise<{ student: StudentProfile }> => {
   const res = await apiClient.patch<{ status: string; data: { student: StudentProfile } }>(
     `/accountant/hostel/checkout/${studentId}`,
@@ -127,42 +118,8 @@ export const checkoutStudent = async (studentId: string, securityKey?: string): 
   return res.data;
 };
 
-export const getLateFees = async (): Promise<{ lateFeeRules: string }> => {
-  const res = await apiClient.get<{ status: string; data: { lateFeeRules: string } }>('/accountant/late-fees-settings');
-  return res.data;
-};
-
-export const updateLateFees = async (lateFeeRules: string): Promise<{ lateFeeRules: string }> => {
-  const res = await apiClient.patch<{ status: string; data: { lateFeeRules: string } }>('/accountant/late-fees-settings', {
-    lateFeeRules
-  });
-  return res.data;
-};
-
-export const getScholarships = async (): Promise<{ scholarshipRules: string }> => {
-  const res = await apiClient.get<{ status: string; data: { scholarshipRules: string } }>('/accountant/scholarships');
-  return res.data;
-};
-
-export const updateScholarships = async (scholarshipRules: string): Promise<{ scholarshipRules: string }> => {
-  const res = await apiClient.patch<{ status: string; data: { scholarshipRules: string } }>('/accountant/scholarships', {
-    scholarshipRules
-  });
-  return res.data;
-};
-
 export const getDashboardSummary = async (): Promise<DashboardSummary> => {
   const res = await apiClient.get<{ status: string; data: DashboardSummary }>('/accountant/dashboard-summary');
   return res.data;
-};
-
-export const getAttendance = async (date: string): Promise<any[]> => {
-  const res = await apiClient.get<{ status: string; data: any[] }>(`/accountant/attendance?date=${encodeURIComponent(date)}`);
-  return res.data;
-};
-
-export const saveAttendance = async (date: string, records: { id: string; type: string; status: string }[]): Promise<{ status: string; message: string }> => {
-  const res = await apiClient.post<{ status: string; message: string }>('/accountant/attendance', { date, records });
-  return res;
 };
 

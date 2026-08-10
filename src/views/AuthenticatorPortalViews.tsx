@@ -28,6 +28,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Newly issued PINs, held in component state only. Never persisted to
   // localStorage: they are the live credentials for every portal account.
   const [issuedPins, setIssuedPins] = useState<Record<string, string> | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
   const [stats, setStats] = useState<AuthenticatorStats>({
     totalStudents: 0,
@@ -203,62 +204,44 @@ export const AuthenticatorDashboardView: React.FC = () => {
     }
   };
 
-  // Handler: Execute Data Restore for Campus & Category
-  const handleExecuteDataRestore = async (category: string, campus: string, backupFileContent?: string, fileId?: string) => {
-    setRestoringCampus(campus);
-    setRestoreProgress(10);
-    setRestoreStatusText(`Connecting secure restore tunnel for ${campus}...`);
+  // Restore a Google Drive backup over the live database.
+  //
+  // This replaces every student, teacher, payment, fee-setting, expenditure
+  // and worker-payment record with the contents of the chosen backup, so it
+  // asks for the authenticator's password (verified server-side with bcrypt)
+  // and makes the caller confirm in writing first.
+  //
+  // Restoring from a locally-uploaded file used to be offered here; there was
+  // never a backend for it, so that path has been removed. Restores come from
+  // Drive, which is where the encrypted backups actually live.
+  const handleExecuteDataRestore = async (fileId: string, fileName: string) => {
+    const confirmed = window.confirm(
+      `Restore from "${fileName}"?\n\n` +
+      'This REPLACES all current student, faculty, payment, fee and expenditure ' +
+      'records with the contents of that backup. Data created since the backup ' +
+      'was taken will be lost. This cannot be undone.'
+    );
+    if (!confirmed) return;
 
-    const pTimer = setInterval(() => {
-      setRestoreProgress(p => {
-        if (p < 40) {
-          setRestoreStatusText(`Reading ${category.replace('_', ' ')} backup snapshot...`);
-          return p + 15;
-        } else if (p < 80) {
-          setRestoreStatusText(`Restoring Mongoose schemas & indexing ${campus} records...`);
-          return p + 15;
-        } else {
-          setRestoreStatusText(`Finalizing restore ledger for ${campus}...`);
-          return p;
-        }
-      });
-    }, 350);
+    const password = window.prompt('Enter YOUR authenticator password to confirm this restore:');
+    if (!password || !password.trim()) return;
 
+    setIsRestoring(true);
     try {
-      const result = await authenticatorService.restoreData({
-        category,
-        campus,
-        backupFileContent,
-        fileId
-      });
-
-      clearInterval(pTimer);
-      setRestoreProgress(100);
-      setRestoreStatusText(`Restoration Complete! ${result.restoredCount || 0} records restored.`);
-
-      triggerToast(`Successfully restored ${result.restoredCount || 0} records into database for campus "${campus}"!`);
+      const result = await authenticatorService.restoreBackup(fileId, password.trim());
+      const counts = result?.restoredCounts || {};
+      triggerToast(
+        `Restore complete — students: ${counts.students ?? 0}, teachers: ${counts.teachers ?? 0}, payments: ${counts.payments ?? 0}.`,
+        'success'
+      );
       await loadData();
     } catch (err: any) {
-      clearInterval(pTimer);
-      triggerToast(err.message || `Failed to restore data for ${campus}.`);
+      // Surface the real reason; a failed restore that looks like a success is
+      // exactly the failure mode this replaced.
+      triggerToast(err?.message || 'Restore failed. No data was changed.');
     } finally {
-      setTimeout(() => {
-        setRestoringCampus(null);
-        setRestoreProgress(0);
-      }, 1200);
+      setIsRestoring(false);
     }
-  };
-
-  // Handler: File Drop / Select Restore
-  const handleLocalFileDropRestore = (category: string, campus: string, file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      if (content) {
-        handleExecuteDataRestore(category, campus, content);
-      }
-    };
-    reader.readAsText(file);
   };
 
   // Trigger Toast Notification
@@ -1242,10 +1225,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       key={camp.name}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => {
+                        // Restoring from a locally-uploaded file is not supported:
+                        // backups are encrypted and restored from Google Drive.
                         e.preventDefault();
-                        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                          handleLocalFileDropRestore(activeRestoreCategory, camp.name, e.dataTransfer.files[0]);
-                        }
+                        triggerToast('Restore from a local file is not supported. Pick a backup from the Google Drive list below.');
                       }}
                       style={{
                         padding: '18px',
@@ -1278,7 +1261,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                                 </div>
                               </div>
                               <button
-                                onClick={() => handleExecuteDataRestore(activeRestoreCategory, camp.name, undefined, bk.id)}
+                                onClick={() => handleExecuteDataRestore(bk.id, bk.fileName)}
                                 style={{
                                   padding: '6px 12px',
                                   borderRadius: '8px',
@@ -1325,10 +1308,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           type="file"
                           accept=".json,.xlsx,.csv"
                           style={{ display: 'none' }}
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              handleLocalFileDropRestore(activeRestoreCategory, camp.name, e.target.files[0]);
-                            }
+                          onChange={() => {
+                            triggerToast('Restore from a local file is not supported. Pick a backup from the Google Drive list below.');
                           }}
                         />
                       </label>

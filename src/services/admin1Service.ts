@@ -104,11 +104,6 @@ export const admin1Service = {
   },
 
   // Bulletins Desk
-  async getBulletins(): Promise<Bulletin[]> {
-    const res = await apiClient.get<{ status: string; data: Bulletin[] }>('/admin1/bulletins');
-    return res.data;
-  },
-
   // Admission Enquiries
   async getEnquiries(): Promise<any[]> {
     const res = await apiClient.get<{ status: string; data: any[] }>('/enquiries');
@@ -120,76 +115,14 @@ export const admin1Service = {
     return res.data;
   },
 
-  async createBulletin(data: Omit<Bulletin, '_id' | 'id'>): Promise<Bulletin> {
-    const res = await apiClient.post<{ status: string; data: Bulletin }>('/admin1/bulletins', data);
-    return res.data;
-  },
-
-  async updateBulletin(id: string, data: Partial<Bulletin>): Promise<Bulletin> {
-    const res = await apiClient.patch<{ status: string; data: Bulletin }>(`/admin1/bulletins/${id}`, data);
-    return res.data;
-  },
-
-  async deleteBulletin(id: string): Promise<{ status: string; message: string }> {
-    const res = await apiClient.request<{ status: string; message: string }>(`/admin1/bulletins/${id}`, { method: 'DELETE' });
-    return res;
-  },
-
   // Timetables
-  async getTimetable(section: string): Promise<TimetableEntry[]> {
-    const res = await apiClient.get<{ status: string; data: TimetableEntry[] }>(`/admin1/timetable?section=${encodeURIComponent(section)}`);
-    return res.data;
-  },
-
-  async createTimetableEntry(data: { section: string; day: string; period: string; subject: string; teacherId: string }): Promise<TimetableEntry> {
-    const res = await apiClient.post<{ status: string; data: TimetableEntry }>('/admin1/timetable', data);
-    return res.data;
-  },
-
-  async updateTimetableEntry(id: string, data: any): Promise<TimetableEntry> {
-    const res = await apiClient.patch<{ status: string; data: TimetableEntry }>(`/admin1/timetable/${id}`, data);
-    return res.data;
-  },
-
-  async deleteTimetableEntry(id: string): Promise<{ status: string; message: string }> {
-    const res = await apiClient.request<{ status: string; message: string }>(`/admin1/timetable/${id}`, { method: 'DELETE' });
-    return res;
-  },
-
-  async uploadTimetable(section: string, file: File): Promise<{ status: string; message: string; data?: any }> {
-    // POST /admin1/timetable/upload has never existed on the server; this call always 404'd.
-    throw Object.assign(new Error('Timetable upload is not available: this feature has no backend implementation yet.'), { status: 501 });
-  },
-
   // Sections & Allocations
   async getSections(): Promise<{ sections: string[]; teachers: any[] }> {
     const res = await apiClient.get<{ status: string; data: { sections: string[]; teachers: any[] } }>('/admin1/sections');
     return res.data;
   },
 
-  async allocateStudentsSection(studentIds: string[], section: string): Promise<{ status: string; message: string }> {
-    const res = await apiClient.post<{ status: string; message: string }>('/admin1/sections', { type: 'student', studentIds, section });
-    return res;
-  },
-
-  async allocateTeacherDuty(teacherId: string, assignedSections: string[], assignedSubjects: string[]): Promise<{ status: string; message: string }> {
-    const res = await apiClient.post<{ status: string; message: string }>('/admin1/sections', { type: 'teacher', teacherId, assignedSections, assignedSubjects });
-    return res;
-  },
-
   // Attendance Summary
-  async getAttendanceSummary(section?: string, startDate?: string, endDate?: string): Promise<any[]> {
-    let query = '';
-    const params: string[] = [];
-    if (section) params.push(`section=${encodeURIComponent(section)}`);
-    if (startDate) params.push(`startDate=${encodeURIComponent(startDate)}`);
-    if (endDate) params.push(`endDate=${encodeURIComponent(endDate)}`);
-    if (params.length > 0) query = `?${params.join('&')}`;
-
-    const res = await apiClient.get<{ status: string; data: any[] }>(`/admin1/attendance-summary${query}`);
-    return res.data;
-  },
-
   // Reports
   async getReports(): Promise<any> {
     const res = await apiClient.get<{ status: string; data: any }>('/admin1/reports');
@@ -197,52 +130,8 @@ export const admin1Service = {
   },
 
   // Exams Desk
-  async getExams(): Promise<ExamInfo[]> {
-    const res = await apiClient.get<{ status: string; data: ExamInfo[] }>('/admin1/exams');
-    return res.data;
-  },
-
-  async scheduleExam(name: string, date: string): Promise<ExamInfo> {
-    const res = await apiClient.post<{ status: string; data: ExamInfo }>('/admin1/exams', { name, date });
-    return res.data;
-  },
-
-  async uploadExamResults(file: File, testTitle?: string, date?: string): Promise<{ status: string; message: string; data?: any }> {
-    // POST /admin1/exams/upload has never existed on the server; this call always 404'd.
-    throw Object.assign(new Error('Exam results upload is not available: this feature has no backend implementation yet.'), { status: 501 });
-  },
-
   // Academic Year Management
-  async getAcademicYears(): Promise<{ activeYear: string; academicYears: any[] }> {
-    const res = await apiClient.get<{ status: string; data: { activeYear: string; academicYears: any[] } }>('/admin1/academic-years');
-    return res.data;
-  },
-
-  async createAcademicYear(payload: { yearId: string; label: string; startDate?: string; endDate?: string; status?: string }): Promise<any> {
-    const res = await apiClient.post<any>('/admin1/academic-years', payload);
-    return res.data;
-  },
-
-  async updateAcademicYearStatus(yearId: string, status: string): Promise<any> {
-    const res = await apiClient.patch<any>(`/admin1/academic-years/${yearId}/status`, { status });
-    return res.data;
-  },
-
   // Student Promotion
-  async promoteStudent(id: string, payload: {
-    securityPassword?: string;
-    otpInput?: string;
-    nextAcademicYear?: string;
-    nextCourseYear?: string;
-    hostelStatus?: string;
-    transportStatus?: string;
-    newFeeStructure?: any;
-    waivers?: any;
-  }): Promise<any> {
-    // POST /students/:id/promote has never existed on the server; this call always 404'd.
-    throw Object.assign(new Error('Student promotion is not available: this feature has no backend implementation yet.'), { status: 501 });
-  },
-
   // Teacher Monthly Salary
   async updateTeacherMonthlySalary(id: string, payload: {
     academicYear?: string;
