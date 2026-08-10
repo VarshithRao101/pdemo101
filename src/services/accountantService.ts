@@ -60,7 +60,7 @@ export const updateStudent = async (id: string, fields: Partial<StudentProfile>,
   const res = await apiClient.patch<{ status: string; data: StudentProfile }>(
     `/accountant/students/${id}`,
     fields,
-    securityKey ? { headers: { 'x-security-key': securityKey } } : {}
+    securityKey ? { headers: { 'x-security-pin': securityKey } } : {}
   );
   return res.data;
 };
@@ -68,8 +68,8 @@ export const updateStudent = async (id: string, fields: Partial<StudentProfile>,
 export const deleteStudent = async (id: string, securityKey?: string): Promise<void> => {
   const headers: Record<string, string> = {};
   if (securityKey) {
-    headers['X-Security-OTP'] = securityKey;
-    headers['x-security-key'] = securityKey;
+    headers['x-security-pin'] = securityKey;
+    headers['x-security-pin'] = securityKey;
   }
   await apiClient.delete(
     `/accountant/students/${id}`,
@@ -81,7 +81,7 @@ export const updateStudentBio = async (id: string, fields: Partial<StudentProfil
   const res = await apiClient.patch<{ status: string; data: StudentProfile }>(
     `/accountant/students/${id}/bio`, 
     fields,
-    securityKey ? { headers: { 'x-security-key': securityKey } } : {}
+    securityKey ? { headers: { 'x-security-pin': securityKey } } : {}
   );
   return res.data;
 };
@@ -94,7 +94,7 @@ export const recordPayment = async (
   const res = await apiClient.post<{ status: string; data: { payment: FeePayment; student: StudentProfile } }>(
     `/accountant/students/${studentId}/payments`,
     paymentData,
-    securityKey ? { headers: { 'x-security-key': securityKey } } : {}
+    securityKey ? { headers: { 'x-security-pin': securityKey } } : {}
   );
   return res.data;
 };
@@ -113,7 +113,7 @@ export const allocateRoom = async (roomId: string, studentId: string, securityKe
   const res = await apiClient.patch<{ status: string; data: { student: StudentProfile; room: RoomOccupancy } }>(
     `/accountant/hostel/${roomId}`,
     { studentId },
-    securityKey ? { headers: { 'x-security-key': securityKey } } : {}
+    securityKey ? { headers: { 'x-security-pin': securityKey } } : {}
   );
   return res.data;
 };
@@ -122,7 +122,7 @@ export const checkoutStudent = async (studentId: string, securityKey?: string): 
   const res = await apiClient.patch<{ status: string; data: { student: StudentProfile } }>(
     `/accountant/hostel/checkout/${studentId}`,
     {},
-    securityKey ? { headers: { 'x-security-key': securityKey } } : {}
+    securityKey ? { headers: { 'x-security-pin': securityKey } } : {}
   );
   return res.data;
 };

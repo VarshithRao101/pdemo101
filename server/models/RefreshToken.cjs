@@ -16,6 +16,13 @@ const refreshTokenSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // Binds the refresh token to the login session it was issued for, so it
+  // cannot resurrect a session that has since been logged out or evicted.
+  sessionId: {
+    type: String,
+    default: null,
+    index: true
+  },
   expiresAt: {
     type: Date,
     required: true,

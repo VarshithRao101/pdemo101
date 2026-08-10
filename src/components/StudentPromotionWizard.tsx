@@ -233,7 +233,7 @@ export const StudentPromotionWizard: React.FC<StudentPromotionWizardProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="Enter 6-digit OTP (e.g. 784920)"
+                  placeholder="Enter 6-digit OTP (e.g. 123456)"
                   value={otpInput}
                   onChange={(e) => setOtpInput(e.target.value)}
                   style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #CBD5E1', fontSize: '14px', fontWeight: 800, letterSpacing: '0.1em', textAlign: 'center', fontFamily: 'monospace', outline: 'none' }}

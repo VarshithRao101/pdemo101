@@ -38,7 +38,11 @@ const paymentSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now },
   remarks: { type: String, default: '', trim: true },
   transactionRef: { type: String, default: '', trim: true },
-  idempotencyKey: { type: String, default: '', index: true }
+  // UNIQUE, not merely indexed. This constraint is what actually prevents a
+  // double-click from producing two receipts — an application-level findOne()
+  // check cannot, because two concurrent requests both read "not found"
+  // before either inserts. `sparse` keeps legacy rows with no key valid.
+  idempotencyKey: { type: String, index: true, unique: true, sparse: true }
 }, {
   timestamps: true
 });

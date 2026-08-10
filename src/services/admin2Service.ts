@@ -131,7 +131,7 @@ export const admin2Service = {
     const url = branch ? `/admin2/expenditure/${id}?branch=${encodeURIComponent(branch)}` : `/admin2/expenditure/${id}`;
     const res = await apiClient.request<any>(url, {
       method: 'DELETE',
-      ...(securityKey ? { headers: { 'x-security-key': securityKey, 'X-Security-OTP': securityKey } } : {})
+      ...(securityKey ? { headers: { 'x-security-pin': securityKey } } : {})
     });
     return res;
   },
@@ -171,15 +171,15 @@ export const admin2Service = {
   async deleteTeacher(id: string, securityKey?: string): Promise<any> {
     const headers: Record<string, string> = {};
     if (securityKey) {
-      headers['x-security-key'] = securityKey;
-      headers['X-Security-OTP'] = securityKey;
+      headers['x-security-pin'] = securityKey;
+      headers['x-security-pin'] = securityKey;
     }
     const res = await apiClient.request<any>(`/admin2/teachers/${id}`, { method: 'DELETE', headers });
     return res;
   },
 
-  async payTeacherSalary(id: string, payload: { academicYear: string; month: string; amountPaid?: number; paymentMode?: string; note?: string }, securityKey: string): Promise<any> {
-    const headers: Record<string, string> = { 'x-security-key': securityKey, 'X-Security-OTP': securityKey };
+  async payTeacherSalary(id: string, payload: { academicYear: string; month: string; amountPaid?: number; paymentMode?: string; note?: string }, securityKey?: string): Promise<any> {
+    const headers: Record<string, string> = securityKey ? { 'x-security-pin': securityKey } : {};
     const res = await apiClient.request<any>(`/admin2/teachers/${id}/salary-month`, { method: 'POST', body: JSON.stringify(payload), headers });
     return res;
   },

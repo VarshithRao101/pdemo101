@@ -41,10 +41,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null
   },
-  pin_plaintext: {
-    type: String,
-    default: null
-  },
+  // NOTE: there was a `pin_plaintext` field here that stored every account's
+  // PIN in cleartext alongside its own bcrypt hash, and an endpoint that read
+  // it back. It has been removed from the schema and unset on existing
+  // documents. Do not reintroduce a recoverable copy of a credential.
   email: { type: String, default: '' },
   mobile: { type: String, default: '' },
   department: { type: String, default: '' }

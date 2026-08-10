@@ -25,6 +25,9 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
   // Backend state
   const [keysData, setKeysData] = useState<any>(null);
+  // Newly issued PINs, held in component state only. Never persisted to
+  // localStorage: they are the live credentials for every portal account.
+  const [issuedPins, setIssuedPins] = useState<Record<string, string> | null>(null);
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
   const [stats, setStats] = useState<AuthenticatorStats>({
     totalStudents: 0,
@@ -315,16 +318,29 @@ export const AuthenticatorDashboardView: React.FC = () => {
     return () => clearInterval(pollInterval);
   }, []);
 
-  // Manual Regeneration for PINs
+  // Issue fresh PINs. Requires the authenticator to confirm with their own PIN,
+  // which the server verifies with bcrypt — the client cannot self-authorise.
   const handleManualRegeneratePins = async () => {
+    const securityPin = window.prompt('Enter YOUR security PIN to confirm issuing new PINs for all portal accounts:');
+    if (!securityPin || !securityPin.trim()) return;
+
     try {
-      const data = await authenticatorService.regenerateKeys();
-      if (data) {
-        setKeysData(data);
+      const data = await authenticatorService.regenerateKeys(securityPin.trim());
+      const pins = (data && data.dailyPins) || {};
+      const count = Object.keys(pins).length;
+
+      if (count === 0) {
+        triggerToast('No PINs were issued. Nothing has changed.');
+        return;
       }
-      triggerToast('All 14 Account Security PINs regenerated & activated! Old PINs invalidated.', 'success');
+
+      setIssuedPins(pins);
+      await loadData();
+      triggerToast(`${count} new PIN(s) issued. Copy them now — they cannot be shown again.`, 'success');
     } catch (err: any) {
-      triggerToast(err?.message || 'Failed to regenerate PINs.');
+      // Surface the real reason (wrong PIN, rate limited, database down)
+      // rather than a generic failure the operator cannot act on.
+      triggerToast(err?.message || 'Failed to issue new PINs. No PIN was changed.');
     }
   };
 
@@ -561,126 +577,98 @@ export const AuthenticatorDashboardView: React.FC = () => {
           </section>
         )}
 
-        {/* â”€â”€â”€ TAB 2: 6-DIGIT SECURITY PINs â”€â”€â”€ */}
+        {/* ─── TAB 2: 6-DIGIT SECURITY PINs ─── */}
+        {/*
+          PIN values are no longer readable. The server stores only bcrypt
+          hashes, so this panel shows configuration status, and newly issued
+          PINs appear once — immediately after a regeneration — and are gone on
+          the next load. The previous version displayed every account's live
+          PIN on page load, and fell back to a hardcoded literal when the API
+          returned nothing.
+        */}
         {activeTab === 'keys' && keysData && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* Top Action Bar with Manual PIN Regeneration Button */}
-            <GlassCard hoverable={false} style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', border: '2.5px solid #0F172A', boxShadow: '4px 4px 0px #0F172A' }}>
+            <GlassCard hoverable={false} style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', backgroundColor: '#FFFFFF', border: '2.5px solid #0F172A', boxShadow: '4px 4px 0px #0F172A' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: '#0F172A' }}>
-                  Active 6-Digit Security PINs
+                  Account Security PINs
                 </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px', fontWeight: 700, color: '#64748B' }}>
-                  Administrative login credentials for Admin 1, Admin 2, and Accountant roles.
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', fontWeight: 700, color: '#64748B', maxWidth: '520px' }}>
+                  PINs are stored as one-way hashes and cannot be displayed. Issue a new PIN to see its value — it is shown once only.
                 </p>
               </div>
 
-              {/* Manual Regeneration Button (No automated timer) */}
               <button
                 onClick={handleManualRegeneratePins}
                 style={{
-                  padding: '12px 20px',
-                  borderRadius: '12px',
-                  border: '2px solid #D97706',
-                  backgroundColor: '#D97706',
-                  color: '#FFFFFF',
-                  fontWeight: 900,
-                  fontSize: '13px',
-                  boxShadow: '3px 3px 0px #B45309',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontFamily: 'var(--font-family)'
+                  padding: '12px 20px', borderRadius: '12px', border: '2px solid #D97706',
+                  backgroundColor: '#D97706', color: '#FFFFFF', fontWeight: 900, fontSize: '13px',
+                  boxShadow: '3px 3px 0px #B45309', cursor: 'pointer', display: 'flex',
+                  alignItems: 'center', gap: '8px', fontFamily: 'var(--font-family)'
                 }}
                 className="press-interactive"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
                 </svg>
-                <span>Regenerate Security PINs</span>
+                <span>Issue New PINs</span>
               </button>
             </GlassCard>
 
-            {/* Core Admin 1 & Authenticator 6-Digit PINs */}
+            {/* Freshly issued PINs — visible only until this view reloads. */}
+            {issuedPins && Object.keys(issuedPins).length > 0 && (
+              <GlassCard hoverable={false} style={{ padding: '20px 24px', border: '2.5px solid #B45309', backgroundColor: '#FFFBEB', boxShadow: '4px 4px 0px #B45309' }}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: 900, color: '#B45309' }}>
+                  New PINs — shown once
+                </h4>
+                <p style={{ margin: '0 0 16px 0', fontSize: '12px', fontWeight: 700, color: '#92400E' }}>
+                  Copy and distribute these now. They cannot be retrieved again; the only way to recover an account is to issue another PIN.
+                </p>
+                <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+                  {Object.entries(issuedPins).map(([username, pin]) => (
+                    <GlassCard key={username} hoverable={false} style={styles.keyCard}>
+                      <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B' }}>{username}</span>
+                      <div style={styles.keyDisplayBlock}>
+                        <strong style={{ ...styles.keyValue, color: '#B45309' }}>{String(pin)}</strong>
+                      </div>
+                      <button onClick={() => copyToClipboard(String(pin))} style={styles.copyBtn} className="press-interactive">
+                        Copy 6-Digit PIN
+                      </button>
+                    </GlassCard>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setIssuedPins(null)}
+                  style={{ marginTop: '16px', padding: '10px 16px', borderRadius: '10px', border: '2px solid #92400E', backgroundColor: 'transparent', color: '#92400E', fontWeight: 900, fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
+                  className="press-interactive"
+                >
+                  I have saved these — hide them
+                </button>
+              </GlassCard>
+            )}
+
+            {/* Status of every portal account. */}
             <div>
               <h4 style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                Section 1: Core System Master Logins
-              </h4>
-              <div style={styles.keysGrid}>
-                <GlassCard hoverable={false} style={styles.keyCard}>
-                  <span style={styles.keyRoleLabel}>Rector (Admin 1) Master PIN</span>
-                  <div style={styles.keyDisplayBlock}>
-                    <strong style={styles.keyValue}>{keysData.dailyPins?.admin1 || '789456'}</strong>
-                  </div>
-                  <button onClick={() => copyToClipboard(keysData.dailyPins?.admin1 || '789456')} style={styles.copyBtn} className="press-interactive">
-                    Copy 6-Digit PIN
-                  </button>
-                </GlassCard>
-
-                <GlassCard hoverable={false} style={{ ...styles.keyCard, borderColor: '#D97706' }}>
-                  <span style={{ ...styles.keyRoleLabel, color: '#D97706' }}>Security Authenticator PIN</span>
-                  <div style={styles.keyDisplayBlock}>
-                    <strong style={{ ...styles.keyValue, color: '#D97706' }}>{keysData.dailyPins?.authenticator || '------'}</strong>
-                  </div>
-                  <button onClick={() => copyToClipboard(keysData.dailyPins?.authenticator || '')} style={styles.copyBtn} className="press-interactive">
-                    Copy 6-Digit PIN
-                  </button>
-                </GlassCard>
-              </div>
-            </div>
-
-            {/* Admin 2 Campus Deans 6-Digit PINs */}
-            <div>
-              <h4 style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                Section 2: Admin 2 (Campus Principals) PINs
-              </h4>
-              <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-                {[
-                  { name: 'Erragattugutta C1', username: 'admin2_erragattugutta_c1', pin: keysData.dailyPins?.admin2_erragattugutta_c1 || '789456' },
-                  { name: 'Erragattugutta C2', username: 'admin2_erragattugutta_c2', pin: keysData.dailyPins?.admin2_erragattugutta_c2 || '789456' },
-                  { name: 'Beemaram C1', username: 'admin2_beemaram_c1', pin: keysData.dailyPins?.admin2_beemaram_c1 || '789456' },
-                  { name: 'Beemaram C2', username: 'admin2_beemaram_c2', pin: keysData.dailyPins?.admin2_beemaram_c2 || '789456' }
-                ].map(item => (
-                  <GlassCard key={item.username} hoverable={false} style={styles.keyCard}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A' }}>{item.name}</span>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>{item.username}</span>
-                    </div>
-                    <div style={styles.keyDisplayBlock}>
-                      <strong style={styles.keyValue}>{item.pin}</strong>
-                    </div>
-                    <button onClick={() => copyToClipboard(item.pin)} style={styles.copyBtn} className="press-interactive">
-                      Copy 6-Digit PIN
-                    </button>
-                  </GlassCard>
-                ))}
-              </div>
-            </div>
-
-            {/* Accountant Campus Security PINs */}
-            <div>
-              <h4 style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                Section 3: Accountant Campus PINs
+                Portal Accounts
               </h4>
               <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-                {[
-                  { name: 'Erragattugutta C1 (Acc 1)', username: 'accountant_erragattugutta_c1_1', pin: keysData.dailyPins?.accountant_erragattugutta_c1_1 || '789456' },
-                  { name: 'Erragattugutta C2 (Acc 1)', username: 'accountant_erragattugutta_c2_1', pin: keysData.dailyPins?.accountant_erragattugutta_c2_1 || '789456' },
-                  { name: 'Beemaram C1 (Acc 1)', username: 'accountant_beemaram_c1_1', pin: keysData.dailyPins?.accountant_beemaram_c1_1 || '789456' },
-                  { name: 'Beemaram C2 (Acc 1)', username: 'accountant_beemaram_c2_1', pin: keysData.dailyPins?.accountant_beemaram_c2_1 || '789456' }
-                ].map(item => (
-                  <GlassCard key={item.username} hoverable={false} style={styles.keyCard}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A' }}>{item.name}</span>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>{item.username}</span>
+                {(keysData.accounts || []).map((acc: any) => (
+                  <GlassCard key={acc.username} hoverable={false} style={styles.keyCard}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A' }}>{acc.name || acc.username}</span>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>{acc.role}</span>
                     </div>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#94A3B8' }}>{acc.username}</span>
                     <div style={styles.keyDisplayBlock}>
-                      <strong style={styles.keyValue}>{item.pin}</strong>
+                      <strong style={{ ...styles.keyValue, fontSize: '13px', color: acc.pinConfigured ? '#059669' : '#DC2626' }}>
+                        {acc.pinConfigured ? 'PIN SET' : 'NO PIN'}
+                      </strong>
                     </div>
-                    <button onClick={() => copyToClipboard(item.pin)} style={styles.copyBtn} className="press-interactive">
-                      Copy 6-Digit PIN
-                    </button>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#94A3B8' }}>
+                      {acc.campus || '—'}
+                      {acc.lastUpdatedAt ? ` · updated ${new Date(acc.lastUpdatedAt).toLocaleDateString('en-IN')}` : ''}
+                    </span>
                   </GlassCard>
                 ))}
               </div>

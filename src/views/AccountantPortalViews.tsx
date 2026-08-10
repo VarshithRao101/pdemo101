@@ -715,7 +715,7 @@ export const AccountantDashboardView: React.FC = () => {
 
   const submitStudentRegistrationWithOtp = async () => {
     setIsSubmittingStudent(true);
-    setGlobalSecurityKey('784920');
+    /* security PIN is collected by apiClient on demand */
     await handleCreateStudent();
     setIsRegStuOtpModalOpen(false);
     setRegStuOtpInput('');
@@ -752,8 +752,8 @@ export const AccountantDashboardView: React.FC = () => {
     const targetId = studentToDelete._id || studentToDelete.studentId || studentToDelete.admissionNumber;
     setIsLoading(true);
     try {
-      setGlobalSecurityKey('784920');
-      await accountantService.deleteStudent(targetId, '784920');
+      /* security PIN is collected by apiClient on demand */
+      await accountantService.deleteStudent(targetId, undefined);
       setStudents(prev => prev.filter(s =>
         s._id !== targetId &&
         s.studentId !== targetId &&
@@ -779,7 +779,7 @@ export const AccountantDashboardView: React.FC = () => {
     }
   };
 
-  const handleStudentSave = async (updated: Student, otp: string) => {
+  const handleStudentSave = async (updated: Student, otp?: string) => {
     if (!updated._id) return;
     setIsLoading(true);
     try {
@@ -1419,7 +1419,7 @@ export const AccountantDashboardView: React.FC = () => {
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <button
-                  onClick={() => handleStudentSave(editStudent, '784920')}
+                  onClick={() => handleStudentSave(editStudent, undefined)}
                   style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0, backgroundColor: '#10B981', color: '#fff', fontWeight: 800 }}
                   className="press-interactive"
                 >
@@ -1454,7 +1454,7 @@ export const AccountantDashboardView: React.FC = () => {
                 Cancel
               </button>
               <button
-                onClick={() => handleStudentSave(editStudent, '784920')}
+                onClick={() => handleStudentSave(editStudent, undefined)}
                 style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }}
                 className="press-interactive"
               >
@@ -2629,7 +2629,7 @@ export const AccountantDashboardView: React.FC = () => {
                     Cancel
                   </button>
                   <button
-                    onClick={() => handleFeePayment(pendingPayType, '784920')}
+                    onClick={() => handleFeePayment(pendingPayType, undefined)}
                     style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: '#059669', color: '#FFF', fontWeight: 800 }}
                     className="press-interactive"
                   >

@@ -1337,7 +1337,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     setTimetableUploading(true);
     setTimetableUploadStatus(null);
     try {
-      setGlobalSecurityKey(securityKey);
+      if (securityKey) setGlobalSecurityKey(securityKey);
       const res = await admin1Service.uploadTimetable(timetableSection, timetableFile);
       if (res.status === 'success') {
         setTimetableUploadStatus(res.data);
@@ -1375,7 +1375,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       const mockExamName = resultsFile.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
       const formattedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
-      setGlobalSecurityKey(securityKey);
+      if (securityKey) setGlobalSecurityKey(securityKey);
       const res = await admin1Service.uploadExamResults(resultsFile, mockExamName, formattedDate);
       if (res.status === 'success') {
         setExamUploadStatus(res.data);
@@ -1709,7 +1709,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const handleStudentSave = async (updated: Student, keyToUse: string) => {
+  const handleStudentSave = async (updated: Student, keyToUse?: string) => {
     const targetStu = updated || editStudent;
     if (!targetStu) return;
     const targetId = targetStu._id || targetStu.studentId || targetStu.admissionNumber;
@@ -1736,7 +1736,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
 
     try {
-      setGlobalSecurityKey(keyToUse.trim());
+      if (keyToUse) setGlobalSecurityKey(keyToUse.trim());
       const saved = await admin1Service.updateStudent(targetId, targetStu);
       const nextStu = (saved && (saved._id || saved.admissionNumber)) ? saved : targetStu;
       setStudents(prev => prev.map(s => (s._id === targetId || s.studentId === targetId || s.admissionNumber === targetId) ? { ...s, ...nextStu } : s));
@@ -1751,7 +1751,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const handlePermanentDeleteStudent = async (keyToUse = '784920') => {
+  const handlePermanentDeleteStudent = async (keyToUse?: string) => {
     const targetStu = selectedStudent || editStudent;
     if (!targetStu) {
       triggerToast('No student selected for deletion.');
@@ -1764,8 +1764,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
 
     try {
-      setGlobalSecurityKey('784920');
-      await admin1Service.deleteStudent(targetId, '784920');
+      /* security PIN is collected by apiClient on demand */
+      await admin1Service.deleteStudent(targetId, undefined);
       setStudents(prev => prev.filter(s =>
         s._id !== targetId &&
         s.studentId !== targetId &&
@@ -1804,7 +1804,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const submitStudentRegistrationWithOtp = async () => {
     setIsSubmittingStudent(true);
     try {
-      setGlobalSecurityKey('784920');
+      /* security PIN is collected by apiClient on demand */
       await handleRegisterStudent();
       setIsRegStuOtpModalOpen(false);
       setRegStuOtpInput('');
@@ -1938,10 +1938,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     setIsFacOtpModalOpen(true);
   };
 
-  const submitFacOtp = async (keyToUse = '784920') => {
+  const submitFacOtp = async (keyToUse?: string) => {
     setIsProcessingUpload(true);
     try {
-      setGlobalSecurityKey('784920');
+      /* security PIN is collected by apiClient on demand */
       if (facActionType === 'add') {
         const newId = `FAC-20${Math.floor(1000 + Math.random() * 9000)}`;
         const teacherPayload = {
@@ -1977,7 +1977,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         triggerToast(`Faculty credentials for ${editTeacher.name} saved successfully.`);
         await fetchTeachers();
       } else if (facActionType === 'delete' && pendingDeleteTeacherId) {
-        await admin1Service.deleteTeacher(pendingDeleteTeacherId, '784920');
+        await admin1Service.deleteTeacher(pendingDeleteTeacherId, undefined);
         setSelectedTeacher(null);
         setEditTeacher(null);
         setPendingDeleteTeacherId(null);
@@ -1994,7 +1994,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           amountPaid: Number(staffMonthAmount || targetObj.salary || 0),
           paymentMode: staffMonthMode || 'Bank Transfer',
           note: staffMonthNote || ''
-        }, '784920');
+        }, undefined);
 
         if (res && res.data) {
           setEditTeacher(res.data);
@@ -2014,7 +2014,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
   };
 
-  const handleConfirmDeleteStudent = async (otpToUse: string) => {
+  const handleConfirmDeleteStudent = async (otpToUse?: string) => {
     await handlePermanentDeleteStudent(otpToUse);
   };
 
@@ -2038,7 +2038,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
 
     try {
-      setGlobalSecurityKey(securityKey);
+      if (securityKey) setGlobalSecurityKey(securityKey);
       if (editingPubId) {
         await admin1Service.updateBulletin(editingPubId, { title: newPubTitle, content: newPubContent, category: pubCat });
         setEditingPubId(null);
@@ -2062,7 +2062,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const handleDeleteBulletin = async (id: string) => {
     try {
-      setGlobalSecurityKey(securityKey);
+      if (securityKey) setGlobalSecurityKey(securityKey);
       await admin1Service.deleteBulletin(id);
       triggerToast('Notice deleted.');
       setSecurityKey('');
@@ -2078,7 +2078,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       return;
     }
     try {
-      setGlobalSecurityKey(securityKey);
+      if (securityKey) setGlobalSecurityKey(securityKey);
       await admin1Service.scheduleExam(newExamName, newExamDate);
       setNewExamName('');
       setNewExamDate('');
@@ -2095,7 +2095,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       // Find the exam by id to get its name
       const exam = exams.find(e => e._id === id || e.id === id);
       if (!exam) return;
-      setGlobalSecurityKey(securityKey);
+      if (securityKey) setGlobalSecurityKey(securityKey);
       await apiClient.patch(`/admin1/exams/${exam._id || exam.id}`, { status: 'Results Published', resultsPublished: true });
       triggerToast('Exam results published and broadcasted to Student portal!');
       setSecurityKey('');
@@ -2111,7 +2111,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       return;
     }
     try {
-      setGlobalSecurityKey(securityKey);
+      if (securityKey) setGlobalSecurityKey(securityKey);
       await admin1Service.createTimetableEntry({
         section: timetableSection,
         day: newSlotDay,
@@ -2132,7 +2132,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const handleDeleteTimetableSlot = async (id: string) => {
     try {
-      setGlobalSecurityKey(securityKey);
+      if (securityKey) setGlobalSecurityKey(securityKey);
       await admin1Service.deleteTimetableEntry(id);
       triggerToast('Timetable entry deleted.');
       setSecurityKey('');
@@ -2153,13 +2153,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     triggerToast('Academic Calendar timeline additions submitted.');
   };
 
-  const handleSaveAcademicFees = async (otpToUse: string) => {
+  const handleSaveAcademicFees = async (otpToUse?: string) => {
     if (!otpToUse || !otpToUse.trim()) {
       triggerToast('Please enter a valid 6-digit Security Authorization Key / OTP.');
       return;
     }
     try {
-      setGlobalSecurityKey(otpToUse.trim());
+      if (otpToUse) setGlobalSecurityKey(otpToUse.trim());
       const payload = {
         tuition: Number(feeRates.tuition !== undefined ? feeRates.tuition : editTuitionRate) || 0,
         hostel: Number(feeRates.hostel !== undefined ? feeRates.hostel : editHostelRate) || 0,
@@ -2189,13 +2189,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     setIsUnlockFeeOtpOpen(true);
   };
 
-  const handleConfirmUnlockFees = async (otpToUse: string) => {
+  const handleConfirmUnlockFees = async (otpToUse?: string) => {
     if (!otpToUse || !otpToUse.trim()) {
       triggerToast('Please enter a valid 6-digit Security Authorization Key / OTP.');
       return;
     }
     try {
-      setGlobalSecurityKey(otpToUse.trim());
+      if (otpToUse) setGlobalSecurityKey(otpToUse.trim());
       const saved = await admin2Service.updateFeeSettings({ isLocked: false, branch: selectedFeeBranch });
       setFeeRates(saved);
       setIsEditingFees(true);
@@ -3056,7 +3056,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   {/* Actions Bar */}
                   <div style={{ display: 'flex', gap: '12px', marginTop: '14px', borderTop: '1px solid #E2E8F0', paddingTop: '14px' }}>
                     <button
-                      onClick={() => handleStudentSave(editStudent, '784920')}
+                      onClick={() => handleStudentSave(editStudent, undefined)}
                       style={{ ...styles.saveSubmitBtn, flex: 2, marginTop: 0 }}
                       className="press-interactive"
                     >
@@ -3122,7 +3122,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
                   <button
-                    onClick={() => handleConfirmDeleteStudent('784920')}
+                    onClick={() => handleConfirmDeleteStudent(undefined)}
                     style={{ ...styles.modalConfirmBtn, backgroundColor: '#DC2626', color: '#FFF', opacity: 1 }}
                     className="press-interactive"
                   >
@@ -4075,7 +4075,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                   <button onClick={() => { setIsFacOtpModalOpen(false); setFacOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
-                  <button onClick={() => submitFacOtp('784920')} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Yes, Proceed</button>
+                  <button onClick={() => submitFacOtp(undefined)} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Yes, Proceed</button>
                 </div>
               </GlassCard>
             </div>
@@ -4805,7 +4805,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setIsUnlockFeeOtpOpen(false); setUnlockFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
-                  <button onClick={() => handleConfirmUnlockFees('784920')} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
+                  <button onClick={() => handleConfirmUnlockFees(undefined)} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
                     Yes, Unlock Editor
                   </button>
                 </div>
@@ -4833,7 +4833,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setIsAcadFeeOtpOpen(false); setAcadFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
-                  <button onClick={() => handleSaveAcademicFees('784920')} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
+                  <button onClick={() => handleSaveAcademicFees(undefined)} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
                     Yes, Save Rates
                   </button>
                 </div>
@@ -5163,10 +5163,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       }
     };
 
-    const handleApplyWaivers = async (keyToUse: string) => {
+    const handleApplyWaivers = async (keyToUse?: string) => {
       if (!selectedFeeStudent) return;
       try {
-        setGlobalSecurityKey(keyToUse);
+        if (keyToUse) setGlobalSecurityKey(keyToUse);
         const targetBranch = selectedFeeStudent.branch || loggedInCampus;
         const studentKey = selectedFeeStudent._id || selectedFeeStudent.studentId || selectedFeeStudent.admissionNumber;
 
@@ -5588,7 +5588,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                   <button onClick={() => { setIsFeeOtpOpen(false); setFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
-                  <button onClick={() => handleApplyWaivers('784920')} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
+                  <button onClick={() => handleApplyWaivers(undefined)} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
                     Yes, Apply Waivers
                   </button>
                 </div>
@@ -5632,11 +5632,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   //  SUBPAGE 14: EXPENDITURE TRACKER (Admin 2)
   if (activePage === 'expenditure') {
-    const handleLogExpenditure = async (keyToUse: string) => {
+    const handleLogExpenditure = async (keyToUse?: string) => {
       if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; }
       const finalCategory = newExpCat === 'Others' ? (customExpCat.trim() || 'Others') : newExpCat;
       try {
-        setGlobalSecurityKey(keyToUse);
+        if (keyToUse) setGlobalSecurityKey(keyToUse);
         const targetBranch = role === 'admin1' ? selectedExpBranch : loggedInCampus;
         await admin2Service.createExpenditure({
           category: finalCategory,
@@ -5651,12 +5651,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       } catch (err: any) { triggerToast(err.message || 'Failed to log expenditure.'); }
     };
 
-    const handleDeleteExpenditure = async (exp: ExpenditureItem, otpKey: string) => {
+    const handleDeleteExpenditure = async (exp: ExpenditureItem, otpKey?: string) => {
       const id = exp._id || exp.id;
       if (!id) return;
       try {
-        setGlobalSecurityKey(otpKey.trim());
-        await admin2Service.deleteExpenditure(id, exp.branch || (role === 'admin1' ? selectedExpBranch : loggedInCampus), otpKey.trim());
+        if (otpKey) setGlobalSecurityKey(otpKey.trim());
+        await admin2Service.deleteExpenditure(id, exp.branch || (role === 'admin1' ? selectedExpBranch : loggedInCampus), otpKey?.trim());
         triggerToast('Expenditure entry deleted.');
         setPendingExpDelete(null);
         setIsExpDeleteOtpOpen(false);
@@ -5947,7 +5947,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <input type="text" value={newExpDesc} onChange={(e) => setNewExpDesc(e.target.value)} style={styles.textInputBox} placeholder="Brief description of the expense" />
               </div>
             </div>
-            <button onClick={() => { if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; } handleLogExpenditure('784920'); }} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">
+            <button onClick={() => { if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; } handleLogExpenditure(undefined); }} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">
               Log Expenditure
             </button>
           </GlassCard>
@@ -6022,7 +6022,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     Cancel
                   </button>
                   <button
-                    onClick={() => handleDeleteExpenditure(pendingExpDelete, '784920')}
+                    onClick={() => handleDeleteExpenditure(pendingExpDelete, undefined)}
                     style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: '#DC2626', color: '#fff', opacity: 1 }}
                     className="press-interactive"
                   >
@@ -6047,7 +6047,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setIsExpOtpOpen(false); setExpOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
-                  <button onClick={() => handleLogExpenditure('784920')} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Yes, Log Entry</button>
+                  <button onClick={() => handleLogExpenditure(undefined)} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Yes, Log Entry</button>
                 </div>
               </GlassCard>
             </div>
@@ -6083,7 +6083,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       const teacherId = selectedSalaryTeacher.id || selectedSalaryTeacher._id;
       if (!teacherId) return;
       try {
-        setGlobalSecurityKey(securityKey);
+        if (securityKey) setGlobalSecurityKey(securityKey);
         await admin2Service.toggleStaffSalary(teacherId, {
           salaryStatus: salaryActionType,
           paidAmount: salaryActionType === 'paid' ? Number(salaryAmountInput || selectedSalaryTeacher.salary || 0) : 0
@@ -6285,7 +6285,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       if (!workerPendingAction) return;
       const { actionType, data } = workerPendingAction;
       try {
-        setGlobalSecurityKey('784920');
+        /* security PIN is collected by apiClient on demand */
         if (actionType === 'toggle') {
           const payload = {
             workerName: data.workerName || data.name,
@@ -6295,7 +6295,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             paid: true,
             branch: role === 'admin2' ? loggedInCampus : (data.branch || loggedInCampus)
           };
-          await admin2Service.recordWorkerPayment(payload as any, '784920');
+          await admin2Service.recordWorkerPayment(payload as any, undefined);
           triggerToast(`Worker payment for ${payload.workerName} recorded successfully!`);
           await fetchWorkerPaymentsHistory();
         }
@@ -7226,7 +7226,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             <p style={{ margin: '0 0 16px', fontSize: '12.5px', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 600 }}>Are you sure you want to save updated profile details and fee structure for <strong>{editStudent.name}</strong>?</p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => { setIsOtpModalOpen(false); setOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
-              <button onClick={() => handleStudentSave(editStudent, '784920')} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3 }} className="press-interactive">Yes, Save Changes</button>
+              <button onClick={() => handleStudentSave(editStudent, undefined)} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3 }} className="press-interactive">Yes, Save Changes</button>
             </div>
           </div>
         </div>

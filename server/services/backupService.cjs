@@ -13,7 +13,14 @@ const User = require('../models/User.cjs');
 
 const { uploadBackupFile, listBackupFiles, downloadBackupFile, cleanupOldBackups } = require('./googleDriveService.cjs');
 
-const BACKUP_KEY_RAW = process.env.BACKUP_ENCRYPTION_KEY || 'inspire_secure_backup_encryption_aes256gcm_key_2026';
+// No fallback literal. If this were allowed to default, a deployment missing
+// the env var would silently encrypt every backup of the entire database with
+// a key published in a public repository — the backups would be readable by
+// anyone who obtained the file.
+const BACKUP_KEY_RAW = process.env.BACKUP_ENCRYPTION_KEY;
+if (!BACKUP_KEY_RAW || BACKUP_KEY_RAW.length < 32) {
+  throw new Error('BACKUP_ENCRYPTION_KEY is not configured (or is shorter than 32 characters). Refusing to start.');
+}
 const ENCRYPTION_KEY = crypto.scryptSync(BACKUP_KEY_RAW, 'inspire-erp-salt-2026', 32);
 
 // Local encrypted backup storage directory

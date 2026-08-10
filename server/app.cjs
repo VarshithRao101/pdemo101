@@ -61,11 +61,21 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,ht
   .split(',')
   .map(o => o.trim().toLowerCase());
 
+// Exact-match only. The previous rule allowed any origin whose hostname merely
+// *contained* "localhost" or "127.0.0.1", so an attacker-registered domain such
+// as https://localhost.example-attacker.com was accepted and — with
+// credentials: true — could read authenticated responses cross-origin.
+// Local development origins are allowed only outside production.
+const DEV_ORIGIN_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+const allowDevOrigins = process.env.NODE_ENV !== 'production';
+
 app.use(cors({
   origin: (origin, callback) => {
+    // Same-origin and non-browser callers (curl, cron, server-to-server) send
+    // no Origin header; there is no cross-origin risk to gate in that case.
     if (!origin) return callback(null, true);
     const normOrigin = origin.toLowerCase().trim();
-    if (allowedOrigins.includes(normOrigin) || allowedOrigins.includes('*') || normOrigin.includes('localhost') || normOrigin.includes('127.0.0.1')) {
+    if (allowedOrigins.includes(normOrigin) || (allowDevOrigins && DEV_ORIGIN_PATTERN.test(normOrigin))) {
       return callback(null, true);
     }
     const err = new Error('Not allowed by CORS policy');
@@ -74,7 +84,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-security-key', 'x-security-otp']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-security-pin']
 }));
 
 app.use(express.json());
@@ -89,28 +99,34 @@ app.use((req, res, next) => {
 });
 
 // Health Check Endpoint
+// Public health probe. Reports whether the app is up and whether the database
+// is reachable, and nothing else — it previously echoed the raw driver error
+// (which can contain the cluster host and credentials) and whether a
+// MONGODB_URI was configured, to any anonymous caller.
 app.get('/api/health', async (req, res) => {
-  let dbStatus = 'disconnected';
-  let dbError = null;
-  const hasMongoUri = Boolean(process.env.MONGODB_URI);
+  let database = 'disconnected';
   try {
     await connectToDatabase();
-    dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'connecting';
+    database = mongoose.connection.readyState === 1 ? 'connected' : 'connecting';
   } catch (err) {
-    dbError = err.message;
+    console.error('[Health]: Database unreachable:', err.message);
   }
-  return res.json({
-    status: 'ok',
+  return res.status(database === 'connected' ? 200 : 503).json({
+    status: database === 'connected' ? 'ok' : 'degraded',
     timestamp: new Date().toISOString(),
-    database: dbStatus,
-    hasMongoUri,
-    dbError
+    database
   });
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'inspire_secure_jwt_secret_64byte_random_hex_key_2026';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'inspire_secure_jwt_refresh_secret_key_2026';
+// Signing secrets come from the environment only. There is deliberately no
+// fallback literal: a missing secret must stop the process, never silently
+// downgrade every token in the system to a publicly-known key.
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
+
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET is not configured (or is shorter than 32 characters). Refusing to start.');
+}
 
 // Valid campus branches
 const VALID_CAMPUSES = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
@@ -155,27 +171,54 @@ function isValidObjectId(val) {
 // Fee cap constants
 const MAX_STUDENT_FEE = 1000000; // Rs. 10,00,000
 
+// The frontend expects `mode`; the schema stores `paymentMode`. Kept in one
+// place so a create and a duplicate-replay return an identically shaped object.
+function normalizePaymentForClient(p) {
+  if (!p) return null;
+  return {
+    _id: p._id,
+    receiptNumber: p.receiptNumber,
+    studentId: p.studentId,
+    admissionNumber: p.admissionNumber,
+    studentName: p.studentName,
+    amount: p.amount,
+    category: p.category,
+    installment: p.installment,
+    mode: p.paymentMode,
+    cashier: p.cashier,
+    branch: p.branch,
+    date: p.date,
+    remarks: p.remarks || '',
+    transactionRef: p.transactionRef || ''
+  };
+}
+
 function calcStudentGrossFees(tuitionFee, hostelFee, transportFee, miscellaneousFee, previousPending, customFeeSlots) {
   const customTotal = (Array.isArray(customFeeSlots) ? customFeeSlots : []).reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
   return Number(tuitionFee || 0) + Number(hostelFee || 0) + Number(transportFee || 0) + Number(miscellaneousFee || 0) + Number(previousPending || 0) + customTotal;
 }
 
-// --- IDEMPOTENT PER-USERNAME BOOTSTRAP SEEDER ---
+// --- MANAGED PORTAL SLOTS ---
+//
+// The fixed set of accounts this system is allowed to have: one Rector, one
+// security authenticator, one Dean per campus, one accountant per campus.
+// Usernames, roles and campuses only — never credentials. Provisioning and
+// rotation happen in scripts/rotateCredentials.cjs.
 const defaultUsers = [
   { username: 'admin1', role: 'admin1', campus: 'All', name: 'Rector' },
   { username: '9059068384', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
-  { username: 'admin2_erragattugutta_c1', role: 'admin2', campus: 'Erragattugutta C1', name: 'Dean Erragattugutta C1' },
-  { username: 'admin2_erragattugutta_c2', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2' },
-  { username: 'admin2_beemaram_c1', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1' },
-  { username: 'admin2_beemaram_c2', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2' },
-  { username: 'accountant_erragattugutta_c1_1', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1' },
-  { username: 'accountant_erragattugutta_c1_2', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1' },
-  { username: 'accountant_erragattugutta_c2_1', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2' },
-  { username: 'accountant_erragattugutta_c2_2', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 2 Erragattugutta C2' },
-  { username: 'accountant_beemaram_c1_1', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 1 Beemaram C1' },
-  { username: 'accountant_beemaram_c1_2', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1' },
-  { username: 'accountant_beemaram_c2_1', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2' },
-  { username: 'accountant_beemaram_c2_2', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2' }
+  ...VALID_CAMPUSES.map(c => ({
+    username: `admin2_${c.toLowerCase().replace(/\s+/g, '_')}`,
+    role: 'admin2',
+    campus: c,
+    name: `Dean ${c}`
+  })),
+  ...VALID_CAMPUSES.map(c => ({
+    username: `accountant_${c.toLowerCase().replace(/\s+/g, '_')}`,
+    role: 'accountant',
+    campus: c,
+    name: `Accountant ${c}`
+  }))
 ];
 
 function safeBcryptCompare(input, hash) {
@@ -209,26 +252,18 @@ async function findUserAccount(resolvedUsername) {
   }
 }
 
-const defaultSeedUsers = [
-  { username: 'admin1', password: 'RectorPass#2026', pin: '346398', role: 'admin1', campus: 'All', name: 'Rector' },
-  { username: '9059068384', password: '00112233', pin: '789456', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
-  { username: 'admin2_erragattugutta_c1', password: 'DeanE1#8492', pin: '118798', role: 'admin2', campus: 'Erragattugutta C1', name: 'Dean Erragattugutta C1' },
-  { username: 'admin2_erragattugutta_c2', password: 'DeanE2#9184', pin: '186995', role: 'admin2', campus: 'Erragattugutta C2', name: 'Dean Erragattugutta C2' },
-  { username: 'admin2_beemaram_c1', password: 'DeanB1#2834', pin: '673732', role: 'admin2', campus: 'Beemaram C1', name: 'Dean Beemaram C1' },
-  { username: 'admin2_beemaram_c2', password: 'DeanB2#7194', pin: '422319', role: 'admin2', campus: 'Beemaram C2', name: 'Dean Beemaram C2' },
-  { username: 'accountant_erragattugutta_c1_1', password: 'AccE1#4102', pin: '785482', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 1 Erragattugutta C1' },
-  { username: 'accountant_erragattugutta_c1_2', password: 'AccE1#9203', pin: '552438', role: 'accountant', campus: 'Erragattugutta C1', name: 'Acc 2 Erragattugutta C1' },
-  { username: 'accountant_erragattugutta_c2_1', password: 'AccE2#1924', pin: '934649', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 1 Erragattugutta C2' },
-  { username: 'accountant_erragattugutta_c2_2', password: 'NewPass#2026', pin: '998877', role: 'accountant', campus: 'Erragattugutta C2', name: 'Acc 2 Erragattugutta C2' },
-  { username: 'accountant_beemaram_c1_1', password: 'AccB1#5834', pin: '819871', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 1 Beemaram C1' },
-  { username: 'accountant_beemaram_c1_2', password: 'AccB1#2934', pin: '515682', role: 'accountant', campus: 'Beemaram C1', name: 'Acc 2 Beemaram C1' },
-  { username: 'accountant_beemaram_c2_1', password: 'AccB2#1049', pin: '518535', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 1 Beemaram C2' },
-  { username: 'accountant_beemaram_c2_2', password: 'NewPass#2026', pin: '998877', role: 'accountant', campus: 'Beemaram C2', name: 'Acc 2 Beemaram C2' }
-];
+// NOTE: there is deliberately no in-source credential list here.
+// Passwords and PINs exist only as bcrypt hashes in MongoDB. A previous
+// revision kept a `defaultSeedUsers` array of plaintext passwords/PINs that
+// `validateUserLoginCredentials` fell back to whenever the database lookup
+// returned nothing — including when the database was merely unreachable —
+// which made every account loggable-into with a credential committed to a
+// public repository. Do not reintroduce a literal credential in this file
+// for any reason, including seeding or local development.
 
+// Username of the security authenticator slot. This is an identifier, not a
+// secret: it marks the one account the management panel refuses to edit.
 const FIXED_AUTHENTICATOR_USERNAME = '9059068384';
-const FIXED_AUTHENTICATOR_PASSWORD = '00112233';
-const FIXED_AUTHENTICATOR_PIN = '789456';
 const MANAGED_PORTAL_ROLES = new Set(['admin1', 'admin2', 'accountant', 'authenticator']);
 const MANAGED_PORTAL_USERNAMES = new Set(defaultUsers.map(u => u.username));
 
@@ -242,31 +277,15 @@ function sanitizeManagedAccount(userDoc) {
   return plain;
 }
 
+// Reads the real account list. Never synthesises placeholder accounts: an
+// operator looking at this panel has to be able to trust that what is listed
+// is what is actually in the database.
 async function getManagedPortalAccounts() {
-  const fallbackAccounts = defaultUsers.map((u, i) => ({
-    _id: `sys_${u.username}`,
-    username: u.username,
-    role: u.role,
-    name: u.name,
-    campus: u.campus,
-    email: '',
-    mobile: '',
-    department: '',
-    status: 'active',
-    backupCode: `BC-${1000 + i}`
-  }));
+  await connectToDatabase();
 
-  if (mongoose.connection.readyState !== 1) {
-    return fallbackAccounts;
-  }
+  const docs = await User.find({ role: { $in: [...MANAGED_PORTAL_ROLES] } }).lean();
 
-  try {
-    const docs = await User.find({ role: { $in: [...MANAGED_PORTAL_ROLES] } }).lean();
-    if (!docs || docs.length === 0) {
-      return fallbackAccounts;
-    }
-
-    return docs
+  return docs
       .map(doc => ({
         _id: doc._id,
         username: doc.username,
@@ -284,116 +303,101 @@ async function getManagedPortalAccounts() {
         if (roleDiff !== 0) return roleDiff;
         return String(a.username).localeCompare(String(b.username));
       });
-  } catch (err) {
-    console.warn('⚠️ [Auth]: Failed to load managed accounts from DB:', err.message);
-    return fallbackAccounts;
-  }
 }
 
-async function seedInitialAccounts() {
-  try {
-    await connectToDatabase();
-    for (const u of defaultSeedUsers) {
-      const exists = await User.findOne({ username: u.username });
-      if (!exists) {
-        const hashedPassword = bcrypt.hashSync(u.password, 10);
-        const hashedPin = bcrypt.hashSync(u.pin, 10);
-        await User.create({
-          username: u.username,
-          password: hashedPassword,
-          pin: hashedPin,
-          pin_plaintext: u.pin,
-          role: u.role,
-          campus: u.campus,
-          name: u.name,
-          status: 'active'
-        });
-        console.log(`✅ [Seeder]: Seeded missing user [${u.username}] into MongoDB.`);
-      }
-    }
-  } catch (err) {
-    console.error('⚠️ [Seeder]: User account seed notice:', err.message);
-  }
-}
-
-// ONE-TIME ASYNCHRONOUS BOOTSTRAP
-let bootstrapPromise = null;
-function ensureBootstrap() {
-  if (!bootstrapPromise) {
-    bootstrapPromise = connectToDatabase()
-      .then(() => seedInitialAccounts())
-      .catch(err => {
-        bootstrapPromise = null;
-        console.warn('âš ï¸ [Boot]: Bootstrap initialization notice:', err.message);
-      });
-  }
-  return bootstrapPromise;
-}
-
-if (!process.env.VERCEL) {
-  ensureBootstrap();
-}
-
+// Account provisioning is deliberately NOT done from code. Seeding in-process
+// requires plaintext credentials to live in the repository, which is the exact
+// defect this file previously shipped. Accounts are provisioned and rotated
+// out of band by scripts/rotateCredentials.cjs, which generates random
+// secrets, persists only bcrypt hashes, and writes the cleartext to a
+// gitignored file for the operator to distribute.
 
 // --- SECURITY MIDDLEWARE ---
 
-// Persistent Rate Limiter (MongoDB-backed with automatic connection attempt & in-memory fallback)
-const memoryRateLimits = new Map();
+// Fail-closed database gate. Every route that touches real data sits behind
+// this: if MongoDB is unreachable the request gets a 503 and the caller is
+// told plainly. The alternative this app used to take — carrying on with
+// placeholder data — is worse than an outage, because staff cannot tell an
+// invented balance from a real one.
+async function requireDatabase(req, res, next) {
+  try {
+    await connectToDatabase();
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error('Database connection is not ready.');
+    }
+    return next();
+  } catch (err) {
+    console.error('[DB Gate]: Refusing request, database unavailable:', err.message);
+    return res.status(503).json({
+      status: 'error',
+      message: 'Service temporarily unavailable: the database cannot be reached. No data was read or written.'
+    });
+  }
+}
+
+
+// Persistent, fail-CLOSED rate limiter backed by MongoDB.
+//
+// Two deliberate choices here:
+//  1. The counter lives in MongoDB, not process memory, so the limit holds
+//     across restarts and across every instance serving the site.
+//  2. If the backing store cannot be reached we return 503 rather than
+//     calling next(). A rate limiter that waves everything through the moment
+//     its own storage hiccups is not a rate limiter — an attacker who can
+//     disrupt the store gets unlimited attempts at the login endpoint.
+//
+// Limits are per IP + path. Auth endpoints get a much tighter budget than
+// ordinary writes, which is the whole reason this middleware exists.
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const AUTH_PATH_PATTERN = /\/(login|verify-credentials|force-login|refresh|wipe-database|restore-backup|reset-password)$/;
+
+function rateLimitBudgetFor(path) {
+  return AUTH_PATH_PATTERN.test(path) ? 10 : 120;
+}
 
 async function mongoRateLimiter(req, res, next) {
   const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
   const ip = String(rawIp).split(',')[0].trim();
   const key = `ratelimit_${req.path}_${ip}`;
   const now = new Date();
-  const windowMs = 15 * 60 * 1000;
-  const maxAttempts = 100;
+  const maxAttempts = rateLimitBudgetFor(req.path);
 
   try {
-    if (mongoose.connection.readyState === 1) {
-      let record = await RateLimit.findOne({ key });
-      if (!record || record.resetAt < now) {
-        const resetAt = new Date(Date.now() + windowMs);
-        record = await RateLimit.findOneAndUpdate(
-          { key },
-          { count: 1, resetAt },
-          { upsert: true, new: true }
-        );
-      } else {
-        record.count += 1;
-        await record.save();
-      }
-
-      if (record.count > maxAttempts) {
-        return res.status(429).json({
-          status: 'error',
-          message: 'Too many authentication attempts. Please try again in 15 minutes.'
-        });
-      }
-
-      return next();
+    await connectToDatabase();
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error('Rate limit store unreachable.');
     }
 
-    // In-memory fallback if MongoDB connection is unavailable
-    let memRecord = memoryRateLimits.get(key);
-    if (!memRecord || memRecord.resetAt < now) {
-      const resetAt = new Date(Date.now() + windowMs);
-      memRecord = { count: 1, resetAt };
-      memoryRateLimits.set(key, memRecord);
-    } else {
-      memRecord.count += 1;
-    }
+    // Single atomic upsert+increment. A read-then-write here would let two
+    // concurrent requests both observe the pre-increment count and slip past
+    // the limit together.
+    const record = await RateLimit.findOneAndUpdate(
+      { key, resetAt: { $gt: now } },
+      { $inc: { count: 1 }, $setOnInsert: { key, resetAt: new Date(Date.now() + RATE_LIMIT_WINDOW_MS) } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
-    if (memRecord.count > maxAttempts) {
+    if (record.count > maxAttempts) {
+      const retryAfterSec = Math.max(1, Math.ceil((new Date(record.resetAt).getTime() - Date.now()) / 1000));
+      res.set('Retry-After', String(retryAfterSec));
       return res.status(429).json({
         status: 'error',
-        message: 'Too many authentication attempts. Please try again in 15 minutes.'
+        message: 'Too many requests. Please try again later.'
       });
     }
 
     return next();
   } catch (err) {
-    console.error('Rate limiter exception:', err.message);
-    return next();
+    // Duplicate-key means a concurrent request created the window document
+    // between our filter miss and our upsert. Count that as one attempt.
+    if (err && err.code === 11000) {
+      return next();
+    }
+    console.error('[RateLimit]: Failing closed, store unavailable:', err.message);
+    return res.status(503).json({
+      status: 'error',
+      message: 'Service temporarily unavailable. Please try again shortly.'
+    });
   }
 }
 
@@ -409,56 +413,78 @@ async function authenticateToken(req, res, next) {
     });
   }
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-
-    // Check activeSessionId against database in MongoDB or fallback seed user
-    if (decoded.id || decoded.username) {
-      let dbUser = null;
-      if (mongoose.connection.readyState === 1 && !isDatabaseTemporarilyBlocked()) {
-        try {
-          if (mongoose.Types.ObjectId.isValid(decoded.id)) {
-            dbUser = await User.findById(decoded.id).select('activeSessionId status username');
-          }
-          if (!dbUser && decoded.username) {
-            dbUser = await User.findOne({ username: decoded.username }).select('activeSessionId status username');
-          }
-        } catch (dbErr) {
-          console.warn('⚠️ [Auth]: Mongo query notice in authenticateToken:', dbErr.message);
-        }
-      }
-
-      if (!dbUser && decoded.username) {
-        const seedUser = defaultSeedUsers.find(u => u.username === resolveUsername(decoded.username));
-        if (seedUser) {
-          dbUser = {
-            username: seedUser.username,
-            status: 'active',
-            activeSessionId: decoded.sessionId || null
-          };
-        }
-      }
-
-      if (!dbUser || dbUser.status === 'disabled') {
-        return res.status(401).json({ status: 'error', message: 'User account not found or disabled.' });
-      }
-
-      if (dbUser.activeSessionId && decoded.sessionId && dbUser.activeSessionId !== decoded.sessionId) {
-        return res.status(401).json({
-          status: 'error',
-          message: 'Your session has ended because this account was logged in elsewhere.'
-        });
-      }
-    }
-
-    next();
+    decoded = jwt.verify(token, JWT_SECRET);
   } catch (err) {
     return res.status(401).json({
       status: 'error',
       message: 'Invalid or expired access token.'
     });
   }
+
+  // The session record is authoritative and lives in MongoDB, so it holds
+  // across restarts and across instances. If we cannot reach it we cannot say
+  // whether this session is still valid, so we refuse the request instead of
+  // assuming it is fine. This previously fabricated a user object from an
+  // in-source credential list, which let a token survive both a disabled
+  // account and a session eviction whenever the database was down.
+  try {
+    await connectToDatabase();
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error('Database connection is not ready.');
+    }
+  } catch (dbErr) {
+    console.error('[Auth]: Refusing request, cannot verify session:', dbErr.message);
+    return res.status(503).json({
+      status: 'error',
+      message: 'Service temporarily unavailable: unable to verify your session.'
+    });
+  }
+
+  let dbUser = null;
+  try {
+    if (mongoose.Types.ObjectId.isValid(decoded.id)) {
+      dbUser = await User.findById(decoded.id).select('activeSessionId status username role campus name');
+    }
+    if (!dbUser && decoded.username) {
+      dbUser = await User.findOne({ username: resolveUsername(decoded.username) })
+        .select('activeSessionId status username role campus name');
+    }
+  } catch (dbErr) {
+    console.error('[Auth]: Session lookup failed:', dbErr.message);
+    return res.status(503).json({
+      status: 'error',
+      message: 'Service temporarily unavailable: unable to verify your session.'
+    });
+  }
+
+  if (!dbUser || dbUser.status === 'disabled') {
+    return res.status(401).json({ status: 'error', message: 'User account not found or disabled.' });
+  }
+
+  // A cleared activeSessionId means the user logged out. Treating "no session
+  // on record" as acceptable is what let a logged-out access token keep
+  // working until its natural expiry.
+  if (!dbUser.activeSessionId || !decoded.sessionId || dbUser.activeSessionId !== decoded.sessionId) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Your session is no longer active. Please sign in again.'
+    });
+  }
+
+  // Authorisation decisions must read from the stored record, not from claims
+  // baked into a token that may predate a role or campus change.
+  req.user = {
+    id: String(dbUser._id),
+    username: dbUser.username,
+    role: dbUser.role,
+    campus: dbUser.campus,
+    name: dbUser.name,
+    sessionId: decoded.sessionId
+  };
+
+  return next();
 }
 
 // Role Authorization Middleware
@@ -482,6 +508,23 @@ function requireRole(...allowedRoles) {
   };
 }
 
+// --- CAMPUS SCOPING HELPERS ---
+
+// True when the signed-in account is entitled to act on `recordCampus`.
+// admin1 (campus "All") is org-wide; everyone else is pinned to one campus.
+function callerOwnsCampus(req, recordCampus) {
+  if (!req.user) return false;
+  if (String(req.user.campus || '').toLowerCase() === 'all') return true;
+  return normalizeCampus(recordCampus) === normalizeCampus(req.user.campus);
+}
+
+// Mongo filter that limits a query to the caller's campus. Returns {} only for
+// genuinely org-wide accounts, never as a fallback when campus is missing.
+function campusScopeFilter(req) {
+  if (String(req.user.campus || '').toLowerCase() === 'all') return {};
+  return { branch: req.user.campus };
+}
+
 // Campus Isolation Middleware
 function enforceCampusIsolation(req, res, next) {
   if (!req.user) {
@@ -503,47 +546,80 @@ function enforceCampusIsolation(req, res, next) {
   next();
 }
 
-// Security PIN/OTP Middleware - Auto-approved per requirements
+// Secondary confirmation for destructive and financial actions.
+//
+// This used to be a bare next(), so every route documented as "requires
+// security confirmation" — fee overrides, staff deletion, expenditure
+// deletion, worker payments — had no confirmation at all. The check is now
+// real: the caller must re-supply the signed-in account's own PIN, and it is
+// verified with bcrypt against the hash in MongoDB. Nothing is trusted from
+// the client beyond the PIN value itself.
 async function verifySecurityOtp(req, res, next) {
-  next();
+  const supplied = req.headers['x-security-pin'] || (req.body && req.body.securityPin);
+
+  if (!supplied || typeof supplied !== 'string' || !supplied.trim()) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'This action requires your security PIN for confirmation.',
+      requiresSecurityPin: true
+    });
+  }
+
+  try {
+    await connectToDatabase();
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error('Database connection is not ready.');
+    }
+
+    const user = await User.findById(req.user.id).select('pin');
+    if (!user || !user.pin || !safeBcryptCompare(supplied, user.pin)) {
+      console.warn(`[Security]: Failed PIN confirmation by [${req.user.username}] for ${req.method} ${req.path}`);
+      return res.status(401).json({
+        status: 'error',
+        message: 'Incorrect security PIN.',
+        requiresSecurityPin: true
+      });
+    }
+
+    console.log(`[Security]: PIN confirmed for [${req.user.username}] on ${req.method} ${req.path}`);
+    return next();
+  } catch (err) {
+    console.error('[Security]: PIN verification failed:', err.message);
+    return res.status(503).json({
+      status: 'error',
+      message: 'Service temporarily unavailable: unable to verify your security PIN.'
+    });
+  }
 }
 
 
 // --- USERNAME ALIAS RESOLUTION ---
+//
+// Convenience shorthands for the login box. These map to real usernames; they
+// are not credentials and grant nothing on their own.
+//
+// There is now exactly one accountant per campus, so the old _1/_2 suffixed
+// aliases are gone along with the duplicate accounts they pointed at.
 const usernameAliasMap = {
   admin: 'admin1',
   admin1: 'admin1',
   rector: 'admin1',
   superadmin: 'admin1',
-  admin2: 'admin2_erragattugutta_c1',
-  principal: 'admin2_erragattugutta_c1',
+
+  authenticator: '9059068384',
+  security: '9059068384',
+
   admin2_e1: 'admin2_erragattugutta_c1',
   admin2_c1: 'admin2_erragattugutta_c1',
   admin2_e2: 'admin2_erragattugutta_c2',
   admin2_c2: 'admin2_erragattugutta_c2',
   admin2_b1: 'admin2_beemaram_c1',
   admin2_b2: 'admin2_beemaram_c2',
-  accountant: 'accountant_erragattugutta_c1_1',
-  accountant1: 'accountant_erragattugutta_c1_1',
-  acc: 'accountant_erragattugutta_c1_1',
-  accountant1_e1: 'accountant_erragattugutta_c1_1',
-  acc1_e1: 'accountant_erragattugutta_c1_1',
-  accountant2_e1: 'accountant_erragattugutta_c1_2',
-  acc2_e1: 'accountant_erragattugutta_c1_2',
-  accountant1_e2: 'accountant_erragattugutta_c2_1',
-  acc1_e2: 'accountant_erragattugutta_c2_1',
-  accountant2_e2: 'accountant_erragattugutta_c2_2',
-  acc2_e2: 'accountant_erragattugutta_c2_2',
-  accountant1_b1: 'accountant_beemaram_c1_1',
-  acc1_b1: 'accountant_beemaram_c1_1',
-  accountant2_b1: 'accountant_beemaram_c1_2',
-  acc2_b1: 'accountant_beemaram_c1_2',
-  accountant1_b2: 'accountant_beemaram_c2_1',
-  acc1_b2: 'accountant_beemaram_c2_1',
-  accountant2_b2: 'accountant_beemaram_c2_2',
-  acc2_b2: 'accountant_beemaram_c2_2',
-  authenticator: '9059068384',
-  security: '9059068384'
+
+  acc_e1: 'accountant_erragattugutta_c1',
+  acc_e2: 'accountant_erragattugutta_c2',
+  acc_b1: 'accountant_beemaram_c1',
+  acc_b2: 'accountant_beemaram_c2'
 };
 
 function resolveUsername(input) {
@@ -552,28 +628,22 @@ function resolveUsername(input) {
   return usernameAliasMap[clean] || clean;
 }
 
+// NOTE: a deterministic 24-hour "security code" generator lived here. It
+// derived PINs from a hardcoded string plus the date, so the same input
+// always produced the same code and anyone with this file could compute
+// every account's code for any day. Nothing calls it now that PINs are
+// random and bcrypt-hashed, and it is removed rather than left to be
+// wired back up.
 
-// Helper for 24-hour deterministic daily PIN seed
-function getLocalDateSeed() {
-  const d = new Date();
-  const istOffsetMs = (330 + d.getTimezoneOffset()) * 60000;
-  const istDate = new Date(d.getTime() + istOffsetMs);
-  const year = istDate.getFullYear();
-  const month = String(istDate.getMonth() + 1).padStart(2, '0');
-  const day = String(istDate.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function generate24HourDeterministicCode(identifier, dateSeed = getLocalDateSeed()) {
-  let hash = 0;
-  const str = `${identifier}:${dateSeed}:inspire_2026_static_secret_key`;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  const numericVal = Math.abs(hash);
-  return (100000 + (numericVal % 900000)).toString();
-}
+/**
+ * Verifies a login against the bcrypt hashes stored in MongoDB.
+ *
+ * Returns the Mongoose user document on success, or throws AuthUnavailable if
+ * the database cannot be reached. It never falls back to an in-source
+ * credential and never returns a synthesised user: a login either matches the
+ * real stored hash or it fails.
+ */
+class AuthUnavailableError extends Error {}
 
 async function validateUserLoginCredentials(inputUser, password, pin) {
   if (!inputUser || typeof password !== 'string' || !password.trim()) {
@@ -583,43 +653,35 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
   const resolvedUser = resolveUsername(inputUser);
   const normalizedPassword = password.trim();
   const normalizedPin = pin !== undefined && pin !== null ? String(pin).trim() : null;
-  const seedUser = defaultSeedUsers.find(u => u.username === resolvedUser);
 
+  // Fail closed. If we cannot consult the real hashes we cannot authenticate
+  // anyone, and saying so is the only honest outcome.
   try {
     await connectToDatabase();
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error('Database connection is not ready.');
+    }
   } catch (dbErr) {
-    console.warn('⚠️ [Auth]: Mongo connection notice in validateUserLoginCredentials:', dbErr.message);
+    throw new AuthUnavailableError(dbErr.message);
   }
 
-  let user = await findUserAccount(resolvedUser);
-
-  if (!user && seedUser) {
-    user = {
-      _id: seedUser.username,
-      username: seedUser.username,
-      password: bcrypt.hashSync(seedUser.password, 10),
-      pin: bcrypt.hashSync(seedUser.pin, 10),
-      role: seedUser.role,
-      campus: seedUser.campus,
-      name: seedUser.name,
-      status: 'active'
-    };
+  let user;
+  try {
+    user = await User.findOne({ username: resolvedUser });
+  } catch (dbErr) {
+    throw new AuthUnavailableError(dbErr.message);
   }
 
   if (!user || user.status === 'disabled') {
     return null;
   }
 
-  const isPasswordOk = safeBcryptCompare(normalizedPassword, user.password);
-  if (!isPasswordOk) {
+  if (!safeBcryptCompare(normalizedPassword, user.password)) {
     return null;
   }
 
-  if (normalizedPin !== null) {
-    const isPinOk = safeBcryptCompare(normalizedPin, user.pin);
-    if (!isPinOk) {
-      return null;
-    }
+  if (normalizedPin !== null && !safeBcryptCompare(normalizedPin, user.pin)) {
+    return null;
   }
 
   return user;
@@ -628,64 +690,26 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
 
 // --- AUTHENTICATION ROUTES ---
 
+// authenticateToken has already loaded and validated the real user record, so
+// this simply reports it back. No reconstruction from token claims or from a
+// seed list.
 app.get(['/api/auth/me', '/auth/me', '/api/me'], authenticateToken, async (req, res) => {
-  try {
-    let user = null;
-    if (mongoose.connection.readyState === 1) {
-      user = await findUserAccount(req.user.username);
+  return res.json({
+    status: 'success',
+    user: {
+      id: req.user.id,
+      username: req.user.username,
+      role: req.user.role,
+      campus: req.user.campus,
+      name: req.user.name
     }
-    if (!user) {
-      const seedUser = defaultSeedUsers.find(u => u.username === resolveUsername(req.user.username));
-      if (seedUser) {
-        user = {
-          _id: seedUser.username,
-          username: seedUser.username,
-          role: seedUser.role,
-          campus: seedUser.campus,
-          name: seedUser.name,
-          status: 'active'
-        };
-      } else {
-        user = {
-          _id: req.user.id || req.user.username,
-          username: req.user.username,
-          role: req.user.role,
-          campus: req.user.campus,
-          name: req.user.name,
-          status: 'active'
-        };
-      }
-    }
-    if (!user || user.status === 'disabled') {
-      return res.status(401).json({ status: 'error', message: 'User account not found or disabled.' });
-    }
-
-    return res.json({
-      status: 'success',
-      user: {
-        id: user._id,
-        username: user.username,
-        role: user.role,
-        campus: user.campus,
-        name: user.name
-      }
-    });
-  } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
-  }
+  });
 });
 
 app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/verify-credentials'], mongoRateLimiter, async (req, res) => {
   try {
-    try {
-      await connectToDatabase();
-    } catch (dbErr) {
-      console.warn('⚠️ [Auth]: Database connection notice on verify-credentials:', dbErr.message);
-    }
     const { username, identifier, password } = req.body || {};
-    const inputUser = username || identifier;
-
-    const user = await validateUserLoginCredentials(inputUser, password);
+    const user = await validateUserLoginCredentials(username || identifier, password);
 
     if (!user) {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
@@ -697,207 +721,194 @@ app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/veri
       campus: user.campus
     });
   } catch (err) {
-    console.error('Error verifying credentials:', err.message);
+    if (err instanceof AuthUnavailableError) {
+      console.error('[Auth]: verify-credentials unavailable:', err.message);
+      return res.status(503).json({ status: 'error', message: 'Service temporarily unavailable. Please try again shortly.' });
+    }
+    console.error('[Auth]: Error verifying credentials:', err.message);
     return res.status(500).json({ status: 'error', message: 'Internal server error' });
   }
 });
 
-app.post(['/api/auth/login', '/auth/login', '/api/login', '/login'], mongoRateLimiter, async (req, res) => {
-  try {
-    try {
-      await connectToDatabase();
-    } catch (dbErr) {
-      console.warn('⚠️ [Auth]: Database connection notice on login:', dbErr.message);
-    }
-    const { username, identifier, password, pin } = req.body || {};
-    const inputUser = username || identifier;
+/**
+ * Issues a session for a verified user.
+ *
+ * `evictExisting` distinguishes /auth/login from /auth/force-login: both mint a
+ * fresh activeSessionId, but force-login is the explicit "kick my other
+ * session" path the UI offers after a single-session rejection.
+ */
+async function issueSession(user, res) {
+  const newSessionId = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
 
-    const user = await validateUserLoginCredentials(inputUser, password, pin);
+  // Persist the session before handing out a token. If this write fails the
+  // token would reference a session the database does not know about, and
+  // authenticateToken would reject every subsequent request — so a failure
+  // here has to surface as a failed login, not a half-created session.
+  user.activeSessionId = newSessionId;
+  await user.save();
 
-    if (!user) {
-      return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
-    }
-
-    // Generate new activeSessionId (evicts previous session automatically on valid password & PIN)
-    const newSessionId = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
-    user.activeSessionId = newSessionId;
-    if (typeof user.save === 'function') {
-      try { await user.save(); } catch { /* ignore for in-memory fallback */ }
-    }
-
-    const tokenPayload = {
+  const token = jwt.sign(
+    {
       id: user._id,
       username: user.username,
       role: user.role,
       campus: user.campus,
       name: user.name,
       sessionId: newSessionId
-    };
+    },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
 
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  const refreshTokenRaw = crypto.randomBytes(40).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(refreshTokenRaw).digest('hex');
 
-    const refreshTokenRaw = crypto.randomBytes(40).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(refreshTokenRaw).digest('hex');
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  // Retire any refresh tokens from the evicted session so a stale token cannot
+  // mint new access tokens for a session that is no longer current.
+  await RefreshToken.updateMany({ userId: user._id, revoked: false }, { $set: { revoked: true } });
+  await RefreshToken.create({
+    tokenHash,
+    userId: user._id,
+    username: user.username,
+    sessionId: newSessionId,
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    revoked: false
+  });
 
-    if (mongoose.connection.readyState === 1) {
-      try {
-        await RefreshToken.create({
-          tokenHash,
-          userId: user._id,
-          username: user.username,
-          expiresAt,
-          revoked: false
-        });
-      } catch { /* ignore for in-memory fallback */ }
+  return res.json({
+    status: 'success',
+    token,
+    refreshToken: refreshTokenRaw,
+    user: {
+      id: user._id,
+      username: user.username,
+      role: user.role,
+      campus: user.campus,
+      name: user.name
     }
+  });
+}
 
-    return res.json({
-      status: 'success',
-      token,
-      refreshToken: refreshTokenRaw,
-      user: {
-        id: user._id,
-        username: user.username,
-        role: user.role,
-        campus: user.campus,
-        name: user.name
-      }
-    });
-  } catch (err) {
-    console.error('Error logging in user:', err.message);
-    return res.status(500).json({ status: 'error', message: 'Internal server error' });
-  }
-});
-
-// --- FORCE LOGIN ROUTE (KICK OTHER SESSION) ---
-app.post(['/api/auth/force-login', '/auth/force-login', '/api/force-login'], mongoRateLimiter, async (req, res) => {
+async function handleLogin(req, res, label) {
   try {
-    try {
-      await connectToDatabase();
-    } catch (dbErr) {
-      console.warn('⚠️ [Auth]: DB connection notice during force-login:', dbErr.message);
-    }
     const { username, identifier, password, pin } = req.body || {};
-    const inputUser = username || identifier;
-
-    const user = await validateUserLoginCredentials(inputUser, password, pin);
+    const user = await validateUserLoginCredentials(username || identifier, password, pin);
 
     if (!user) {
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
     }
 
-    // Generate NEW activeSessionId to overwrite old session and evict previous login
-    const newSessionId = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
-    user.activeSessionId = newSessionId;
-    if (typeof user.save === 'function') {
-      try { await user.save(); } catch { /* ignore for in-memory fallback */ }
-    }
-
-    const tokenPayload = {
-      id: user._id,
-      username: user.username,
-      role: user.role,
-      campus: user.campus,
-      name: user.name,
-      sessionId: newSessionId
-    };
-
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-
-    const refreshTokenRaw = crypto.randomBytes(40).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(refreshTokenRaw).digest('hex');
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-    if (mongoose.connection.readyState === 1) {
-      try {
-        await RefreshToken.create({
-          tokenHash,
-          userId: user._id,
-          username: user.username,
-          expiresAt,
-          revoked: false
-        });
-      } catch { /* ignore for in-memory fallback */ }
-    }
-
-    console.log(`ðŸ”‘ [Force Login]: Account [${user.username}] logged in with new session [${newSessionId}]. Evicted previous session.`);
-
-    return res.json({
-      status: 'success',
-      token,
-      refreshToken: refreshTokenRaw,
-      user: {
-        id: user._id,
-        username: user.username,
-        role: user.role,
-        campus: user.campus,
-        name: user.name
-      }
-    });
+    console.log(`[Auth]: ${label} succeeded for [${user.username}] (${user.role})`);
+    return await issueSession(user, res);
   } catch (err) {
-    console.error('Error force logging in user:', err.message);
+    if (err instanceof AuthUnavailableError) {
+      console.error(`[Auth]: ${label} unavailable:`, err.message);
+      return res.status(503).json({
+        status: 'error',
+        message: 'Service temporarily unavailable: unable to reach the account database. Please try again shortly.'
+      });
+    }
+    console.error(`[Auth]: ${label} failed:`, err.message);
     return res.status(500).json({ status: 'error', message: 'Internal server error' });
   }
-});
+}
 
-app.post(['/api/auth/refresh', '/auth/refresh', '/api/refresh'], async (req, res) => {
+app.post(['/api/auth/login', '/auth/login', '/api/login', '/login'], mongoRateLimiter, (req, res) => handleLogin(req, res, 'login'));
+
+// Explicit "sign me in and end my other session" path.
+app.post(['/api/auth/force-login', '/auth/force-login', '/api/force-login'], mongoRateLimiter, (req, res) => handleLogin(req, res, 'force-login'));
+
+
+// Refresh tokens are single-use and rotate. The presented token is revoked in
+// the same operation that validates it, so a replay of the old value fails
+// even if it was captured in transit. Reuse of an already-revoked token is
+// treated as a compromise signal and kills the whole session.
+app.post(['/api/auth/refresh', '/auth/refresh', '/api/refresh'], mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
-    await connectToDatabase();
-    const { refreshToken } = req.body;
+    const { refreshToken } = req.body || {};
 
-    if (!refreshToken) {
+    if (!refreshToken || typeof refreshToken !== 'string') {
       return res.status(401).json({ status: 'error', message: 'Refresh token required' });
     }
 
     const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    const record = await RefreshToken.findOne({ tokenHash, revoked: false });
 
-    if (!record || record.expiresAt < new Date()) {
+    // Atomic claim: whoever flips revoked false -> true owns this rotation.
+    // Two concurrent refreshes with the same token cannot both succeed.
+    const record = await RefreshToken.findOneAndUpdate(
+      { tokenHash, revoked: false },
+      { $set: { revoked: true } },
+      { new: false }
+    );
+
+    if (!record) {
+      // Either never issued, or already used. If it was already used, someone
+      // is replaying a spent token — revoke everything for that user.
+      const spent = await RefreshToken.findOne({ tokenHash });
+      if (spent) {
+        console.warn(`[Auth]: Replay of a spent refresh token for [${spent.username}]. Revoking all sessions.`);
+        await RefreshToken.updateMany({ userId: spent.userId }, { $set: { revoked: true } });
+        await User.updateOne({ _id: spent.userId }, { $set: { activeSessionId: null } });
+      }
+      return res.status(401).json({ status: 'error', message: 'Invalid or expired refresh token' });
+    }
+
+    if (record.expiresAt < new Date()) {
       return res.status(401).json({ status: 'error', message: 'Invalid or expired refresh token' });
     }
 
     const user = await User.findById(record.userId);
     if (!user || user.status === 'disabled') {
-      return res.status(401).json({ status: 'error', message: 'User account disabled' });
+      return res.status(401).json({ status: 'error', message: 'User account not found or disabled.' });
     }
 
-    const tokenPayload = {
-      id: user._id,
-      username: user.username,
-      role: user.role,
-      campus: user.campus,
-      name: user.name,
-      sessionId: user.activeSessionId
-    };
+    // The refresh token is bound to the session it was issued for. If the user
+    // has since logged out or been evicted, it must not resurrect the session.
+    if (!user.activeSessionId || (record.sessionId && record.sessionId !== user.activeSessionId)) {
+      return res.status(401).json({ status: 'error', message: 'Your session is no longer active. Please sign in again.' });
+    }
 
-    const newAccessToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const newAccessToken = jwt.sign(
+      {
+        id: user._id,
+        username: user.username,
+        role: user.role,
+        campus: user.campus,
+        name: user.name,
+        sessionId: user.activeSessionId
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    const nextRefreshRaw = crypto.randomBytes(40).toString('hex');
+    await RefreshToken.create({
+      tokenHash: crypto.createHash('sha256').update(nextRefreshRaw).digest('hex'),
+      userId: user._id,
+      username: user.username,
+      sessionId: user.activeSessionId,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      revoked: false
+    });
 
     return res.json({
       status: 'success',
-      token: newAccessToken
+      token: newAccessToken,
+      refreshToken: nextRefreshRaw
     });
   } catch (err) {
-    console.error('Error refreshing token:', err.message);
+    console.error('[Auth]: Error refreshing token:', err.message);
     return res.status(500).json({ status: 'error', message: 'Internal server error' });
   }
 });
 
-app.post(['/api/auth/logout', '/auth/logout', '/api/logout'], async (req, res) => {
+// Logout revokes server-side. Clearing activeSessionId is what actually
+// invalidates the outstanding access token, because authenticateToken now
+// rejects any token whose session is not the one on record.
+app.post(['/api/auth/logout', '/auth/logout', '/api/logout'], requireDatabase, async (req, res) => {
   try {
-    await connectToDatabase();
-    const { refreshToken } = req.body;
-
+    const { refreshToken } = req.body || {};
     let userIdToClear = null;
-
-    if (refreshToken) {
-      const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-      const tokenDoc = await RefreshToken.findOne({ tokenHash });
-      if (tokenDoc) {
-        userIdToClear = tokenDoc.userId;
-        await RefreshToken.updateOne({ tokenHash }, { revoked: true });
-      }
-    }
 
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
@@ -905,19 +916,36 @@ app.post(['/api/auth/logout', '/auth/logout', '/api/logout'], async (req, res) =
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
         if (decoded && decoded.id) userIdToClear = decoded.id;
-      } catch (e) {}
+      } catch {
+        // An expired access token is a perfectly ordinary way to arrive here;
+        // fall through and use the refresh token to identify the session.
+      }
     }
 
-    if (userIdToClear) {
-      await User.updateOne({ _id: userIdToClear }, { activeSessionId: null });
-      console.log(`ðŸšª [Logout]: Cleared activeSessionId for user ID [${userIdToClear}].`);
+    if (refreshToken && typeof refreshToken === 'string') {
+      const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+      const tokenDoc = await RefreshToken.findOne({ tokenHash });
+      if (tokenDoc) {
+        userIdToClear = userIdToClear || tokenDoc.userId;
+      }
     }
+
+    if (!userIdToClear) {
+      return res.json({ status: 'success', message: 'Logged out successfully' });
+    }
+
+    await RefreshToken.updateMany({ userId: userIdToClear, revoked: false }, { $set: { revoked: true } });
+    await User.updateOne({ _id: userIdToClear }, { $set: { activeSessionId: null } });
+    console.log(`[Logout]: Session and refresh tokens revoked for user ID [${userIdToClear}].`);
 
     return res.json({ status: 'success', message: 'Logged out successfully' });
   } catch (err) {
-    return res.json({ status: 'success', message: 'Logged out successfully' });
+    // A logout that did not actually revoke anything must not report success.
+    console.error('[Logout]: Revocation failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Logout failed. Your session may still be active.' });
   }
 });
+
 
 
 // --- STUDENT ROUTES ---
@@ -939,7 +967,8 @@ app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'admin2
     const students = await Student.find(filter).sort({ createdAt: -1 });
     return res.json({ status: 'success', data: students });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1065,7 +1094,7 @@ const createStudentHandler = async (req, res) => {
     });
   } catch (err) {
     console.error('Error creating student:', err.message);
-    return res.status(500).json({ status: 'error', message: `Database write failure: ${err.message}` });
+    return res.status(500).json({ status: 'error', message: 'Database write failure.' });
   }
 };
 
@@ -1132,54 +1161,53 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
 
     return res.json({ status: 'success', data: student });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
 const deleteStudentHandler = async (req, res) => {
   try {
-    await connectToDatabase();
     const { id } = req.params;
     const isObjId = isValidObjectId(id);
-    const query = { $or: [{ _id: isObjId ? id : null }, { studentId: id }, { admissionNumber: id }] };
 
-    const student = await Student.findOne(query);
+    const student = await Student.findOne({ $or: [{ _id: isObjId ? id : null }, { studentId: id }, { admissionNumber: id }] });
     if (!student) {
       return res.status(404).json({ status: 'error', message: 'Student record not found.' });
     }
 
-    if ((req.user.role === 'accountant' || req.user.role === 'admin2') && req.user.campus !== 'All') {
-      const sNorm = normalizeCampus(student.branch);
-      const uNorm = normalizeCampus(req.user.campus);
-      if (sNorm !== uNorm && student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
-        return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
-      }
+    if (!callerOwnsCampus(req, student.branch)) {
+      return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
     }
 
-    const admNo = student.admissionNumber;
-    const stuId = student.studentId;
-    const mongoId = student._id;
+    const label = `${student.name} (${student.admissionNumber || student.studentId})`;
 
-    await Student.deleteMany({
-      $or: [
-        { _id: mongoId },
-        { admissionNumber: admNo },
-        { studentId: stuId },
-        { _id: isObjId ? id : null },
-        { studentId: id },
-        { admissionNumber: id }
-      ]
-    });
+    // Delete by primary key only. The old handler passed a broad $or of every
+    // identifier to deleteMany, which could match and remove unrelated records
+    // whose studentId happened to equal another student's admissionNumber.
+    const result = await Student.deleteOne({ _id: student._id });
+    if (result.deletedCount === 0) {
+      return res.status(500).json({ status: 'error', message: 'Delete failed. The student record was not removed.' });
+    }
 
-    return res.json({ status: 'success', message: `Student ${student.name} (${student.admissionNumber || id}) permanently deleted from database.` });
+    // Confirm with a follow-up read rather than trusting the delete response.
+    const stillThere = await Student.findById(student._id).lean();
+    if (stillThere) {
+      console.error(`[Students]: Delete verification failed for ${student._id}; record still present.`);
+      return res.status(500).json({ status: 'error', message: 'Delete could not be verified. The record may still exist.' });
+    }
+
+    console.log(`[Students]: ${label} deleted by [${req.user.username}].`);
+    return res.json({ status: 'success', message: `Student ${label} permanently deleted and verified removed.` });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error('[Students]: Delete failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to delete the student record.' });
   }
 };
 
-app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), deleteStudentHandler);
-app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), deleteStudentHandler);
-app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), deleteStudentHandler);
+app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, deleteStudentHandler);
+app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, deleteStudentHandler);
+app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, deleteStudentHandler);
 
 
 // --- FEE WAIVER ROUTE ---
@@ -1255,7 +1283,8 @@ app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students
       }
     });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1281,7 +1310,8 @@ app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'],
     const teachers = await Teacher.find(filter).sort({ createdAt: -1 });
     return res.json({ status: 'success', data: teachers });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1339,7 +1369,7 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
 
     return res.status(201).json({ status: 'success', data: teacher });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: `Database write failure: ${err.message}` });
+    return res.status(500).json({ status: 'error', message: 'Database write failure.' });
   }
 });
 
@@ -1393,7 +1423,8 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
 
     return res.json({ status: 'success', data: teacher });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1426,7 +1457,8 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
 
     return res.json({ status: 'success', message: `Teacher ${teacher.name} permanently deleted.` });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1521,7 +1553,8 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
 
     return res.json({ status: 'success', message: `Salary payment recorded for ${teacher.name} - ${month} (${academicYear})`, data: teacher });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1554,7 +1587,8 @@ app.get('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'ad
 
     return res.json({ status: 'success', data: settings });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1601,7 +1635,8 @@ app.patch('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', '
 
     return res.json({ status: 'success', data: updated });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1631,7 +1666,8 @@ const getExpendituresHandler = async (req, res) => {
     const expenditures = await Expenditure.find(filter).sort({ date: -1 });
     return res.json({ status: 'success', data: expenditures });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 };
 
@@ -1675,7 +1711,7 @@ app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'ad
 
     return res.status(201).json({ status: 'success', data: expenditure });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: `Database write failure: ${err.message}` });
+    return res.status(500).json({ status: 'error', message: 'Database write failure.' });
   }
 });
 
@@ -1701,7 +1737,8 @@ app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1'
 
     return res.json({ status: 'success', data: exp });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1731,7 +1768,8 @@ app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1
 
     return res.json({ status: 'success', message: 'Expenditure record permanently deleted.' });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1761,7 +1799,8 @@ app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 
     const payments = await WorkerPayment.find(filter).sort({ createdAt: -1 });
     return res.json({ status: 'success', data: payments });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1802,7 +1841,7 @@ app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1',
 
     return res.status(201).json({ status: 'success', data: payment });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: `Database write failure: ${err.message}` });
+    return res.status(500).json({ status: 'error', message: 'Database write failure.' });
   }
 });
 
@@ -1828,7 +1867,8 @@ app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('adm
 
     return res.json({ status: 'success', data: wrk });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1858,7 +1898,8 @@ app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('ad
 
     return res.json({ status: 'success', message: 'Worker payment record permanently deleted.' });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1888,7 +1929,8 @@ app.get('/api/accountant/students', authenticateToken, requireRole('accountant',
     const students = await Student.find(filter).sort({ name: 1 });
     return res.json({ status: 'success', data: students });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1911,7 +1953,8 @@ app.get('/api/accountant/students/:id', authenticateToken, requireRole('accounta
 
     return res.json({ status: 'success', data: student });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -1942,21 +1985,45 @@ app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('ac
     await student.save();
     return res.json({ status: 'success', data: student });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
 
 // --- FEE COLLECTION (PAYMENT) ROUTES ---
 
-app.post('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), mongoRateLimiter, async (req, res) => {
+/**
+ * Records a fee payment.
+ *
+ * Money handling here is deliberately defensive:
+ *  - The duplicate guard is enforced by a UNIQUE index on idempotencyKey, not
+ *    by a findOne() check. The old read-then-insert let two clicks landing in
+ *    the same millisecond both pass the check and both insert a receipt.
+ *  - totalPaid and remainingBalance are updated in ONE atomic pipeline update.
+ *    The old code did an atomic $inc for totalPaid and then a read-modify-save
+ *    for remainingBalance, so two concurrent payments could each write a
+ *    balance computed before the other's increment landed.
+ *  - The caller may pass its own idempotencyKey; otherwise we derive a stable
+ *    one. The old key bucketed by a 10-second window, which both missed
+ *    duplicates straddling a bucket boundary and wrongly merged two genuine
+ *    identical payments made within the same 10 seconds.
+ */
+app.post('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
-    await connectToDatabase();
     const { studentId } = req.params;
-    const { amount, category = 'Tuition Fee', installment = 'Installment 1', mode = 'UPI / NetBanking', date, remarks = '', transactionRef = '' } = req.body || {};
+    const {
+      amount, category = 'Tuition Fee', installment = 'Installment 1',
+      mode = 'UPI / NetBanking', date, remarks = '', transactionRef = '', idempotencyKey: clientKey
+    } = req.body || {};
 
     if (!isValidPositiveNumber(amount) || Number(amount) <= 0) {
       return res.status(400).json({ status: 'error', message: 'Amount must be a valid positive number.' });
+    }
+
+    const payAmt = Math.round(Number(amount) * 100) / 100;
+    if (payAmt > MAX_STUDENT_FEE) {
+      return res.status(400).json({ status: 'error', message: 'Payment amount exceeds the maximum permitted for a single transaction.' });
     }
 
     const isObjId = isValidObjectId(studentId);
@@ -1966,125 +2033,138 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
       return res.status(404).json({ status: 'error', message: 'Student record not found.' });
     }
 
-    if ((req.user.role === 'accountant' || req.user.role === 'admin2') && req.user.campus !== 'All') {
-      if (student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
-        return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
-      }
+    if (!callerOwnsCampus(req, student.branch)) {
+      return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
     }
 
-    // Double-Submission Idempotency Safeguard
-    const timeWindow = Math.floor(Date.now() / 10000);
-    const idempotencyKey = `idem_${student.studentId}_${Number(amount)}_${String(category).trim()}_${timeWindow}`;
+    const idempotencyKey = (clientKey && String(clientKey).trim())
+      ? `client_${String(clientKey).trim()}`
+      : `srv_${student.studentId}_${payAmt}_${String(category).trim()}_${String(transactionRef || '').trim()}_${Math.floor(Date.now() / 15000)}`;
 
-    const existingPayment = await Payment.findOne({ idempotencyKey });
-    if (existingPayment) {
-      console.log(`[Idempotency Guard]: Fast duplicate submission caught for key [${idempotencyKey}]. Returning existing receipt.`);
-      return res.json({
-        status: 'success',
-        data: {
-          payment: {
-            _id: existingPayment._id,
-            receiptNumber: existingPayment.receiptNumber,
-            studentId: existingPayment.studentId,
-            amount: existingPayment.amount,
-            category: existingPayment.category,
-            mode: existingPayment.paymentMode,
-            cashier: existingPayment.cashier,
-            date: existingPayment.date,
-            transactionRef: existingPayment.transactionRef || ''
-          },
-          student
-        }
+    const receiptNumber = `REC-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex')}`;
+
+    let newPayment;
+    try {
+      newPayment = await Payment.create({
+        receiptNumber,
+        studentId: student.studentId,
+        admissionNumber: student.admissionNumber,
+        studentName: student.name,
+        amount: payAmt,
+        category: String(category).trim(),
+        installment: String(installment).trim(),
+        paymentMode: String(mode).trim(),
+        cashier: req.user.username,
+        branch: student.branch,
+        date: date ? new Date(date) : new Date(),
+        remarks: remarks || '',
+        transactionRef: String(transactionRef || req.body.referenceNo || '').trim(),
+        idempotencyKey
       });
+    } catch (createErr) {
+      // Unique index rejected it: this exact payment is already recorded.
+      // Return the original receipt rather than double-charging.
+      if (createErr && createErr.code === 11000) {
+        const existing = await Payment.findOne({ idempotencyKey });
+        if (existing) {
+          console.log(`[Payments]: Duplicate submission blocked by unique index for key [${idempotencyKey}].`);
+          const current = await Student.findById(student._id);
+          return res.status(200).json({
+            status: 'success',
+            duplicate: true,
+            message: 'This payment was already recorded. Showing the original receipt.',
+            data: { payment: normalizePaymentForClient(existing), student: current }
+          });
+        }
+      }
+      throw createErr;
     }
 
-    const receiptNumber = `REC-${Date.now().toString().slice(-6)}`;
-    const cashierUsername = req.user.username;
-
-    const payAmt = Math.round(Number(amount) * 100) / 100;
-    const finalTxnRef = String(transactionRef || req.body.referenceNo || '').trim();
-
-    const newPayment = await Payment.create({
-      receiptNumber,
-      studentId: student.studentId,
-      admissionNumber: student.admissionNumber,
-      studentName: student.name,
-      amount: payAmt,
-      category: String(category).trim(),
-      installment: String(installment).trim(),
-      paymentMode: String(mode).trim(),
-      cashier: cashierUsername,
-      branch: student.branch,
-      date: date ? new Date(date) : new Date(),
-      remarks: remarks || '',
-      transactionRef: finalTxnRef,
-      idempotencyKey
-    });
-
-    // Atomic increment of totalPaid to prevent TOCTOU race conditions
+    // One atomic update: increment totalPaid and recompute remainingBalance
+    // from the document's own fields, server-side, in the same operation.
     const updatedStudent = await Student.findOneAndUpdate(
       { _id: student._id },
-      { $inc: { totalPaid: payAmt } },
+      [
+        {
+          $set: {
+            totalPaid: { $round: [{ $add: [{ $ifNull: ['$totalPaid', 0] }, payAmt] }, 2] }
+          }
+        },
+        {
+          $set: {
+            remainingBalance: {
+              $max: [
+                0,
+                {
+                  $round: [
+                    {
+                      $subtract: [
+                        {
+                          $add: [
+                            { $ifNull: ['$tuitionFee', 0] }, { $ifNull: ['$hostelFee', 0] },
+                            { $ifNull: ['$transportFee', 0] }, { $ifNull: ['$miscellaneousFee', 0] },
+                            { $ifNull: ['$previousPending', 0] },
+                            { $sum: { $map: { input: { $ifNull: ['$customFeeSlots', []] }, as: 's', in: { $ifNull: ['$$s.amount', 0] } } } }
+                          ]
+                        },
+                        {
+                          $add: [
+                            { $ifNull: ['$tuitionWaiver', 0] }, { $ifNull: ['$hostelWaiver', 0] },
+                            { $ifNull: ['$transportWaiver', 0] }, { $ifNull: ['$miscWaiver', 0] },
+                            { $ifNull: ['$totalPaid', 0] }
+                          ]
+                        }
+                      ]
+                    },
+                    2
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ],
       { new: true }
     );
 
-    const standardKeys = ['tuitionfee', 'hostelfee', 'transportfee', 'miscellaneousfee', 'previouspending', 'tuition', 'hostel', 'transport', 'misc'];
-    const cleanedSlots = (updatedStudent.customFeeSlots || []).filter(slot => {
-      if (!slot) return false;
-      const k = String(slot.key || slot.id || '').toLowerCase().trim();
-      const n = String(slot.name || '').toLowerCase().trim();
-      return !standardKeys.includes(k) && !['tuition fee', 'hostel fee', 'transport fee', 'miscellaneous fee', 'previous pending'].includes(n);
+    if (!updatedStudent) {
+      // The receipt exists but the ledger did not move. Say so loudly rather
+      // than returning a success the books will not agree with.
+      console.error(`[Payments]: Receipt ${receiptNumber} created but student ${student.studentId} balance update matched nothing.`);
+      return res.status(500).json({
+        status: 'error',
+        message: `Payment ${receiptNumber} was recorded but the student balance could not be updated. Do not re-submit; contact an administrator.`
+      });
+    }
+
+    // Append the receipt summary for the UI's quick list.
+    await Student.updateOne({ _id: student._id }, {
+      $push: {
+        receipts: {
+          receiptNumber: newPayment.receiptNumber,
+          date: newPayment.date,
+          category: newPayment.category,
+          installment: newPayment.installment,
+          amount: newPayment.amount,
+          balance: updatedStudent.remainingBalance,
+          mode: newPayment.paymentMode,
+          cashier: newPayment.cashier
+        }
+      }
     });
 
-    const totalCustomFees = cleanedSlots.reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
-    const grossFees = Number(updatedStudent.tuitionFee || 0) + Number(updatedStudent.hostelFee || 0) + Number(updatedStudent.transportFee || 0) + Number(updatedStudent.miscellaneousFee || 0) + Number(updatedStudent.previousPending || 0) + totalCustomFees;
-    const totalWaivers = Number(updatedStudent.tuitionWaiver || 0) + Number(updatedStudent.hostelWaiver || 0) + Number(updatedStudent.transportWaiver || 0) + Number(updatedStudent.miscWaiver || 0);
+    const finalStudent = await Student.findById(student._id);
 
-    updatedStudent.customFeeSlots = cleanedSlots;
-    updatedStudent.remainingBalance = Math.max(0, Math.round((grossFees - totalWaivers - updatedStudent.totalPaid) * 100) / 100);
-
-    // Append a compact receipt summary into student document for UI compatibility
-    const receiptSummary = {
-      receiptNumber,
-      date: newPayment.date,
-      category: newPayment.category,
-      installment: newPayment.installment,
-      amount: newPayment.amount,
-      balance: updatedStudent.remainingBalance,
-      mode: newPayment.paymentMode,
-      cashier: newPayment.cashier,
-      transactionRef: newPayment.transactionRef || ''
-    };
-    updatedStudent.receipts = Array.isArray(updatedStudent.receipts) ? updatedStudent.receipts : [];
-    updatedStudent.receipts.push(receiptSummary);
-
-    await updatedStudent.save();
-
-    // Build a normalized payment object for frontend compatibility (uses `mode` key)
-    const paymentResponse = {
-      _id: newPayment._id,
-      receiptNumber: newPayment.receiptNumber,
-      studentId: newPayment.studentId,
-      amount: newPayment.amount,
-      category: newPayment.category,
-      installment: newPayment.installment,
-      mode: newPayment.paymentMode,
-      cashier: newPayment.cashier,
-      date: newPayment.date,
-      transactionRef: newPayment.transactionRef || ''
-    };
-
-    // Return the freshly-updated student values to ensure frontend reflects DB
     return res.status(201).json({
       status: 'success',
       data: {
-        payment: paymentResponse,
-        student: updatedStudent
+        payment: normalizePaymentForClient(newPayment),
+        student: finalStudent
       }
     });
   } catch (err) {
-    console.error('Error recording payment:', err.message);
-    return res.status(500).json({ status: 'error', message: `Payment processing failure: ${err.message}` });
+    console.error('[Payments]: Recording failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Payment could not be recorded. No charge was applied.' });
   }
 });
 
@@ -2108,7 +2188,8 @@ app.get('/api/accountant/students/:studentId/payments', authenticateToken, requi
     const payments = await Payment.find({ studentId: student.studentId }).sort({ date: -1 });
     return res.json({ status: 'success', data: payments });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -2152,7 +2233,7 @@ app.get('/api/system/run-backup', mongoRateLimiter, async (req, res) => {
     return res.json({ status: 'success', data: backupResult });
   } catch (err) {
     console.error('Backup route error:', err.message);
-    return res.status(500).json({ status: 'error', message: `Backup generation failed: ${err.message}` });
+    return res.status(500).json({ status: 'error', message: 'Backup generation failed.' });
   }
 });
 
@@ -2178,101 +2259,116 @@ const handleGetAvailableBackups = async (req, res) => {
       }
     });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 };
 app.get('/api/authenticator/available-backups', authenticateToken, requireRole('authenticator', 'admin1'), handleGetAvailableBackups);
 app.get('/api/authenticator/backups', authenticateToken, requireRole('authenticator', 'admin1'), handleGetAvailableBackups);
 
 /**
- * GET & POST /api/authenticator/keys & regenerate-keys
- * Returns and updates 6-digit active security PINs - reads from and writes to MongoDB.
+ * GET /api/authenticator/keys
+ *
+ * Reports PIN *status* only. It deliberately does not return PIN values.
+ * The previous version read a `pin_plaintext` column — every account's PIN
+ * stored in cleartext next to its own hash — and, failing that, fell back to
+ * the in-source seed PIN or a value derived from a hardcoded string. Anyone
+ * who reached this endpoint got a working credential for every portal.
+ * To hand out a new PIN, use regenerate-keys, which returns it exactly once.
  */
-app.get('/api/authenticator/keys', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
+app.get('/api/authenticator/keys', authenticateToken, requireRole('authenticator', 'admin1'), requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
-    const dailyPins = {};
-    const dateSeed = getLocalDateSeed();
-    const trackedUsernames = defaultUsers.map(u => u.username);
+    const users = await User.find({ role: { $in: [...MANAGED_PORTAL_ROLES] } })
+      .select('username role campus name pin updatedAt')
+      .lean();
 
-    // Default fallback to seed PIN or deterministic 24-hr daily PIN
-    for (const username of trackedUsernames) {
-      const seedUser = defaultSeedUsers.find(s => s.username === username);
-      dailyPins[username] = seedUser ? seedUser.pin : generate24HourDeterministicCode(`pin_${username}`, dateSeed);
-    }
-
-    if (mongoose.connection.readyState === 1) {
-      try {
-        const users = await User.find({ username: { $in: trackedUsernames } }).select('username pin_plaintext').lean();
-        for (const u of users) {
-          if (u.username === FIXED_AUTHENTICATOR_USERNAME) {
-            dailyPins[u.username] = FIXED_AUTHENTICATOR_PIN;
-            continue;
-          }
-          if (u.pin_plaintext) dailyPins[u.username] = u.pin_plaintext;
-        }
-      } catch {}
-    }
+    const accounts = users.map(u => ({
+      username: u.username,
+      role: u.role,
+      campus: u.campus,
+      name: u.name,
+      pinConfigured: Boolean(u.pin),
+      lastUpdatedAt: u.updatedAt || null
+    }));
 
     return res.json({
       status: 'success',
-      data: { generatedAt: Date.now(), dailyPins }
+      data: {
+        generatedAt: Date.now(),
+        accounts,
+        notice: 'PIN values are stored only as bcrypt hashes and cannot be read back. Use "Regenerate" to issue a new PIN.'
+      }
     });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error('[Keys]: Failed to list PIN status:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to load account key status.' });
   }
 });
 
-app.post('/api/authenticator/regenerate-keys', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
+/**
+ * POST /api/authenticator/regenerate-keys
+ *
+ * Issues fresh PINs. The cleartext values are returned in this response and
+ * nowhere else — only the bcrypt hash is persisted. Regenerating requires the
+ * caller to confirm with their own PIN first.
+ *
+ * Accepts an optional `usernames` array to rotate a subset; omitting it
+ * rotates every managed portal account.
+ */
+app.post('/api/authenticator/regenerate-keys', authenticateToken, requireRole('authenticator', 'admin1'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
-    const trackedUsernames = defaultUsers.map(u => u.username);
-    const dailyPins = {};
+    const requested = Array.isArray(req.body && req.body.usernames) ? req.body.usernames.map(u => String(u).trim().toLowerCase()) : null;
 
-    // Generate new random 6-digit PIN for each account and persist to MongoDB
-    for (const username of trackedUsernames) {
-      if (username === FIXED_AUTHENTICATOR_USERNAME) {
-        dailyPins[username] = FIXED_AUTHENTICATOR_PIN;
-        if (mongoose.connection.readyState === 1) {
-          try {
-            await User.findOneAndUpdate(
-              { username },
-              { $set: { pin: bcrypt.hashSync(FIXED_AUTHENTICATOR_PIN, 10), pin_plaintext: FIXED_AUTHENTICATOR_PIN } },
-              { upsert: false }
-            );
-          } catch (dbErr) {
-            console.warn(`⚠️ [Keys]: Notice updating fixed authenticator PIN:`, dbErr.message);
-          }
-        }
-        continue;
-      }
-
-      const newPin = String(Math.floor(100000 + Math.random() * 900000));
-      dailyPins[username] = newPin;
-      if (mongoose.connection.readyState === 1) {
-        try {
-          await User.findOneAndUpdate(
-            { username },
-            { $set: { pin: bcrypt.hashSync(newPin, 10), pin_plaintext: newPin } },
-            { upsert: false }
-          );
-        } catch (dbErr) {
-          console.warn(`⚠️ [Keys]: Notice updating PIN for ${username}:`, dbErr.message);
-        }
-      }
+    const filter = { role: { $in: [...MANAGED_PORTAL_ROLES] } };
+    if (requested && requested.length > 0) {
+      filter.username = { $in: requested };
     }
 
-    const performer = (req.user && req.user.username) ? req.user.username : 'authenticator';
-    console.log(`🔑 [Keys]: PINs regenerated for ${trackedUsernames.length} accounts by ${performer}`);
+    const users = await User.find(filter).select('username').lean();
+    if (users.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'No matching portal accounts found.' });
+    }
+
+    const issuedPins = {};
+    const failed = [];
+
+    for (const u of users) {
+      // crypto.randomInt is uniform and unpredictable; Math.random is neither,
+      // and these PINs gate destructive actions.
+      const newPin = String(crypto.randomInt(100000, 1000000));
+      const result = await User.updateOne(
+        { username: u.username },
+        { $set: { pin: bcrypt.hashSync(newPin, 10) }, $unset: { pin_plaintext: '' } }
+      );
+
+      // A write that matched nothing is a failure, not a success with a PIN
+      // the operator will hand out and nobody can actually use.
+      if (result.matchedCount === 0) {
+        failed.push(u.username);
+        continue;
+      }
+      issuedPins[u.username] = newPin;
+    }
+
+    if (failed.length > 0) {
+      console.error(`[Keys]: PIN regeneration failed for: ${failed.join(', ')}`);
+      return res.status(500).json({
+        status: 'error',
+        message: `PIN regeneration failed for ${failed.length} account(s): ${failed.join(', ')}. No PIN is shown for those accounts.`,
+        data: { issuedPins, failed }
+      });
+    }
+
+    console.log(`[Keys]: PINs regenerated for ${users.length} account(s) by [${req.user.username}]`);
 
     return res.json({
       status: 'success',
-      message: 'PINs regenerated successfully',
-      data: { generatedAt: Date.now(), dailyPins }
+      message: `New PINs issued for ${users.length} account(s). These values are shown once and are not recoverable afterwards.`,
+      data: { generatedAt: Date.now(), dailyPins: issuedPins }
     });
   } catch (err) {
-    console.error('Error regenerating PINs:', err.message);
-    return res.status(500).json({ status: 'error', message: err.message || 'Failed to regenerate PINs' });
+    console.error('[Keys]: Error regenerating PINs:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to regenerate PINs.' });
   }
 });
 
@@ -2310,7 +2406,8 @@ app.get('/api/authenticator/stats', authenticateToken, requireRole('authenticato
       }
     });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -2321,9 +2418,9 @@ app.get('/api/authenticator/sync-journal', authenticateToken, requireRole('authe
   return res.json({ status: 'success', data: [], logs: [] });
 });
 
-app.post('/api/authenticator/reconcile', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
-  return res.json({ status: 'success', message: 'Database sync reconciled successfully.' });
-});
+// Reported "Database sync reconciled successfully" without doing anything.
+// There is a single database and no replica to reconcile against.
+app.post('/api/authenticator/reconcile', authenticateToken, requireRole('authenticator', 'admin1'), notImplemented('Sync reconciliation'));
 
 /**
  * GET, POST, PUT, DELETE /api/authenticator/accounts
@@ -2334,7 +2431,8 @@ app.get('/api/authenticator/accounts', authenticateToken, requireRole('authentic
     const accounts = await getManagedPortalAccounts();
     return res.json({ status: 'success', data: accounts });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -2378,7 +2476,8 @@ app.post('/api/authenticator/accounts', authenticateToken, requireRole('authenti
     const updated = sanitizeManagedAccount(existing);
     return res.json({ status: 'success', data: updated });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -2434,7 +2533,8 @@ app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authe
     console.log(`✏️ [Accounts]: Updated account [${id}] by ${req.user.username}`);
     return res.json({ status: 'success', data: updated });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -2442,7 +2542,8 @@ app.delete('/api/authenticator/accounts/:id', authenticateToken, requireRole('au
   try {
     return res.status(405).json({ status: 'error', message: 'Deleting portal accounts is disabled. Update the existing fixed slots only.' });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
@@ -2455,52 +2556,71 @@ app.post('/api/authenticator/backup', authenticateToken, requireRole('authentica
     const backupResult = await generateAndUploadBackup(req.user?.username || 'authenticator');
     return res.json({ status: 'success', message: 'Backup created successfully', data: backupResult });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
-app.post('/api/authenticator/restore-data', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
-  try {
-    return res.json({ status: 'success', message: 'Data restored successfully', data: { restoredCount: 0 } });
-  } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
-  }
+// Returned "Data restored successfully" with restoredCount: 0 while restoring
+// nothing — the most dangerous shape of fake success in the app, since an
+// operator could believe a recovery had happened. Real restore lives at
+// POST /api/authenticator/restore-backup, which needs a Drive fileId.
+app.post('/api/authenticator/restore-data', authenticateToken, requireRole('authenticator', 'admin1'), (req, res) => {
+  return res.status(501).json({
+    status: 'error',
+    message: 'This endpoint does not restore anything. Use POST /api/authenticator/restore-backup with a Google Drive fileId.',
+    notImplemented: true
+  });
 });
 
 /**
  * GET /api/authenticator/backup-codes & POST /api/authenticator/reset-password
  */
-app.get('/api/authenticator/backup-codes', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
-  const defaultBackupCodes = defaultUsers.map((u, i) => ({
-    userId: `sys_${u.username}`,
-    username: u.username,
-    name: u.name,
-    role: u.role,
-    backupCode: `BC-${7890 + i}`,
-    usedBackupCodes: []
-  }));
-  return res.json({ status: 'success', data: defaultBackupCodes });
-});
+// Backup codes were generated on the fly from a counter (BC-7890, BC-7891, …)
+// and stored nowhere, so they authenticated nothing. The reset flow below
+// requires the caller's own security PIN instead, which is a real check.
+app.get('/api/authenticator/backup-codes', authenticateToken, requireRole('authenticator', 'admin1'), notImplemented('Backup codes'));
 
-app.post('/api/authenticator/reset-password', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
-  const { username, password, backupCode } = req.body || {};
-  if (!username || !password || !backupCode) {
-    return res.status(400).json({ status: 'error', message: 'Username, new password, and backup code are required.' });
+app.post('/api/authenticator/reset-password', authenticateToken, requireRole('authenticator', 'admin1'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+
+    if (!username || !password) {
+      return res.status(400).json({ status: 'error', message: 'Username and new password are required.' });
+    }
+
+    const newPassword = String(password).trim();
+    if (newPassword.length < 12) {
+      return res.status(400).json({ status: 'error', message: 'New password must be at least 12 characters.' });
+    }
+
+    const target = String(username).trim().toLowerCase();
+    if (target === FIXED_AUTHENTICATOR_USERNAME) {
+      return res.status(403).json({ status: 'error', message: 'The authenticator password cannot be reset from this panel.' });
+    }
+
+    // A write that matched no document must not report success — this
+    // previously told the operator the password had been reset even when the
+    // account did not exist or the write threw.
+    const result = await User.updateOne(
+      { username: target },
+      { $set: { password: bcrypt.hashSync(newPassword, 10), activeSessionId: null } }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ status: 'error', message: `No account found with username [${target}].` });
+    }
+
+    // Force the account out of any live session so the old password cannot
+    // continue to be used through an existing token.
+    await RefreshToken.updateMany({ username: target, revoked: false }, { $set: { revoked: true } });
+
+    console.log(`[Accounts]: Password reset for [${target}] by [${req.user.username}]. Sessions revoked.`);
+    return res.json({ status: 'success', message: `Password reset for ${target}. Any active session for that account has been ended.` });
+  } catch (err) {
+    console.error('[Accounts]: Password reset failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Password reset failed. The password was not changed.' });
   }
-  if (String(username).trim().toLowerCase() === FIXED_AUTHENTICATOR_USERNAME) {
-    return res.status(403).json({ status: 'error', message: 'Authenticator password is fixed and cannot be reset here.' });
-  }
-  const nextBackupCode = `BC-${Math.floor(1000 + Math.random() * 9000)}`;
-  if (mongoose.connection.readyState === 1) {
-    try {
-      const user = await User.findOne({ username: String(username).trim().toLowerCase() });
-      if (user) {
-        user.password = bcrypt.hashSync(String(password).trim(), 10);
-        await user.save();
-      }
-    } catch {}
-  }
-  return res.json({ status: 'success', message: 'Password reset successfully', nextBackupCode });
 });
 
 /**
@@ -2520,13 +2640,13 @@ app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, r
     }
     return res.json({ status: 'success', message: 'Data purged', data: { students, teachers, payments } });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
   }
 });
 
-app.post('/api/system/purge-drive', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
-  return res.json({ status: 'success', message: 'Google Drive purged successfully', deletedCount: 0 });
-});
+// Claimed "Google Drive purged successfully" while never contacting Drive.
+app.post('/api/system/purge-drive', authenticateToken, requireRole('authenticator', 'admin1'), notImplemented('Google Drive purge'));
 
 /**
  * POST /api/authenticator/wipe-database
@@ -2568,7 +2688,7 @@ app.post('/api/authenticator/wipe-database', authenticateToken, requireRole('aut
     });
   } catch (err) {
     console.error('Wipe database error:', err.message);
-    return res.status(500).json({ status: 'error', message: `Database wipe failure: ${err.message}` });
+    return res.status(500).json({ status: 'error', message: 'Database wipe failure.' });
   }
 });
 
@@ -2604,7 +2724,7 @@ app.post('/api/authenticator/restore-backup', authenticateToken, requireRole('au
     });
   } catch (err) {
     console.error('Restore backup error:', err.message);
-    return res.status(500).json({ status: 'error', message: `Database restoration failure: ${err.message}` });
+    return res.status(500).json({ status: 'error', message: 'Database restoration failure.' });
   }
 });
 
@@ -2653,7 +2773,50 @@ app.post('/api/enquiries', async (req, res) => {
   }
 });
 
-app.get('/api/enquiries', authenticateToken, async (req, res) => {
+// The frontend has always called PATCH /api/enquiries/:id to move an enquiry
+// through its lifecycle, but no such route existed — every status change 404'd.
+// Enquiry is a real model, so this is implemented properly rather than stubbed.
+app.patch('/api/enquiries/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body || {};
+
+    const allowedStatuses = ['Pending', 'Contacted', 'Enrolled', 'Closed', 'Archived'];
+    if (status !== undefined && !allowedStatuses.includes(status)) {
+      return res.status(400).json({ status: 'error', message: `Invalid status. Must be one of: ${allowedStatuses.join(', ')}` });
+    }
+    if (status === undefined && notes === undefined) {
+      return res.status(400).json({ status: 'error', message: 'Provide a status or notes to update.' });
+    }
+
+    const isObjId = isValidObjectId(id);
+    const enquiry = await Enquiry.findOne({ $or: [{ _id: isObjId ? id : null }, { referenceCode: id }] });
+    if (!enquiry) {
+      return res.status(404).json({ status: 'error', message: 'Enquiry not found.' });
+    }
+
+    // Campus-scoped staff may only touch enquiries for their own campus.
+    if (String(req.user.campus || '').toLowerCase() !== 'all') {
+      const own = String(req.user.campus).split(' ')[0].toLowerCase();
+      if (!String(enquiry.preferredCampus || '').toLowerCase().includes(own)) {
+        return res.status(403).json({ status: 'error', message: `Access forbidden. Enquiry is for campus [${enquiry.preferredCampus}].` });
+      }
+    }
+
+    if (status !== undefined) enquiry.status = status;
+    if (notes !== undefined) enquiry.notes = String(notes).trim();
+    await enquiry.save();
+
+    // Return the complete updated document so a client merge cannot blank
+    // out fields it did not send.
+    return res.json({ status: 'success', data: enquiry });
+  } catch (err) {
+    console.error('[Enquiry]: Update failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to update the enquiry.' });
+  }
+});
+
+app.get('/api/enquiries', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
   try {
     await connectToDatabase();
     const campus = req.query.branch || (req.user.role === 'admin1' ? 'All' : req.user.campus);
@@ -2739,7 +2902,10 @@ app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin
     if (salaryStatus) teacher.salaryStatus = salaryStatus;
     await teacher.save();
     return res.json({ status: 'success', data: teacher });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
+  } catch (err) {
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
+  }
 });
 
 // --- FEE BREAKDOWN ---
@@ -2797,394 +2963,324 @@ app.get(['/api/admin1/students/:studentId/fee-breakdown', '/api/admin2/students/
         remainingBalance
       }
     });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
+  } catch (err) {
+    console.error(`[${req.method} ${req.path}]:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
+  }
 });
 
 // --- STAFF SALARIES ---
-app.get('/api/admin2/staff-salaries', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
+// Was returning every teacher at every campus to any signed-in caller.
+app.get('/api/admin2/staff-salaries', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
   try {
-    await connectToDatabase();
-    const teachers = await Teacher.find({}).lean();
+    const teachers = await Teacher.find(campusScopeFilter(req)).lean();
     return res.json({ status: 'success', data: teachers });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
+  } catch (err) {
+    console.error('[StaffSalaries]: List failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to load staff salaries.' });
+  }
 });
 
-app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, async (req, res) => {
   try {
-    await connectToDatabase();
     const { teacherId } = req.params;
     const isObjId = isValidObjectId(teacherId);
-    const updated = await Teacher.findOneAndUpdate(
-      { $or: [{ _id: isObjId ? teacherId : null }, { id: teacherId }] },
-      { $set: req.body },
-      { new: true }
-    );
-    return res.json({ status: 'success', data: updated });
-  } catch (err) { return res.status(500).json({ status: 'error', message: err.message }); }
+    const teacher = await Teacher.findOne({ $or: [{ _id: isObjId ? teacherId : null }, { id: teacherId }] });
+
+    if (!teacher) {
+      return res.status(404).json({ status: 'error', message: 'Teacher record not found.' });
+    }
+
+    if (!callerOwnsCampus(req, teacher.branch)) {
+      return res.status(403).json({ status: 'error', message: `Access forbidden. Staff member belongs to campus [${teacher.branch}].` });
+    }
+
+    // Only salary fields are writable here. This previously applied
+    // `$set: req.body` verbatim, so a caller could rewrite branch, id, status
+    // or any other column through a salary endpoint.
+    const allowed = ['salary', 'salaryStatus', 'salaryLedger', 'monthlySalaries'];
+    for (const field of allowed) {
+      if (req.body[field] === undefined) continue;
+      if (field === 'salary') {
+        if (!isValidPositiveNumber(req.body.salary)) {
+          return res.status(400).json({ status: 'error', message: 'Salary must be a valid non-negative number.' });
+        }
+        teacher.salary = Number(req.body.salary);
+      } else {
+        teacher[field] = req.body[field];
+        teacher.markModified(field);
+      }
+    }
+
+    await teacher.save();
+    return res.json({ status: 'success', data: teacher });
+  } catch (err) {
+    console.error('[StaffSalaries]: Update failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to update staff salary.' });
+  }
 });
 
 
 
 // --- ENROLLMENT STATS ---
-app.get('/api/admin2/enrollment-stats', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
+// Real counts only. This used to invent "120 students / 118 active" for every
+// campus whenever the aggregate returned nothing — including when the database
+// was down or a campus genuinely had no students — which is indistinguishable
+// from real data on screen.
+app.get('/api/admin2/enrollment-stats', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
-    let stats = [];
-    if (mongoose.connection.readyState === 1) {
-      try {
-        const pipeline = [
-          { $group: { _id: '$branch', totalStudents: { $sum: 1 }, activeStudents: { $sum: { $cond: [{ $eq: ['$status', 'Active'] }, 1, 0] } } } }
-        ];
-        const resStats = await Student.aggregate(pipeline);
-        stats = resStats.map(s => ({ branch: s._id, totalStudents: s.totalStudents, activeStudents: s.activeStudents }));
-      } catch {}
-    }
-    if (!stats || stats.length === 0) {
-      stats = VALID_CAMPUSES.map(c => ({ branch: c, totalStudents: 120, activeStudents: 118 }));
-    }
+    const scope = campusScopeFilter(req);
+    const pipeline = [
+      ...(scope.branch ? [{ $match: { branch: scope.branch } }] : []),
+      { $group: { _id: '$branch', totalStudents: { $sum: 1 }, activeStudents: { $sum: { $cond: [{ $eq: ['$status', 'Active'] }, 1, 0] } } } }
+    ];
+    const resStats = await Student.aggregate(pipeline);
+    const byBranch = new Map(resStats.map(s => [s._id, s]));
+
+    // Campuses with no students are reported as zero, not omitted and not faked.
+    const campuses = scope.branch ? [scope.branch] : VALID_CAMPUSES;
+    const stats = campuses.map(c => ({
+      branch: c,
+      totalStudents: byBranch.get(c) ? byBranch.get(c).totalStudents : 0,
+      activeStudents: byBranch.get(c) ? byBranch.get(c).activeStudents : 0
+    }));
+
     return res.json({ status: 'success', data: stats });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error('[EnrollmentStats]: Failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to load enrollment statistics.' });
   }
 });
 
 // --- LATE FEES & SCHOLARSHIPS SETTINGS ---
-const lateFeeRulesState = { lateFeeRules: 'Standard Late Fee: Rs. 100/day after due date (max Rs. 2,000).' };
-const scholarshipRulesState = { scholarshipRules: 'Merit Scholarship: 25% waiver for GPA > 9.0; Need-based: up to 50% override.' };
-
-app.get(['/api/admin2/late-fees-settings', '/api/accountant/late-fees-settings'], authenticateToken, async (req, res) => {
-  return res.json({ status: 'success', data: lateFeeRulesState });
-});
-
-app.patch('/api/accountant/late-fees-settings', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  if (req.body && req.body.lateFeeRules) {
-    lateFeeRulesState.lateFeeRules = req.body.lateFeeRules;
-  }
-  return res.json({ status: 'success', data: lateFeeRulesState });
-});
-
-app.get(['/api/admin2/scholarships', '/api/accountant/scholarships'], authenticateToken, async (req, res) => {
-  return res.json({ status: 'success', data: scholarshipRulesState });
-});
-
-app.patch('/api/accountant/scholarships', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  if (req.body && req.body.scholarshipRules) {
-    scholarshipRulesState.scholarshipRules = req.body.scholarshipRules;
-  }
-  return res.json({ status: 'success', data: scholarshipRulesState });
-});
+// These were module-level strings mutated in place: an edit lived until the
+// next restart and was invisible to every other instance. Handled by the
+// notImplemented() registrations further down until they have real models.
 
 // --- HOSTEL MANAGEMENT ROUTES ---
-app.get('/api/accountant/hostel', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
+//
+// Hostel block/room allocation was never actually modelled: this endpoint
+// invented three fixed blocks with made-up occupancy and synthesised room
+// numbers from a slice of the resident list, and the allocation PATCH below
+// returned success without writing anything. Rather than keep a convincing
+// fake, this now reports only what the database really knows — which students
+// are marked Resident — and the allocation endpoint is explicitly disabled.
+app.get('/api/accountant/hostel', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
-    let residents = [];
-    if (mongoose.connection.readyState === 1) {
-      try {
-        residents = await Student.find({ hostelStatus: 'Resident' }).lean();
-      } catch {}
-    }
-    const blocks = {
-      BlockA: { name: 'Boys Block A', capacity: 100, occupied: Math.min(residents.length, 65) },
-      BlockB: { name: 'Girls Block B', capacity: 100, occupied: Math.min(residents.length, 50) },
-      BlockC: { name: 'Senior Block C', capacity: 80, occupied: Math.min(residents.length, 40) }
-    };
-    const rooms = residents.slice(0, 20).map((s, idx) => ({
-      _id: `room_${s._id || idx}`,
-      roomNumber: `${101 + (idx % 20)}`,
-      block: idx % 2 === 0 ? 'BlockA' : 'BlockB',
-      capacity: 2,
-      occupants: [s],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }));
-    return res.json({ status: 'success', data: { blocks, rooms } });
+    const residents = await Student.find({ ...campusScopeFilter(req), hostelStatus: 'Resident' })
+      .select('studentId admissionNumber name branch course section hostelStatus')
+      .lean();
+
+    return res.json({
+      status: 'success',
+      data: {
+        residents,
+        residentCount: residents.length,
+        blocks: null,
+        rooms: [],
+        notice: 'Room and block allocation is not implemented. Only hostel residency status is tracked.'
+      }
+    });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error('[Hostel]: List failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to load hostel residents.' });
   }
 });
 
+// Previously returned a hardcoded success with a fabricated room number while
+// writing nothing at all.
 app.patch('/api/accountant/hostel/:roomId', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', data: { student: { hostelStatus: 'Resident' }, room: { roomNumber: '101' } } });
+  return res.status(501).json({
+    status: 'error',
+    message: 'Room allocation is not implemented. Use the hostel check-in/check-out endpoints to change a student\'s residency status.'
+  });
 });
 
-app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
+app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
     const { studentId } = req.params;
     const isObjId = isValidObjectId(studentId);
-    let student = null;
-    if (mongoose.connection.readyState === 1) {
-      student = await Student.findOneAndUpdate(
-        { $or: [{ _id: isObjId ? studentId : null }, { studentId }] },
-        { $set: { hostelStatus: 'Day Scholar', hostelBlock: '', hostelRoom: '' } },
-        { new: true }
-      );
+    const student = await Student.findOne({ $or: [{ _id: isObjId ? studentId : null }, { studentId }, { admissionNumber: studentId }] });
+
+    if (!student) {
+      return res.status(404).json({ status: 'error', message: 'Student record not found.' });
     }
-    return res.json({ status: 'success', data: { student: student || { studentId, hostelStatus: 'Day Scholar' } } });
+
+    if (!callerOwnsCampus(req, student.branch)) {
+      return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
+    }
+
+    student.hostelStatus = 'Day Scholar';
+    await student.save();
+
+    return res.json({ status: 'success', data: { student } });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error('[Hostel]: Checkout failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to check the student out of the hostel.' });
   }
 });
 
 // --- DASHBOARD SUMMARY FOR ACCOUNTANT ---
-app.get('/api/accountant/dashboard-summary', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
+app.get('/api/accountant/dashboard-summary', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
-    let collectionToday = 0;
-    let pendingCount = 0;
-    let pendingAmount = 0;
-    if (mongoose.connection.readyState === 1) {
-      try {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        const payments = await Payment.find({ date: { $gte: startOfDay } }).select('amount').lean();
-        collectionToday = payments.reduce((acc, p) => acc + Number(p.amount || 0), 0);
-        const pendingStudents = await Student.find({ remainingBalance: { $gt: 0 } }).select('remainingBalance').lean();
-        pendingCount = pendingStudents.length;
-        pendingAmount = pendingStudents.reduce((acc, s) => acc + Number(s.remainingBalance || 0), 0);
-      } catch {}
-    }
+    const scope = campusScopeFilter(req);
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const [todayAgg, pendingAgg] = await Promise.all([
+      Payment.aggregate([
+        { $match: { ...scope, date: { $gte: startOfDay } } },
+        { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
+      ]),
+      Student.aggregate([
+        { $match: { ...scope, remainingBalance: { $gt: 0 } } },
+        { $group: { _id: null, total: { $sum: '$remainingBalance' }, count: { $sum: 1 } } }
+      ])
+    ]);
+
     return res.json({
       status: 'success',
       data: {
-        collectionToday,
-        pendingCount,
-        pendingAmount,
-        absentCount: 3
+        collectionToday: todayAgg.length ? Math.round(todayAgg[0].total * 100) / 100 : 0,
+        receiptsToday: todayAgg.length ? todayAgg[0].count : 0,
+        pendingCount: pendingAgg.length ? pendingAgg[0].count : 0,
+        pendingAmount: pendingAgg.length ? Math.round(pendingAgg[0].total * 100) / 100 : 0
+        // `absentCount` used to be reported here as the constant 3. Attendance
+        // is not recorded anywhere, so the field is omitted rather than faked.
       }
     });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error('[Dashboard]: Summary failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to load dashboard summary.' });
   }
 });
 
-// --- ATTENDANCE ROUTES ---
-app.get('/api/accountant/attendance', authenticateToken, async (req, res) => {
-  return res.json({ status: 'success', data: [] });
-});
+// --- UNIMPLEMENTED FEATURES ---
+//
+// Attendance, marks, timetable, exams, sections, bulletins and academic years
+// were all backed by module-level arrays or by handlers that returned a
+// hardcoded success. Nothing they "saved" survived a restart, and each
+// instance of the server had its own divergent copy. Rather than leave
+// endpoints that look like they work, they now answer 501 so a caller — and
+// the UI — can tell the difference between "no data" and "not built".
+//
+// Each of these needs a real Mongoose model before it can be reinstated.
+function notImplemented(feature) {
+  return (req, res) => res.status(501).json({
+    status: 'error',
+    message: `${feature} is not implemented. No data was stored or returned.`,
+    notImplemented: true
+  });
+}
 
-app.post('/api/accountant/attendance', authenticateToken, async (req, res) => {
-  return res.json({ status: 'success', message: 'Attendance saved successfully.' });
-});
+app.all('/api/accountant/attendance', authenticateToken, notImplemented('Attendance tracking'));
+app.all('/api/admin1/attendance-summary', authenticateToken, notImplemented('Attendance reporting'));
+app.all('/api/admin2/student-marks', authenticateToken, notImplemented('Student marks'));
+app.all(['/api/admin1/bulletins', '/api/bulletins'], authenticateToken, notImplemented('Bulletins'));
+app.all(['/api/admin1/bulletins/:id', '/api/bulletins/:id'], authenticateToken, notImplemented('Bulletins'));
+app.all('/api/admin1/timetable', authenticateToken, notImplemented('Timetable'));
+app.all('/api/admin1/timetable/:id', authenticateToken, notImplemented('Timetable'));
+app.all('/api/admin1/exams', authenticateToken, notImplemented('Exams desk'));
+app.all('/api/admin1/exams/:id', authenticateToken, notImplemented('Exams desk'));
+app.all('/api/admin1/academic-years', authenticateToken, notImplemented('Academic year management'));
+app.all('/api/admin1/academic-years/:yearId/status', authenticateToken, notImplemented('Academic year management'));
+app.all(['/api/admin2/late-fees-settings', '/api/accountant/late-fees-settings'], authenticateToken, notImplemented('Late fee rules'));
+app.all(['/api/admin2/scholarships', '/api/accountant/scholarships'], authenticateToken, notImplemented('Scholarship rules'));
 
-// --- STUDENT MARKS & EXAMS ---
-app.get('/api/admin2/student-marks', authenticateToken, async (req, res) => {
-  return res.json({ status: 'success', data: [] });
-});
+// Section allocation reads real teachers; the stream list is a fixed
+// curriculum constant, which is legitimate reference data rather than
+// stand-in data.
+const ACADEMIC_SECTIONS = ['MPC-A', 'MPC-B', 'BiPC-A', 'BiPC-B', 'MEC-A', 'CEC-A'];
 
-app.patch('/api/admin2/student-marks', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', message: 'Student marks updated.' });
-});
-
-// --- ADMIN 1 BULLETINS ---
-const bulletinsStore = [
-  { id: 'b1', _id: 'b1', category: 'announcement', title: 'Welcome to Academic Year 2026-2027', content: 'Classes commence on August 10th across all campuses.', date: '2026-08-01' },
-  { id: 'b2', _id: 'b2', category: 'event', title: 'Annual Sports & Cultural Meet', content: 'Registrations open for track and field events.', date: '2026-08-15' }
-];
-
-app.get(['/api/admin1/bulletins', '/api/bulletins'], authenticateToken, async (req, res) => {
-  return res.json({ status: 'success', data: bulletinsStore });
-});
-
-app.post(['/api/admin1/bulletins', '/api/bulletins'], authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  const { category, title, content, date } = req.body || {};
-  const newB = { id: `b_${Date.now()}`, _id: `b_${Date.now()}`, category: category || 'notice', title: title || 'Notice', content: content || '', date: date || new Date().toISOString().split('T')[0] };
-  bulletinsStore.unshift(newB);
-  return res.status(201).json({ status: 'success', data: newB });
-});
-
-app.patch(['/api/admin1/bulletins/:id', '/api/bulletins/:id'], authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  const { id } = req.params;
-  const idx = bulletinsStore.findIndex(b => b.id === id || b._id === id);
-  if (idx !== -1) {
-    bulletinsStore[idx] = { ...bulletinsStore[idx], ...req.body };
-    return res.json({ status: 'success', data: bulletinsStore[idx] });
-  }
-  return res.status(404).json({ status: 'error', message: 'Bulletin not found' });
-});
-
-app.delete(['/api/admin1/bulletins/:id', '/api/bulletins/:id'], authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  const { id } = req.params;
-  const idx = bulletinsStore.findIndex(b => b.id === id || b._id === id);
-  if (idx !== -1) {
-    bulletinsStore.splice(idx, 1);
-  }
-  return res.json({ status: 'success', message: 'Bulletin deleted' });
-});
-
-// --- ADMIN 1 TIMETABLE ---
-const timetableStore = [
-  { _id: 'tt1', section: 'MPC', day: 'Monday', period: '1st Period (9:00 AM)', subject: 'Mathematics', teacher: { name: 'Dr. Ramesh' } },
-  { _id: 'tt2', section: 'MPC', day: 'Monday', period: '2nd Period (10:00 AM)', subject: 'Physics', teacher: { name: 'Prof. Suresh' } }
-];
-
-app.get('/api/admin1/timetable', authenticateToken, async (req, res) => {
-  const { section } = req.query;
-  const filtered = section ? timetableStore.filter(t => t.section.toLowerCase() === String(section).toLowerCase()) : timetableStore;
-  return res.json({ status: 'success', data: filtered });
-});
-
-app.post('/api/admin1/timetable', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  const entry = { _id: `tt_${Date.now()}`, ...req.body };
-  timetableStore.push(entry);
-  return res.status(201).json({ status: 'success', data: entry });
-});
-
-app.patch('/api/admin1/timetable/:id', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  const { id } = req.params;
-  const idx = timetableStore.findIndex(t => t._id === id);
-  if (idx !== -1) {
-    timetableStore[idx] = { ...timetableStore[idx], ...req.body };
-    return res.json({ status: 'success', data: timetableStore[idx] });
-  }
-  return res.status(404).json({ status: 'error', message: 'Timetable entry not found' });
-});
-
-app.delete('/api/admin1/timetable/:id', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  const { id } = req.params;
-  const idx = timetableStore.findIndex(t => t._id === id);
-  if (idx !== -1) timetableStore.splice(idx, 1);
-  return res.json({ status: 'success', message: 'Timetable entry deleted' });
-});
-
-// --- ADMIN 1 SECTIONS & ALLOCATIONS ---
-app.get('/api/admin1/sections', authenticateToken, async (req, res) => {
+app.get('/api/admin1/sections', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
-    let teachers = [];
-    if (mongoose.connection.readyState === 1) {
-      try { teachers = await Teacher.find({}).lean(); } catch {}
-    }
+    const teachers = await Teacher.find(campusScopeFilter(req)).lean();
+    return res.json({ status: 'success', data: { sections: ACADEMIC_SECTIONS, teachers } });
+  } catch (err) {
+    console.error('[Sections]: Load failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to load sections.' });
+  }
+});
+
+app.post('/api/admin1/sections', authenticateToken, requireRole('admin1', 'admin2'), notImplemented('Section allocation'));
+
+// Reports were entirely invented (a fixed 120 enrolled / 45,00,000 revenue /
+// 12,00,000 expenses, split evenly across four campuses). These are now
+// computed from the real collections.
+app.get('/api/admin1/reports', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
+  try {
+    const scope = campusScopeFilter(req);
+    const campuses = scope.branch ? [scope.branch] : VALID_CAMPUSES;
+
+    const [enrollment, revenue, expenses] = await Promise.all([
+      Student.aggregate([...(scope.branch ? [{ $match: scope }] : []), { $group: { _id: '$branch', students: { $sum: 1 } } }]),
+      Payment.aggregate([...(scope.branch ? [{ $match: scope }] : []), { $group: { _id: '$branch', revenue: { $sum: '$amount' } } }]),
+      Expenditure.aggregate([...(scope.branch ? [{ $match: scope }] : []), { $group: { _id: '$branch', expenses: { $sum: '$amount' } } }])
+    ]);
+
+    const enrolByBranch = new Map(enrollment.map(e => [e._id, e.students]));
+    const revByBranch = new Map(revenue.map(r => [r._id, r.revenue]));
+    const expByBranch = new Map(expenses.map(e => [e._id, e.expenses]));
+
+    const round2 = n => Math.round((n || 0) * 100) / 100;
+    const campusBreakdown = campuses.map(c => ({
+      campus: c,
+      students: enrolByBranch.get(c) || 0,
+      revenue: round2(revByBranch.get(c)),
+      expenses: round2(expByBranch.get(c))
+    }));
+
+    const totalRevenue = round2(campusBreakdown.reduce((a, c) => a + c.revenue, 0));
+    const totalExpenses = round2(campusBreakdown.reduce((a, c) => a + c.expenses, 0));
+
     return res.json({
       status: 'success',
       data: {
-        sections: ['MPC-A', 'MPC-B', 'BiPC-A', 'BiPC-B', 'MEC-A', 'CEC-A'],
-        teachers
+        totalEnrollment: campusBreakdown.reduce((a, c) => a + c.students, 0),
+        totalRevenue,
+        totalExpenses,
+        netProfit: round2(totalRevenue - totalExpenses),
+        campusBreakdown
       }
     });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error('[Reports]: Failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to build reports.' });
   }
 });
-
-app.post('/api/admin1/sections', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  return res.json({ status: 'success', message: 'Section allocation updated successfully.' });
-});
-
-// --- ATTENDANCE SUMMARY ---
-app.get('/api/admin1/attendance-summary', authenticateToken, async (req, res) => {
-  return res.json({
-    status: 'success',
-    data: [
-      { section: 'MPC-A', totalStudents: 45, presentCount: 42, absentCount: 3, percentage: 93.3 },
-      { section: 'BiPC-A', totalStudents: 40, presentCount: 38, absentCount: 2, percentage: 95.0 },
-      { section: 'MEC-A', totalStudents: 35, presentCount: 33, absentCount: 2, percentage: 94.2 }
-    ]
-  });
-});
-
-// --- REPORTS ---
-app.get('/api/admin1/reports', authenticateToken, async (req, res) => {
-  return res.json({
-    status: 'success',
-    data: {
-      totalEnrollment: 120,
-      totalRevenue: 4500000,
-      totalExpenses: 1200000,
-      netProfit: 3300000,
-      campusBreakdown: [
-        { campus: 'Erragattugutta C1', students: 30, revenue: 1125000 },
-        { campus: 'Erragattugutta C2', students: 30, revenue: 1125000 },
-        { campus: 'Beemaram C1', students: 30, revenue: 1125000 },
-        { campus: 'Beemaram C2', students: 30, revenue: 1125000 }
-      ]
-    }
-  });
-});
-
-// --- EXAMS DESK ---
-const examsStore = [
-  { _id: 'ex1', id: 'ex1', name: 'Unit Test I', date: '2026-08-20', class: 'MPC-A', status: 'Scheduled', resultsPublished: false },
-  { _id: 'ex2', id: 'ex2', name: 'Quarterly Examination', date: '2026-09-15', class: 'All Streams', status: 'Scheduled', resultsPublished: false }
-];
-
-app.get('/api/admin1/exams', authenticateToken, async (req, res) => {
-  return res.json({ status: 'success', data: examsStore });
-});
-
-app.post('/api/admin1/exams', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
-  const { name, date, class: streamClass } = req.body || {};
-  const exam = { _id: `ex_${Date.now()}`, id: `ex_${Date.now()}`, name: name || 'Mid Term', date: date || '2026-09-01', class: streamClass || 'MPC', status: 'Scheduled', resultsPublished: false };
-  examsStore.push(exam);
-  return res.status(201).json({ status: 'success', data: exam });
-});
-
-// --- ACADEMIC YEARS ---
-const academicYearsStore = [
-  { id: '2026-2027', label: 'Academic Year 2026-2027', status: 'Active', startDate: '2026-06-01', endDate: '2027-04-30' },
-  { id: '2025-2026', label: 'Academic Year 2025-2026', status: 'Archived', startDate: '2025-06-01', endDate: '2026-04-30' }
-];
-
-app.get('/api/admin1/academic-years', authenticateToken, async (req, res) => {
-  return res.json({ status: 'success', data: { activeYear: '2026-2027', academicYears: academicYearsStore } });
-});
-
-app.post('/api/admin1/academic-years', authenticateToken, requireRole('admin1'), async (req, res) => {
-  const { yearId, label, startDate, endDate, status } = req.body || {};
-  const newY = { id: yearId || `AY-${Date.now()}`, label: label || yearId, status: status || 'Upcoming', startDate: startDate || '', endDate: endDate || '' };
-  academicYearsStore.push(newY);
-  return res.status(201).json({ status: 'success', data: newY });
-});
-
-app.patch('/api/admin1/academic-years/:yearId/status', authenticateToken, requireRole('admin1'), async (req, res) => {
-  const { yearId } = req.params;
-  const { status } = req.body || {};
-  const y = academicYearsStore.find(a => a.id === yearId);
-  if (y) {
-    y.status = status;
-    return res.json({ status: 'success', data: y });
-  }
-  return res.status(404).json({ status: 'error', message: 'Academic year not found' });
-});
-
 // --- PAYMENTS, EXPENDITURES & FEE SETTINGS ALIASES FOR ADMIN1 ---
-app.get(['/api/admin1/payments', '/api/accountant/payments'], authenticateToken, async (req, res) => {
+//
+// These three previously had authenticateToken and nothing else: no role
+// check and no campus filter, so any signed-in accountant could read every
+// payment, expenditure and fee structure across all four campuses. They now
+// scope to the caller's campus unless the caller is org-wide (admin1).
+app.get(['/api/admin1/payments', '/api/accountant/payments'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
-    let payments = [];
-    if (mongoose.connection.readyState === 1) {
-      try { payments = await Payment.find({}).sort({ createdAt: -1 }).lean(); } catch {}
-    }
+    const payments = await Payment.find(campusScopeFilter(req)).sort({ createdAt: -1 }).lean();
     return res.json({ status: 'success', data: payments });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error('[Payments]: List failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to load payments.' });
   }
 });
 
-app.get(['/api/admin1/expenditures', '/api/accountant/expenditures'], authenticateToken, async (req, res) => {
+app.get(['/api/admin1/expenditures', '/api/accountant/expenditures'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
-    let expenditures = [];
-    if (mongoose.connection.readyState === 1) {
-      try { expenditures = await Expenditure.find({}).sort({ createdAt: -1 }).lean(); } catch {}
-    }
+    const expenditures = await Expenditure.find(campusScopeFilter(req)).sort({ createdAt: -1 }).lean();
     return res.json({ status: 'success', data: expenditures });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error('[Expenditures]: List failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to load expenditures.' });
   }
 });
 
-app.get(['/api/admin1/fee-settings', '/api/accountant/fee-settings'], authenticateToken, async (req, res) => {
+app.get(['/api/admin1/fee-settings', '/api/accountant/fee-settings'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
   try {
-    try { await connectToDatabase(); } catch {}
-    let feeSettings = [];
-    if (mongoose.connection.readyState === 1) {
-      try { feeSettings = await FeeSettings.find({}).lean(); } catch {}
-    }
+    const feeSettings = await FeeSettings.find(campusScopeFilter(req)).lean();
     return res.json({ status: 'success', data: feeSettings });
   } catch (err) {
-    return res.status(500).json({ status: 'error', message: err.message });
+    console.error('[FeeSettings]: List failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Failed to load fee settings.' });
   }
 });
 
@@ -3201,15 +3297,51 @@ if (fs.existsSync(distPath)) {
 }
 
 // Centralized error handler
-app.use((err, req, res, next) => {
-  if (err.status !== 403) {
-    console.error('Uncaught server error:', err.stack || err.message);
+// Unmatched API routes must return JSON 404, not the SPA's index.html. A
+// frontend calling a route that does not exist was previously handed an HTML
+// page, which surfaces in the client as an opaque JSON parse failure.
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/auth')) {
+    return res.status(404).json({ status: 'error', message: `No such endpoint: ${req.method} ${req.path}` });
   }
+  return next();
+});
+
+// Centralized error handler.
+//
+// Clients get a generic message plus a correlation id; the detail and stack go
+// to the server log only. Returning err.message verbatim leaked raw Mongo and
+// driver text to anyone who could trigger a failure.
+app.use((err, req, res, next) => {
   const status = err.status || 500;
+  const errorId = crypto.randomBytes(6).toString('hex');
+
+  if (status >= 500) {
+    console.error(`[${errorId}] Unhandled error on ${req.method} ${req.path}:`, err.stack || err.message);
+  } else {
+    console.warn(`[${errorId}] ${status} on ${req.method} ${req.path}: ${err.message}`);
+  }
+
+  // 4xx messages are ours and safe to show; 5xx detail is not.
   return res.status(status).json({
     status: 'error',
-    message: err.message || 'Internal server error'
+    message: status < 500 ? err.message : 'Internal server error.',
+    errorId
   });
+});
+
+// Last-resort crash containment for the persistent Hostinger process.
+//
+// An unhandled rejection anywhere in the codebase would otherwise terminate
+// the Node process and take the whole site down until the host restarted it.
+// Log loudly, keep serving: one bad request must not end the process for
+// every other user.
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL-CONTAINED] Unhandled promise rejection:', reason && reason.stack ? reason.stack : reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL-CONTAINED] Uncaught exception:', err && err.stack ? err.stack : err);
 });
 
 module.exports = app;

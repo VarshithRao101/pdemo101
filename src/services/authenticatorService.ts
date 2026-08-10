@@ -63,9 +63,14 @@ export const authenticatorService = {
     return res.data;
   },
 
-  // Regenerate daily 6-digit security PINs
-  async regenerateKeys(): Promise<any> {
-    const res = await apiClient.post<{ status: string; message: string; data: any }>('/authenticator/regenerate-keys', {});
+  // Issue fresh 6-digit security PINs. The server returns each new PIN exactly
+  // once, in this response — they are stored only as bcrypt hashes and cannot
+  // be read back afterwards. Requires the caller's own PIN as confirmation.
+  async regenerateKeys(securityPin: string): Promise<any> {
+    const res = await apiClient.post<{ status: string; message: string; data: any }>(
+      '/authenticator/regenerate-keys',
+      { securityPin }
+    );
     return res.data;
   },
 

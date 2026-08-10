@@ -21,124 +21,42 @@ export interface ApiError extends Error {
   data?: any;
 }
 
+// The security PIN the user last confirmed with, held in memory for the life
+// of the page only. Never written to localStorage — it is a live credential.
+//
+// Call sites used to pass a hardcoded literal ('784920') here, which the server
+// accepted because its confirmation middleware was a no-op. The server now
+// verifies this value with bcrypt against the signed-in account's stored PIN,
+// so only a real PIN works.
 let activeSecurityKey = '';
 
 export const setGlobalSecurityKey = (key: string) => {
   activeSecurityKey = key;
 };
 
-// Helper to get local date seed YYYY-MM-DD in IST (UTC+5:30)
-export const getLocalDateSeed = (): string => {
-  const d = new Date();
-  // Adjust to IST timezone (UTC+5:30 => 330 minutes offset)
-  const istOffsetMs = (330 + d.getTimezoneOffset()) * 60000;
-  const istDate = new Date(d.getTime() + istOffsetMs);
-  const year = istDate.getFullYear();
-  const month = String(istDate.getMonth() + 1).padStart(2, '0');
-  const day = String(istDate.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+export const clearGlobalSecurityKey = () => {
+  activeSecurityKey = '';
 };
 
-// Deterministic 6-digit number generator seeded by identifier + dateSeed (24-hour static key)
-export const generate24HourDeterministicCode = (identifier: string, dateSeed = getLocalDateSeed()): string => {
-  let hash = 0;
-  const str = `${identifier}:${dateSeed}:inspire_2026_static_secret_key`;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  const numericVal = Math.abs(hash);
-  return (100000 + (numericVal % 900000)).toString();
+/**
+ * Asks the user for their security PIN.
+ *
+ * Overridable so the app can supply a proper modal; falls back to a prompt so
+ * the flow always works rather than silently failing a destructive action.
+ */
+let securityPinPrompt: (reason: string) => Promise<string | null> = async (reason) =>
+  window.prompt(reason);
+
+export const setSecurityPinPrompt = (fn: (reason: string) => Promise<string | null>) => {
+  securityPinPrompt = fn;
 };
 
-// Generate security keys for Authenticator display & key verification
-export const getOrGenerateSecurityKeys = (forceRegenerate = false) => {
-  const dateSeed = getLocalDateSeed();
-  const genOtp = (slot: string) => generate24HourDeterministicCode(`otp_${slot}`, dateSeed);
-
-  if (!forceRegenerate) {
-    try {
-      const stored = localStorage.getItem('jc_security_keys');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.dailyPins && parsed.dateSeed === dateSeed) {
-          return parsed;
-        }
-      }
-    } catch { /* ignore */ }
-  }
-
-  const genPin = (uname: string) => {
-    if (forceRegenerate) {
-      return Math.floor(100000 + Math.random() * 900000).toString();
-    }
-    return generate24HourDeterministicCode(`pin_${uname}`, dateSeed);
-  };
-
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-
-  const pins = {
-    admin1: genPin('admin1'),
-    authenticator: genPin('authenticator'),
-    admin2_erragattugutta_c1: genPin('admin2_erragattugutta_c1'),
-    admin2_erragattugutta_c2: genPin('admin2_erragattugutta_c2'),
-    admin2_beemaram_c1: genPin('admin2_beemaram_c1'),
-    admin2_beemaram_c2: genPin('admin2_beemaram_c2'),
-    accountant_erragattugutta_c1_1: genPin('accountant_erragattugutta_c1_1'),
-    accountant_erragattugutta_c2_1: genPin('accountant_erragattugutta_c2_1'),
-    accountant_beemaram_c1_1: genPin('accountant_beemaram_c1_1'),
-    accountant_beemaram_c2_1: genPin('accountant_beemaram_c2_1'),
-  };
-
-  const keys = {
-    generatedAt: d.getTime(),
-    dateSeed,
-    dailyPins: {
-      ...pins,
-      admin2_erragattuguttac1: pins.admin2_erragattugutta_c1,
-      admin2_erragattuguttac2: pins.admin2_erragattugutta_c2,
-      admin2_beemaramc1: pins.admin2_beemaram_c1,
-      admin2_beemaramc2: pins.admin2_beemaram_c2,
-      accountant_erragattugutta_c1_2: pins.accountant_erragattugutta_c1_1,
-      accountant_erragattuguttac1_1: pins.accountant_erragattugutta_c1_1,
-      accountant_erragattuguttac1_2: pins.accountant_erragattugutta_c1_1,
-      accountant_erragattugutta_c2_2: pins.accountant_erragattugutta_c2_1,
-      accountant_erragattuguttac2_1: pins.accountant_erragattugutta_c2_1,
-      accountant_erragattuguttac2_2: pins.accountant_erragattugutta_c2_1,
-      accountant_beemaram_c1_2: pins.accountant_beemaram_c1_1,
-      accountant_beemaramc1_1: pins.accountant_beemaram_c1_1,
-      accountant_beemaramc1_2: pins.accountant_beemaram_c1_1,
-      accountant_beemaram_c2_2: pins.accountant_beemaram_c2_1,
-      accountant_beemaramc2_1: pins.accountant_beemaram_c2_1,
-      accountant_beemaramc2_2: pins.accountant_beemaram_c2_1,
-    },
-    sectionOtps: {
-      admin1: {
-        studentRegistry: genOtp('admin1_studentRegistry'),
-        facultyManagement: genOtp('admin1_management'),
-        management: genOtp('admin1_management'),
-        feeStructure: genOtp('admin1_feeStructure'),
-        feeOverride: genOtp('admin1_feeOverride'),
-        expenditure: genOtp('admin1_expenditure')
-      },
-      admin2: {
-        feeStructure: genOtp('admin2_feeStructure'),
-        feeOverride: genOtp('admin2_feeOverride'),
-        expenditure: genOtp('admin2_expenditure'),
-        workerPayments: genOtp('admin2_workerPayments')
-      },
-      accountant: {
-        studentDetails: genOtp('accountant_studentDetails'),
-        fees: genOtp('accountant_fees'),
-        hostel: genOtp('accountant_hostel')
-      }
-    }
-  };
-
-  localStorage.setItem('jc_security_keys', JSON.stringify(keys));
-  return keys;
-};
+// NOTE: a client-side PIN generator lived here. It derived every account's
+// "security PIN" and per-section OTPs from a hardcoded string baked into the
+// public JS bundle, cached them in localStorage, and the Authenticator portal
+// displayed them as if they were the real credentials. They were never the
+// real credentials — the server checks bcrypt hashes. Anything resembling a
+// credential must come from the server, so this has been removed entirely.
 
 export const logTransactionInJournal = (action: string, branch: string, status: 'success' | 'failed', errorDetails = '') => {
   const list = JSON.parse(localStorage.getItem('jc_sync_journal') || '[]');
@@ -190,7 +108,7 @@ export const apiClient = {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   },
 
-  async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  async request<T = any>(endpoint: string, options: RequestInit & { __pinRetried?: boolean } = {}): Promise<T> {
     let cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     
     // Strip duplicate /api prefix if caller passed /api/... to avoid /api/api/... 404 errors
@@ -216,8 +134,7 @@ export const apiClient = {
     }
 
     if (activeSecurityKey) {
-      headers['x-security-key'] = activeSecurityKey;
-      headers['x-security-otp'] = activeSecurityKey;
+      headers['x-security-pin'] = activeSecurityKey;
     }
 
     try {
@@ -230,6 +147,25 @@ export const apiClient = {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
+        // The server is asking for secondary confirmation on a destructive or
+        // financial action. Collect the real PIN and retry once. Handling this
+        // centrally means every such route is covered without each call site
+        // having to know about it.
+        if (response.status === 401 && data?.requiresSecurityPin && !options.__pinRetried) {
+          const pin = await securityPinPrompt(
+            data.message === 'Incorrect security PIN.'
+              ? 'Incorrect PIN. Enter your security PIN to confirm this action:'
+              : 'Enter your security PIN to confirm this action:'
+          );
+          if (pin && pin.trim()) {
+            setGlobalSecurityKey(pin.trim());
+            return this.request<T>(endpoint, { ...options, __pinRetried: true } as RequestInit);
+          }
+          const cancelled: ApiError = new Error('Action cancelled: security PIN not provided.');
+          cancelled.status = 401;
+          throw cancelled;
+        }
+
         // Intercept 401 Access Token Expiration & Silently Refresh Token
         if (response.status === 401 && !cleanPath.startsWith('/auth/')) {
           const refreshToken = sessionStorage.getItem('refresh_token');
@@ -244,6 +180,13 @@ export const apiClient = {
               const refreshData = await refreshRes.json().catch(() => null);
               if (refreshRes.ok && refreshData?.token) {
                 sessionStorage.setItem('auth_token', refreshData.token);
+                // Refresh tokens are now single-use and rotate. The server
+                // revokes the presented token as it validates it, so the
+                // replacement must be stored or the next refresh will fail —
+                // and reusing a spent token deliberately kills the session.
+                if (refreshData.refreshToken) {
+                  sessionStorage.setItem('refresh_token', refreshData.refreshToken);
+                }
                 headers['Authorization'] = `Bearer ${refreshData.token}`;
                 // Retry original request with fresh access token
                 const retryRes = await fetch(url, { ...options, headers, credentials: 'include' });

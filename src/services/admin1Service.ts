@@ -57,8 +57,8 @@ export const admin1Service = {
     const headers: Record<string, string> = {};
     const body: Record<string, string> = {};
     if (otpKey) {
-      headers['X-Security-OTP'] = otpKey;
-      headers['x-security-key'] = otpKey;
+      headers['x-security-pin'] = otpKey;
+      headers['x-security-pin'] = otpKey;
       body.otp = otpKey;
     }
     const res = await apiClient.request<{ status: string; message: string }>(`/admin1/students/${id}`, {
@@ -92,13 +92,13 @@ export const admin1Service = {
 
   async deleteTeacher(id: string, otpKey?: string): Promise<{ status: string; message: string }> {
     const headers: Record<string, string> = {};
-    if (otpKey) headers['X-Security-OTP'] = otpKey;
+    if (otpKey) headers['x-security-pin'] = otpKey;
     const res = await apiClient.request<{ status: string; message: string }>(`/admin1/teachers/${id}`, { method: 'DELETE', headers });
     return res;
   },
 
-  async payTeacherSalary(id: string, payload: { academicYear: string; month: string; amountPaid?: number; paymentMode?: string; note?: string }, otpKey: string): Promise<any> {
-    const headers: Record<string, string> = { 'X-Security-OTP': otpKey };
+  async payTeacherSalary(id: string, payload: { academicYear: string; month: string; amountPaid?: number; paymentMode?: string; note?: string }, otpKey?: string): Promise<any> {
+    const headers: Record<string, string> = otpKey ? { 'x-security-pin': otpKey } : {};
     const res = await apiClient.request<any>(`/admin1/teachers/${id}/salary-month`, { method: 'POST', body: JSON.stringify(payload), headers });
     return res;
   },
@@ -157,11 +157,8 @@ export const admin1Service = {
   },
 
   async uploadTimetable(section: string, file: File): Promise<{ status: string; message: string; data?: any }> {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('section', section);
-    const res = await apiClient.post<{ status: string; message: string; data?: any }>('/admin1/timetable/upload', formData);
-    return res;
+    // POST /admin1/timetable/upload has never existed on the server; this call always 404'd.
+    throw Object.assign(new Error('Timetable upload is not available: this feature has no backend implementation yet.'), { status: 501 });
   },
 
   // Sections & Allocations
@@ -211,12 +208,8 @@ export const admin1Service = {
   },
 
   async uploadExamResults(file: File, testTitle?: string, date?: string): Promise<{ status: string; message: string; data?: any }> {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (testTitle) formData.append('testTitle', testTitle);
-    if (date) formData.append('date', date);
-    const res = await apiClient.post<{ status: string; message: string; data?: any }>('/admin1/exams/upload', formData);
-    return res;
+    // POST /admin1/exams/upload has never existed on the server; this call always 404'd.
+    throw Object.assign(new Error('Exam results upload is not available: this feature has no backend implementation yet.'), { status: 501 });
   },
 
   // Academic Year Management
@@ -246,8 +239,8 @@ export const admin1Service = {
     newFeeStructure?: any;
     waivers?: any;
   }): Promise<any> {
-    const res = await apiClient.post<any>(`/students/${id}/promote`, payload);
-    return res;
+    // POST /students/:id/promote has never existed on the server; this call always 404'd.
+    throw Object.assign(new Error('Student promotion is not available: this feature has no backend implementation yet.'), { status: 501 });
   },
 
   // Teacher Monthly Salary
