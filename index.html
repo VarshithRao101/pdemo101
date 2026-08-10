@@ -6,7 +6,23 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    
+
+    <!--
+      Content Security Policy, delivered in the document rather than as a header.
+
+      The server already sends a full CSP via helmet, but Hostinger's edge
+      replaces the Content-Security-Policy header on every proxied response
+      with just "upgrade-insecure-requests" before it reaches the browser.
+      A meta-delivered policy travels inside the HTML body, so the edge cannot
+      rewrite it, and the browser enforces it for this document.
+
+      Keep this in sync with the helmet directives in server/app.cjs. Note that
+      frame-ancestors is not valid in a meta tag and is intentionally absent —
+      clickjacking is covered by the X-Frame-Options: SAMEORIGIN header, which
+      does survive the edge.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
+
     <!-- Primary Meta Tags -->
     <title>Inspire Educational Institutions | Administrative Portal Gateway</title>
     <meta name="title" content="Inspire Educational Institutions | Administrative Portal Gateway" />

@@ -77,9 +77,16 @@ app.use(cors({
     if (allowedOrigins.includes(normOrigin) || (allowDevOrigins && DEV_ORIGIN_PATTERN.test(normOrigin))) {
       return callback(null, true);
     }
-    const err = new Error('Not allowed by CORS policy');
-    err.status = 403;
-    return callback(err);
+
+    // Refuse by withholding Access-Control-Allow-Origin rather than by
+    // erroring the response. The browser still blocks the cross-origin read —
+    // that is what actually enforces the policy — but a stray or
+    // misconfigured Origin header can no longer 403 the request itself.
+    // Erroring here meant a single wrong entry in ALLOWED_ORIGINS took down
+    // stylesheets and scripts along with the API, turning a config typo into
+    // a blank page.
+    console.warn(`[CORS]: Refused cross-origin request from ${normOrigin}`);
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
