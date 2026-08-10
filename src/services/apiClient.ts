@@ -28,6 +28,11 @@ export interface ApiError extends Error {
 // accepted because its confirmation middleware was a no-op. The server now
 // verifies this value with bcrypt against the signed-in account's stored PIN,
 // so only a real PIN works.
+// Ceiling on how long any single request may hang before the UI gives up.
+// Generous enough for a cold Hostinger start plus an Atlas connect, short
+// enough that a stalled request cannot leave a spinner running indefinitely.
+const REQUEST_TIMEOUT_MS = 30000;
+
 let activeSecurityKey = '';
 
 export const setGlobalSecurityKey = (key: string) => {
@@ -137,11 +142,22 @@ export const apiClient = {
       headers['x-security-pin'] = activeSecurityKey;
     }
 
+    // Abort a request that never resolves.
+    //
+    // fetch() has no default timeout: if the server accepts the connection and
+    // then stalls, the promise simply never settles and whatever spinner the
+    // caller showed spins forever with no way back. This bounds every request
+    // so a hung backend surfaces as a real, dismissible error instead.
+    const controller = new AbortController();
+    const timeoutMs = (options as any).timeoutMs ?? REQUEST_TIMEOUT_MS;
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
       const response = await fetch(url, {
         ...options,
         headers,
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller.signal
       });
 
       const data = await response.json().catch(() => null);
@@ -217,9 +233,23 @@ export const apiClient = {
       if (err.status) {
         throw err;
       }
-      const networkErr: ApiError = new Error(err.message || 'Network error: Backend server unreachable');
+      // Tell the two failure modes apart. "The server took too long" and "the
+      // server is unreachable" need different things from the user, and a
+      // single generic message leaves them with nothing to act on.
+      if (err?.name === 'AbortError') {
+        const timeoutErr: ApiError = new Error(
+          `The server did not respond within ${Math.round(timeoutMs / 1000)} seconds. Your change may not have been saved — check before retrying.`
+        );
+        timeoutErr.status = 504;
+        throw timeoutErr;
+      }
+      const networkErr: ApiError = new Error(
+        err.message || 'Cannot reach the server. Check your internet connection and try again.'
+      );
       networkErr.status = 503;
       throw networkErr;
+    } finally {
+      clearTimeout(timer);
     }
   },
 

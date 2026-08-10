@@ -858,12 +858,25 @@ async function issueSession(user, res) {
   });
 }
 
+// Source IP for audit lines. Behind Hostinger's edge the socket address is the
+// proxy, so the forwarded header is the only view of the real client.
+function clientIp(req) {
+  const raw = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+  return String(raw).split(',')[0].trim();
+}
+
 async function handleLogin(req, res, label) {
   try {
     const { username, identifier, password, pin } = req.body || {};
+    const attempted = String(username || identifier || '').trim().toLowerCase();
     const user = await validateUserLoginCredentials(username || identifier, password, pin);
 
     if (!user) {
+      // Record who was targeted and from where. The access log alone only
+      // showed "POST /api/auth/login 401", which cannot distinguish one
+      // mistyped password from a credential-stuffing run against every
+      // account. The password itself is never logged.
+      console.warn(`[Auth]: FAILED ${label} for [${attempted || '(blank)'}] from ${clientIp(req)}`);
       return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
     }
 
