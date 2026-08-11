@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
 import { apiClient } from '../services/apiClient';
-import { authenticatorService } from '../services/authenticatorService';
-import type { 
-  AccountInfo, 
+import { authenticatorService, BACKUP_CATEGORIES } from '../services/authenticatorService';
+import type {
+  AccountInfo,
   ActiveSessionInfo,
   AuthenticatorStats,
-  SyncJournalEntry
+  SyncJournalEntry,
+  BackupCategoryKey
 } from '../services/authenticatorService';
 
 export const AuthenticatorDashboardView: React.FC = () => {
@@ -82,13 +83,11 @@ export const AuthenticatorDashboardView: React.FC = () => {
   const [wipeProgress, setWipeProgress] = useState<number>(0);
 
   // Settings State 3: Restore Engine & Google Drive Backups
-  const [availableBackups, setAvailableBackups] = useState<any>({
-    Students_Data: {},
-    Teachers_Data: {},
-    Expenditures_Data: {}
-  });
+  const [availableBackups, setAvailableBackups] = useState<any>(
+    Object.fromEntries(BACKUP_CATEGORIES.map(c => [c.key, {}]))
+  );
   const [isLoadingBackups, setIsLoadingBackups] = useState<boolean>(false);
-  const [activeRestoreCategory, setActiveRestoreCategory] = useState<'Students_Data' | 'Teachers_Data' | 'Expenditures_Data'>('Students_Data');
+  const [activeRestoreCategory, setActiveRestoreCategory] = useState<BackupCategoryKey>('Students_Data');
   const [restoringCampus] = useState<string | null>(null);
   const [restoreProgress] = useState<number>(0);
   const [restoreStatusText] = useState<string>('Initializing restoration pipeline...');
@@ -129,7 +128,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
       // One file per campus per type, so a later restore can target exactly
       // one of them. The security PIN is collected by apiClient on demand.
       const campuses = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
-      const types = ['student', 'teacher', 'expenditure'];
+      const types = BACKUP_CATEGORIES.map(c => c.type);
       const failures: string[] = [];
       let written = 0;
       for (const type of types) {
@@ -154,7 +153,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
       localStorage.setItem('last_backup_timestamp', nowStr);
       setStats(prev => ({ ...prev, lastBackupAt: nowStr }));
 
-      triggerToast('Backup complete — 12 files written to Backup/<Type>/<Campus>/ on Google Drive.');
+      triggerToast(`Backup complete — ${written} files written to Backup/<Type>/<Campus>/ on Google Drive.`);
       await loadAvailableBackups();
     } catch (err: any) {
       clearInterval(interval);
@@ -239,7 +238,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
   const handleExecuteDataRestore = async (
     fileId: string,
     fileName: string,
-    category: 'Students_Data' | 'Teachers_Data' | 'Expenditures_Data',
+    category: BackupCategoryKey,
     campus: string
   ) => {
     const backupType = authenticatorService.categoryToBackupType(category);
@@ -1229,73 +1228,37 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 </p>
               </div>
 
-              {/* 3 Clickable Category Selector Tabs */}
+              {/* Category selector tabs, one per backup type.
+                  Driven by BACKUP_CATEGORIES so a new data type appears here
+                  automatically instead of needing a fourth copy of this block. */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
-                <button
-                  onClick={() => setActiveRestoreCategory('Students_Data')}
-                  style={{
-                    padding: '14px',
-                    borderRadius: '14px',
-                    border: activeRestoreCategory === 'Students_Data' ? '2.5px solid var(--accent)' : '2px solid var(--line-strong)',
-                    backgroundColor: activeRestoreCategory === 'Students_Data' ? 'var(--accent-wash)' : 'var(--surface)',
-                    color: activeRestoreCategory === 'Students_Data' ? 'var(--accent)' : 'var(--ink-secondary)',
-                    fontWeight: 900,
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    boxShadow: activeRestoreCategory === 'Students_Data' ? '3px 3px 0px var(--accent)' : 'none'
-                  }}
-                  className="press-interactive"
-                >
-                  Students Data & Fees
-                </button>
-
-                <button
-                  onClick={() => setActiveRestoreCategory('Teachers_Data')}
-                  style={{
-                    padding: '14px',
-                    borderRadius: '14px',
-                    border: activeRestoreCategory === 'Teachers_Data' ? '2.5px solid var(--good)' : '2px solid var(--line-strong)',
-                    backgroundColor: activeRestoreCategory === 'Teachers_Data' ? 'var(--good-wash)' : 'var(--surface)',
-                    color: activeRestoreCategory === 'Teachers_Data' ? 'var(--good)' : 'var(--ink-secondary)',
-                    fontWeight: 900,
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    boxShadow: activeRestoreCategory === 'Teachers_Data' ? '3px 3px 0px var(--good)' : 'none'
-                  }}
-                  className="press-interactive"
-                >
-                  Teachers Data & Salaries
-                </button>
-
-                <button
-                  onClick={() => setActiveRestoreCategory('Expenditures_Data')}
-                  style={{
-                    padding: '14px',
-                    borderRadius: '14px',
-                    border: activeRestoreCategory === 'Expenditures_Data' ? '2.5px solid var(--warning)' : '2px solid var(--line-strong)',
-                    backgroundColor: activeRestoreCategory === 'Expenditures_Data' ? 'var(--warning-wash)' : 'var(--surface)',
-                    color: activeRestoreCategory === 'Expenditures_Data' ? 'var(--warning)' : 'var(--ink-secondary)',
-                    fontWeight: 900,
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    boxShadow: activeRestoreCategory === 'Expenditures_Data' ? '3px 3px 0px var(--warning)' : 'none'
-                  }}
-                  className="press-interactive"
-                >
-                  Multi-Branch Expenditures
-                </button>
+                {BACKUP_CATEGORIES.map(cat => {
+                  const active = activeRestoreCategory === cat.key;
+                  return (
+                    <button
+                      key={cat.key}
+                      onClick={() => setActiveRestoreCategory(cat.key)}
+                      style={{
+                        padding: '14px',
+                        borderRadius: '14px',
+                        border: active ? `2.5px solid var(--${cat.tone})` : '2px solid var(--line-strong)',
+                        backgroundColor: active ? `var(--${cat.tone}-wash)` : 'var(--surface)',
+                        color: active ? `var(--${cat.tone})` : 'var(--ink-secondary)',
+                        fontWeight: 900,
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        boxShadow: active ? `3px 3px 0px var(--${cat.tone})` : 'none'
+                      }}
+                      className="press-interactive"
+                    >
+                      {cat.label}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* 4 Campus Drop Zones for Selected Category */}
@@ -1391,7 +1354,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           Drag & Drop or Click to Select Backup (.json / .xlsx)
                         </span>
                         <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
-                          Restores {activeRestoreCategory.replace('_', ' ')} records into database for {camp.name}
+                          Restores {(BACKUP_CATEGORIES.find(c => c.key === activeRestoreCategory)?.label || activeRestoreCategory)} records for {camp.name} only
                         </span>
                         <input
                           type="file"

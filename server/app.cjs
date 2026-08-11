@@ -3699,8 +3699,11 @@ app.post('/api/backup/run', authenticateToken, requireRole('authenticator', 'adm
     const campus = resolveBackupCampus(req, res);
     if (!campus) return;
 
-    const type = String((req.body && req.body.backupType) || '').trim().toLowerCase();
-    if (!campusBackup.TYPES[type]) {
+    // normaliseType, not a raw lookup: it accepts the plural and hyphenated
+    // spellings callers actually send, so `fee-settings` does the obvious
+    // thing instead of returning "unknown backupType".
+    const type = campusBackup.normaliseType((req.body && req.body.backupType) || '');
+    if (!type) {
       return res.status(400).json({
         status: 'error',
         message: `backupType must be one of: ${Object.keys(campusBackup.TYPES).join(', ')}.`

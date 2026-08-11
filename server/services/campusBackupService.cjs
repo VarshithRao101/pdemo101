@@ -9,9 +9,12 @@
  * This module produces one file per (type, campus) pair, laid out as:
  *
  *   Backup/
- *     Student/     Erragattugutta C1/ ... Beemaram C2/
- *     Teacher/     Erragattugutta C1/ ... Beemaram C2/
- *     Expenditure/ Erragattugutta C1/ ... Beemaram C2/
+ *     Student/       Erragattugutta C1/ ... Beemaram C2/
+ *     Teacher/       Erragattugutta C1/ ... Beemaram C2/
+ *     Expenditure/   Erragattugutta C1/ ... Beemaram C2/
+ *     Payment/       Erragattugutta C1/ ... Beemaram C2/
+ *     FeeSetting/    Erragattugutta C1/ ... Beemaram C2/
+ *     WorkerPayment/ Erragattugutta C1/ ... Beemaram C2/
  *
  * Two invariants hold throughout:
  *   1. A backup contains only the named campus's records — enforced by the
@@ -25,9 +28,12 @@ const crypto = require('crypto');
 const Student = require('../models/Student.cjs');
 const Teacher = require('../models/Teacher.cjs');
 const Expenditure = require('../models/Expenditure.cjs');
+const Payment = require('../models/Payment.cjs');
+const FeeSettings = require('../models/FeeSettings.cjs');
+const WorkerPayment = require('../models/WorkerPayment.cjs');
 
 const {
-  ensureFolderPath, uploadFileToFolder, listFilesInFolder, downloadBackupFile
+  ensureFolderPath, uploadFileToFolder, listFilesInFolder, downloadBackupFile, deleteBackupFile
 } = require('./googleDriveService.cjs');
 
 const BACKUP_FORMAT_VERSION = '2.0.0';
@@ -35,13 +41,25 @@ const ROOT = 'Backup';
 
 const VALID_CAMPUSES = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
 
-// The three backup types. `folder` is the Drive directory name; `model` the
-// collection; `identity` the field that makes a record unique, used both to
-// detect duplicates inside a file and to upsert on restore.
+// Every campus-scoped collection. `folder` is the Drive directory name;
+// `model` the collection; `identity` the field that makes a record unique,
+// used both to detect duplicates inside a file and to upsert on restore.
+//
+// This list started as student/teacher/expenditure only, which left payments,
+// fee settings and worker payments backed up by nothing once the nightly job
+// switched from whole-database snapshots to campus ones. Money records were
+// the least protected data in the system for that window. Every collection
+// carrying a `branch` now has a home here.
+//
+// FeeSettings is one row per campus, so its identity IS `branch` — a restore
+// of it therefore updates exactly one document and can never fan out.
 const TYPES = {
-  student:     { folder: 'Student',     model: Student,     identity: 'studentId',      required: ['studentId', 'admissionNumber', 'name', 'branch'] },
-  teacher:     { folder: 'Teacher',     model: Teacher,     identity: 'id',             required: ['id', 'name', 'subject', 'branch'] },
-  expenditure: { folder: 'Expenditure', model: Expenditure, identity: 'id',             required: ['id', 'category', 'amount', 'branch'] }
+  student:       { folder: 'Student',       model: Student,       identity: 'studentId',     required: ['studentId', 'admissionNumber', 'name', 'branch'] },
+  teacher:       { folder: 'Teacher',       model: Teacher,       identity: 'id',            required: ['id', 'name', 'subject', 'branch'] },
+  expenditure:   { folder: 'Expenditure',   model: Expenditure,   identity: 'id',            required: ['id', 'category', 'amount', 'branch'] },
+  payment:       { folder: 'Payment',       model: Payment,       identity: 'receiptNumber', required: ['receiptNumber', 'studentId', 'cashier', 'branch'] },
+  feesetting:    { folder: 'FeeSetting',    model: FeeSettings,   identity: 'branch',        required: ['branch'] },
+  workerpayment: { folder: 'WorkerPayment', model: WorkerPayment, identity: 'id',            required: ['id', 'branch'] }
 };
 
 // Encryption key. No literal fallback: a default here would mean backups
@@ -92,9 +110,27 @@ function decrypt(text) {
   }
 }
 
+// Accepts the canonical key plus the spellings callers actually send —
+// plurals, hyphens and camelCase. The strict version returned null for
+// `fee-settings` and `workerPayments`, which surfaced as a confusing "unknown
+// backupType" rather than doing the obvious thing.
+const TYPE_ALIASES = {
+  students: 'student', teachers: 'teacher', expenditures: 'expenditure',
+  payments: 'payment',
+  feesettings: 'feesetting', 'fee-setting': 'feesetting', 'fee-settings': 'feesetting',
+  workerpayments: 'workerpayment', 'worker-payment': 'workerpayment', 'worker-payments': 'workerpayment'
+};
+
 function normaliseType(t) {
-  const k = String(t || '').trim().toLowerCase();
-  return TYPES[k] ? k : null;
+  const raw = String(t || '').trim().toLowerCase();
+  if (TYPES[raw]) return raw;
+  if (TYPE_ALIASES[raw]) return TYPE_ALIASES[raw];
+  // Fall back on a punctuation-stripped comparison so `Worker_Payment` and
+  // `worker payments` resolve too.
+  const squashed = raw.replace(/[^a-z]/g, '');
+  if (TYPES[squashed]) return squashed;
+  if (TYPE_ALIASES[squashed]) return TYPE_ALIASES[squashed];
+  return null;
 }
 
 /**
@@ -355,9 +391,58 @@ async function backupAllCampuses(actor = 'scheduled') {
       }
     }
   }
+
+  // Prune only after a fully successful run. Deleting history on a night when
+  // the backup failed would remove old snapshots without having written new
+  // ones — trading real history for nothing.
+  let pruned = 0;
+  if (!failures.length) {
+    try {
+      pruned = await pruneOldBackups();
+    } catch (err) {
+      // A pruning failure must not turn a good backup into a reported failure.
+      console.error('[Backup]: Pruning failed (backups themselves are fine):', err.message);
+    }
+  }
+
   // A partial run is reported as a failure. Silently returning success with a
   // shorter list is how a broken backup goes unnoticed for months.
-  return { success: failures.length === 0, created: results, failures };
+  return { success: failures.length === 0, created: results, failures, pruned };
+}
+
+// How many snapshots to keep per (type, campus) folder.
+//
+// Without this the tree grew by one file per folder per night forever: at six
+// types across four campuses that is 24 files a night, and Drive's listing
+// call is capped at 100 per folder, so past roughly three months the restore
+// picker would have started silently hiding the newest snapshots behind older
+// ones it could no longer see.
+const KEEP_PER_FOLDER = Number(process.env.BACKUP_KEEP_PER_FOLDER) || 30;
+
+async function pruneOldBackups(keep = KEEP_PER_FOLDER) {
+  let deleted = 0;
+
+  for (const spec of Object.values(TYPES)) {
+    for (const campus of VALID_CAMPUSES) {
+      const folderId = await ensureFolderPath([ROOT, spec.folder, campus]);
+      const files = await listFilesInFolder(folderId);
+
+      // listFilesInFolder returns newest first. Never trust that ordering for
+      // a delete: sort explicitly, because getting it backwards here deletes
+      // every recent backup and keeps the useless old ones.
+      const byNewest = [...files].sort(
+        (a, b) => new Date(b.createdTime) - new Date(a.createdTime)
+      );
+
+      for (const stale of byNewest.slice(keep)) {
+        await deleteBackupFile(stale.id);
+        deleted++;
+        console.log(`[Backup]: Pruned ${spec.folder}/${campus}/${stale.name}`);
+      }
+    }
+  }
+
+  return deleted;
 }
 
 /**
@@ -388,8 +473,10 @@ module.exports = {
   BACKUP_FORMAT_VERSION,
   VALID_CAMPUSES,
   TYPES,
+  normaliseType,
   backupCampusType,
   backupAllCampuses,
+  pruneOldBackups,
   restoreCampusType,
   validateEnvelope,
   listBackupTree,

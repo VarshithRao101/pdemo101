@@ -63,6 +63,29 @@ export interface AuthenticatorStats {
   lastBackupAt?: string | null;
 }
 
+/**
+ * The backup categories, in the order the restore panel shows them.
+ *
+ * One list, read by both the service and the UI. It used to be three
+ * hand-written branches in `categoryToBackupType` plus three hand-written tab
+ * buttons plus a hard-coded initial-state object — so adding a data type meant
+ * finding all three, and missing one produced a category that backed up but
+ * could never be restored.
+ *
+ * `type` must match a key of TYPES in server/services/campusBackupService.cjs.
+ */
+export const BACKUP_CATEGORIES = [
+  { key: 'Students_Data',       type: 'student',       label: 'Students & Fees',     tone: 'accent'  },
+  { key: 'Teachers_Data',       type: 'teacher',       label: 'Teachers & Salaries', tone: 'good'    },
+  { key: 'Expenditures_Data',   type: 'expenditure',   label: 'Expenditures',        tone: 'warning' },
+  { key: 'Payments_Data',       type: 'payment',       label: 'Fee Payments',        tone: 'accent'  },
+  { key: 'FeeSettings_Data',    type: 'feesetting',    label: 'Fee Structure',       tone: 'good'    },
+  { key: 'WorkerPayments_Data', type: 'workerpayment', label: 'Worker Payments',     tone: 'warning' }
+] as const;
+
+export type BackupCategoryKey = typeof BACKUP_CATEGORIES[number]['key'];
+export type BackupType = typeof BACKUP_CATEGORIES[number]['type'];
+
 export const authenticatorService = {
   // Get daily keys
   async getKeys(): Promise<any> {
@@ -150,12 +173,10 @@ export const authenticatorService = {
    */
   async getBackupsByCategory(): Promise<Record<string, Record<string, any[]>>> {
     const { tree } = await this.getBackupTree();
-    const map: Record<string, string> = {
-      student: 'Students_Data', teacher: 'Teachers_Data', expenditure: 'Expenditures_Data'
-    };
-    const out: Record<string, Record<string, any[]>> = {
-      Students_Data: {}, Teachers_Data: {}, Expenditures_Data: {}
-    };
+    const out: Record<string, Record<string, any[]>> = {};
+    for (const c of BACKUP_CATEGORIES) out[c.key] = {};
+    const map: Record<string, string> = {};
+    for (const c of BACKUP_CATEGORIES) map[c.type] = c.key;
     for (const [type, byCampus] of Object.entries(tree || {})) {
       const category = map[type];
       if (!category) continue;
@@ -171,10 +192,8 @@ export const authenticatorService = {
     return out;
   },
 
-  categoryToBackupType(category: string): 'student' | 'teacher' | 'expenditure' {
-    if (category === 'Teachers_Data') return 'teacher';
-    if (category === 'Expenditures_Data') return 'expenditure';
-    return 'student';
+  categoryToBackupType(category: string): BackupType {
+    return (BACKUP_CATEGORIES.find(c => c.key === category) || BACKUP_CATEGORIES[0]).type;
   },
 
   async runCampusBackup(backupType: string, campus: string): Promise<any> {
