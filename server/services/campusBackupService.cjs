@@ -33,7 +33,8 @@ const FeeSettings = require('../models/FeeSettings.cjs');
 const WorkerPayment = require('../models/WorkerPayment.cjs');
 
 const {
-  ensureFolderPath, uploadFileToFolder, listFilesInFolder, downloadBackupFile, deleteBackupFile
+  ensureFolderPath, uploadFileToFolder, listFilesInFolder, listFilesInFolders,
+  downloadBackupFile, deleteBackupFile
 } = require('./googleDriveService.cjs');
 
 const BACKUP_FORMAT_VERSION = '2.0.0';
@@ -449,23 +450,61 @@ async function pruneOldBackups(keep = KEEP_PER_FOLDER) {
  * The Drive tree with the files in each leaf, for the restore picker.
  */
 async function listBackupTree(campusFilter = null) {
-  const tree = {};
+  // Build the list of (type, campus) leaves we need, then resolve their folder
+  // ids in parallel and read every file in ONE batched query.
+  //
+  // This used to walk the tree one leaf at a time: for six types across four
+  // campuses that was around ninety sequential Drive calls, taking over forty
+  // seconds on a cold process. Slow enough that the restore panel looked
+  // broken, and bursty enough that Drive rate-limited it — and a throttled
+  // leaf was reported as an error, which the panel renders as an EMPTY
+  // campus. A transient throttle therefore looked exactly like "this campus
+  // has no backups", which is the most dangerous thing this screen can claim.
+  const leaves = [];
   for (const [key, spec] of Object.entries(TYPES)) {
-    tree[key] = {};
     for (const campus of VALID_CAMPUSES) {
       if (campusFilter && campus !== campusFilter) continue;
-      try {
-        const folderId = await ensureFolderPath([ROOT, spec.folder, campus]);
-        const files = await listFilesInFolder(folderId);
-        tree[key][campus] = files.map(f => ({
-          id: f.id, name: f.name, createdTime: f.createdTime, size: f.size,
-          path: `${ROOT}/${spec.folder}/${campus}`
-        }));
-      } catch (err) {
-        tree[key][campus] = { error: err.message };
-      }
+      leaves.push({ key, spec, campus });
     }
   }
+
+  const tree = {};
+  for (const { key, campus } of leaves) {
+    if (!tree[key]) tree[key] = {};
+    tree[key][campus] = [];
+  }
+
+  const resolved = await Promise.all(leaves.map(async (leaf) => {
+    try {
+      const folderId = await ensureFolderPath([ROOT, leaf.spec.folder, leaf.campus]);
+      return { ...leaf, folderId };
+    } catch (err) {
+      return { ...leaf, error: err.message };
+    }
+  }));
+
+  for (const leaf of resolved) {
+    if (leaf.error) tree[leaf.key][leaf.campus] = { error: leaf.error };
+  }
+
+  const usable = resolved.filter(l => l.folderId);
+  let byParent;
+  try {
+    byParent = await listFilesInFolders(usable.map(l => l.folderId));
+  } catch (err) {
+    // One failed batch must not be reported as "every campus is empty".
+    for (const leaf of usable) tree[leaf.key][leaf.campus] = { error: err.message };
+    return tree;
+  }
+
+  for (const leaf of usable) {
+    const files = byParent.get(leaf.folderId) || [];
+    tree[leaf.key][leaf.campus] = files.map(f => ({
+      id: f.id, name: f.name, createdTime: f.createdTime, size: f.size,
+      path: `${ROOT}/${leaf.spec.folder}/${leaf.campus}`
+    }));
+  }
+
   return tree;
 }
 

@@ -58,13 +58,13 @@ async function ensureFolderPath(segments) {
     // Escape single quotes: campus names are operator-supplied and a stray
     // quote would otherwise break the query syntax.
     const safeName = name.replace(/'/g, "\\'");
-    const found = await drive.files.list({
+    const found = await withRetry(() => drive.files.list({
       q: `name = '${safeName}' and '${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
       fields: 'files(id, name)',
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
       pageSize: 1
-    });
+    }), { label: `folder lookup ${name}` });
 
     let id = found.data.files && found.data.files[0] && found.data.files[0].id;
     if (!id) {
@@ -100,6 +100,89 @@ async function uploadFileToFolder(folderId, fileName, contents) {
     fields: 'id, name, createdTime, size, parents'
   });
   return response.data;
+}
+
+/**
+ * Retries a Drive call through rate limiting.
+ *
+ * Listing the backup tree touches two dozen folders at once, and Drive answers
+ * bursts with 403 userRateLimitExceeded or 429. Those came back to the caller
+ * as a folder-level error, and a folder that errors renders as EMPTY in the
+ * restore panel — so a transient throttle looked exactly like "this campus has
+ * no backups", which is the most misleading thing this screen could say.
+ */
+async function withRetry(fn, { attempts = 4, label = 'Drive call' } = {}) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const code = err.code || err.status || (err.response && err.response.status);
+      const reason = String((err.errors && err.errors[0] && err.errors[0].reason) || err.message || '');
+      const throttled = code === 429 || code === 403 &&
+        /rateLimit|userRateLimitExceeded|quotaExceeded|backendError/i.test(reason);
+      const transient = code === 500 || code === 502 || code === 503 || code === 504;
+
+      if (!throttled && !transient) throw err;
+      lastErr = err;
+
+      // Exponential backoff with jitter, so parallel callers that were all
+      // throttled together do not retry in lockstep and throttle again.
+      const wait = Math.round((2 ** i) * 400 + Math.random() * 300);
+      console.warn(`[Drive]: ${label} throttled (${code}); retrying in ${wait}ms`);
+      await new Promise(r => setTimeout(r, wait));
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * Lists the files inside MANY folders in one query.
+ *
+ * Drive accepts an OR of parent clauses, so the whole backup tree can be read
+ * with a single paginated request instead of one request per folder. The tree
+ * listing previously made roughly ninety sequential calls and took over forty
+ * seconds on a cold process, which is long enough that the restore panel looks
+ * broken and long enough to trigger the rate limiting described above.
+ */
+async function listFilesInFolders(folderIds) {
+  const drive = await getGoogleDriveClient();
+  const byParent = new Map(folderIds.map(id => [id, []]));
+  if (!folderIds.length) return byParent;
+
+  // Keep each query well inside Drive's query-length limit.
+  const CHUNK = 25;
+  for (let i = 0; i < folderIds.length; i += CHUNK) {
+    const chunk = folderIds.slice(i, i + CHUNK);
+    const parentClause = chunk.map(id => `'${id}' in parents`).join(' or ');
+
+    let pageToken = null;
+    do {
+      const res = await withRetry(() => drive.files.list({
+        q: `(${parentClause}) and trashed = false and mimeType != 'application/vnd.google-apps.folder'`,
+        fields: 'nextPageToken, files(id, name, createdTime, size, parents)',
+        orderBy: 'createdTime desc',
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+        pageSize: 1000,
+        pageToken: pageToken || undefined
+      }), { label: 'batch folder listing' });
+
+      for (const f of res.data.files || []) {
+        for (const parent of f.parents || []) {
+          if (byParent.has(parent)) byParent.get(parent).push(f);
+        }
+      }
+      pageToken = res.data.nextPageToken;
+    } while (pageToken);
+  }
+
+  // orderBy applies per query, not per parent, so sort each bucket explicitly
+  // rather than assuming the global ordering survived the grouping.
+  for (const list of byParent.values()) {
+    list.sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime));
+  }
+  return byParent;
 }
 
 /**
@@ -226,6 +309,7 @@ module.exports = {
   ensureFolderPath,
   uploadFileToFolder,
   listFilesInFolder,
+  listFilesInFolders,
   uploadBackupFile,
   listBackupFiles,
   downloadBackupFile,
