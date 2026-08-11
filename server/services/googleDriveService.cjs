@@ -157,8 +157,15 @@ async function listBackupFiles() {
   const drive = await getGoogleDriveClient();
   const folderId = getFolderId();
 
+  // Folders must be excluded explicitly. The campus-scoped system creates a
+  // `Backup/` sub-folder inside this same root, and without this filter Drive
+  // returned that folder alongside the real archives — newest first, so it
+  // appeared at the TOP of the backup list as though it were the most recent
+  // restorable snapshot. Selecting it fails with a 403 from Drive, because a
+  // folder has no content to download.
   const response = await drive.files.list({
-    q: `'${folderId}' in parents and trashed = false`,
+    q: `'${folderId}' in parents and trashed = false ` +
+       `and mimeType != 'application/vnd.google-apps.folder'`,
     supportsAllDrives: true,
     includeItemsFromAllDrives: true,
     fields: 'files(id, name, createdTime, size, mimeType)',

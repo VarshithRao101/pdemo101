@@ -97,7 +97,9 @@ export const AuthenticatorDashboardView: React.FC = () => {
   const loadAvailableBackups = async () => {
     setIsLoadingBackups(true);
     try {
-      const data = await authenticatorService.getAvailableBackups();
+      // Campus-scoped tree: Backup/<Type>/<Campus>/. The old call returned a
+      // single flat folder with every campus mixed together.
+      const data = await authenticatorService.getBackupsByCategory();
       if (data) setAvailableBackups(data);
     } catch (err: any) {
       console.warn('Failed to load available backups:', err.message);
@@ -124,15 +126,35 @@ export const AuthenticatorDashboardView: React.FC = () => {
     }, 300);
 
     try {
-      await authenticatorService.createBackup(backupPasscode.trim());
+      // One file per campus per type, so a later restore can target exactly
+      // one of them. The security PIN is collected by apiClient on demand.
+      const campuses = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
+      const types = ['student', 'teacher', 'expenditure'];
+      const failures: string[] = [];
+      let written = 0;
+      for (const type of types) {
+        for (const campus of campuses) {
+          try {
+            await authenticatorService.runCampusBackup(type, campus);
+            written++;
+          } catch (e: any) {
+            failures.push(`${type}/${campus}: ${e?.message || 'failed'}`);
+          }
+        }
+      }
       clearInterval(interval);
       setBackupProgress(100);
+      if (failures.length) {
+        // A partial run is a failure. Reporting success with a shorter list is
+        // how an incomplete backup goes unnoticed.
+        throw new Error(`${written} of ${types.length * campuses.length} backups written. Failed: ${failures.slice(0, 3).join('; ')}`);
+      }
 
       const nowStr = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
       localStorage.setItem('last_backup_timestamp', nowStr);
       setStats(prev => ({ ...prev, lastBackupAt: nowStr }));
 
-      triggerToast('Google Drive 24-hour rolling backup generated & uploaded across all 4 campuses successfully!');
+      triggerToast('Backup complete — 12 files written to Backup/<Type>/<Campus>/ on Google Drive.');
       await loadAvailableBackups();
     } catch (err: any) {
       clearInterval(interval);
@@ -214,27 +236,66 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Restoring from a locally-uploaded file used to be offered here; there was
   // never a backend for it, so that path has been removed. Restores come from
   // Drive, which is where the encrypted backups actually live.
-  const handleExecuteDataRestore = async (fileId: string, fileName: string) => {
-    const confirmed = window.confirm(
-      `Restore from "${fileName}"?\n\n` +
-      'This REPLACES all current student, faculty, payment, fee and expenditure ' +
-      'records with the contents of that backup. Data created since the backup ' +
-      'was taken will be lost. This cannot be undone.'
-    );
-    if (!confirmed) return;
-
-    const password = window.prompt('Enter YOUR authenticator password to confirm this restore:');
-    if (!password || !password.trim()) return;
+  const handleExecuteDataRestore = async (
+    fileId: string,
+    fileName: string,
+    category: 'Students_Data' | 'Teachers_Data' | 'Expenditures_Data',
+    campus: string
+  ) => {
+    const backupType = authenticatorService.categoryToBackupType(category);
 
     setIsRestoring(true);
     try {
-      const result = await authenticatorService.restoreBackup(fileId, password.trim());
-      const counts = result?.restoredCounts || {};
+      // Step 1 — dry run. The server decrypts the file, checks the checksum,
+      // confirms the type and campus match what was asked for, and counts what
+      // would change. Nothing is written. An operator should never be asked to
+      // confirm a restore whose contents nobody has looked at.
+      let preview: any;
+      try {
+        preview = await authenticatorService.previewRestore(fileId, backupType, campus);
+      } catch (err: any) {
+        const rejected = err?.data?.data?.validation;
+        triggerToast(
+          rejected?.errors?.length
+            ? `Backup rejected: ${rejected.errors.join(' ')}`
+            : (err?.message || 'Could not read that backup. Nothing was changed.')
+        );
+        return;
+      }
+
+      const summary = preview?.validation?.summary || {};
+      const plan = preview?.plan || {};
+      const warnings: string[] = preview?.validation?.warnings || [];
+
+      // Step 2 — show what was actually found in the file, not a generic
+      // warning. The counts below come from the server's read of the real
+      // backup against the real database.
+      const confirmed = window.confirm(
+        `Restore ${summary.backupType || backupType} records for ${summary.campus || campus}\n\n` +
+        `File: ${fileName}\n` +
+        `Taken: ${summary.createdAt ? new Date(summary.createdAt).toLocaleString() : 'unknown'}\n` +
+        `Records in backup: ${summary.recordCount ?? 0}\n\n` +
+        `This will UPDATE ${plan.willUpdate ?? 0} existing record(s) and ADD ${plan.willInsert ?? 0} new one(s).\n` +
+        `${plan.presentButNotInBackup ?? 0} record(s) currently in ${campus} are not in this backup and will be LEFT AS THEY ARE.\n\n` +
+        (warnings.length ? `Warnings:\n- ${warnings.join('\n- ')}\n\n` : '') +
+        `Only ${campus} is touched. Overwritten values cannot be recovered.`
+      );
+      if (!confirmed) return;
+
+      // Step 3 — apply. Password on top of the security PIN: two different
+      // secrets, both verified server-side with bcrypt.
+      const password = window.prompt('Enter YOUR account password to confirm this restore:');
+      if (!password || !password.trim()) return;
+
+      const result = await authenticatorService.applyRestore(fileId, backupType, campus, password.trim());
+      const applied = result?.applied || {};
       triggerToast(
-        `Restore complete — students: ${counts.students ?? 0}, teachers: ${counts.teachers ?? 0}, payments: ${counts.payments ?? 0}.`,
+        `Restore complete — ${applied.inserted ?? 0} added, ${applied.updated ?? 0} updated. ` +
+        `${applied.campus || campus} now holds ${applied.campusTotalAfter ?? 0} ${applied.backupType || backupType} record(s).`,
         'success'
       );
       await loadData();
+      await loadAvailableBackups();
     } catch (err: any) {
       // Surface the real reason; a failed restore that looks like a success is
       // exactly the failure mode this replaced.
@@ -1284,11 +1345,12 @@ export const AuthenticatorDashboardView: React.FC = () => {
                               <div>
                                 <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink)' }}>{bk.fileName}</div>
                                 <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
-                                  {bk.source} | {new Date(bk.createdAt).toLocaleDateString()}
+                                  Google Drive | {bk.createdAt ? new Date(bk.createdAt).toLocaleString() : 'date unknown'}
+                                  {bk.size ? ` | ${Math.max(1, Math.round(Number(bk.size) / 1024))} KB` : ''}
                                 </div>
                               </div>
                               <button
-                                onClick={() => handleExecuteDataRestore(bk.id, bk.fileName)}
+                                onClick={() => handleExecuteDataRestore(bk.id, bk.fileName, activeRestoreCategory, camp.name)}
                                 style={{
                                   padding: '6px 12px',
                                   borderRadius: '8px',

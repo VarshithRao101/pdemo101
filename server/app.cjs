@@ -31,7 +31,6 @@ const Enquiry = require('./models/Enquiry.cjs');
 const {
   generateAndUploadBackup,
   wipeDataCollections,
-  restoreBackupFromFile,
   getBackupLogs,
   getAllAvailableBackupFiles
 } = require('./services/backupService.cjs');
@@ -456,7 +455,12 @@ async function requireDatabase(req, res, next) {
 // Limits are per IP + path. Auth endpoints get a much tighter budget than
 // ordinary writes, which is the whole reason this middleware exists.
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
-const AUTH_PATH_PATTERN = /\/(login|verify-credentials|force-login|refresh|wipe-database|restore-backup|reset-password)$/;
+// Anything that compares a secret belongs in the tight tier, not just /login.
+// `/api/backup/restore` bcrypt-checks the caller's account password, so it is
+// a password oracle if left on the ordinary write budget. Its `/preview`
+// sibling deliberately does not match: it checks no secret and writes nothing,
+// so operators can inspect several backups without burning the login budget.
+const AUTH_PATH_PATTERN = /\/(login|verify-credentials|force-login|refresh|wipe-database|restore|reset-password)$/;
 
 function rateLimitBudgetFor(path) {
   return AUTH_PATH_PATTERN.test(path) ? 10 : 120;
@@ -2902,41 +2906,22 @@ app.post('/api/authenticator/wipe-database', authenticateToken, requireRole('aut
   }
 });
 
-/**
- * POST /api/authenticator/restore-backup
- * Role authenticator ONLY. Requires real password check via bcrypt.
- * Downloads, decrypts, and restores data collections from specified Drive backup.
- */
-app.post('/api/authenticator/restore-backup', authenticateToken, requireRole('authenticator'), mongoRateLimiter, async (req, res) => {
-  try {
-    await connectToDatabase();
-    const { password, fileId } = req.body || {};
-
-    if (!password || typeof password !== 'string' || !password.trim() || !fileId) {
-      return res.status(400).json({ status: 'error', message: 'Authenticator password and Drive backup fileId are required.' });
-    }
-
-    const user = await User.findById(req.user.id);
-    if (!user || user.role !== 'authenticator') {
-      return res.status(403).json({ status: 'error', message: 'Only authenticator role can restore backups.' });
-    }
-
-    const isMatch = bcrypt.compareSync(password.trim(), user.password);
-    if (!isMatch) {
-      return res.status(401).json({ status: 'error', message: 'Invalid authenticator password provided.' });
-    }
-
-    const restoreResult = await restoreBackupFromFile(fileId, user.username);
-    return res.json({
-      status: 'success',
-      message: 'Database collections restored successfully from backup.',
-      data: restoreResult
-    });
-  } catch (err) {
-    console.error('Restore backup error:', err.message);
-    return res.status(500).json({ status: 'error', message: 'Database restoration failure.' });
-  }
-});
+// REMOVED: POST /api/authenticator/restore-backup — the whole-database restore.
+//
+// It survived as an unreferenced route after the UI moved to the campus-scoped
+// restore, and it was the weaker of the two paths to a far more destructive
+// outcome: it took only a password (no security PIN), never validated the
+// backup envelope, never verified the checksum, never checked that the file's
+// campus matched anything, restored EVERY campus in one call, and did no
+// read-back leak check afterwards. Anyone holding an authenticator session
+// could use it to skip the entire restore security chain.
+//
+// The replacement is POST /api/backup/restore, which is campus- and
+// type-scoped, requires the security PIN on top of the password, validates and
+// dry-runs before it writes, and verifies afterwards that nothing landed
+// outside the target campus. Whole-estate recovery is done by restoring each
+// campus/type in turn, which is deliberate: there is no longer a single button
+// that can overwrite all four campuses at once.
 
 
 // --- PUBLIC ENQUIRIES ENDPOINT ---
@@ -3900,6 +3885,11 @@ process.on('uncaughtException', (err) => {
 });
 
 module.exports = app;
+
+// Exposed for the test suites only. Campus authorisation is the one piece of
+// the backup chain that cannot be exercised without a live session, so it is
+// testable directly rather than left unproven.
+module.exports.resolveBackupCampus = resolveBackupCampus;
 
 
 

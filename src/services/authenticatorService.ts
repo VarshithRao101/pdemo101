@@ -133,28 +133,76 @@ export const authenticatorService = {
   },
 
   // Get available backups list across categories and campuses
-  // Real restore. Downloads the named backup from Google Drive, decrypts it and
-  // replaces the data collections. Requires the authenticator's own password,
-  // verified server-side with bcrypt.
+  // --- Campus-scoped backup (Backup/<Type>/<Campus>/) -------------------
   //
-  // The UI previously called a `restoreData` endpoint that returned
-  // "Data restored successfully" with restoredCount: 0 and restored nothing —
-  // the most dangerous kind of fake success, since an operator could believe a
-  // recovery had happened. This calls the endpoint that actually does the work.
-  async restoreBackup(fileId: string, password: string): Promise<any> {
-    const res = await apiClient.post<{ status: string; message: string; data: any }>(
-      '/authenticator/restore-backup',
-      { fileId, password }
-    );
+  // The UI groups by category then campus, which is the same shape the server
+  // returns; only the key names differ, so they are mapped here rather than
+  // teaching the panel a second vocabulary.
+
+  async getBackupTree(): Promise<{ tree: any; scope: string }> {
+    const res = await apiClient.get<{ status: string; data: { tree: any; scope: string } }>('/backup/tree');
     return res.data;
   },
 
-  async getAvailableBackups(): Promise<any> {
-    const res = await apiClient.get<{ status: string; data: any }>('/authenticator/available-backups');
+  /**
+   * The tree in the shape the restore panel already renders:
+   *   { Students_Data: { 'Beemaram C1': [ { id, fileName, createdAt, size } ] } }
+   */
+  async getBackupsByCategory(): Promise<Record<string, Record<string, any[]>>> {
+    const { tree } = await this.getBackupTree();
+    const map: Record<string, string> = {
+      student: 'Students_Data', teacher: 'Teachers_Data', expenditure: 'Expenditures_Data'
+    };
+    const out: Record<string, Record<string, any[]>> = {
+      Students_Data: {}, Teachers_Data: {}, Expenditures_Data: {}
+    };
+    for (const [type, byCampus] of Object.entries(tree || {})) {
+      const category = map[type];
+      if (!category) continue;
+      for (const [campus, files] of Object.entries(byCampus as Record<string, any>)) {
+        // A leaf carries { error } instead of an array when Drive refused it.
+        out[category][campus] = Array.isArray(files)
+          ? files.map((f: any) => ({
+              id: f.id, fileName: f.name, createdAt: f.createdTime, size: f.size, path: f.path
+            }))
+          : [];
+      }
+    }
+    return out;
+  },
+
+  categoryToBackupType(category: string): 'student' | 'teacher' | 'expenditure' {
+    if (category === 'Teachers_Data') return 'teacher';
+    if (category === 'Expenditures_Data') return 'expenditure';
+    return 'student';
+  },
+
+  async runCampusBackup(backupType: string, campus: string): Promise<any> {
+    const res = await apiClient.post<{ status: string; data: any }>('/backup/run', { backupType, campus });
     return res.data;
   },
 
-  // Restore data payload for specific category and campus
+  /** Validates and reports what a restore would change. Writes nothing. */
+  async previewRestore(fileId: string, backupType: string, campus: string): Promise<any> {
+    const res = await apiClient.post<{ status: string; data: any }>('/backup/restore/preview', { fileId, backupType, campus });
+    return res.data;
+  },
+
+  /** Applies a restore. Requires the account password on top of the PIN. */
+  async applyRestore(fileId: string, backupType: string, campus: string, password: string): Promise<any> {
+    const res = await apiClient.post<{ status: string; message: string; data: any }>('/backup/restore', {
+      fileId, backupType, campus, password
+    });
+    return res.data;
+  },
+
+  // NOTE: `restoreBackup` (whole-database restore) and `getAvailableBackups`
+  // (flat backup listing) lived here. Both are gone along with the server route
+  // behind the first one — it restored every campus at once on a password
+  // alone, with no security PIN, no envelope validation and no campus check.
+  // Restores now go through previewRestore/applyRestore above, one campus and
+  // one data type at a time.
+
   // Wipe entire database with Security Passcode
   async wipeEntireDatabase(securityPin: string): Promise<string> {
     const res = await apiClient.post<{ status: string; message: string }>('/authenticator/wipe-database', { password: securityPin, securityPin });
