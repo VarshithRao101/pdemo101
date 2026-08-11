@@ -211,6 +211,19 @@ interface Student {
   handLoan?: number;
   othersFee?: number;
   customFeeSlots?: Array<{ id?: string; name: string; amount: number }>;
+  // Year progression. Short Term never advances and Second Year completes the
+  // programme, so only First Year students can be upgraded.
+  studentYear?: 'First Year' | 'Second Year' | 'Short Term';
+  yearFeeCleared?: boolean;
+  academicYear?: string;
+  yearHistory?: Array<{
+    studentYear?: string;
+    academicYear?: string;
+    totalPayable?: number;
+    totalPaid?: number;
+    closedAt?: string;
+    closedBy?: string;
+  }>;
 }
 
 
@@ -393,6 +406,14 @@ export const AccountantDashboardView: React.FC = () => {
   const [collectDate, setCollectDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
   const [activeOverlay, setActiveOverlay] = useState<string | null>(null);
+
+  // Year upgrade. Eligibility always comes from the server — the balance held
+  // in this component can be minutes old, and deciding here would put the rule
+  // in two places.
+  const [upgradeInfo, setUpgradeInfo] = useState<accountantService.UpgradeEligibility | null>(null);
+  const [isCheckingUpgrade, setIsCheckingUpgrade] = useState(false);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  const [upgradeFees, setUpgradeFees] = useState<any>(null);
   const [isPayOtpModalOpen, setIsPayOtpModalOpen] = useState(false);
   const [, setPayOtpInput] = useState('');
   const [pendingPayType, setPendingPayType] = useState<'partial' | 'full' | 'collect'>('collect');
@@ -555,6 +576,82 @@ export const AccountantDashboardView: React.FC = () => {
     const symbol = isError ? 'ERROR: ' : 'Success: ';
     setToastMessage(symbol + msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // --- Year upgrade -------------------------------------------------------
+
+  // Ask the server whether this student can move up, and open the form with
+  // the current year's fees prefilled so they can be adjusted rather than
+  // retyped.
+  const openUpgradeDialog = async (student: Student) => {
+    setIsCheckingUpgrade(true);
+    try {
+      const info = await accountantService.getUpgradeEligibility(student.studentId || student.admissionNumber);
+      setUpgradeInfo(info);
+      if (!info.eligible) {
+        triggerToast(info.reason, 'error');
+        return;
+      }
+      const f = info.currentFees;
+      setUpgradeFees({
+        tuitionFee: f.tuitionFee, hostelFee: f.hostelFee,
+        transportFee: f.transportFee, miscellaneousFee: f.miscellaneousFee,
+        tuitionWaiver: 0, hostelWaiver: 0, transportWaiver: 0, miscWaiver: 0,
+        customFeeSlots: (f.customFeeSlots || []).map(s => ({ name: s.name, amount: s.amount }))
+      });
+      setActiveOverlay('upgrade_year');
+    } catch (err: any) {
+      triggerToast(err?.message || 'Could not check upgrade eligibility.', 'error');
+    } finally {
+      setIsCheckingUpgrade(false);
+    }
+  };
+
+  const upgradeTotals = React.useMemo(() => {
+    if (!upgradeFees) return { gross: 0, waivers: 0, payable: 0 };
+    const slots = (upgradeFees.customFeeSlots || []).reduce((a: number, s: any) => a + (Number(s.amount) || 0), 0);
+    const gross = Number(upgradeFees.tuitionFee || 0) + Number(upgradeFees.hostelFee || 0)
+      + Number(upgradeFees.transportFee || 0) + Number(upgradeFees.miscellaneousFee || 0) + slots;
+    const waivers = Number(upgradeFees.tuitionWaiver || 0) + Number(upgradeFees.hostelWaiver || 0)
+      + Number(upgradeFees.transportWaiver || 0) + Number(upgradeFees.miscWaiver || 0);
+    return { gross, waivers, payable: Math.max(0, gross - waivers) };
+  }, [upgradeFees]);
+
+  const handleConfirmUpgrade = async () => {
+    if (!selectedStudent || !upgradeFees) return;
+    if (upgradeTotals.waivers > upgradeTotals.gross) {
+      triggerToast('Total waivers cannot exceed the total fees.', 'error');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Move ${selectedStudent.name} to Second Year?\n\n` +
+      `New fees payable: Rs.${upgradeTotals.payable.toLocaleString('en-IN')}\n\n` +
+      'First-year records are kept and stay visible in the history. ' +
+      'This cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    setIsUpgrading(true);
+    try {
+      const updated = await accountantService.upgradeStudentYear(
+        selectedStudent.studentId || selectedStudent.admissionNumber,
+        upgradeFees
+      );
+      setSelectedStudent(updated as any);
+      setEditStudent(updated as any);
+      setActiveOverlay(null);
+      setUpgradeInfo(null);
+      setUpgradeFees(null);
+      triggerToast(`${selectedStudent.name} is now in Second Year. New balance Rs.${upgradeTotals.payable.toLocaleString('en-IN')}.`, 'success');
+      await triggerFreshnessRefetch();
+    } catch (err: any) {
+      // 409 means the server re-checked and disagreed — usually because a
+      // payment was reversed after this screen was opened.
+      triggerToast(err?.data?.message || err?.message || 'The upgrade failed. Nothing was changed.', 'error');
+    } finally {
+      setIsUpgrading(false);
+    }
   };
 
 
@@ -2376,8 +2473,93 @@ export const AccountantDashboardView: React.FC = () => {
               <div style={{ marginTop: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '6px' }}>
                   <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Receipt Logs / Transaction History</h4>
-                  <button onClick={() => handleDownloadStudentStatement(selectedStudent)} style={{ ...styles.actionItemBtn, border: '1.5px solid var(--royal-gold)', backgroundColor: '#FFF8DB', color: 'var(--warning)', fontWeight: 900, whiteSpace: 'nowrap' }} className="press-interactive">Download Complete Statement</button>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {/* Upgrade to the next year.
+                        Shown only for First Year — Short Term does not progress
+                        and Second Year completes the programme, so for those the
+                        control is absent rather than present-and-disabled.
+                        Locked until the balance reaches zero. The server checks
+                        the same rule again on submit; this is only the display. */}
+                    {selectedStudent.studentYear === 'First Year' && (() => {
+                      const cleared = (selectedStudent.remainingBalance || 0) <= 0;
+                      return (
+                        <button
+                          onClick={() => cleared ? openUpgradeDialog(selectedStudent) : undefined}
+                          disabled={!cleared || isCheckingUpgrade}
+                          title={cleared
+                            ? 'Fees cleared — move this student to Second Year'
+                            : `Locked: Rs.${(selectedStudent.remainingBalance || 0).toLocaleString('en-IN')} still outstanding`}
+                          style={{
+                            ...styles.actionItemBtn,
+                            border: `1.5px solid ${cleared ? 'var(--good)' : 'var(--line-strong)'}`,
+                            backgroundColor: cleared ? '#ECFDF5' : 'var(--surface-sunken)',
+                            color: cleared ? 'var(--good)' : 'var(--muted-gray)',
+                            fontWeight: 900,
+                            whiteSpace: 'nowrap',
+                            cursor: cleared ? 'pointer' : 'not-allowed',
+                            opacity: cleared ? 1 : 0.75,
+                            display: 'flex', alignItems: 'center', gap: '6px'
+                          }}
+                          className={cleared ? 'press-interactive' : undefined}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            {cleared
+                              ? <><path d="M12 19V5" /><path d="M5 12l7-7 7 7" /></>
+                              : <><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>}
+                          </svg>
+                          {isCheckingUpgrade ? 'Checking...' : cleared ? 'Upgrade to Second Year' : 'Upgrade Locked'}
+                        </button>
+                      );
+                    })()}
+
+                    {/* Once upgraded there is nowhere further to go, so say so
+                        rather than leaving a dead control on screen. */}
+                    {selectedStudent.studentYear === 'Second Year' && (
+                      <span style={{
+                        fontSize: '11px', fontWeight: 800, color: 'var(--good)',
+                        backgroundColor: '#ECFDF5', border: '1.5px solid var(--good)',
+                        borderRadius: '8px', padding: '5px 10px', whiteSpace: 'nowrap'
+                      }}>
+                        Second Year{selectedStudent.academicYear ? ` (${selectedStudent.academicYear})` : ''}
+                      </span>
+                    )}
+                    {selectedStudent.studentYear === 'Short Term' && (
+                      <span style={{
+                        fontSize: '11px', fontWeight: 800, color: 'var(--ink-secondary)',
+                        backgroundColor: 'var(--surface-sunken)', border: '1.5px solid var(--line-strong)',
+                        borderRadius: '8px', padding: '5px 10px', whiteSpace: 'nowrap'
+                      }}>
+                        Short Term
+                      </span>
+                    )}
+
+                    <button onClick={() => handleDownloadStudentStatement(selectedStudent)} style={{ ...styles.actionItemBtn, border: '1.5px solid var(--royal-gold)', backgroundColor: '#FFF8DB', color: 'var(--warning)', fontWeight: 900, whiteSpace: 'nowrap' }} className="press-interactive">Download Complete Statement</button>
+                  </div>
                 </div>
+
+                {/* First-year records after an upgrade. The live receipt list
+                    below shows only the current year, so without this the
+                    closed year would look like it never happened. */}
+                {(selectedStudent.yearHistory || []).map((h, i) => (
+                  <div key={`yh-${i}`} style={{
+                    marginTop: '8px', padding: '10px 12px', borderRadius: '10px',
+                    border: '1.5px dashed var(--line-strong)', backgroundColor: 'var(--surface-sunken)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px'
+                  }}>
+                    <div>
+                      <strong style={{ fontSize: '12px', color: 'var(--ink)' }}>
+                        {h.studentYear} completed{h.academicYear ? ` — ${h.academicYear}` : ''}
+                      </strong>
+                      <div style={{ fontSize: '10px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                        Closed {h.closedAt ? new Date(h.closedAt).toLocaleDateString('en-GB') : 'n/a'}
+                        {h.closedBy ? ` by ${h.closedBy}` : ''}
+                      </div>
+                    </div>
+                    <span style={{ fontWeight: 800, fontSize: '13px', color: 'var(--good)' }}>
+                      Rs.{Number(h.totalPaid || 0).toLocaleString('en-IN')} paid
+                    </span>
+                  </div>
+                ))}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                   {selectedStudent.feeAdjustments?.map((adjustment) => (
                     <div key={adjustment._id || adjustment.id || adjustment.createdAt} style={{ ...styles.receiptRowItem, borderColor: 'var(--warning)', backgroundColor: 'var(--warning-wash)' }}>
@@ -2460,6 +2642,162 @@ export const AccountantDashboardView: React.FC = () => {
             </div>
           )}
 
+
+        {/* Year upgrade — same fees as this year, offered for editing.
+            Every figure here is a starting point read from the server; the
+            server recomputes the total and re-checks eligibility on submit,
+            so nothing shown below is trusted as an input to the decision. */}
+        {activeOverlay === 'upgrade_year' && selectedStudent && upgradeFees && (
+          <div style={styles.overlayOverlay} className="anim-fade-in">
+            <div style={{ ...styles.overlaySheet, position: 'relative', maxWidth: '560px' }} className="glass-panel-heavy">
+              <div style={{ marginBottom: '14px', borderBottom: '2px solid var(--line)', paddingBottom: '10px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: 'var(--ink)' }}>
+                  Upgrade to Second Year
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                  {selectedStudent.name} · {selectedStudent.admissionNumber}
+                  {upgradeInfo?.academicYear ? ` · currently ${upgradeInfo.academicYear}` : ''}
+                </p>
+              </div>
+
+              <div style={{
+                padding: '10px 12px', borderRadius: '10px', marginBottom: '14px',
+                backgroundColor: '#ECFDF5', border: '1.5px solid var(--good)',
+                fontSize: '11.5px', fontWeight: 700, color: 'var(--good)'
+              }}>
+                First year fully paid. Its receipts and fee structure are kept and stay
+                visible in the history below.
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {[
+                  ['tuitionFee', 'Tuition Fee'],
+                  ['hostelFee', 'Hostel Fee'],
+                  ['transportFee', 'Transport Fee'],
+                  ['miscellaneousFee', 'Miscellaneous Fee'],
+                  ['tuitionWaiver', 'Tuition Waiver'],
+                  ['hostelWaiver', 'Hostel Waiver'],
+                  ['transportWaiver', 'Transport Waiver'],
+                  ['miscWaiver', 'Misc Waiver']
+                ].map(([key, label]) => (
+                  <div key={key}>
+                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      {label}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={999999999}
+                      value={upgradeFees[key] ?? 0}
+                      onChange={(e) => setUpgradeFees((p: any) => ({ ...p, [key]: Math.max(0, Number(e.target.value) || 0) }))}
+                      style={styles.textInputBox}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {(upgradeFees.customFeeSlots || []).length > 0 && (
+                <div style={{ marginTop: '12px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    Additional Fees
+                  </div>
+                  {upgradeFees.customFeeSlots.map((slot: any, i: number) => (
+                    <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
+                      <input
+                        type="text"
+                        maxLength={LIMITS.feeSlotName}
+                        value={slot.name}
+                        onChange={(e) => setUpgradeFees((p: any) => {
+                          const next = [...p.customFeeSlots];
+                          next[i] = { ...next[i], name: e.target.value };
+                          return { ...p, customFeeSlots: next };
+                        })}
+                        style={{ ...styles.textInputBox, flex: 2 }}
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        max={999999999}
+                        value={slot.amount}
+                        onChange={(e) => setUpgradeFees((p: any) => {
+                          const next = [...p.customFeeSlots];
+                          next[i] = { ...next[i], amount: Math.max(0, Number(e.target.value) || 0) };
+                          return { ...p, customFeeSlots: next };
+                        })}
+                        style={{ ...styles.textInputBox, flex: 1 }}
+                      />
+                      <button
+                        onClick={() => setUpgradeFees((p: any) => ({
+                          ...p, customFeeSlots: p.customFeeSlots.filter((_: any, j: number) => j !== i)
+                        }))}
+                        style={{ ...styles.actionItemBtn, border: '1.5px solid var(--critical)', color: 'var(--critical)', background: 'transparent' }}
+                        className="press-interactive"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={() => setUpgradeFees((p: any) => ({
+                  ...p, customFeeSlots: [...(p.customFeeSlots || []), { name: '', amount: 0 }]
+                }))}
+                style={{ ...styles.actionItemBtn, marginTop: '8px', border: '1.5px dashed var(--line-strong)', color: 'var(--ink-secondary)', background: 'transparent' }}
+                className="press-interactive"
+              >
+                + Add a fee line
+              </button>
+
+              <div style={{
+                marginTop: '16px', padding: '12px', borderRadius: '10px',
+                backgroundColor: 'var(--surface-sunken)', border: '2px solid var(--ink)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                  <span>Total fees</span><span>Rs.{upgradeTotals.gross.toLocaleString('en-IN')}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: 'var(--good)', marginTop: '3px' }}>
+                  <span>Less waivers</span><span>- Rs.{upgradeTotals.waivers.toLocaleString('en-IN')}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 900, color: 'var(--ink)', marginTop: '8px', paddingTop: '8px', borderTop: '1.5px solid var(--line-strong)' }}>
+                  <span>Payable in Second Year</span>
+                  <span>Rs.{upgradeTotals.payable.toLocaleString('en-IN')}</span>
+                </div>
+                {upgradeTotals.waivers > upgradeTotals.gross && (
+                  <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 800, color: 'var(--critical)' }}>
+                    Waivers cannot exceed the total fees.
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                <button
+                  onClick={() => { setActiveOverlay(null); setUpgradeFees(null); setUpgradeInfo(null); }}
+                  disabled={isUpgrading}
+                  style={{ ...styles.actionItemBtn, flex: 1, border: '1.5px solid var(--line-strong)', color: 'var(--ink-secondary)', background: 'transparent' }}
+                  className="press-interactive"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmUpgrade}
+                  disabled={isUpgrading || upgradeTotals.waivers > upgradeTotals.gross}
+                  style={{
+                    ...styles.actionItemBtn, flex: 2,
+                    border: '1.5px solid var(--good)', backgroundColor: 'var(--good)', color: '#fff',
+                    fontWeight: 900,
+                    opacity: (isUpgrading || upgradeTotals.waivers > upgradeTotals.gross) ? 0.6 : 1,
+                    cursor: isUpgrading ? 'wait' : 'pointer'
+                  }}
+                  className="press-interactive"
+                >
+                  {isUpgrading ? 'Upgrading...' : 'Confirm — Move to Second Year'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Ack Receipt popup */}
         {activeOverlay === 'receipt_view' && selectedReceipt && selectedStudent && (

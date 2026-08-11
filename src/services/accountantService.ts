@@ -104,6 +104,56 @@ export const getPaymentHistory = async (studentId: string): Promise<FeePayment[]
   return res.data;
 };
 
+// --- Year progression -----------------------------------------------------
+
+export interface UpgradeEligibility {
+  eligible: boolean;
+  code: 'ELIGIBLE' | 'FEES_PENDING' | 'ALREADY_FINAL' | 'NOT_APPLICABLE';
+  reason: string;
+  year: string;
+  balance: number;
+  academicYear: string;
+  completedYears: string[];
+  currentFees: {
+    tuitionFee: number; hostelFee: number; transportFee: number; miscellaneousFee: number;
+    customFeeSlots: Array<{ id?: string; name: string; amount: number }>;
+    tuitionWaiver: number; hostelWaiver: number; transportWaiver: number; miscWaiver: number;
+  };
+}
+
+/**
+ * Whether this student can move up a year, and the fee structure to prefill
+ * the confirmation form with.
+ *
+ * The server decides. The UI must not compute eligibility from a balance it
+ * happens to be holding — that figure can be minutes old, and the rule would
+ * then exist in two places and drift.
+ */
+export const getUpgradeEligibility = async (studentId: string): Promise<UpgradeEligibility> => {
+  const res = await apiClient.get<{ status: string; data: UpgradeEligibility }>(
+    `/accountant/students/${studentId}/upgrade-eligibility`
+  );
+  return res.data;
+};
+
+export interface UpgradeFees {
+  tuitionFee: number; hostelFee: number; transportFee: number; miscellaneousFee: number;
+  customFeeSlots: Array<{ name: string; amount: number }>;
+  tuitionWaiver: number; hostelWaiver: number; transportWaiver: number; miscWaiver: number;
+  academicYear?: string;
+}
+
+export const upgradeStudentYear = async (
+  studentId: string,
+  fees: UpgradeFees
+): Promise<StudentProfile> => {
+  const res = await apiClient.post<{ status: string; message: string; data: StudentProfile }>(
+    `/accountant/students/${studentId}/upgrade`,
+    fees
+  );
+  return res.data;
+};
+
 export const getHostelAdmissions = async (): Promise<HostelData> => {
   const res = await apiClient.get<{ status: string; data: HostelData }>('/accountant/hostel');
   return res.data;
