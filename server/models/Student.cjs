@@ -84,7 +84,63 @@ const studentSchema = new mongoose.Schema({
     mode: { type: String },
     cashier: { type: String }
   }],
-  academicYear: { type: String, default: '2026-2027' }
+  academicYear: { type: String, default: '2026-2027' },
+
+  // --- Year level and progression ---------------------------------------
+  //
+  // `course` already existed but holds the stream ("MPC"), not the year. The
+  // upgrade flow needs to know where a student is in the programme, so that
+  // lives here as its own field rather than being parsed out of a free-text
+  // course name.
+  //
+  // Short Term never progresses, and Second Year is the end of the programme,
+  // so only First Year is ever upgradeable.
+  studentYear: {
+    type: String,
+    enum: ['First Year', 'Second Year', 'Short Term'],
+    default: 'First Year',
+    index: true
+  },
+
+  // Set when a year's fees are fully cleared. This is what unlocks the upgrade
+  // control, and it stays true for the record of that year.
+  yearFeeCleared: { type: Boolean, default: false },
+
+  // Frozen record of each completed year: what was owed, what was paid, and
+  // every receipt raised in it.
+  //
+  // An upgrade resets the live fee fields for the new year, so without this
+  // the previous year's financial history would be overwritten. Complete
+  // History reads live receipts AND these archives, which is why a student in
+  // second year can still show what they paid in first year.
+  yearHistory: [{
+    studentYear: { type: String },
+    academicYear: { type: String },
+    tuitionFee: { type: Number, default: 0 },
+    hostelFee: { type: Number, default: 0 },
+    transportFee: { type: Number, default: 0 },
+    miscellaneousFee: { type: Number, default: 0 },
+    previousPending: { type: Number, default: 0 },
+    customFeeSlots: [customFeeSlotSchema],
+    tuitionWaiver: { type: Number, default: 0 },
+    hostelWaiver: { type: Number, default: 0 },
+    transportWaiver: { type: Number, default: 0 },
+    miscWaiver: { type: Number, default: 0 },
+    totalPayable: { type: Number, default: 0 },
+    totalPaid: { type: Number, default: 0 },
+    closedAt: { type: Date },
+    closedBy: { type: String, default: '' },
+    receipts: [{
+      receiptNumber: { type: String },
+      date: { type: Date },
+      category: { type: String },
+      installment: { type: String },
+      amount: { type: Number },
+      balance: { type: Number },
+      mode: { type: String },
+      cashier: { type: String }
+    }]
+  }]
 }, {
   timestamps: true
 });

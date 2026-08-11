@@ -2485,6 +2485,246 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
   }
 });
 
+/**
+ * --- STUDENT YEAR PROGRESSION -------------------------------------------
+ *
+ * GET  /api/accountant/students/:studentId/upgrade-eligibility
+ * POST /api/accountant/students/:studentId/upgrade
+ *
+ * Only a First Year student whose fees are fully cleared may be upgraded.
+ * Second Year is the end of the programme and Short Term does not progress at
+ * all, so both are refused outright rather than being quietly ignored.
+ *
+ * The rule is evaluated on the server from the stored balance. The UI also
+ * hides the control, but hiding a button is presentation, not a rule: the
+ * decision has to hold when someone posts to the route directly.
+ */
+
+// Shared so the eligibility probe and the upgrade itself can never disagree
+// about who may be upgraded — two copies of this rule would eventually drift,
+// and the drift would show up as a button that appears and then errors.
+function evaluateUpgradeEligibility(student) {
+  const year = String(student.studentYear || 'First Year');
+  const balance = Number(student.remainingBalance || 0);
+
+  if (year === 'Short Term') {
+    return { eligible: false, reason: 'Short Term students do not progress to another year.', code: 'NOT_APPLICABLE', year, balance };
+  }
+  if (year === 'Second Year') {
+    return { eligible: false, reason: 'This student is already in Second Year, which completes the programme.', code: 'ALREADY_FINAL', year, balance };
+  }
+  if (balance > 0) {
+    return {
+      eligible: false,
+      code: 'FEES_PENDING',
+      year, balance,
+      reason: `Upgrade is locked until the fees are cleared. ${balance.toLocaleString('en-IN')} is still outstanding.`
+    };
+  }
+  return { eligible: true, code: 'ELIGIBLE', year, balance, reason: 'Fees cleared. This student can be upgraded to Second Year.' };
+}
+
+app.get('/api/accountant/students/:studentId/upgrade-eligibility',
+  authenticateToken, requireRole('accountant', 'admin1', 'admin2'), requireDatabase, async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const isObjId = isValidObjectId(studentId);
+    const student = await Student.findOne({ $or: [{ _id: isObjId ? studentId : null }, { studentId }, { admissionNumber: studentId }] }).lean();
+
+    if (!student) return res.status(404).json({ status: 'error', message: 'Student not found.' });
+    if (!callerOwnsCampus(req, student.branch)) {
+      return res.status(403).json({ status: 'error', message: 'This student belongs to another campus.' });
+    }
+
+    const verdict = evaluateUpgradeEligibility(student);
+    return res.json({
+      status: 'success',
+      data: {
+        ...verdict,
+        // The current fee structure, so the confirmation screen can offer it
+        // as the starting point for next year rather than an empty form.
+        currentFees: {
+          tuitionFee: Number(student.tuitionFee || 0),
+          hostelFee: Number(student.hostelFee || 0),
+          transportFee: Number(student.transportFee || 0),
+          miscellaneousFee: Number(student.miscellaneousFee || 0),
+          customFeeSlots: student.customFeeSlots || [],
+          tuitionWaiver: Number(student.tuitionWaiver || 0),
+          hostelWaiver: Number(student.hostelWaiver || 0),
+          transportWaiver: Number(student.transportWaiver || 0),
+          miscWaiver: Number(student.miscWaiver || 0)
+        },
+        academicYear: student.academicYear || '',
+        completedYears: (student.yearHistory || []).map(h => h.studentYear)
+      }
+    });
+  } catch (err) {
+    console.error(`[Upgrade]: Eligibility check failed:`, err.message);
+    return res.status(500).json({ status: 'error', message: 'Could not check upgrade eligibility.' });
+  }
+});
+
+app.post('/api/accountant/students/:studentId/upgrade',
+  authenticateToken, requireRole('accountant', 'admin1', 'admin2'),
+  verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const isObjId = isValidObjectId(studentId);
+    const student = await Student.findOne({ $or: [{ _id: isObjId ? studentId : null }, { studentId }, { admissionNumber: studentId }] });
+
+    if (!student) return res.status(404).json({ status: 'error', message: 'Student not found.' });
+    if (!callerOwnsCampus(req, student.branch)) {
+      return res.status(403).json({ status: 'error', message: 'This student belongs to another campus.' });
+    }
+
+    // Re-check against the stored record at the moment of the write. The UI
+    // may have read an eligible state minutes ago and a payment could have
+    // been reversed since.
+    const verdict = evaluateUpgradeEligibility(student);
+    if (!verdict.eligible) {
+      return res.status(409).json({ status: 'error', message: verdict.reason, data: verdict });
+    }
+
+    const body = req.body || {};
+    const num = (v, fallback) => {
+      if (v === undefined || v === null || v === '') return fallback;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0) return null;
+      return Math.round(n * 100) / 100;
+    };
+
+    // Next year's fees default to this year's, which is what the brief asks
+    // for: the same structure, offered for editing.
+    const next = {
+      tuitionFee: num(body.tuitionFee, Number(student.tuitionFee || 0)),
+      hostelFee: num(body.hostelFee, Number(student.hostelFee || 0)),
+      transportFee: num(body.transportFee, Number(student.transportFee || 0)),
+      miscellaneousFee: num(body.miscellaneousFee, Number(student.miscellaneousFee || 0)),
+      tuitionWaiver: num(body.tuitionWaiver, 0),
+      hostelWaiver: num(body.hostelWaiver, 0),
+      transportWaiver: num(body.transportWaiver, 0),
+      miscWaiver: num(body.miscWaiver, 0)
+    };
+    for (const [field, value] of Object.entries(next)) {
+      if (value === null) {
+        return res.status(400).json({ status: 'error', message: `${field} must be a number of zero or more.` });
+      }
+    }
+
+    let slots = student.customFeeSlots || [];
+    if (Array.isArray(body.customFeeSlots)) {
+      slots = [];
+      for (const raw of body.customFeeSlots.slice(0, 20)) {
+        // cleanText returns { value } or { error } — it must be unwrapped, not
+        // used directly, or an object reaches the schema and fails the cast.
+        const named = cleanText(raw && raw.name, { field: 'Custom fee name', max: MAX_TEXT.short, required: true });
+        if (named.error) {
+          return res.status(400).json({ status: 'error', message: named.error });
+        }
+        const amount = num(raw && raw.amount, null);
+        if (amount === null) {
+          return res.status(400).json({ status: 'error', message: `Amount for "${named.value}" must be a number of zero or more.` });
+        }
+        slots.push({ id: (raw && raw.id) || crypto.randomBytes(6).toString('hex'), name: named.value, amount });
+      }
+    }
+
+    const slotTotal = slots.reduce((a, s) => a + Number(s.amount || 0), 0);
+    const gross = next.tuitionFee + next.hostelFee + next.transportFee + next.miscellaneousFee + slotTotal;
+    const waivers = next.tuitionWaiver + next.hostelWaiver + next.transportWaiver + next.miscWaiver;
+    if (waivers > gross) {
+      return res.status(400).json({ status: 'error', message: 'Total waivers cannot exceed the total fees.' });
+    }
+    const payable = Math.max(0, Math.round((gross - waivers) * 100) / 100);
+
+    const requestedYear = cleanText(body.academicYear, { field: 'Academic year', max: 20 });
+    if (requestedYear.error) {
+      return res.status(400).json({ status: 'error', message: requestedYear.error });
+    }
+    const nextAcademicYear = requestedYear.value
+      || (() => {
+        const start = parseInt(String(student.academicYear || '').split('-')[0], 10);
+        return Number.isFinite(start) ? `${start + 1}-${start + 2}` : String(student.academicYear || '');
+      })();
+
+    // Freeze the closing year before any of it is overwritten. Without this
+    // the first year's fee structure and receipts would be lost the moment
+    // the new year's figures are written over them.
+    const closingSlotTotal = (student.customFeeSlots || []).reduce((a, s) => a + Number(s.amount || 0), 0);
+    const closingGross = Number(student.tuitionFee || 0) + Number(student.hostelFee || 0)
+      + Number(student.transportFee || 0) + Number(student.miscellaneousFee || 0)
+      + Number(student.previousPending || 0) + closingSlotTotal;
+    const closingWaivers = Number(student.tuitionWaiver || 0) + Number(student.hostelWaiver || 0)
+      + Number(student.transportWaiver || 0) + Number(student.miscWaiver || 0);
+
+    student.yearHistory = student.yearHistory || [];
+    student.yearHistory.push({
+      studentYear: student.studentYear || 'First Year',
+      academicYear: student.academicYear || '',
+      tuitionFee: Number(student.tuitionFee || 0),
+      hostelFee: Number(student.hostelFee || 0),
+      transportFee: Number(student.transportFee || 0),
+      miscellaneousFee: Number(student.miscellaneousFee || 0),
+      previousPending: Number(student.previousPending || 0),
+      customFeeSlots: student.customFeeSlots || [],
+      tuitionWaiver: Number(student.tuitionWaiver || 0),
+      hostelWaiver: Number(student.hostelWaiver || 0),
+      transportWaiver: Number(student.transportWaiver || 0),
+      miscWaiver: Number(student.miscWaiver || 0),
+      totalPayable: Math.max(0, Math.round((closingGross - closingWaivers) * 100) / 100),
+      totalPaid: Number(student.totalPaid || 0),
+      closedAt: new Date(),
+      closedBy: req.user.username,
+      receipts: student.receipts || []
+    });
+
+    // Open the new year. The balance starts at the full amount payable: this
+    // is a new year's fees, not a continuation of last year's account.
+    //
+    // The Payment collection is NOT touched. Those rows are the real financial
+    // record and they stay exactly as they are — which is why Complete History
+    // still shows first-year receipts after an upgrade.
+    student.studentYear = 'Second Year';
+    student.academicYear = nextAcademicYear;
+    student.tuitionFee = next.tuitionFee;
+    student.hostelFee = next.hostelFee;
+    student.transportFee = next.transportFee;
+    student.miscellaneousFee = next.miscellaneousFee;
+    student.tuitionWaiver = next.tuitionWaiver;
+    student.hostelWaiver = next.hostelWaiver;
+    student.transportWaiver = next.transportWaiver;
+    student.miscWaiver = next.miscWaiver;
+    student.customFeeSlots = slots;
+    student.previousPending = 0;
+    student.totalPaid = 0;
+    student.remainingBalance = payable;
+    student.yearFeeCleared = payable === 0;
+    student.receipts = [];
+
+    student.markModified('customFeeSlots');
+    student.markModified('yearHistory');
+    student.markModified('receipts');
+    await student.save();
+
+    // Verify by reading back rather than trusting the save.
+    const saved = await Student.findById(student._id).lean();
+    if (saved.studentYear !== 'Second Year' || Math.round(Number(saved.remainingBalance)) !== Math.round(payable)) {
+      console.error(`[Upgrade]: Read-back mismatch for ${saved.admissionNumber}`);
+      return res.status(500).json({ status: 'error', message: 'The upgrade did not save correctly. Check the student record before retrying.' });
+    }
+
+    console.log(`[Upgrade]: ${saved.admissionNumber} First Year -> Second Year by ${req.user.username} (payable ${payable})`);
+    return res.json({
+      status: 'success',
+      message: `${saved.name} moved to Second Year. New balance ${payable.toLocaleString('en-IN')}.`,
+      data: saved
+    });
+  } catch (err) {
+    console.error('[Upgrade]: Failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'The upgrade failed. Nothing was changed.' });
+  }
+});
+
 app.get('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
   try {
     await connectToDatabase();
