@@ -16,8 +16,6 @@
  * ALLOWED_ORIGINS and the CSP's connect-src. Guessing a port is not a
  * substitute for configuring one.
  */
-import { getAccessToken, setTokens, refreshAccessToken } from './session';
-
 export const getApiBaseUrl = (): string => {
   if (import.meta.env && import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
@@ -122,7 +120,7 @@ export const apiClient = {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   },
 
-  async request<T = any>(endpoint: string, options: RequestInit & { __pinRetried?: boolean; __refreshRetried?: boolean } = {}): Promise<T> {
+  async request<T = any>(endpoint: string, options: RequestInit & { __pinRetried?: boolean } = {}): Promise<T> {
     let cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     
     // Strip duplicate /api prefix if caller passed /api/... to avoid /api/api/... 404 errors
@@ -134,7 +132,7 @@ export const apiClient = {
     const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     const url = `${cleanBaseUrl}${cleanPath}`;
 
-    const token = getAccessToken();
+    const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
     const headers: Record<string, string> = {
       ...(options.headers as Record<string, string> || {})
     };
@@ -176,7 +174,7 @@ export const apiClient = {
         // financial action. Collect the real PIN and retry once. Handling this
         // centrally means every such route is covered without each call site
         // having to know about it.
-        if ((response.status === 403 || response.status === 401) && data?.requiresSecurityPin && !options.__pinRetried) {
+        if (response.status === 401 && data?.requiresSecurityPin && !options.__pinRetried) {
           const pin = await securityPinPrompt(
             data.message === 'Incorrect security PIN.'
               ? 'Incorrect PIN. Enter your security PIN to confirm this action:'
@@ -187,29 +185,42 @@ export const apiClient = {
             return this.request<T>(endpoint, { ...options, __pinRetried: true } as RequestInit);
           }
           const cancelled: ApiError = new Error('Action cancelled: security PIN not provided.');
-          // 403, not 401 — cancelling a confirmation prompt must never be
-          // mistaken for an authentication failure by any caller.
-          cancelled.status = 403;
+          cancelled.status = 401;
           throw cancelled;
         }
 
-        // An expired access token: refresh once, through the shared
-        // coordinator so simultaneous 401s cannot each rotate the refresh
-        // token and trip the server's replay protection.
-        if (response.status === 401 && !cleanPath.startsWith('/auth/') && !options.__refreshRetried) {
-          const fresh = await refreshAccessToken(cleanBaseUrl);
-          if (fresh) {
-            return this.request<T>(endpoint, { ...options, __refreshRetried: true } as RequestInit);
+        // Intercept 401 Access Token Expiration & Silently Refresh Token
+        if (response.status === 401 && !cleanPath.startsWith('/auth/')) {
+          const refreshToken = sessionStorage.getItem('refresh_token');
+          if (refreshToken) {
+            try {
+              const refreshRes = await fetch(`${baseUrl}/auth/refresh`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken }),
+                credentials: 'include'
+              });
+              const refreshData = await refreshRes.json().catch(() => null);
+              if (refreshRes.ok && refreshData?.token) {
+                sessionStorage.setItem('auth_token', refreshData.token);
+                // Refresh tokens are now single-use and rotate. The server
+                // revokes the presented token as it validates it, so the
+                // replacement must be stored or the next refresh will fail —
+                // and reusing a spent token deliberately kills the session.
+                if (refreshData.refreshToken) {
+                  sessionStorage.setItem('refresh_token', refreshData.refreshToken);
+                }
+                headers['Authorization'] = `Bearer ${refreshData.token}`;
+                // Retry original request with fresh access token
+                const retryRes = await fetch(url, { ...options, headers, credentials: 'include' });
+                const retryData = await retryRes.json().catch(() => null);
+                if (retryRes.ok && retryData) return retryData as T;
+              }
+            } catch {
+              // Refresh failed
+            }
           }
-
-          // Refresh genuinely failed — the session is over. End it deliberately
-          // rather than leaving the user clicking against a dead token.
-          //
-          // This used to fire for ANY 401 from ANY endpoint and send the user
-          // to the public marketing site with no explanation, which is what
-          // made the app feel like it "randomly redirects". It now only runs
-          // when refresh has actually failed, and it hands over a reason.
-          (window as any).endSession?.('Your session has ended. Please log in again.');
+          (window as any).logoutUser?.();
         }
 
         const errorMsg = data?.message || data?.error || `HTTP ${response.status}: Request failed`;
@@ -219,10 +230,9 @@ export const apiClient = {
         throw err;
       }
 
-      // Persist whatever the server just issued through the single store, so
-      // access and refresh tokens can never drift between two locations.
-      if (data?.token || data?.refreshToken) {
-        setTokens(data.token, data.refreshToken);
+      // If login returned refreshToken, store it
+      if (data?.refreshToken) {
+        sessionStorage.setItem('refresh_token', data.refreshToken);
       }
 
       return data as T;

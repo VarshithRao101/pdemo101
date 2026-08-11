@@ -627,10 +627,7 @@ async function verifySecurityOtp(req, res, next) {
   const supplied = req.headers['x-security-pin'] || (req.body && req.body.securityPin);
 
   if (!supplied || typeof supplied !== 'string' || !supplied.trim()) {
-    // 403, not 401: the session is perfectly valid, the caller just has not
-    // confirmed this particular action yet. A 401 here would be indistinguishable
-    // from an expired session and would tear the whole app down.
-    return res.status(403).json({
+    return res.status(401).json({
       status: 'error',
       message: 'This action requires your security PIN for confirmation.',
       requiresSecurityPin: true
@@ -646,7 +643,7 @@ async function verifySecurityOtp(req, res, next) {
     const user = await User.findById(req.user.id).select('pin');
     if (!user || !user.pin || !safeBcryptCompare(supplied, user.pin)) {
       console.warn(`[Security]: Failed PIN confirmation by [${req.user.username}] for ${req.method} ${req.path}`);
-      return res.status(403).json({
+      return res.status(401).json({
         status: 'error',
         message: 'Incorrect security PIN.',
         requiresSecurityPin: true

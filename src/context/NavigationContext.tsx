@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { clearTokens, setTokens, getAccessToken, getRefreshToken, SESSION_IDLE_TIMEOUT_MS, IDLE_MESSAGE } from '../services/session';
-import { apiClient , clearGlobalSecurityKey } from '../services/apiClient';
+import { apiClient } from '../services/apiClient';
 
 export type TabType =
   | 'dashboard'
@@ -94,9 +93,8 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       });
 
       const { token, user: userData } = response;
-      // One store. Writing to two locations is what let a refreshed token be
-      // shadowed by a stale one and logged people out mid-shift.
-      setTokens(token, (response as any).refreshToken);
+      localStorage.setItem('auth_token', token);
+      sessionStorage.setItem('auth_token', token);
       setUser(userData);
       setIsAuthenticated(true);
 
@@ -134,9 +132,8 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       });
 
       const { token, user: userData } = response;
-      // One store. Writing to two locations is what let a refreshed token be
-      // shadowed by a stale one and logged people out mid-shift.
-      setTokens(token, (response as any).refreshToken);
+      localStorage.setItem('auth_token', token);
+      sessionStorage.setItem('auth_token', token);
       setUser(userData);
       setIsAuthenticated(true);
 
@@ -161,22 +158,21 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
   };
 
   const logout = () => {
-    const token = getAccessToken();
-    const refreshToken = getRefreshToken();
+    const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+    const refreshToken = sessionStorage.getItem('refresh_token');
     if (token || refreshToken) {
-      // Server-side revocation is what actually ends the session; clearing
-      // local storage alone would leave the token usable until it expired.
       apiClient.post('/auth/logout', { refreshToken }).catch(() => {});
     }
-    clearTokens();
-    clearGlobalSecurityKey();
+    localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('refresh_token');
     setUser(null);
     setIsAuthenticated(false);
     setPortalRole('admin1');
   };
 
   const checkSession = async (): Promise<boolean> => {
-    const token = getAccessToken();
+    const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
     if (!token) {
       setIsAuthLoading(false);
       setIsAuthenticated(false);
@@ -228,36 +224,28 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
     }
   };
 
-  // Idle expiry.
-  //
-  // The window comes from SESSION_IDLE_TIMEOUT_MS (3h default, overridable via
-  // VITE_SESSION_IDLE_TIMEOUT_MS) rather than a literal buried here.
-  //
-  // Only genuine human interaction resets it. Background polling deliberately
-  // does NOT: an unattended machine left on a dashboard that refreshes itself
-  // would otherwise stay authenticated indefinitely.
+  // 2-Hour Inactivity Auto Logout
   useEffect(() => {
     if (!isAuthenticated) return;
     let inactivityTimer: any = null;
+    const INACTIVITY_LIMIT = 2 * 60 * 60 * 1000;
 
-    const expire = () => {
-      console.warn('Session idle limit reached. Ending session.');
-      logout();
-      (window as any).endSession?.(IDLE_MESSAGE);
-    };
-
-    const reset = () => {
+    const resetInactivityTimer = () => {
       if (inactivityTimer) clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(expire, SESSION_IDLE_TIMEOUT_MS);
+      inactivityTimer = setTimeout(() => {
+        console.warn('User inactive for 2 hours. Automatically logging out.');
+        logout();
+        window.location.hash = '#/portfolio';
+      }, INACTIVITY_LIMIT);
     };
 
-    const userEvents = ['mousedown', 'keydown', 'click', 'touchstart', 'scroll', 'wheel'];
-    userEvents.forEach(evt => window.addEventListener(evt, reset, { passive: true }));
-    reset();
+    const userEvents = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
+    userEvents.forEach(evt => window.addEventListener(evt, resetInactivityTimer));
+    resetInactivityTimer();
 
     return () => {
       if (inactivityTimer) clearTimeout(inactivityTimer);
-      userEvents.forEach(evt => window.removeEventListener(evt, reset));
+      userEvents.forEach(evt => window.removeEventListener(evt, resetInactivityTimer));
     };
   }, [isAuthenticated]);
 
@@ -291,25 +279,11 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
     localStorage.setItem('portal_theme_mode', mode);
   };
 
-  // Global session terminator.
-  //
-  // Called when the session is genuinely over (refresh failed, evicted
-  // elsewhere, idle timeout). It lands on the LOGIN GATE with a reason —
-  // never on the public marketing site, which is what made an ordinary error
-  // look like the app had thrown the user out of the building.
+  // Expose global logout function for 401 session eviction interception
   useEffect(() => {
-    (window as any).endSession = (reason?: string) => {
+    (window as any).logoutUser = () => {
       logout();
-      try {
-        if (reason) sessionStorage.setItem('session_end_reason', reason);
-      } catch { /* ignore */ }
-      window.location.hash = '#/v1-portal-gate-x89f2a7b';
-    };
-    // Kept for older call sites; same behaviour.
-    (window as any).logoutUser = () => (window as any).endSession();
-    return () => {
-      delete (window as any).endSession;
-      delete (window as any).logoutUser;
+      window.location.hash = '#/portfolio';
     };
   }, []);
 

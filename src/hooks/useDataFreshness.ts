@@ -12,7 +12,6 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
-import { getAccessToken } from '../services/session';
 import { getApiBaseUrl } from '../services/apiClient';
 
 const POLL_INTERVAL_MS = 25000; // 25 seconds
@@ -33,7 +32,7 @@ export function useDataFreshness(branch: string | undefined, onRefetch: () => Pr
     const currentBranch = branchRef.current;
     if (!currentBranch || currentBranch.toLowerCase() === 'all') return false;
 
-    const token = getAccessToken();
+    const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
     if (!token) return false;
 
     try {
@@ -80,7 +79,7 @@ export function useDataFreshness(branch: string | undefined, onRefetch: () => Pr
     try {
       await onRefetchRef.current();
       const currentBranch = branchRef.current;
-      const token = getAccessToken();
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
       if (currentBranch && token) {
         try {
           const base = getApiBaseUrl();
