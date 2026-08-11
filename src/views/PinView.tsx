@@ -17,6 +17,16 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [lastKeypadIndex, setLastKeypadIndex] = useState<number | null>(null);
   const [sessionConflict, setSessionConflict] = useState(false);
+
+  // Read once on mount and clear, so the explanation shows for the trip back
+  // to the gate but does not reappear on every later visit.
+  const [sessionEndReason] = useState<string | null>(() => {
+    try {
+      const r = sessionStorage.getItem('session_end_reason');
+      if (r) sessionStorage.removeItem('session_end_reason');
+      return r;
+    } catch { return null; }
+  });
   const { login, forceLogin } = useNavigation();
 
   const [portalMode, setPortalMode] = useState<'universal' | 'authenticator'>(() => {
@@ -317,6 +327,29 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             Enter password & 6-digit PIN to access administrative portals
           </p>
         </div>
+
+        {/* Why the user is back here.
+            An ended session used to dump people on the public website with no
+            explanation. Whatever ended it leaves a reason behind, and this is
+            where it gets said. */}
+        {sessionEndReason && (
+          <div
+            role="status"
+            style={{
+              display: 'flex', alignItems: 'flex-start', gap: '8px',
+              background: 'var(--warning-wash)', border: '1px solid var(--warning)',
+              borderRadius: 'var(--r-sm)', padding: '10px 12px', marginBottom: '14px'
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--warning)"
+                 strokeWidth="2.5" style={{ flexShrink: 0, marginTop: '1px' }}>
+              <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
+            </svg>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)', lineHeight: 1.45 }}>
+              {sessionEndReason}
+            </span>
+          </div>
+        )}
 
         {/* Portal Gateway Switcher Bar */}
         <div style={{
