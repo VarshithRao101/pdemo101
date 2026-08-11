@@ -1601,7 +1601,7 @@ app.post('/api/admin1/students', authenticateToken, requireRole('admin1', 'admin
 app.post('/api/admin/students', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), mongoRateLimiter, createStudentHandler);
 app.post('/api/accountant/students', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), mongoRateLimiter, createStudentHandler);
 
-app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
+app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -1865,7 +1865,7 @@ app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'],
 });
 
 // CREATE Teacher (Admin1 or Admin2; Requires Security OTP for Admin2 or optional; Admin2 campus locked)
-app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, async (req, res) => {
+app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     let { id, name, subject, salary = 0, mobile, email, branch, classification = 'Teaching', role = 'Senior Lecturer' } = req.body || {};
@@ -1989,7 +1989,7 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
 });
 
 // UPDATE Teacher
-app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2059,7 +2059,7 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
 });
 
 // DELETE Teacher (Requires Security OTP; Campus Isolation for Admin2)
-app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, async (req, res) => {
+app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2093,7 +2093,7 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
 });
 
 // 12-MONTH SALARY LEDGER & YEAR-LOCK PAYMENTS ROUTE
-app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, async (req, res) => {
+app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2234,7 +2234,7 @@ app.get('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'ad
   }
 });
 
-app.patch('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, async (req, res) => {
+app.patch('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { branch, tuition, hostel, transport, misc, isLocked } = req.body;
@@ -2316,7 +2316,7 @@ const getExpendituresHandler = async (req, res) => {
 app.get('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'admin2'), getExpendituresHandler);
 app.get('/api/admin2/expenditures', authenticateToken, requireRole('admin1', 'admin2'), getExpendituresHandler);
 
-app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, async (req, res) => {
+app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { category, amount, description, date, branch } = req.body || {};
@@ -2358,7 +2358,7 @@ app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'ad
   }
 });
 
-app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, async (req, res) => {
+app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2399,7 +2399,7 @@ app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1'
   }
 });
 
-app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, async (req, res) => {
+app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2461,7 +2461,7 @@ app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 
   }
 });
 
-app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, async (req, res) => {
+app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { workerName, role, amount, monthPeriod, paid = true, branch } = req.body || {};
@@ -2503,7 +2503,7 @@ app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1',
   }
 });
 
-app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, async (req, res) => {
+app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2544,7 +2544,7 @@ app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('adm
   }
 });
 
-app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, async (req, res) => {
+app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2630,7 +2630,7 @@ app.get('/api/accountant/students/:id', authenticateToken, requireRole('accounta
   }
 });
 
-app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
+app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -3377,7 +3377,7 @@ app.get('/api/authenticator/accounts', authenticateToken, requireRole('authentic
   }
 });
 
-app.post('/api/authenticator/accounts', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
+app.post('/api/authenticator/accounts', authenticateToken, requireRole('authenticator', 'admin1'), requireDatabase, async (req, res) => {
   try {
     const { username, password, role, name, email, mobile, department, campus } = req.body || {};
     const normalizedUsername = String(username || '').trim().toLowerCase();
@@ -3473,7 +3473,7 @@ app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authe
   }
 });
 
-app.delete('/api/authenticator/accounts/:id', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
+app.delete('/api/authenticator/accounts/:id', authenticateToken, requireRole('authenticator', 'admin1'), requireDatabase, async (req, res) => {
   try {
     return res.status(405).json({ status: 'error', message: 'Deleting portal accounts is disabled. Update the existing fixed slots only.' });
   } catch (err) {
@@ -3485,7 +3485,7 @@ app.delete('/api/authenticator/accounts/:id', authenticateToken, requireRole('au
 /**
  * POST /api/authenticator/backup & POST /api/authenticator/restore-data
  */
-app.post('/api/authenticator/backup', authenticateToken, requireRole('authenticator', 'admin1'), async (req, res) => {
+app.post('/api/authenticator/backup', authenticateToken, requireRole('authenticator', 'admin1'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const backupResult = await generateAndUploadBackup(req.user?.username || 'authenticator');
@@ -3584,7 +3584,7 @@ app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, r
 // client handles the resulting `requiresSecurityPin` challenge centrally, so
 // the operator is prompted for the PIN without any change to the panel.
 app.post('/api/authenticator/wipe-database', authenticateToken, requireRole('authenticator'),
-  verifySecurityOtp, mongoRateLimiter, async (req, res) => {
+  verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { password } = req.body || {};
@@ -3812,7 +3812,7 @@ app.get('/api/system/last-changed', authenticateToken, enforceCampusIsolation, a
 // ============================================================
 
 // --- TEACHER MONTHLY SALARY ---
-app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
