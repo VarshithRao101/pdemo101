@@ -210,6 +210,47 @@ interface Teacher {
   salaryLedger?: Record<string, Record<string, MonthlySalaryRecord>>;
 }
 
+/**
+ * The academic years the salary ledger covers, earliest first.
+ *
+ * Must stay in step with ACADEMIC_YEARS in server/app.cjs, which rejects
+ * anything outside this list. The dropdown previously listed three years with
+ * a static "(Year Lock Enforced)" caption on two of them — the caption was
+ * decoration, showing the same text whether the year was open or not.
+ */
+export const ACADEMIC_YEARS = ['2026-2027', '2027-2028', '2028-2029', '2029-2030'];
+
+const LEDGER_MONTHS = [
+  'June', 'July', 'August', 'September', 'October', 'November',
+  'December', 'January', 'February', 'March', 'April', 'May'
+];
+
+/** How many of the twelve months are settled in one year of a teacher's ledger. */
+export function monthsPaidIn(teacher: Teacher | null, year: string): number {
+  const ledger = teacher?.salaryLedger?.[year] || {};
+  return LEDGER_MONTHS.filter(m => {
+    const rec: any = (ledger as any)[m];
+    return rec && (rec.status === 'Paid' || rec.paid === true);
+  }).length;
+}
+
+/**
+ * Whether a year is open, and what to show next to it.
+ *
+ * The first year is always open. Every later year needs all twelve months of
+ * the one before it. This mirrors the rule the server enforces on the
+ * salary-month route — the dropdown only reflects it, so a locked option being
+ * disabled is a convenience, not the control.
+ */
+export function academicYearState(teacher: Teacher | null, index: number): { locked: boolean; label: string } {
+  if (index === 0) return { locked: false, label: ' (June to May)' };
+
+  const prevYear = ACADEMIC_YEARS[index - 1];
+  const paid = monthsPaidIn(teacher, prevYear);
+  if (paid >= 12) return { locked: false, label: ' (unlocked)' };
+  return { locked: true, label: ` — locked, ${prevYear} at ${paid}/12` };
+}
+
 interface MonthlySalaryRecord {
   month?: string;
   status?: 'Paid' | 'Unpaid';
@@ -359,8 +400,25 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [editTeacher, setEditTeacher] = useState<Teacher | null>(null);
   const [facultyPage, setFacultyPage] = useState(1);
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState('2026-2027');
+  const [selectedAcademicYear, setSelectedAcademicYear] = useState(ACADEMIC_YEARS[0]);
   const [employeeTab, setEmployeeTab] = useState<'employees' | 'history'>('employees');
+
+  // Selecting a different teacher can leave the dropdown pointing at a year
+  // that is locked for THIS one — their ledgers are independent. Fall back to
+  // the newest year they have actually unlocked, so the grid never shows
+  // months against a year the server would refuse to write to.
+  useEffect(() => {
+    if (!editTeacher) return;
+    const idx = ACADEMIC_YEARS.indexOf(selectedAcademicYear);
+    if (idx >= 0 && !academicYearState(editTeacher, idx).locked) return;
+
+    let fallback = ACADEMIC_YEARS[0];
+    for (let i = 0; i < ACADEMIC_YEARS.length; i++) {
+      if (academicYearState(editTeacher, i).locked) break;
+      fallback = ACADEMIC_YEARS[i];
+    }
+    setSelectedAcademicYear(fallback);
+  }, [editTeacher, selectedAcademicYear]);
   const [workerPaymentsHistory, setWorkerPaymentsHistory] = useState<any[]>([]);
   const [pendingDeleteTeacherId, setPendingDeleteTeacherId] = useState<string | null>(null);
 
@@ -3320,10 +3378,38 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         onChange={(e) => setSelectedAcademicYear(e.target.value)}
                         style={{ ...styles.selectInput, width: 'auto', padding: '4px 10px', fontSize: '11px', fontWeight: 800 }}
                       >
-                        <option value="2026-2027">2026-2027 (June to May)</option>
-                        <option value="2027-2028">2027-2028 (Year Lock Enforced)</option>
-                        <option value="2028-2029">2028-2029 (Year Lock Enforced)</option>
+                        {ACADEMIC_YEARS.map((yr, i) => {
+                          const state = academicYearState(editTeacher, i);
+                          return (
+                            <option key={yr} value={yr} disabled={state.locked}>
+                              {yr}{state.label}
+                            </option>
+                          );
+                        })}
                       </select>
+
+                      {/* Progress toward unlocking the next year. Without it
+                          the next option is simply disabled with no indication
+                          of what would open it. */}
+                      {(() => {
+                        const paid = monthsPaidIn(editTeacher, selectedAcademicYear);
+                        const idx = ACADEMIC_YEARS.indexOf(selectedAcademicYear);
+                        const isLast = idx === ACADEMIC_YEARS.length - 1;
+                        const done = paid >= 12;
+                        return (
+                          <span style={{
+                            fontSize: '10px', fontWeight: 800, padding: '4px 8px', borderRadius: '6px',
+                            border: `1.5px solid ${done ? 'var(--good)' : 'var(--warning)'}`,
+                            backgroundColor: done ? '#ECFDF5' : '#FFF8DB',
+                            color: done ? 'var(--good)' : 'var(--warning)',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {paid}/12 paid
+                            {done && !isLast ? ' — next year unlocked' : ''}
+                            {done && isLast ? ' — ledger complete' : ''}
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     <div style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 700 }}>Click any month to view/update payment details</div>

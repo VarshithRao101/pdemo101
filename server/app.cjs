@@ -183,6 +183,15 @@ const SESSION_ACTIVITY_WRITE_INTERVAL_MS = 60 * 1000;
 // Valid campus branches
 const VALID_CAMPUSES = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
 
+// The academic years the salary ledger covers, earliest first. Each opens only
+// once the one before it has all twelve months paid — enforced on the
+// salary-month route, not merely shown in the dropdown.
+const ACADEMIC_YEARS = ['2026-2027', '2027-2028', '2028-2029', '2029-2030'];
+const LEDGER_MONTHS = [
+  'June', 'July', 'August', 'September', 'October', 'November',
+  'December', 'January', 'February', 'March', 'April', 'May'
+];
+
 function normalizeCampus(branch) {
   if (!branch || typeof branch !== 'string') return '';
   const b = branch.trim();
@@ -2114,6 +2123,18 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
     const startYear = parseInt(academicYear.split('-')[0], 10);
     if (isNaN(startYear)) {
       return res.status(400).json({ status: 'error', message: `Invalid academic year format [${academicYear}]. Example format: "2026-2027"` });
+    }
+
+    // The ledger covers 2026-2027 through 2029-2030 and nothing else. Without
+    // this the year was unbounded: a request naming 2050-2051 was accepted and
+    // created a ledger nobody would ever look at, and — because the lock only
+    // inspects the IMMEDIATELY preceding year — a far-future year could be
+    // opened without any of the years in between being paid at all.
+    if (!ACADEMIC_YEARS.includes(academicYear)) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Academic year [${academicYear}] is outside the supported range. Must be one of: ${ACADEMIC_YEARS.join(', ')}.`
+      });
     }
 
     // Base academic year is 2026-2027. If requested year is 2027-2028 or later, check prior year.
