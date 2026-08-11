@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { LIMITS } from '../constants/fieldLimits';
+import {
+  openPrintDocument, pdfHeader, pdfFooter, pdfSection, pdfTable, pdfTiles,
+  pdfDetailCard, money, dateStr, PDF_COLORS
+} from '../utils/pdfDocument';
 import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -1083,17 +1087,15 @@ export const AccountantDashboardView: React.FC = () => {
   };
 
   const handleDownloadStudentStatement = (student: Student) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      triggerToast('Popup blocked by browser. Please allow popups to download the statement.');
-      return;
-    }
+    // Fee components, dropping anything that is zero — a statement listing a
+    // dozen "Rs. 0" lines buries the ones that matter.
+    const customSlots: Array<[string, number]> = ((student as any).customFeeSlots || [])
+      .map((s: any) => [s.name, Number(s.amount || 0)] as [string, number]);
 
-    const generatedDate = new Date().toLocaleString('en-IN');
-    const customSlots: Array<[string, number]> = ((student as any).customFeeSlots || []).map((s: any) => [s.name, Number(s.amount || 0)]);
-    const allFeeRows: Array<[string, number]> = [
+    const feeRows: Array<[string, number]> = ([
       ['Tuition Fee', Number(student.tuitionFee || 0)],
       ['Hostel Fee', Number(student.hostelFee || 0)],
+      ['Transport Fee', Number(student.transportFee || 0)],
       ['Miscellaneous Fee', Number(student.miscellaneousFee || 0)],
       ['Previous Pending', Number(student.previousPending || 0)],
       ['Books Fee', Number((student as any).booksFee || 0)],
@@ -1103,105 +1105,117 @@ export const AccountantDashboardView: React.FC = () => {
       ['Lab Fee', Number((student as any).labFees || 0)],
       ['Bus Fee', Number((student as any).busFees || 0)],
       ...customSlots
-    ];
-    const feeRows = allFeeRows.filter(([, amount]) => amount > 0);
+    ] as Array<[string, number]>).filter(([, amount]) => amount > 0);
 
-    const tuitionWaiver = Number((student as any).tuitionWaiver || 0);
-    const hostelWaiver = Number((student as any).hostelWaiver || 0);
-    const transportWaiver = Number((student as any).transportWaiver || 0);
-    const miscWaiver = Number((student as any).miscWaiver || 0);
-    const overrideDeduction = Number((student as any).individualOverrideDeduction || (student as any).scholarshipDeduction || 0);
+    const waiverRows: Array<[string, number]> = ([
+      ['Tuition Waiver', Number((student as any).tuitionWaiver || 0)],
+      ['Hostel Waiver', Number((student as any).hostelWaiver || 0)],
+      ['Transport Waiver', Number((student as any).transportWaiver || 0)],
+      ['Miscellaneous Waiver', Number((student as any).miscWaiver || 0)]
+    ] as Array<[string, number]>).filter(([, amount]) => amount > 0);
 
-    const allWaiverRows: Array<[string, number]> = [
-      ['Tuition Waiver', tuitionWaiver],
-      ['Hostel Waiver', hostelWaiver],
-      ['Transport Waiver', transportWaiver],
-      ['Miscellaneous Waiver', miscWaiver]
-    ];
-    if (overrideDeduction > 0 && tuitionWaiver === 0 && hostelWaiver === 0 && miscWaiver === 0) {
-      allWaiverRows.push(['Special Scholarship Waiver', overrideDeduction]);
-    }
-    const waiverRows = allWaiverRows.filter(([, amount]) => amount > 0);
-    const totalWaiver = waiverRows.reduce((sum, [, amount]) => sum + amount, 0);
-
-    const totalBaseFee = feeRows.reduce((total, [, amount]) => total + amount, 0) || Number((student as any).totalBaseFee || (student as any).calculatedFee || student.tuitionFee || 0);
+    const totalBaseFee = feeRows.reduce((t, [, a]) => t + a, 0);
+    const totalWaiver = waiverRows.reduce((t, [, a]) => t + a, 0);
     const totalPaid = Number(student.totalPaid || 0);
     const remaining = Number(student.remainingBalance ?? Math.max(0, totalBaseFee - totalWaiver - totalPaid));
-    const receipts = [...(student.receipts || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const feeTableRows = feeRows.length > 0
-      ? feeRows.map(([label, amount]) => `<tr><td>${escapeHtml(label)}</td><td class="tr">Rs. ${amount.toLocaleString('en-IN')}</td></tr>`).join('')
-      : `<tr><td>Baseline Academic Course Fee</td><td class="tr">Rs. ${totalBaseFee.toLocaleString('en-IN')}</td></tr>`;
+    const receipts = [...(student.receipts || [])]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const waiverTableRows = waiverRows.map(([label, amount]) =>
-      `<tr class="wr" style="background:var(--good-wash);color:var(--good);font-weight:800;"><td>${escapeHtml(label)}</td><td class="tr" style="color:var(--good);">&minus; Rs. ${amount.toLocaleString('en-IN')}</td></tr>`
-    ).join('');
+    // Years already closed. Their receipts live in the archive, not in the
+    // live list, so a second-year student would otherwise appear to have paid
+    // nothing in their first year.
+    const history = student.yearHistory || [];
 
-    const receiptLogRows = receipts.length > 0
-      ? receipts.map(r => `
-          <tr>
-            <td><strong>${escapeHtml(r.receiptNumber)}</strong></td>
-            <td>${escapeHtml(r.date)}</td>
-            <td>${escapeHtml(r.category || 'Tuition')} &middot; ${escapeHtml(r.installment || 'Installment')}</td>
-            <td>${escapeHtml(r.mode || 'Cash')}</td>
-            <td class="tr" style="color:var(--good);font-weight:900;">Rs. ${Number(r.amount || 0).toLocaleString('en-IN')}</td>
-            <td class="tr" style="font-weight:800;color:var(--ink);">Rs. ${Number(r.balance || 0).toLocaleString('en-IN')}</td>
-          </tr>
-        `).join('')
-      : `<tr><td colspan="6" style="text-align:center;color:var(--ink-muted);padding:12px;">No payment receipts logged yet.</td></tr>`;
+    const body = [
+      pdfHeader({
+        logoSrc: collegeLogo,
+        title: 'Fee Statement',
+        subtitle: `Complete financial statement${student.studentYear ? ` · ${student.studentYear}` : ''}`,
+        campus: student.branch || loggedInCampus
+      }),
 
-    const css = `@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:#fff;font-family:'Inter','Segoe UI',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:11px}.page{max-width:182mm;margin:0 auto;padding:4px}.hdr{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,var(--ink),var(--ink));border-radius:14px;margin-bottom:16px;border-bottom:3px solid var(--accent)}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;object-fit:contain;background:#fff;border-radius:10px;padding:4px;border:1px solid var(--accent)}.iname{color:#fff;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}.iaddr{color:var(--ink-muted);font-size:9.5px;line-height:1.3;margin-top:2px}.slbl strong{display:block;color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;text-align:right}.slbl span{color:var(--warning);font-size:9.5px;font-weight:800;text-transform:uppercase}.scard{background:var(--surface-sunken);border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.fl{font-size:8.5px;font-weight:800;color:var(--ink-secondary);text-transform:uppercase;display:block}.fv{font-size:12.5px;font-weight:800;color:var(--ink);display:block;margin-top:3px}.stit{font-size:9.5px;font-weight:900;color:var(--ink);text-transform:uppercase;letter-spacing:.08em;margin:16px 0 8px;border-bottom:1.5px solid var(--line);padding-bottom:4px}.ftbl{width:100%;border-collapse:collapse;border:1.5px solid var(--line-strong);border-radius:10px;overflow:hidden;font-size:11px}.ftbl th{padding:8px 10px;background:var(--surface-sunken);color:var(--ink-secondary);font-size:8.5px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid var(--line-strong);font-weight:800}.ftbl td{padding:8px 10px;border-bottom:1px solid var(--line)}.ftbl tr:last-child td{border-bottom:none}.tr{text-align:right;font-weight:800}.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.sc{border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;background:#FFF}.sc.hi{border-color:var(--accent);background:var(--surface-sunken)}.sc .sl{font-size:8.5px;font-weight:800;color:var(--ink-secondary);text-transform:uppercase}.sc .sv{font-size:16px;font-weight:900;color:var(--ink);display:block;margin-top:4px}.sc.pd .sv{color:var(--good)}.sc.hi .sv{color:var(--warning)}.ftr{margin-top:24px;padding-top:12px;border-top:1.5px dashed var(--line-strong);display:flex;justify-content:space-between;align-items:flex-end;font-size:9px;color:var(--ink-secondary)}.sig{border-top:1.5px solid var(--ink);padding-top:4px;font-size:8px;font-weight:800;color:var(--ink);text-transform:uppercase;margin-top:24px;text-align:center;width:130px}.pbtn{display:flex;align-items:center;justify-content:center;margin:0 auto 16px;padding:10px 24px;background:linear-gradient(135deg,var(--ink),var(--ink));color:#fff;border:none;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer}@media print{.pbtn{display:none}}`;
+      pdfDetailCard([
+        ['Student Name', student.name],
+        ['Admission No.', student.admissionNumber || student.studentId],
+        ['Course / Section', `${student.course || 'N/A'} — ${student.section || 'N/A'}`],
+        ["Father's Name", student.fatherName],
+        ['Contact Mobile', student.mobile],
+        ['Academic Year', student.academicYear],
+        ['Year', student.studentYear],
+        ['Hostel Status', student.hostelStatus],
+        ['Roll Number', student.rollNumber]
+      ]),
 
-    const statementHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fee Statement - ${escapeHtml(student.admissionNumber || student.name)}</title><style>${css}</style></head><body><div class="page">
-      <button class="pbtn" onclick="window.print()">Print Complete Fee Statement PDF</button>
-      <div class="hdr">
-        <div class="brand">
-          <img class="logo" src="${collegeLogo}" alt="Logo"/>
-          <div>
-            <div class="iname">${RECEIPT_INSTITUTION_NAME}</div>
-            <div class="iaddr">Campus: ${escapeHtml(student.branch || loggedInCampus)} &middot; Complete Financial Statement</div>
-          </div>
-        </div>
-        <div class="slbl">
-          <strong>Fee Statement</strong>
-          <span>Adm No: ${escapeHtml(student.admissionNumber || (student as any).studentId || 'N/A')}</span>
-        </div>
-      </div>
-      <div class="scard">
-        <div><span class="fl">Student Name</span><span class="fv">${escapeHtml(student.name)}</span></div>
-        <div><span class="fl">Admission No.</span><span class="fv">${escapeHtml(student.admissionNumber || (student as any).studentId || 'N/A')}</span></div>
-        <div><span class="fl">Course / Section</span><span class="fv">${escapeHtml(student.course || 'N/A')} &mdash; ${escapeHtml(student.section || 'N/A')}</span></div>
-        <div><span class="fl">Father's Name</span><span class="fv">${escapeHtml(student.fatherName || 'N/A')}</span></div>
-        <div><span class="fl">Contact Mobile</span><span class="fv">${escapeHtml(student.mobile || 'N/A')}</span></div>
-        <div><span class="fl">Hostel Status</span><span class="fv">${escapeHtml(student.hostelStatus || 'Day Scholar')}</span></div>
-      </div>
-      <div class="stit">Baseline Fee Structure & Applied Waivers</div>
-      <table class="ftbl">
-        <thead><tr><th>Fee Component / Particulars</th><th class="tr">Amount</th></tr></thead>
-        <tbody>${feeTableRows}${waiverTableRows}</tbody>
-      </table>
-      <div class="sgrid">
-        <div class="sc"><span class="sl">Gross Base Fee</span><span class="sv">Rs. ${totalBaseFee.toLocaleString('en-IN')}</span></div>
-        <div class="sc" style="border-color:var(--good); background:var(--good-wash);"><span class="sl" style="color:var(--good);">Waivers Applied</span><span class="sv" style="color:var(--good);">- Rs. ${totalWaiver.toLocaleString('en-IN')}</span></div>
-        <div class="sc"><span class="sl" style="color:var(--good)">Total Paid</span><span class="sv" style="color:var(--good)">Rs. ${totalPaid.toLocaleString('en-IN')}</span></div>
-        <div class="sc hi"><span class="sl" style="color:var(--warning)">Outstanding Balance</span><span class="sv" style="color:var(--warning)">Rs. ${remaining.toLocaleString('en-IN')}</span></div>
-      </div>
-      <div class="stit">Complete Receipt & Payment Transaction History</div>
-      <table class="ftbl">
-        <thead><tr><th>Receipt No.</th><th>Date</th><th>Category & Installment</th><th>Payment Mode</th><th class="tr">Amount Paid</th><th class="tr">Balance After</th></tr></thead>
-        <tbody>${receiptLogRows}</tbody>
-      </table>
-      <div class="ftr">
-        <div><div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Computer-generated official statement &middot; Verified via Inspire College ERP System</div></div>
-        <div class="sig">Authorized Signatory</div>
-      </div>
-    </div>
-    <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>
-    </body></html>`;
-    printWindow.document.write(statementHtml);
-    printWindow.document.close();
-    printWindow.focus();
-    triggerToast('Complete fee statement opened for printing/download.');
+      pdfSection('Fee Structure and Applied Waivers'),
+      pdfTable({
+        headers: ['Particulars', 'Amount'],
+        numeric: [1],
+        rows: [
+          ...feeRows.map(([label, amount]) => [escapeHtml(label), money(amount)]),
+          ...waiverRows.map(([label, amount]) => [
+            `<span style="color:${PDF_COLORS.good};font-weight:700">${escapeHtml(label)}</span>`,
+            `<span style="color:${PDF_COLORS.good}">- ${money(amount)}</span>`
+          ])
+        ],
+        footer: ['Net Payable', money(Math.max(0, totalBaseFee - totalWaiver))],
+        emptyMessage: 'No fee components recorded.'
+      }),
+
+      pdfTiles([
+        { label: 'Gross Fee', value: money(totalBaseFee) },
+        { label: 'Waivers', value: `- ${money(totalWaiver)}`, tone: 'good' },
+        { label: 'Total Paid', value: money(totalPaid), tone: 'good' },
+        {
+          label: remaining > 0 ? 'Outstanding' : 'Fully Cleared',
+          value: money(remaining),
+          tone: remaining > 0 ? 'due' : 'good'
+        }
+      ]),
+
+      pdfSection('Receipt and Payment History'),
+      pdfTable({
+        headers: ['Receipt No.', 'Date', 'Category / Installment', 'Mode', 'Amount Paid', 'Balance After'],
+        numeric: [4, 5],
+        rows: receipts.map(r => [
+          `<strong>${escapeHtml(r.receiptNumber)}</strong>`,
+          dateStr(r.date),
+          `${escapeHtml(r.category || 'Tuition')} &middot; ${escapeHtml(r.installment || 'Installment')}`,
+          escapeHtml(r.mode || 'Cash'),
+          `<span style="color:${PDF_COLORS.good};font-weight:800">${money(r.amount)}</span>`,
+          money(r.balance)
+        ]),
+        footer: ['', '', '', 'Total Paid', money(totalPaid), ''],
+        emptyMessage: 'No payments recorded for this academic year.'
+      }),
+
+      history.length ? pdfSection('Completed Academic Years') : '',
+      history.length ? pdfTable({
+        headers: ['Year', 'Academic Year', 'Payable', 'Paid', 'Closed On', 'Closed By'],
+        numeric: [2, 3],
+        rows: history.map(h => [
+          escapeHtml(h.studentYear || '—'),
+          escapeHtml(h.academicYear || '—'),
+          money(h.totalPayable),
+          `<span style="color:${PDF_COLORS.good};font-weight:800">${money(h.totalPaid)}</span>`,
+          dateStr(h.closedAt),
+          escapeHtml(h.closedBy || '—')
+        ])
+      }) : '',
+
+      pdfFooter({
+        note: 'Computer-generated official statement, verified against the Inspire College ERP records.',
+        signatory: 'Authorised Signatory'
+      })
+    ].join('');
+
+    const opened = openPrintDocument({
+      title: `Fee Statement - ${student.admissionNumber || student.name}`,
+      body,
+      buttonLabel: 'Print / Save Fee Statement as PDF',
+      onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the statement.', 'error')
+    });
+    if (opened) triggerToast('Fee statement opened for printing.');
   };
 
   // Stats calculations
