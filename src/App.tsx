@@ -126,14 +126,29 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       });
   }, [checkSession]);
 
-  // Wire global logout
+  // Wire the global session terminator.
+  //
+  // This is the flowStage-aware version and it deliberately overrides the one
+  // NavigationContext installs, because only this component can move the app
+  // between stages.
+  //
+  // It lands on the LOGIN GATE, not the public portfolio. Sending a working
+  // user to the marketing site because one request failed is what made the
+  // app feel like it randomly threw people out; an ended session should put
+  // them where they can get back in, with a reason on screen.
   useEffect(() => {
-    (window as any).logoutUser = () => {
+    const end = (reason?: string) => {
       logout();
-      window.location.hash = '#/portfolio';
-      setFlowStage('portfolio');
+      try {
+        if (reason) sessionStorage.setItem('session_end_reason', reason);
+      } catch { /* ignore */ }
+      window.location.hash = '#/v1-portal-gate-x89f2a7b';
+      setFlowStage('pin');
     };
+    (window as any).endSession = end;
+    (window as any).logoutUser = () => end();
     return () => {
+      delete (window as any).endSession;
       delete (window as any).logoutUser;
     };
   }, [logout]);
