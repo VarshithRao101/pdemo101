@@ -27,6 +27,98 @@ function getFolderId() {
 }
 
 /**
+ * Resolves (creating if absent) a folder path beneath the configured root and
+ * returns the id of the deepest folder.
+ *
+ *   ensureFolderPath(['Backup', 'Student', 'Beemaram C1'])
+ *
+ * Drive has no real paths — only parent/child links, and it happily allows two
+ * folders with the same name under one parent. Each level is therefore looked
+ * up by exact name within its parent before being created, so repeated calls
+ * converge on one tree instead of growing duplicates. Resolved ids are cached
+ * for the process lifetime; the tree is small and effectively static.
+ */
+const folderIdCache = new Map();
+
+async function ensureFolderPath(segments) {
+  const drive = await getGoogleDriveClient();
+  let parentId = getFolderId();
+  let cacheKey = parentId;
+
+  for (const rawName of segments) {
+    const name = String(rawName).trim();
+    if (!name) continue;
+    cacheKey += '/' + name;
+
+    if (folderIdCache.has(cacheKey)) {
+      parentId = folderIdCache.get(cacheKey);
+      continue;
+    }
+
+    // Escape single quotes: campus names are operator-supplied and a stray
+    // quote would otherwise break the query syntax.
+    const safeName = name.replace(/'/g, "\\'");
+    const found = await drive.files.list({
+      q: `name = '${safeName}' and '${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+      fields: 'files(id, name)',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+      pageSize: 1
+    });
+
+    let id = found.data.files && found.data.files[0] && found.data.files[0].id;
+    if (!id) {
+      const created = await drive.files.create({
+        requestBody: { name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] },
+        fields: 'id',
+        supportsAllDrives: true
+      });
+      id = created.data.id;
+      console.log(`[Drive]: Created folder ${cacheKey.split('/').slice(1).join('/')}`);
+    }
+
+    folderIdCache.set(cacheKey, id);
+    parentId = id;
+  }
+
+  return parentId;
+}
+
+/**
+ * Uploads a file into a specific folder rather than the configured root.
+ */
+async function uploadFileToFolder(folderId, fileName, contents) {
+  const drive = await getGoogleDriveClient();
+  const buffer = Buffer.isBuffer(contents) ? contents : Buffer.from(contents, 'utf-8');
+  const bufferStream = new stream.PassThrough();
+  bufferStream.end(buffer);
+
+  const response = await drive.files.create({
+    requestBody: { name: fileName, parents: [folderId], mimeType: 'application/octet-stream' },
+    media: { mimeType: 'application/octet-stream', body: bufferStream },
+    supportsAllDrives: true,
+    fields: 'id, name, createdTime, size, parents'
+  });
+  return response.data;
+}
+
+/**
+ * Lists the files directly inside one folder.
+ */
+async function listFilesInFolder(folderId) {
+  const drive = await getGoogleDriveClient();
+  const response = await drive.files.list({
+    q: `'${folderId}' in parents and trashed = false and mimeType != 'application/vnd.google-apps.folder'`,
+    fields: 'files(id, name, createdTime, size)',
+    orderBy: 'createdTime desc',
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+    pageSize: 100
+  });
+  return response.data.files || [];
+}
+
+/**
  * Uploads an encrypted backup file to Google Drive
  */
 async function uploadBackupFile(fileName, fileBufferOrString) {
@@ -124,6 +216,9 @@ async function cleanupOldBackups(retentionHours = 24) {
 }
 
 module.exports = {
+  ensureFolderPath,
+  uploadFileToFolder,
+  listFilesInFolder,
   uploadBackupFile,
   listBackupFiles,
   downloadBackupFile,

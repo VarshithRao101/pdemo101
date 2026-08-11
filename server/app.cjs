@@ -35,6 +35,7 @@ const {
   getBackupLogs,
   getAllAvailableBackupFiles
 } = require('./services/backupService.cjs');
+const campusBackup = require('./services/campusBackupService.cjs');
 
 const app = express();
 
@@ -3657,6 +3658,186 @@ app.get(['/api/admin1/fee-settings', '/api/accountant/fee-settings'], authentica
     return res.status(500).json({ status: 'error', message: 'Failed to load fee settings.' });
   }
 });
+
+/**
+ * --- CAMPUS-SCOPED BACKUP & RESTORE -------------------------------------
+ *
+ * Authorisation chain, in order, on every route below:
+ *   authenticated -> role -> campus -> security PIN -> validate -> act -> verify
+ *
+ * Campus is resolved from the signed-in account, never from the request body.
+ * A campus-scoped account may only ever name its own campus; admin1 and the
+ * authenticator may name any, but must name one explicitly.
+ */
+
+// Resolves the campus a caller is allowed to act on, or sends the refusal.
+// Returns null when it has already responded.
+function resolveBackupCampus(req, res) {
+  const requested = String((req.body && req.body.campus) || req.query.campus || '').trim();
+  const own = String(req.user.campus || '');
+  const isOrgWide = own.toLowerCase() === 'all';
+
+  if (!isOrgWide) {
+    // Never trust a campus from the browser for a scoped account: pin it to
+    // the account, and refuse outright if it asked for a different one rather
+    // than silently substituting.
+    if (requested && normalizeCampus(requested) !== normalizeCampus(own)) {
+      res.status(403).json({ status: 'error', message: `Your account may only back up or restore ${own}.` });
+      return null;
+    }
+    return own;
+  }
+
+  if (!requested) {
+    res.status(400).json({ status: 'error', message: 'Specify which campus to act on.' });
+    return null;
+  }
+  const norm = normalizeCampus(requested);
+  if (!isValidCampus(norm)) {
+    res.status(400).json({ status: 'error', message: `Unknown campus [${requested}].` });
+    return null;
+  }
+  return norm;
+}
+
+// GET /api/backup/tree — what exists in Drive, scoped to the caller's campus.
+app.get('/api/backup/tree', authenticateToken, requireRole('authenticator', 'admin1', 'admin2'), async (req, res) => {
+  try {
+    const own = String(req.user.campus || '');
+    const filter = own.toLowerCase() === 'all' ? null : own;
+    const tree = await campusBackup.listBackupTree(filter);
+    return res.json({ status: 'success', data: { tree, scope: filter || 'All campuses' } });
+  } catch (err) {
+    console.error('[Backup]: Tree listing failed:', err.message);
+    return res.status(502).json({ status: 'error', message: 'Could not read the backup folder from Google Drive.' });
+  }
+});
+
+// POST /api/backup/run — back up one type for one campus.
+app.post('/api/backup/run', authenticateToken, requireRole('authenticator', 'admin1', 'admin2'),
+  verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+  try {
+    const campus = resolveBackupCampus(req, res);
+    if (!campus) return;
+
+    const type = String((req.body && req.body.backupType) || '').trim().toLowerCase();
+    if (!campusBackup.TYPES[type]) {
+      return res.status(400).json({
+        status: 'error',
+        message: `backupType must be one of: ${Object.keys(campusBackup.TYPES).join(', ')}.`
+      });
+    }
+
+    const result = await campusBackup.backupCampusType(type, campus, req.user.username);
+    console.log(`[Backup]: ${type}/${campus} by ${req.user.username} -> ${result.fileName} (${result.recordCount} records)`);
+    return res.json({ status: 'success', data: result });
+  } catch (err) {
+    console.error('[Backup]: Run failed:', err.message);
+    return res.status(err.status || 500).json({
+      status: 'error',
+      message: err.status === 502
+        ? 'Google Drive rejected the upload. Nothing was backed up.'
+        : (err.status === 400 ? err.message : 'Backup failed. Nothing was written to Google Drive.')
+    });
+  }
+});
+
+// POST /api/backup/run-all — every type, every campus the caller may touch.
+app.post('/api/backup/run-all', authenticateToken, requireRole('authenticator', 'admin1'),
+  verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+  try {
+    const result = await campusBackup.backupAllCampuses(req.user.username);
+    // A partial run is a failure, not a success with a shorter list.
+    return res.status(result.success ? 200 : 500).json({
+      status: result.success ? 'success' : 'error',
+      message: result.success
+        ? `Backed up ${result.created.length} campus/type combinations.`
+        : `${result.failures.length} backup(s) failed. See failures.`,
+      data: result
+    });
+  } catch (err) {
+    console.error('[Backup]: Full run failed:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Backup run failed.' });
+  }
+});
+
+// POST /api/backup/restore/preview — validate and report, writing nothing.
+app.post('/api/backup/restore/preview', authenticateToken, requireRole('authenticator', 'admin1'),
+  mongoRateLimiter, requireDatabase, async (req, res) => {
+  try {
+    const campus = resolveBackupCampus(req, res);
+    if (!campus) return;
+    const { fileId, backupType } = req.body || {};
+    if (!fileId) return res.status(400).json({ status: 'error', message: 'A Google Drive fileId is required.' });
+
+    const result = await campusBackup.restoreCampusType(fileId, {
+      actor: req.user.username, expectedCampus: campus, expectedType: backupType, dryRun: true
+    });
+    return res.status(result.success ? 200 : 400).json({
+      status: result.success ? 'success' : 'error',
+      message: result.success ? 'Backup is valid. Review the plan before confirming.' : 'This backup was rejected.',
+      data: result
+    });
+  } catch (err) {
+    console.error('[Restore]: Preview failed:', err.message);
+    return res.status(err.status || 500).json({ status: 'error', message: err.status === 400 ? err.message : 'Could not read that backup.' });
+  }
+});
+
+// POST /api/backup/restore — apply it. Password AND security PIN required.
+app.post('/api/backup/restore', authenticateToken, requireRole('authenticator', 'admin1'),
+  verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+  try {
+    const campus = resolveBackupCampus(req, res);
+    if (!campus) return;
+    const { fileId, backupType, password, deleteMissing } = req.body || {};
+
+    if (!fileId) return res.status(400).json({ status: 'error', message: 'A Google Drive fileId is required.' });
+
+    // Restore overwrites live records, so it takes the account password on top
+    // of the security PIN — two different secrets, both verified server-side.
+    if (!password || typeof password !== 'string' || !password.trim()) {
+      return res.status(401).json({ status: 'error', message: 'Your account password is required to restore a backup.' });
+    }
+    const actingUser = await User.findById(req.user.id).select('password');
+    if (!actingUser || !safeBcryptCompare(password, actingUser.password)) {
+      console.warn(`[Restore]: Wrong password from [${req.user.username}] for ${campus}`);
+      return res.status(401).json({ status: 'error', message: 'Incorrect account password.' });
+    }
+
+    const result = await campusBackup.restoreCampusType(fileId, {
+      actor: req.user.username, expectedCampus: campus, expectedType: backupType,
+      dryRun: false, deleteMissing: Boolean(deleteMissing)
+    });
+
+    if (!result.success) {
+      return res.status(400).json({ status: 'error', message: 'This backup was rejected. Nothing was changed.', data: result });
+    }
+
+    // The read-back check must show nothing landed outside this campus.
+    if (result.applied && result.applied.recordsLeakedToOtherCampuses > 0) {
+      console.error(`[Restore]: CAMPUS LEAK DETECTED restoring ${campus}`);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Restore completed but records were detected outside the target campus. Investigate immediately.',
+        data: result
+      });
+    }
+
+    return res.json({
+      status: 'success',
+      message: `Restored ${result.applied.inserted} new and ${result.applied.updated} existing ${result.applied.backupType} record(s) for ${campus}.`,
+      data: result
+    });
+  } catch (err) {
+    console.error('[Restore]: Failed:', err.message);
+    return res.status(err.status || 500).json({
+      status: 'error',
+      message: err.status === 400 ? err.message : 'Restore failed. No data was changed.'
+    });
+  }
+});
+
 
 // --- STATIC FILE SERVING FOR STANDALONE / HOSTINGER DEPLOYMENT ---
 const distPath = path.join(__dirname, '../dist');
