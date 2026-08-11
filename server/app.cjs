@@ -68,58 +68,29 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,ht
 const DEV_ORIGIN_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 const allowDevOrigins = process.env.NODE_ENV !== 'production';
 
-/**
- * Decides whether an Origin may read this server's responses.
- *
- * `req` is needed so the app's OWN address is always allowed, whatever it
- * happens to be. Hostinger moved the site onto its temporary domain
- * (*.hostingersite.com) while the allowlist named only inspirehnk.org, and the
- * backend began refusing requests from the very frontend it was serving —
- * every API call from the live site was rejected.
- *
- * Comparing the Origin against the request's own Host makes same-origin
- * traffic self-authorising. If a browser is asking this server about a page
- * this server served, that is by definition not a cross-origin request, and it
- * stays correct through any domain change or migration without an env edit.
- */
-function isOriginAllowed(req, origin) {
-  const normOrigin = String(origin).toLowerCase().trim();
-
-  if (allowedOrigins.includes(normOrigin)) return true;
-  if (allowDevOrigins && DEV_ORIGIN_PATTERN.test(normOrigin)) return true;
-
-  try {
-    const host = String((req.headers && req.headers.host) || '').toLowerCase();
-    if (host && new URL(normOrigin).host === host) return true;
-  } catch { /* malformed Origin header — fall through to refusal */ }
-
-  return false;
-}
-
-app.use(cors((req, done) => {
-  const origin = req.headers.origin;
-
-  // Same-origin and non-browser callers (curl, cron, server-to-server) send no
-  // Origin header; there is no cross-origin risk to gate in that case.
-  let allow = true;
-  if (origin) {
-    allow = isOriginAllowed(req, origin);
-    if (!allow) {
-      // Refuse by withholding Access-Control-Allow-Origin rather than by
-      // erroring the response. The browser still blocks the cross-origin read —
-      // that is what actually enforces the policy — but a stray or
-      // misconfigured Origin header can no longer 403 the request itself and
-      // take stylesheets and scripts down with it.
-      console.warn(`[CORS]: Refused cross-origin request from ${origin} (host: ${req.headers.host})`);
+app.use(cors({
+  origin: (origin, callback) => {
+    // Same-origin and non-browser callers (curl, cron, server-to-server) send
+    // no Origin header; there is no cross-origin risk to gate in that case.
+    if (!origin) return callback(null, true);
+    const normOrigin = origin.toLowerCase().trim();
+    if (allowedOrigins.includes(normOrigin) || (allowDevOrigins && DEV_ORIGIN_PATTERN.test(normOrigin))) {
+      return callback(null, true);
     }
-  }
 
-  done(null, {
-    origin: allow,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-security-pin']
-  });
+    // Refuse by withholding Access-Control-Allow-Origin rather than by
+    // erroring the response. The browser still blocks the cross-origin read —
+    // that is what actually enforces the policy — but a stray or
+    // misconfigured Origin header can no longer 403 the request itself.
+    // Erroring here meant a single wrong entry in ALLOWED_ORIGINS took down
+    // stylesheets and scripts along with the API, turning a config typo into
+    // a blank page.
+    console.warn(`[CORS]: Refused cross-origin request from ${normOrigin}`);
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-security-pin']
 }));
 
 // Cap the request body. Without a limit a single request can pin memory and
