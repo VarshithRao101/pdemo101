@@ -165,6 +165,20 @@ if (!JWT_SECRET || JWT_SECRET.length < 32) {
   throw new Error('JWT_SECRET is not configured (or is shorter than 32 characters). Refusing to start.');
 }
 
+// How long a session may sit idle before the server ends it. Three hours by
+// default, which suits a working day at a front desk; set
+// SESSION_IDLE_TIMEOUT_MINUTES to change it. Clamped to a sane range so a
+// typo cannot disable the timeout entirely or lock everyone out every minute.
+const SESSION_IDLE_TIMEOUT_MS = (() => {
+  const minutes = Number(process.env.SESSION_IDLE_TIMEOUT_MINUTES) || 180;
+  return Math.min(Math.max(minutes, 5), 24 * 60) * 60 * 1000;
+})();
+
+// Activity is recorded at most this often. Writing on every request would add
+// a database write to every read in the app to keep a value that only needs
+// to be right to within a minute.
+const SESSION_ACTIVITY_WRITE_INTERVAL_MS = 60 * 1000;
+
 // Valid campus branches
 const VALID_CAMPUSES = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
 
@@ -556,11 +570,11 @@ async function authenticateToken(req, res, next) {
   let dbUser = null;
   try {
     if (mongoose.Types.ObjectId.isValid(decoded.id)) {
-      dbUser = await User.findById(decoded.id).select('activeSessionId status username role campus name');
+      dbUser = await User.findById(decoded.id).select('activeSessionId status username role campus name lastSeenAt');
     }
     if (!dbUser && decoded.username) {
       dbUser = await User.findOne({ username: resolveUsername(decoded.username) })
-        .select('activeSessionId status username role campus name');
+        .select('activeSessionId status username role campus name lastSeenAt');
     }
   } catch (dbErr) {
     console.error('[Auth]: Session lookup failed:', dbErr.message);
@@ -582,6 +596,39 @@ async function authenticateToken(req, res, next) {
       status: 'error',
       message: 'Your session is no longer active. Please sign in again.'
     });
+  }
+
+  // Idle expiry, enforced here rather than only in the browser.
+  //
+  // The client runs its own inactivity timer, but that is a convenience: it
+  // binds only a cooperating browser tab, resets when the page reloads, and
+  // does nothing at all to anyone holding the token outside the app. Since
+  // refresh tokens rotate on use, a session with no server-side idle rule
+  // could be kept alive indefinitely. The stored lastSeenAt is authoritative.
+  const now = Date.now();
+  const seenAt = dbUser.lastSeenAt ? new Date(dbUser.lastSeenAt).getTime() : null;
+
+  if (seenAt && now - seenAt > SESSION_IDLE_TIMEOUT_MS) {
+    // End it properly: clear the session so the refresh token cannot revive
+    // it, rather than merely refusing this one request.
+    await User.updateOne({ _id: dbUser._id }, { $set: { activeSessionId: null } }).catch(() => {});
+    await RefreshToken.updateMany(
+      { userId: dbUser._id, revoked: false }, { $set: { revoked: true } }
+    ).catch(() => {});
+
+    console.log(`[Auth]: Idle session expired for [${dbUser.username}] after ${Math.round((now - seenAt) / 60000)} minutes`);
+    return res.status(401).json({
+      status: 'error',
+      message: 'Your session expired due to inactivity. Please log in again.'
+    });
+  }
+
+  // Record activity, but not on every single request: a write per request
+  // would multiply database load by the entire read traffic of the app for a
+  // value that only needs to be accurate to within a minute.
+  if (!seenAt || now - seenAt > SESSION_ACTIVITY_WRITE_INTERVAL_MS) {
+    User.updateOne({ _id: dbUser._id }, { $set: { lastSeenAt: new Date(now) } })
+      .catch(err => console.error('[Auth]: Could not record activity:', err.message));
   }
 
   // Authorisation decisions must read from the stored record, not from claims
@@ -851,14 +898,26 @@ app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/veri
  * fresh activeSessionId, but force-login is the explicit "kick my other
  * session" path the UI offers after a single-session rejection.
  */
-async function issueSession(user, res) {
+async function issueSession(user, res, req = null) {
   const newSessionId = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
 
   // Persist the session before handing out a token. If this write fails the
   // token would reference a session the database does not know about, and
   // authenticateToken would reject every subsequent request — so a failure
   // here has to surface as a failed login, not a half-created session.
+  //
+  // lastSeenAt must be stamped here. The idle check treats a session with no
+  // recorded activity as never-seen rather than as expired, but leaving it
+  // null would mean a brand new session had no clock running against it.
+  const now = new Date();
   user.activeSessionId = newSessionId;
+  user.sessionStartedAt = now;
+  user.lastSeenAt = now;
+  if (req) {
+    const fwd = req.headers['x-forwarded-for'];
+    user.sessionIp = String(fwd || req.socket?.remoteAddress || '').split(',')[0].trim().slice(0, 64);
+    user.sessionUserAgent = String(req.headers['user-agent'] || '').slice(0, 250);
+  }
   await user.save();
 
   const token = jwt.sign(
@@ -926,7 +985,7 @@ async function handleLogin(req, res, label) {
     }
 
     console.log(`[Auth]: ${label} succeeded for [${user.username}] (${user.role})`);
-    return await issueSession(user, res);
+    return await issueSession(user, res, req);
   } catch (err) {
     if (err instanceof AuthUnavailableError) {
       console.error(`[Auth]: ${label} unavailable:`, err.message);
@@ -994,6 +1053,25 @@ app.post(['/api/auth/refresh', '/auth/refresh', '/api/refresh'], mongoRateLimite
     if (!user.activeSessionId || (record.sessionId && record.sessionId !== user.activeSessionId)) {
       return res.status(401).json({ status: 'error', message: 'Your session is no longer active. Please sign in again.' });
     }
+
+    // A refresh must not outlive the idle window either. Without this the one
+    // request that renews the token would be the one request that never checks
+    // whether the session should still exist, and a client refreshing on a
+    // timer would keep an abandoned session alive forever.
+    const idleFor = user.lastSeenAt ? Date.now() - new Date(user.lastSeenAt).getTime() : 0;
+    if (idleFor > SESSION_IDLE_TIMEOUT_MS) {
+      await User.updateOne({ _id: user._id }, { $set: { activeSessionId: null } });
+      await RefreshToken.updateMany({ userId: user._id, revoked: false }, { $set: { revoked: true } });
+      console.log(`[Auth]: Refusing refresh for idle session [${user.username}] (${Math.round(idleFor / 60000)} minutes)`);
+      return res.status(401).json({
+        status: 'error',
+        message: 'Your session expired due to inactivity. Please log in again.'
+      });
+    }
+
+    // Refreshing IS activity.
+    user.lastSeenAt = new Date();
+    await user.save();
 
     const newAccessToken = jwt.sign(
       {
@@ -2604,24 +2682,74 @@ app.get('/api/authenticator/stats', authenticateToken, requireRole('authenticato
   try {
     // A failure here used to be swallowed, leaving the dashboard showing zeros
     // that were indistinguishable from a genuinely empty system.
-    const [totalStudents, totalTeachers, totalStaff] = await Promise.all([
+    // Every number below used to be a literal: activeDevices, activeSessions,
+    // activeSessionCount, systemsActive and portalSlotTotal were hard-coded to
+    // 4/[]/4/4/4 regardless of reality, and lastBackupAt was `new Date()` — so
+    // the panel always reported that a backup had just run, even if backups
+    // had been failing for weeks. An operator checking "when did we last back
+    // up?" was reading a clock, not a fact.
+    const [totalStudents, totalTeachers, totalStaff, sessionUsers] = await Promise.all([
       Student.countDocuments(),
       Teacher.countDocuments(),
-      User.countDocuments()
+      User.countDocuments(),
+      User.find({ activeSessionId: { $ne: null } })
+        .select('username role campus name activeSessionId sessionStartedAt lastSeenAt sessionIp sessionUserAgent')
+        .lean()
     ]);
+
+    // A session whose lastSeenAt has aged past the idle window is already dead
+    // — authenticateToken will end it on its next request. Showing it as live
+    // would overstate how many people are signed in.
+    const cutoff = Date.now() - SESSION_IDLE_TIMEOUT_MS;
+    const live = sessionUsers.filter(u => !u.lastSeenAt || new Date(u.lastSeenAt).getTime() > cutoff);
+
+    const activeSessions = live.map(u => ({
+      username: u.username,
+      role: u.role,
+      campus: u.campus || '',
+      name: u.name || '',
+      sessionGuid: String(u.activeSessionId || '').slice(0, 8),
+      loggedInAt: u.sessionStartedAt || null,
+      lastSeenAt: u.lastSeenAt || null,
+      ipAddress: u.sessionIp || '',
+      userAgent: u.sessionUserAgent || ''
+    }));
+
+    // The real date of the newest backup, read from Drive. Null when there is
+    // none or Drive cannot be reached — the UI must say "unknown", never
+    // invent a reassuring timestamp.
+    let lastBackupAt = null;
+    try {
+      const tree = await campusBackup.listBackupTree(null);
+      let newest = 0;
+      for (const byCampus of Object.values(tree)) {
+        for (const files of Object.values(byCampus)) {
+          if (!Array.isArray(files)) continue;
+          for (const f of files) {
+            const t = new Date(f.createdTime).getTime();
+            if (t > newest) newest = t;
+          }
+        }
+      }
+      if (newest) lastBackupAt = new Date(newest).toISOString();
+    } catch (err) {
+      console.error('[Stats]: Could not read the backup tree:', err.message);
+    }
+
     return res.json({
       status: 'success',
       data: {
         totalStudents,
         totalTeachers,
         totalStaff,
-        activeDevices: 4,
-        activeSessions: [],
-        activeSessionCount: 4,
-        systemsActive: 4,
-        systemsInactive: 0,
-        portalSlotTotal: 4,
-        lastBackupAt: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+        activeDevices: activeSessions.length,
+        activeSessions,
+        activeSessionCount: activeSessions.length,
+        systemsActive: activeSessions.length,
+        systemsInactive: Math.max(0, totalStaff - activeSessions.length),
+        portalSlotTotal: totalStaff,
+        sessionIdleTimeoutMinutes: Math.round(SESSION_IDLE_TIMEOUT_MS / 60000),
+        lastBackupAt
       }
     });
   } catch (err) {

@@ -40,8 +40,11 @@ export const AuthenticatorDashboardView: React.FC = () => {
     activeSessionCount: 0,
     systemsActive: 4,
     systemsInactive: 0,
-    portalSlotTotal: 4,
-    lastBackupAt: localStorage.getItem('last_backup_timestamp') || '2026-07-28 09:00 AM'
+    portalSlotTotal: 0,
+    // No invented default. This used to fall back to a literal date, so before
+    // the first load the panel confidently displayed a backup time that had
+    // never happened.
+    lastBackupAt: null
   });
 
   // Sync integrity & database management state
@@ -149,12 +152,12 @@ export const AuthenticatorDashboardView: React.FC = () => {
         throw new Error(`${written} of ${types.length * campuses.length} backups written. Failed: ${failures.slice(0, 3).join('; ')}`);
       }
 
-      const nowStr = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
-      localStorage.setItem('last_backup_timestamp', nowStr);
-      setStats(prev => ({ ...prev, lastBackupAt: nowStr }));
-
       triggerToast(`Backup complete — ${written} files written to Backup/<Type>/<Campus>/ on Google Drive.`);
-      await loadAvailableBackups();
+
+      // Re-read from the server rather than stamping the local clock. The
+      // displayed time should be the timestamp Drive actually recorded on the
+      // files, so what the panel shows is what a restore would find.
+      await Promise.all([loadAvailableBackups(), loadData()]);
     } catch (err: any) {
       clearInterval(interval);
       triggerToast(err.message || 'Google Drive Backup failed. Please verify passcode.');
@@ -341,10 +344,11 @@ export const AuthenticatorDashboardView: React.FC = () => {
       ]);
       setKeysData(keysRes);
       setAccounts(accountsRes);
-      setStats({
-        ...statsRes,
-        lastBackupAt: localStorage.getItem('last_backup_timestamp') || statsRes.lastBackupAt || '2026-07-28 09:00 AM'
-      });
+      // The server reads the real newest file out of Google Drive. A value
+      // cached in this browser's localStorage used to take priority over it,
+      // so one machine that had once run a backup would keep showing that
+      // time forever — including after backups started failing.
+      setStats(statsRes);
       setSyncLogs(syncRes);
     } catch (err: any) {
       triggerToast(err.message || 'Failed to sync authenticator data.');
@@ -543,9 +547,13 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <GlassCard hoverable={false} style={{ ...styles.metricCard, borderTop: '5px solid #7C3AED' }}>
                 <span style={styles.metricLabel}>Last System Backup</span>
                 <strong style={{ ...styles.metricValue, color: '#6D28D9', fontSize: '15px', marginTop: '6px' }}>
-                  {stats.lastBackupAt}
+                  {stats.lastBackupAt
+                    ? new Date(stats.lastBackupAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+                    : 'No backup found'}
                 </strong>
-                <span style={styles.metricSub}>Database archive timestamp</span>
+                <span style={styles.metricSub}>
+                  {stats.lastBackupAt ? 'Newest file in Google Drive' : 'Nothing in Google Drive to restore from'}
+                </span>
               </GlassCard>
             </div>
 
