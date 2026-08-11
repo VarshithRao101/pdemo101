@@ -204,8 +204,13 @@ export const authenticatorService = {
   // one data type at a time.
 
   // Wipe entire database with Security Passcode
-  async wipeEntireDatabase(securityPin: string): Promise<string> {
-    const res = await apiClient.post<{ status: string; message: string }>('/authenticator/wipe-database', { password: securityPin, securityPin });
+  // Takes the account PASSWORD. The parameter used to be called `securityPin`
+  // and the value was sent as both `password` and `securityPin`, which read as
+  // though a PIN would do — it would not; the server bcrypt-compares it
+  // against the stored password. The security PIN is a separate secret and is
+  // now collected by apiClient's central `requiresSecurityPin` challenge.
+  async wipeEntireDatabase(password: string): Promise<string> {
+    const res = await apiClient.post<{ status: string; message: string }>('/authenticator/wipe-database', { password });
     return res.message;
   },
 

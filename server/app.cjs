@@ -2435,46 +2435,33 @@ app.get('/api/accountant/students/:studentId/payments', authenticateToken, requi
 
 // --- BACKUP, RESTORE & SYSTEM WIPE ROUTES ---
 
-/**
- * GET /api/system/run-backup
- * Callable by Vercel cron (x-vercel-cron header) OR authenticated authenticator/admin1 user.
- */
-app.get('/api/system/run-backup', mongoRateLimiter, async (req, res) => {
-  try {
-    await connectToDatabase();
-    const isVercelCron = req.headers['x-vercel-cron'] === '1' || req.headers['x-vercel-cron'] === 'true';
-
-    let userRole = null;
-    let username = 'vercel_cron';
-
-    if (!isVercelCron) {
-      const authHeader = req.headers['authorization'];
-      const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
-
-      if (!token) {
-        return res.status(401).json({ status: 'error', message: 'Authentication required. Missing Bearer token or Vercel cron header.' });
-      }
-
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        userRole = decoded.role;
-        username = decoded.username;
-      } catch {
-        return res.status(401).json({ status: 'error', message: 'Invalid token.' });
-      }
-
-      if (userRole !== 'authenticator' && userRole !== 'admin1') {
-        return res.status(403).json({ status: 'error', message: 'Access forbidden. Only authenticator or admin1 can manually trigger backup.' });
-      }
-    }
-
-    const backupResult = await generateAndUploadBackup(username);
-    return res.json({ status: 'success', data: backupResult });
-  } catch (err) {
-    console.error('Backup route error:', err.message);
-    return res.status(500).json({ status: 'error', message: 'Backup generation failed.' });
-  }
-});
+// REMOVED: GET /api/system/run-backup — an authentication bypass.
+//
+// The route treated a client-supplied header as proof of identity:
+//
+//   const isVercelCron = req.headers['x-vercel-cron'] === '1' || ... === 'true';
+//   if (!isVercelCron) { /* only NOW check the Bearer token and the role */ }
+//
+// `x-vercel-cron` is an ordinary HTTP header that any caller can set, so
+// sending it skipped the token check, the role check and everything else.
+// Confirmed against production: without the header the route answered 401,
+// with `x-vercel-cron: 1` and no credentials at all it answered 200, ran a
+// full database export, uploaded it to Drive, and returned the live record
+// counts and Drive file id to an anonymous caller. Because the handler does a
+// full read of every collection plus an encrypt and an upload, the ordinary
+// 120-per-15-minute budget also made it an unauthenticated way to force ~120
+// full database dumps per quarter hour.
+//
+// Deleted rather than repaired. There was never a legitimate caller: this app
+// runs on Hostinger, not Vercel, so no Vercel cron exists, and the nightly
+// backup is node-cron inside the app process (server/start.cjs) which needs no
+// HTTP route at all. Manual whole-database backups remain available on
+// POST /api/authenticator/backup, which is properly authenticated.
+//
+// A header must never be treated as an authenticator. If a scheduler outside
+// the process ever genuinely needs to call in, it gets a secret compared with
+// crypto.timingSafeEqual against a value from the environment — never a
+// well-known header name, and never a literal in the source.
 
 /**
  * GET /api/authenticator/available-backups & GET /api/authenticator/backups
@@ -2867,7 +2854,14 @@ app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, r
  * Role authenticator ONLY. Requires real password check via bcrypt.
  * Automatically triggers a fresh encrypted backup to Google Drive FIRST before wiping.
  */
-app.post('/api/authenticator/wipe-database', authenticateToken, requireRole('authenticator'), mongoRateLimiter, async (req, res) => {
+// Two secrets, not one. This is the most destructive endpoint in the system —
+// it empties every data collection — and it previously turned on the account
+// password alone, while the far narrower per-campus restore already required
+// the password AND the security PIN. verifySecurityOtp closes that gap; the
+// client handles the resulting `requiresSecurityPin` challenge centrally, so
+// the operator is prompted for the PIN without any change to the panel.
+app.post('/api/authenticator/wipe-database', authenticateToken, requireRole('authenticator'),
+  verifySecurityOtp, mongoRateLimiter, async (req, res) => {
   try {
     await connectToDatabase();
     const { password } = req.body || {};
