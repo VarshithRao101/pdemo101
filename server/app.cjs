@@ -20,6 +20,7 @@ const { connectToDatabase } = require('./db.cjs');
 const User = require('./models/User.cjs');
 const RefreshToken = require('./models/RefreshToken.cjs');
 const RateLimit = require('./models/RateLimit.cjs');
+const LoginAttempt = require('./models/LoginAttempt.cjs');
 const Student = require('./models/Student.cjs');
 const Teacher = require('./models/Teacher.cjs');
 const FeeSettings = require('./models/FeeSettings.cjs');
@@ -732,16 +733,55 @@ async function verifySecurityOtp(req, res, next) {
       throw new Error('Database connection is not ready.');
     }
 
+    // The step-up PIN gets the same five-guess budget as the login. Without
+    // it, an attacker who had already obtained a session could sit and grind
+    // six digits against a destructive route — a million combinations with
+    // nothing but the IP limiter in the way.
+    //
+    // Keyed by user id rather than by the typed identifier, because at this
+    // point we know exactly whose PIN is being guessed.
+    const key = attemptKey('pin', req.user.id);
+    const before = await getLockState(key);
+    if (before.locked) {
+      console.warn(`[Security]: LOCKED PIN attempt by [${req.user.username}] for ${req.method} ${req.path}`);
+      const mins = Math.ceil(before.secondsRemaining / 60);
+      return res.status(429).json({
+        status: 'error',
+        locked: true,
+        lockedForSeconds: before.secondsRemaining,
+        attemptsRemaining: 0,
+        // Not requiresSecurityPin: prompting again would put the user in a
+        // loop against a gate that is refusing everything for now.
+        message: `Too many incorrect PIN attempts. Confirmation is locked for ${mins} more minute${mins === 1 ? '' : 's'}.`
+      });
+    }
+
     const user = await User.findById(req.user.id).select('pin');
     if (!user || !user.pin || !safeBcryptCompare(supplied, user.pin)) {
       console.warn(`[Security]: Failed PIN confirmation by [${req.user.username}] for ${req.method} ${req.path}`);
+
+      const after = await recordFailedAttempt(key);
+      if (after.locked) {
+        console.warn(`[Security]: PIN LOCKED OUT [${req.user.username}] for ${LOCKOUT_MINUTES} minutes`);
+        const mins = Math.ceil(after.secondsRemaining / 60);
+        return res.status(429).json({
+          status: 'error',
+          locked: true,
+          lockedForSeconds: after.secondsRemaining,
+          attemptsRemaining: 0,
+          message: `Too many incorrect PIN attempts. Confirmation is locked for ${mins} minute${mins === 1 ? '' : 's'}.`
+        });
+      }
+
       return res.status(403).json({
         status: 'error',
-        message: 'Incorrect security PIN.',
+        message: `Incorrect security PIN. ${after.attemptsRemaining} attempt${after.attemptsRemaining === 1 ? '' : 's'} remaining.`,
+        attemptsRemaining: after.attemptsRemaining,
         requiresSecurityPin: true
       });
     }
 
+    await clearFailedAttempts(key);
     console.log(`[Security]: PIN confirmed for [${req.user.username}] on ${req.method} ${req.path}`);
     return next();
   } catch (err) {
@@ -870,12 +910,42 @@ app.get(['/api/auth/me', '/auth/me', '/api/me'], authenticateToken, async (req, 
 app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/verify-credentials'], mongoRateLimiter, async (req, res) => {
   try {
     const { username, identifier, password } = req.body || {};
+
+    // This route checks a password on its own, so it needs the same five-guess
+    // budget as /auth/login — and it shares the counter, or an attacker would
+    // simply get five here and another five there. It was previously an
+    // unlimited password oracle with only the IP limiter in front of it.
+    const attempted = String(username || identifier || '').trim().toLowerCase();
+    const key = attemptKey('login', attempted);
+
+    const before = await getLockState(key);
+    if (before.locked) {
+      console.warn(`[Auth]: LOCKED verify-credentials for [${attempted || '(blank)'}] from ${clientIp(req)}`);
+      return lockedResponse(res, before);
+    }
+
     const user = await validateUserLoginCredentials(username || identifier, password);
 
     if (!user) {
-      return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
+      console.warn(`[Auth]: FAILED verify-credentials for [${attempted || '(blank)'}] from ${clientIp(req)}`);
+      const after = await recordFailedAttempt(key);
+      if (after.locked) {
+        console.warn(`[Auth]: LOCKED OUT [${attempted || '(blank)'}] for ${LOCKOUT_MINUTES} minutes`);
+        return lockedResponse(res, after);
+      }
+      return res.status(401).json({
+        status: 'error',
+        message: `Invalid credentials. ${after.attemptsRemaining} attempt${after.attemptsRemaining === 1 ? '' : 's'} remaining before this account is locked.`,
+        attemptsRemaining: after.attemptsRemaining,
+        locked: false
+      });
     }
 
+    // Deliberately NOT cleared here. This is only the first of two factors —
+    // the PIN still has to be entered — so the run stays open until the
+    // account actually signs in. Clearing on a correct password alone would
+    // let someone with the password reset the counter at will and grind the
+    // PIN forever.
     return res.json({
       status: 'success',
       role: user.role,
@@ -969,10 +1039,114 @@ function clientIp(req) {
   return String(raw).split(',')[0].trim();
 }
 
+/**
+ * --- ACCOUNT LOCKOUT -----------------------------------------------------
+ *
+ * Five wrong guesses and the account stops answering for fifteen minutes.
+ *
+ * This sits alongside the IP rate limiter rather than replacing it. The IP
+ * limiter bounds how fast one machine can hammer the endpoint; it does nothing
+ * about an attacker rotating IPs, who could work through a password list a few
+ * guesses at a time from each address forever. This bounds the guesses an
+ * individual account will answer, wherever they come from.
+ *
+ * The lock clears itself, and a correct sign-in resets the counter. That is
+ * deliberate: an account that stays locked until an administrator intervenes
+ * turns one mistyped PIN into a campus that cannot take fee payments until
+ * somebody is reachable by phone.
+ *
+ * Accepted trade-off: anyone who knows a username can keep it locked by
+ * failing five times. Fifteen minutes and self-clearing keeps that a nuisance
+ * rather than an outage, and the alternative — no lockout — is worse.
+ */
+const MAX_LOGIN_ATTEMPTS = Number(process.env.MAX_LOGIN_ATTEMPTS) || 5;
+const LOCKOUT_MINUTES = Number(process.env.LOCKOUT_MINUTES) || 15;
+const LOCKOUT_MS = LOCKOUT_MINUTES * 60 * 1000;
+
+// Counters live a little past the lock so a burst of failures cannot be
+// erased by waiting for the TTL instead of waiting out the lock.
+const ATTEMPT_TTL_MS = LOCKOUT_MS * 4;
+
+function attemptKey(kind, value) {
+  return `${kind}:${String(value || '').trim().toLowerCase()}`;
+}
+
+// Returns { locked, secondsRemaining, attemptsRemaining }.
+async function getLockState(key) {
+  const row = await LoginAttempt.findOne({ key }).lean();
+  if (!row) return { locked: false, secondsRemaining: 0, attemptsRemaining: MAX_LOGIN_ATTEMPTS };
+
+  const until = row.lockedUntil ? new Date(row.lockedUntil).getTime() : 0;
+  if (until > Date.now()) {
+    return {
+      locked: true,
+      secondsRemaining: Math.ceil((until - Date.now()) / 1000),
+      attemptsRemaining: 0
+    };
+  }
+  // An expired lock means the previous run is spent; start the count again
+  // rather than leaving the caller one guess away from a fresh lock.
+  const used = until ? 0 : (row.failedCount || 0);
+  return { locked: false, secondsRemaining: 0, attemptsRemaining: Math.max(0, MAX_LOGIN_ATTEMPTS - used) };
+}
+
+async function recordFailedAttempt(key) {
+  const now = Date.now();
+  const existing = await LoginAttempt.findOne({ key }).lean();
+
+  // Reset the run if the last lock has already expired.
+  const priorLockExpired = existing && existing.lockedUntil && new Date(existing.lockedUntil).getTime() <= now;
+  const used = (!existing || priorLockExpired) ? 0 : (existing.failedCount || 0);
+  const failedCount = used + 1;
+
+  const update = {
+    failedCount,
+    lastFailedAt: new Date(now),
+    expiresAt: new Date(now + ATTEMPT_TTL_MS),
+    lockedUntil: failedCount >= MAX_LOGIN_ATTEMPTS ? new Date(now + LOCKOUT_MS) : null
+  };
+
+  await LoginAttempt.findOneAndUpdate({ key }, { $set: update }, { upsert: true });
+
+  const locked = failedCount >= MAX_LOGIN_ATTEMPTS;
+  return {
+    locked,
+    attemptsRemaining: Math.max(0, MAX_LOGIN_ATTEMPTS - failedCount),
+    secondsRemaining: locked ? Math.ceil(LOCKOUT_MS / 1000) : 0
+  };
+}
+
+async function clearFailedAttempts(key) {
+  await LoginAttempt.deleteOne({ key }).catch(() => {});
+}
+
+// The refusal shown to a locked-out caller. Same shape everywhere so the UI
+// can render one countdown regardless of which gate produced it.
+function lockedResponse(res, state, what = 'Too many incorrect attempts.') {
+  const mins = Math.ceil(state.secondsRemaining / 60);
+  return res.status(429).json({
+    status: 'error',
+    locked: true,
+    lockedForSeconds: state.secondsRemaining,
+    attemptsRemaining: 0,
+    message: `${what} This account is locked for ${mins} more minute${mins === 1 ? '' : 's'}.`
+  });
+}
+
 async function handleLogin(req, res, label) {
   try {
     const { username, identifier, password, pin } = req.body || {};
     const attempted = String(username || identifier || '').trim().toLowerCase();
+    const key = attemptKey('login', attempted);
+
+    // Check the lock BEFORE verifying anything. A locked account must not
+    // reveal whether the guess would have been right.
+    const before = await getLockState(key);
+    if (before.locked) {
+      console.warn(`[Auth]: LOCKED ${label} attempt for [${attempted || '(blank)'}] from ${clientIp(req)}`);
+      return lockedResponse(res, before);
+    }
+
     const user = await validateUserLoginCredentials(username || identifier, password, pin);
 
     if (!user) {
@@ -981,8 +1155,25 @@ async function handleLogin(req, res, label) {
       // mistyped password from a credential-stuffing run against every
       // account. The password itself is never logged.
       console.warn(`[Auth]: FAILED ${label} for [${attempted || '(blank)'}] from ${clientIp(req)}`);
-      return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
+
+      const after = await recordFailedAttempt(key);
+      if (after.locked) {
+        console.warn(`[Auth]: LOCKED OUT [${attempted || '(blank)'}] for ${LOCKOUT_MINUTES} minutes`);
+        return lockedResponse(res, after);
+      }
+      // Tell the user how many tries are left. Withholding it does not slow an
+      // attacker down — they can count — it only ambushes staff who mistyped.
+      return res.status(401).json({
+        status: 'error',
+        message: `Invalid credentials. ${after.attemptsRemaining} attempt${after.attemptsRemaining === 1 ? '' : 's'} remaining before this account is locked.`,
+        attemptsRemaining: after.attemptsRemaining,
+        locked: false
+      });
     }
+
+    // A correct sign-in wipes the run, so a user who mistyped twice and then
+    // succeeded does not carry those failures into next week.
+    await clearFailedAttempts(key);
 
     console.log(`[Auth]: ${label} succeeded for [${user.username}] (${user.role})`);
     return await issueSession(user, res, req);

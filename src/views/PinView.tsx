@@ -18,6 +18,11 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const [lastKeypadIndex, setLastKeypadIndex] = useState<number | null>(null);
   const [sessionConflict, setSessionConflict] = useState(false);
 
+  // Attempts left before this account locks, and the live countdown once it
+  // has. Both come from the server — the client never decides either.
+  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+  const [lockedForSeconds, setLockedForSeconds] = useState<number>(0);
+
   // Read once on mount and clear, so the explanation shows for the trip back
   // to the gate but does not reappear on every later visit.
   const [sessionEndReason] = useState<string | null>(() => {
@@ -110,7 +115,40 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     setPin('');
   };
 
+  // Tick the lockout down so the gate re-opens on its own. Without this the
+  // user sees a stale "locked for 15 minutes" until they reload the page, and
+  // reloading during a lockout is exactly when people start panicking.
+  useEffect(() => {
+    if (lockedForSeconds <= 0) return;
+    const t = setInterval(() => {
+      setLockedForSeconds(s => {
+        if (s <= 1) {
+          setAttemptsLeft(null);
+          setToastMessage(null);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [lockedForSeconds]);
+
+  const isLockedOut = lockedForSeconds > 0;
+  const lockoutLabel = (() => {
+    const m = Math.floor(lockedForSeconds / 60);
+    const s = lockedForSeconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  })();
+
   const handleConfirm = async (customPin?: string) => {
+    // Refuse locally while locked. The server refuses anyway, but sending the
+    // request would burn a rate-limit slot and, via the auto-submit effect
+    // below, retry on every keystroke against a gate that is closed.
+    if (isLockedOut) {
+      triggerError(`Account locked — try again in ${lockoutLabel}`);
+      return;
+    }
+
     const pinToSubmit = customPin || pin;
     if (pinToSubmit.length !== 6) {
       triggerError('Please enter your 6-digit Security PIN');
@@ -147,12 +185,23 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         setPin('');
         return;
       }
-      let msg = err?.data?.message || err?.message;
-      if (msg === 'Internal server error' || err?.status === 500) {
-        msg = 'Incorrect password or 6-digit PIN. Please try again.';
-      } else if (err?.status === 429) {
-        msg = 'Too many attempts. Please wait 15 minutes.';
-      } else if (!msg) {
+      // The server counts the attempts and says how many are left, so show
+      // exactly that rather than a guessed duration. It used to claim "wait 15
+      // minutes" on every 429 even when the real wait was two.
+      const data = err?.data || {};
+      let msg = data.message || err?.message;
+
+      if (data.locked) {
+        const mins = Math.max(1, Math.ceil(Number(data.lockedForSeconds || 0) / 60));
+        msg = data.message || `Too many incorrect attempts. This account is locked for ${mins} more minute${mins === 1 ? '' : 's'}.`;
+        setLockedForSeconds(Number(data.lockedForSeconds || 0));
+        setAttemptsLeft(0);
+      } else if (typeof data.attemptsRemaining === 'number') {
+        setAttemptsLeft(data.attemptsRemaining);
+        setLockedForSeconds(0);
+      }
+
+      if (!data.locked && (msg === 'Internal server error' || err?.status === 500 || !msg)) {
         msg = 'Incorrect password or 6-digit PIN. Please try again.';
       }
       triggerError(msg);
@@ -186,7 +235,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
   // Auto-submit when 6-digit PIN is entered
   useEffect(() => {
-    if (step === 'pin' && pin.length === 6 && !isChecking && !isSuccess && !sessionConflict) {
+    if (step === 'pin' && pin.length === 6 && !isChecking && !isSuccess && !sessionConflict && !isLockedOut) {
       handleConfirm(pin);
     }
   }, [pin, step, isChecking, isSuccess, sessionConflict]);
@@ -252,9 +301,17 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         triggerError(res?.message || 'Incorrect User ID or Account Password.');
       }
     } catch (err: any) {
-      const msg = (err?.message === 'Internal server error' || err?.status === 500)
-        ? 'Incorrect User ID or Account Password. Please try again.'
-        : (err?.data?.message || err?.message || 'Incorrect User ID or Account Password.');
+      const data = err?.data || {};
+      if (data.locked) {
+        setLockedForSeconds(Number(data.lockedForSeconds || 0));
+        setAttemptsLeft(0);
+      } else if (typeof data.attemptsRemaining === 'number') {
+        setAttemptsLeft(data.attemptsRemaining);
+      }
+      const msg = data.message
+        || ((err?.message === 'Internal server error' || err?.status === 500)
+          ? 'Incorrect User ID or Account Password. Please try again.'
+          : (err?.message || 'Incorrect User ID or Account Password.'));
       triggerError(msg);
     } finally {
       setIsChecking(false);
@@ -1032,6 +1089,41 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             }
           `}</style>
           <div className="pin-dual-loader" />
+        </div>
+      )}
+
+      {/* Attempts remaining / lockout countdown.
+          Persistent, unlike the toast, because "2 attempts left" is the thing
+          someone needs on screen WHILE they retype — not for three seconds
+          after they got it wrong. */}
+      {(isLockedOut || (attemptsLeft !== null && attemptsLeft < 5)) && (
+        <div style={{ ...styles.toastContainer, bottom: 'auto', top: '18px' }} className="anim-slide-up">
+          <div style={{
+            padding: '10px 16px',
+            borderRadius: '12px',
+            border: `2px solid ${isLockedOut ? 'var(--critical)' : 'var(--warning)'}`,
+            backgroundColor: isLockedOut ? 'rgba(220,38,38,0.12)' : 'rgba(234,161,0,0.12)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke={isLockedOut ? 'var(--critical)' : 'var(--warning)'} strokeWidth="2.5">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <span style={{
+              fontSize: '12.5px', fontWeight: 800,
+              color: isLockedOut ? 'var(--critical)' : 'var(--warning)'
+            }}>
+              {isLockedOut
+                ? `Account locked — try again in ${lockoutLabel}`
+                : attemptsLeft === 0
+                  ? 'No attempts remaining'
+                  : `${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} remaining before this account is locked`}
+            </span>
+          </div>
         </div>
       )}
 
