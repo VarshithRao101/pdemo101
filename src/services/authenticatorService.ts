@@ -28,7 +28,14 @@ export interface AccountInfo {
   department?: string;
   address?: string;
   campus?: string;
+  // Write-only. Set when submitting a new password; the server never returns
+  // one, so reading this from a fetched account will always be undefined.
   password?: string;
+  // Whether a credential exists. These are the only credential facts the
+  // server discloses — derived from the stored bcrypt hashes, never the values.
+  passwordSet?: boolean;
+  pinSet?: boolean;
+  credentialsUpdatedAt?: string | null;
 }
 
 export interface ActiveSessionInfo {

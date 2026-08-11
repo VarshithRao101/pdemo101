@@ -802,13 +802,40 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* Password Row */}
+                      {/* Credential Row.
+                          Shows whether a credential exists, never its value —
+                          the server only ever sends these two booleans. The
+                          caption used to be hardcoded, so an account with no
+                          usable password was indistinguishable from a healthy
+                          one. */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', backgroundColor: 'var(--surface)', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid var(--line-strong)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>Pass:</span>
-                          <code style={{ fontSize: '12px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--good)', backgroundColor: 'var(--good-wash)', padding: '3px 8px', borderRadius: '6px', border: '1px solid #6EE7B7' }}>
-                            Stored securely
-                          </code>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>Password</span>
+                            {acc.passwordSet !== false ? (
+                              <code title="A password is set. Its value cannot be displayed — only a bcrypt hash is stored."
+                                    style={{ fontSize: '13px', letterSpacing: '2px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--ink)', backgroundColor: 'var(--surface-sunken)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                                ••••••••
+                              </code>
+                            ) : (
+                              <code title="No usable password hash is stored for this account."
+                                    style={{ fontSize: '11px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--critical)', backgroundColor: 'var(--critical-wash)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--critical)' }}>
+                                NOT SET
+                              </code>
+                            )}
+                          </span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>PIN</span>
+                            {acc.pinSet !== false ? (
+                              <code style={{ fontSize: '13px', letterSpacing: '2px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--ink)', backgroundColor: 'var(--surface-sunken)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                                ••••••
+                              </code>
+                            ) : (
+                              <code style={{ fontSize: '11px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--critical)', backgroundColor: 'var(--critical-wash)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--critical)' }}>
+                                NOT SET
+                              </code>
+                            )}
+                          </span>
                         </div>
                       </div>
                     </div>

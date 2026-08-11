@@ -393,7 +393,15 @@ async function getManagedPortalAccounts() {
         email: doc.email || '',
         mobile: doc.mobile || '',
         department: doc.department || '',
-        status: doc.status || 'active'
+        status: doc.status || 'active',
+        // Whether a credential EXISTS — never the credential itself. The panel
+        // previously showed a fixed caption regardless of the real state, so
+        // an account with no usable password looked identical to a healthy
+        // one. These two booleans are derived from the stored bcrypt hashes
+        // and are the only credential information that leaves the server.
+        passwordSet: Boolean(doc.password && String(doc.password).startsWith('$2')),
+        pinSet: Boolean(doc.pin && String(doc.pin).startsWith('$2')),
+        credentialsUpdatedAt: doc.updatedAt || null
       }))
       .sort((a, b) => {
         const roleOrder = { admin1: 0, authenticator: 1, admin2: 2, accountant: 3 };
