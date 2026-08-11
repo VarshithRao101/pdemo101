@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { LIMITS, digitsOnly } from '../constants/fieldLimits';
 import collegeLogo from '../assets/college logo.png';
 import heroImg from '../assets/heroimage.jpeg';
 
@@ -1965,15 +1966,28 @@ export const PortfolioView: React.FC = () => {
                     </div>
                   )}
 
+                  {/* This form is on the public internet, so it is the one that
+                      most needs a ceiling. The mobile field also strips
+                      non-digits as you type: `type="tel"` accepts any text, it
+                      only hints at a numeric keypad on phones. */}
                   {[
-                    { label: 'Student Full Name *', placeholder: 'e.g. Aarav Sharma', val: stuName, set: setStuName, type: 'text' },
-                    { label: 'Parent / Guardian Name', placeholder: 'e.g. Ramesh Sharma', val: parentName, set: setParentName, type: 'text' },
-                    { label: 'Contact Mobile Number *', placeholder: '10-digit mobile number', val: stuMobile, set: setStuMobile, type: 'tel' },
-                    { label: 'Email Address', placeholder: 'student@example.com', val: stuEmail, set: setStuEmail, type: 'email' },
+                    { label: 'Student Full Name *', placeholder: 'e.g. Aarav Sharma', val: stuName, set: setStuName, type: 'text', max: LIMITS.personName },
+                    { label: 'Parent / Guardian Name', placeholder: 'e.g. Ramesh Sharma', val: parentName, set: setParentName, type: 'text', max: LIMITS.personName },
+                    { label: 'Contact Mobile Number *', placeholder: '10-digit mobile number', val: stuMobile, set: setStuMobile, type: 'tel', max: LIMITS.mobile, digits: true },
+                    { label: 'Email Address', placeholder: 'student@example.com', val: stuEmail, set: setStuEmail, type: 'email', max: LIMITS.email },
                   ].map(f => (
                     <div key={f.label}>
                       <label style={{ display: 'block', fontSize: 12.5, fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</label>
-                      <input type={f.type} required={f.label.includes('*')} placeholder={f.placeholder} value={f.val} onChange={e => f.set(e.target.value)} className="ig" style={inputSt} />
+                      <input
+                        type={f.type}
+                        required={f.label.includes('*')}
+                        placeholder={f.placeholder}
+                        maxLength={f.max}
+                        value={f.val}
+                        onChange={e => f.set(f.digits ? digitsOnly(e.target.value, f.max) : e.target.value.slice(0, f.max))}
+                        className="ig"
+                        style={inputSt}
+                      />
                     </div>
                   ))}
 

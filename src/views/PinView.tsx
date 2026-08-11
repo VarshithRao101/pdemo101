@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LIMITS } from '../constants/fieldLimits';
 import PinEntry from '../components/common/PinEntry';
 import { useNavigation } from '../context/NavigationContext';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -634,7 +635,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                   <circle cx="12" cy="7" r="4" />
                 </svg>
               </div>
-              <input
+              <input maxLength={LIMITS.username}
                 type="text"
                 placeholder={currentMode === 'authenticator' ? '9059068384' : 'admin1 / admin2 / accountant'}
                 value={currentMode === 'authenticator' ? '9059068384' : userId}
@@ -680,7 +681,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
               </div>
-              <input
+              <input maxLength={LIMITS.password}
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter Account Password"
                 value={passwordInput}

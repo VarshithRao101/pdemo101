@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LIMITS } from '../constants/fieldLimits';
 import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -1188,35 +1189,35 @@ export const AccountantDashboardView: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Student Name</label>
-                    <input type="text" value={editStudent.name || ''} onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })} style={styles.textInputBox} />
+                    <input maxLength={LIMITS.personName} type="text" value={editStudent.name || ''} onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })} style={styles.textInputBox} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Admission Number</label>
-                    <input type="text" value={editStudent.admissionNumber || ''} onChange={(e) => setEditStudent({ ...editStudent, admissionNumber: e.target.value })} style={styles.textInputBox} />
+                    <input maxLength={LIMITS.admissionNumber} type="text" value={editStudent.admissionNumber || ''} onChange={(e) => setEditStudent({ ...editStudent, admissionNumber: e.target.value })} style={styles.textInputBox} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Student Mobile</label>
-                    <input type="text" value={editStudent.mobile || ''} onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })} style={styles.textInputBox} />
+                    <input maxLength={LIMITS.mobile} type="text" value={editStudent.mobile || ''} onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })} style={styles.textInputBox} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Parent Contact</label>
-                    <input type="text" value={editStudent.parentMobile || ''} onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })} style={styles.textInputBox} />
+                    <input maxLength={LIMITS.mobile} type="text" value={editStudent.parentMobile || ''} onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })} style={styles.textInputBox} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Course</label>
-                    <input type="text" value={editStudent.course || ''} onChange={(e) => setEditStudent({ ...editStudent, course: e.target.value })} style={styles.textInputBox} />
+                    <input maxLength={LIMITS.course} type="text" value={editStudent.course || ''} onChange={(e) => setEditStudent({ ...editStudent, course: e.target.value })} style={styles.textInputBox} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Section</label>
-                    <input type="text" value={editStudent.section || ''} onChange={(e) => setEditStudent({ ...editStudent, section: e.target.value })} style={styles.textInputBox} />
+                    <input maxLength={LIMITS.section} type="text" value={editStudent.section || ''} onChange={(e) => setEditStudent({ ...editStudent, section: e.target.value })} style={styles.textInputBox} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Father Name</label>
-                    <input type="text" value={editStudent.fatherName || ''} onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })} style={styles.textInputBox} />
+                    <input maxLength={LIMITS.personName} type="text" value={editStudent.fatherName || ''} onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })} style={styles.textInputBox} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Mother Name</label>
-                    <input type="text" value={editStudent.motherName || ''} onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })} style={styles.textInputBox} />
+                    <input maxLength={LIMITS.personName} type="text" value={editStudent.motherName || ''} onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })} style={styles.textInputBox} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Hostel Status</label>
@@ -1318,7 +1319,7 @@ export const AccountantDashboardView: React.FC = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
                       <div>
                         <label style={styles.formLabel}>Admission Number *</label>
-                        <input
+                        <input maxLength={LIMITS.admissionNumber}
                           type="text"
                           placeholder="e.g. 2400101"
                           value={newStudentData.admissionNumber}
@@ -1329,7 +1330,7 @@ export const AccountantDashboardView: React.FC = () => {
                       </div>
                       <div>
                         <label style={styles.formLabel}>Student Full Name *</label>
-                        <input
+                        <input maxLength={LIMITS.personName}
                           type="text"
                           placeholder="e.g. Rahul Sharma"
                           value={newStudentData.name}
@@ -1339,7 +1340,7 @@ export const AccountantDashboardView: React.FC = () => {
                       </div>
                       <div>
                         <label style={styles.formLabel}>Student Mobile Number *</label>
-                        <input
+                        <input maxLength={LIMITS.mobile}
                           type="text"
                           placeholder="10-digit mobile"
                           value={newStudentData.mobile}
@@ -1372,7 +1373,7 @@ export const AccountantDashboardView: React.FC = () => {
                       </div>
                       <div>
                         <label style={styles.formLabel}>Section *</label>
-                        <input
+                        <input maxLength={LIMITS.section}
                           type="text"
                           placeholder="e.g. MPC-A"
                           value={newStudentData.section}
@@ -1419,11 +1420,11 @@ export const AccountantDashboardView: React.FC = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
                       <div>
                         <label style={styles.formLabel}>Father's Name</label>
-                        <input type="text" placeholder="e.g. Ramesh Sharma" value={newStudentData.fatherName} onChange={(e) => setNewStudentData({ ...newStudentData, fatherName: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.personName} type="text" placeholder="e.g. Ramesh Sharma" value={newStudentData.fatherName} onChange={(e) => setNewStudentData({ ...newStudentData, fatherName: e.target.value })} style={styles.textInputBox} />
                       </div>
                       <div>
                         <label style={styles.formLabel}>Mother's Name</label>
-                        <input type="text" placeholder="e.g. Sunitha Sharma" value={newStudentData.motherName} onChange={(e) => setNewStudentData({ ...newStudentData, motherName: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.personName} type="text" placeholder="e.g. Sunitha Sharma" value={newStudentData.motherName} onChange={(e) => setNewStudentData({ ...newStudentData, motherName: e.target.value })} style={styles.textInputBox} />
                       </div>
                       <div>
                         <label style={styles.formLabel}>Date of Birth</label>
@@ -1431,11 +1432,11 @@ export const AccountantDashboardView: React.FC = () => {
                       </div>
                       <div>
                         <label style={styles.formLabel}>Parent Contact Mobile</label>
-                        <input type="text" placeholder="e.g. 9876543210" value={newStudentData.parentMobile} onChange={(e) => setNewStudentData({ ...newStudentData, parentMobile: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.mobile} type="text" placeholder="e.g. 9876543210" value={newStudentData.parentMobile} onChange={(e) => setNewStudentData({ ...newStudentData, parentMobile: e.target.value })} style={styles.textInputBox} />
                       </div>
                       <div>
                         <label style={styles.formLabel}>Previous School</label>
-                        <input type="text" placeholder="e.g. ZPHS / St. Johns High School" value={newStudentData.previousSchool} onChange={(e) => setNewStudentData({ ...newStudentData, previousSchool: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.previousSchool} type="text" placeholder="e.g. ZPHS / St. Johns High School" value={newStudentData.previousSchool} onChange={(e) => setNewStudentData({ ...newStudentData, previousSchool: e.target.value })} style={styles.textInputBox} />
                       </div>
                       <div>
                         <label style={styles.formLabel}>Previous School Board</label>
@@ -1448,7 +1449,7 @@ export const AccountantDashboardView: React.FC = () => {
                       </div>
                       <div style={{ gridColumn: 'span 2' }}>
                         <label style={styles.formLabel}>Permanent Address</label>
-                        <input type="text" placeholder="H.No., Street, Village/Mandal, District" value={newStudentData.address} onChange={(e) => setNewStudentData({ ...newStudentData, address: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.address} type="text" placeholder="H.No., Street, Village/Mandal, District" value={newStudentData.address} onChange={(e) => setNewStudentData({ ...newStudentData, address: e.target.value })} style={styles.textInputBox} />
                       </div>
                     </div>
                   </div>
@@ -1507,15 +1508,15 @@ export const AccountantDashboardView: React.FC = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         <label style={styles.formLabel}>Tuition Fee (Rs)</label>
-                        <input type="number" value={newStudentData.tuitionFee} onChange={(e) => setNewStudentData({ ...newStudentData, tuitionFee: Number(e.target.value) })} style={styles.textInputBox} />
+                        <input min={0} max={999999999} type="number" value={newStudentData.tuitionFee} onChange={(e) => setNewStudentData({ ...newStudentData, tuitionFee: Number(e.target.value) })} style={styles.textInputBox} />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         <label style={styles.formLabel}>Hostel Fee (Rs)</label>
-                        <input type="number" value={newStudentData.hostelFee} onChange={(e) => setNewStudentData({ ...newStudentData, hostelFee: Number(e.target.value) })} style={styles.textInputBox} />
+                        <input min={0} max={999999999} type="number" value={newStudentData.hostelFee} onChange={(e) => setNewStudentData({ ...newStudentData, hostelFee: Number(e.target.value) })} style={styles.textInputBox} />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         <label style={styles.formLabel}>Misc Fee (Rs)</label>
-                        <input type="number" value={newStudentData.miscellaneousFee} onChange={(e) => setNewStudentData({ ...newStudentData, miscellaneousFee: Number(e.target.value) })} style={styles.textInputBox} />
+                        <input min={0} max={999999999} type="number" value={newStudentData.miscellaneousFee} onChange={(e) => setNewStudentData({ ...newStudentData, miscellaneousFee: Number(e.target.value) })} style={styles.textInputBox} />
                       </div>
 
                       {newStuCustomSlots.map((slot) => (
@@ -1533,7 +1534,7 @@ export const AccountantDashboardView: React.FC = () => {
                               ✕
                             </button>
                           </div>
-                          <input
+                          <input min={0} max={999999999}
                             type="number"
                             value={slot.amount}
                             onChange={(e) => {
@@ -1548,14 +1549,14 @@ export const AccountantDashboardView: React.FC = () => {
 
                     {newStuIsAddingSlot ? (
                       <div style={{ display: 'flex', gap: '8px', marginTop: '6px', padding: '10px', backgroundColor: 'var(--surface-sunken)', borderRadius: '10px', border: '1px dashed var(--line-strong)' }}>
-                        <input
+                        <input maxLength={LIMITS.feeSlotName}
                           type="text"
                           placeholder="Fee Section Description"
                           value={newStuSlotName}
                           onChange={(e) => setNewStuSlotName(e.target.value)}
                           style={{ ...styles.textInputBox, flex: 2, fontSize: '12px' }}
                         />
-                        <input
+                        <input min={0} max={999999999}
                           type="number"
                           placeholder="Amount (Rs)"
                           value={newStuSlotAmount}
@@ -1736,7 +1737,7 @@ export const AccountantDashboardView: React.FC = () => {
             {/* Search & Filter Bar */}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <div style={{ flex: 1, position: 'relative' }}>
-                <input
+                <input maxLength={100}
                   type="text"
                   placeholder="Search Student by Name, ID, Adm No, Roll No, Phone..."
                   value={searchAdmNo}
@@ -1961,7 +1962,7 @@ export const AccountantDashboardView: React.FC = () => {
         <main style={styles.content}>
           {!selectedStudent ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1 }}>
-              <input
+              <input maxLength={LIMITS.admissionNumber}
                 type="text"
                 placeholder="Search student by Name or Admission Number..."
                 value={feeCollectAdm}
@@ -2268,7 +2269,7 @@ export const AccountantDashboardView: React.FC = () => {
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                           <label style={styles.formLabel}>Amount (Rs.)</label>
-                          <input
+                          <input min={0} max={999999999}
                             type="number"
                             placeholder="e.g. 15000"
                             value={collectAmount}
@@ -2298,7 +2299,7 @@ export const AccountantDashboardView: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                           <label style={styles.formLabel}>Transaction / UPI Ref No.</label>
-                          <input
+                          <input maxLength={LIMITS.transactionRef}
                             type="text"
                             placeholder="e.g. UPI/9849204128"
                             value={collectTransactionRef}

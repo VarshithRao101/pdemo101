@@ -223,6 +223,45 @@ function isValidObjectId(val) {
 //    than rejecting it. Every text field went through that coercion.
 const MAX_TEXT = { short: 100, medium: 250, long: 2000 };
 
+// Per-field ceilings, mirroring src/constants/fieldLimits.ts.
+//
+// The browser's maxLength is a convenience for whoever is typing; it is not a
+// control, because anyone can post straight to the API. These are the limits
+// that actually hold. Keep the two lists in step — if they drift, the form
+// accepts something the server then rejects, which reads as a broken app.
+const FIELD_LIMITS = {
+  personName: 50,
+  admissionNumber: 20,
+  rollNumber: 20,
+  staffId: 20,
+  studentId: 20,
+  mobile: 10,
+  email: 50,
+  address: 200,
+  course: 30,
+  section: 30,
+  subject: 50,
+  department: 50,
+  previousSchool: 100,
+  previousBoard: 50,
+  academicYear: 12,
+  remarks: 500,
+  notes: 500,
+  reason: 250,
+  category: 50,
+  feeSlotName: 50,
+  receiptNumber: 30,
+  transactionRef: 30,
+  username: 40,
+  password: 72,
+  backupCode: 20
+};
+
+// Largest amount any single money field may carry. Nine digits is more than a
+// college fee will ever be and keeps a pasted number from reaching the
+// arithmetic as something that overflows into scientific notation.
+const MAX_MONEY = 999999999;
+
 // Accepts only real scalars. Objects and arrays are rejected outright instead
 // of being coerced into a meaningless string.
 function cleanText(value, { field, max = MAX_TEXT.short, required = false }) {
@@ -1382,17 +1421,33 @@ const createStudentHandler = async (req, res) => {
     // Reject over-long and non-scalar values before anything reaches the
     // database. This previously accepted a 50,000-character name.
     const text = cleanTextFields(body, {
-      name: { required: true, max: MAX_TEXT.short },
-      admissionNumber: { required: true, max: 50 },
-      fatherName: { max: MAX_TEXT.short }, motherName: { max: MAX_TEXT.short },
-      course: { max: MAX_TEXT.short }, section: { max: MAX_TEXT.short },
-      rollNumber: { max: 50 }, email: { max: MAX_TEXT.short },
-      dob: { max: 50 }, address: { max: MAX_TEXT.long },
-      previousSchool: { max: MAX_TEXT.medium }, previousBoard: { max: MAX_TEXT.short },
-      mobile: { max: 20 }, parentMobile: { max: 20 }
+      name: { required: true, max: FIELD_LIMITS.personName },
+      admissionNumber: { required: true, max: FIELD_LIMITS.admissionNumber },
+      fatherName: { max: FIELD_LIMITS.personName }, motherName: { max: FIELD_LIMITS.personName },
+      course: { max: FIELD_LIMITS.course }, section: { max: FIELD_LIMITS.section },
+      rollNumber: { max: FIELD_LIMITS.rollNumber }, email: { max: FIELD_LIMITS.email },
+      dob: { max: 20 }, address: { max: FIELD_LIMITS.address },
+      previousSchool: { max: FIELD_LIMITS.previousSchool }, previousBoard: { max: FIELD_LIMITS.previousBoard },
+      mobile: { max: FIELD_LIMITS.mobile }, parentMobile: { max: FIELD_LIMITS.mobile }
     });
     if (text.error) {
       return res.status(400).json({ status: 'error', message: text.error });
+    }
+
+    // Money has to be bounded too. A pasted number long enough to lose
+    // precision would otherwise reach the balance arithmetic, and every total
+    // derived from it afterwards would be quietly wrong.
+    for (const [label, value] of [
+      ['Tuition fee', tuitionFee], ['Hostel fee', hostelFee], ['Transport fee', transportFee],
+      ['Miscellaneous fee', miscellaneousFee], ['Previous pending', previousPending]
+    ]) {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n < 0) {
+        return res.status(400).json({ status: 'error', message: `${label} must be a number of zero or more.` });
+      }
+      if (n > MAX_MONEY) {
+        return res.status(400).json({ status: 'error', message: `${label} cannot exceed ${MAX_MONEY.toLocaleString('en-IN')}.` });
+      }
     }
 
     // Mobile number validation (optional fields but must be valid if provided)
@@ -1427,11 +1482,18 @@ const createStudentHandler = async (req, res) => {
       }
     }
 
-    const existing = await Student.findOne({ admissionNumber: String(admissionNumber).trim() });
+    // Case- and spacing-insensitive, so "ADM-101" and "adm-101 " collide
+    // rather than producing two records for one student.
+    const cleanAdmission = String(admissionNumber).trim();
+    const admissionPattern = new RegExp(
+      `^\\s*${cleanAdmission.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'
+    );
+    const existing = await Student.findOne({ admissionNumber: admissionPattern }).lean();
     if (existing) {
       return res.status(409).json({
         status: 'error',
-        message: `Student with admission number [${admissionNumber}] already exists.`
+        message: `Student with admission number [${existing.admissionNumber}] already exists — ${existing.name}, ${existing.branch}.`,
+        conflictWith: existing.admissionNumber
       });
     }
 
@@ -1505,6 +1567,22 @@ const createStudentHandler = async (req, res) => {
       }
     });
   } catch (err) {
+    // The findOne guard above cannot be race-safe on its own: two simultaneous
+    // submissions both read "not found" before either inserts. The unique
+    // index is what actually stops the duplicate, and its error must surface
+    // as the same clear 409. A double-clicked Save previously reported
+    // "Database write failure", which reads as a broken app rather than as
+    // "this student is already registered".
+    if (err && err.code === 11000) {
+      const field = Object.keys(err.keyPattern || { admissionNumber: 1 })[0];
+      const value = (err.keyValue || {})[field];
+      return res.status(409).json({
+        status: 'error',
+        message: field === 'studentId'
+          ? 'That student ID was just taken. Please submit again.'
+          : `Student with admission number [${value}] already exists.`
+      });
+    }
     console.error('Error creating student:', err.message);
     return res.status(500).json({ status: 'error', message: 'Database write failure.' });
   }
@@ -1797,8 +1875,33 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
       return res.status(400).json({ status: 'error', message: 'Teacher ID, name, subject, and campus branch are required.' });
     }
 
+    // This route had no text validation at all: it used the raw body, so a
+    // name could be any length and an object passed as `name` would have been
+    // stored as the string "[object Object]" — the same defect already fixed
+    // on the student and enquiry routes.
+    const tText = cleanTextFields(req.body || {}, {
+      id: { required: true, max: FIELD_LIMITS.staffId },
+      name: { required: true, max: FIELD_LIMITS.personName },
+      subject: { required: true, max: FIELD_LIMITS.subject },
+      mobile: { max: FIELD_LIMITS.mobile },
+      email: { max: FIELD_LIMITS.email },
+      classification: { max: FIELD_LIMITS.department },
+      role: { max: FIELD_LIMITS.department }
+    });
+    if (tText.error) {
+      return res.status(400).json({ status: 'error', message: tText.error });
+    }
+    ({ id, name, subject } = tText.values);
+    mobile = tText.values.mobile;
+    email = tText.values.email;
+    classification = tText.values.classification || 'Teaching';
+    role = tText.values.role || 'Senior Lecturer';
+
     if (!isValidPositiveNumber(salary)) {
       return res.status(400).json({ status: 'error', message: 'Salary must be a valid non-negative number.' });
+    }
+    if (Number(salary) > MAX_MONEY) {
+      return res.status(400).json({ status: 'error', message: `Salary cannot exceed ${MAX_MONEY.toLocaleString('en-IN')}.` });
     }
 
     // Mobile validation for teacher (optional but must be valid if provided)
@@ -1809,25 +1912,65 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
       }
     }
 
-    const existing = await Teacher.findOne({ id: String(id).trim() });
+    // Duplicate guard on three dimensions, not just the ID: the same person
+    // entered twice under different IDs is the mistake that actually happens,
+    // and it goes unnoticed until two salary ledgers exist for one member of
+    // staff. Matching is case- and spacing-insensitive so "Ravi Kumar" and
+    // "ravi  kumar" collide.
+    const cleanId = String(id).trim();
+    const cleanName = String(name).trim();
+    const cleanMobile = String(mobile || '').replace(/[\s-]/g, '');
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const exact = (s) => new RegExp(`^\\s*${String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')}\\s*$`, 'i');
+
+    const clashes = [];
+    if (cleanId) clashes.push({ id: exact(cleanId) });
+    if (cleanEmail) clashes.push({ email: exact(cleanEmail) });
+    if (cleanName && cleanMobile) clashes.push({ name: exact(cleanName), mobile: exact(cleanMobile) });
+
+    const existing = clashes.length ? await Teacher.findOne({ $or: clashes }).lean() : null;
     if (existing) {
-      return res.status(409).json({ status: 'error', message: `Teacher with ID [${id}] already exists.` });
+      let why = `Teacher with ID [${existing.id}] already exists.`;
+      if (String(existing.id).trim().toLowerCase() !== cleanId.toLowerCase()) {
+        why = cleanEmail && String(existing.email || '').trim().toLowerCase() === cleanEmail
+          ? `Email [${email}] is already registered to ${existing.name} (ID ${existing.id}).`
+          : `${existing.name} with mobile [${mobile}] already exists as ID ${existing.id}.`;
+      }
+      return res.status(409).json({ status: 'error', message: why, conflictWith: existing.id });
     }
 
-    const teacher = await Teacher.create({
-      id: String(id).trim(),
-      name: String(name).trim(),
-      subject: String(subject).trim(),
-      salary: Number(salary),
-      mobile: mobile || '',
-      email: email || '',
-      branch,
-      classification,
-      role,
-      status: 'Active',
-      salaryLedger: {},
-      monthlySalaries: {}
-    });
+    let teacher;
+    try {
+      teacher = await Teacher.create({
+        id: cleanId,
+        name: cleanName,
+        subject: String(subject).trim(),
+        salary: Number(salary),
+        mobile: mobile || '',
+        email: email || '',
+        branch,
+        classification,
+        role,
+        status: 'Active',
+        salaryLedger: {},
+        monthlySalaries: {}
+      });
+    } catch (createErr) {
+      // The check above cannot be race-safe on its own: two simultaneous
+      // submissions both read "not found" before either inserts. The unique
+      // index is what actually prevents the duplicate, and its error has to
+      // surface as the same clear 409 — a double-clicked Save used to report
+      // "Database write failure", which reads as a bug rather than as
+      // "you already added this person".
+      if (createErr && createErr.code === 11000) {
+        const field = Object.keys(createErr.keyPattern || { id: 1 })[0];
+        return res.status(409).json({
+          status: 'error',
+          message: `Teacher with ${field} [${(createErr.keyValue || {})[field] ?? cleanId}] already exists.`
+        });
+      }
+      throw createErr;
+    }
 
     return res.status(201).json({ status: 'success', data: teacher });
   } catch (err) {
@@ -3488,14 +3631,14 @@ app.post('/api/enquiries', async (req, res) => {
     // gets the strictest treatment. It previously accepted a nested object as
     // studentName and stored the string "[object Object]".
     const text = cleanTextFields(req.body || {}, {
-      studentName: { required: true, max: MAX_TEXT.short },
-      preferredCampus: { required: true, max: MAX_TEXT.short },
-      parentName: { max: MAX_TEXT.short },
-      email: { max: MAX_TEXT.short },
-      stream: { max: 50 },
-      currentGrade: { max: 50 },
-      notes: { max: MAX_TEXT.long },
-      mobile: { required: true, max: 20 }
+      studentName: { required: true, max: FIELD_LIMITS.personName },
+      preferredCampus: { required: true, max: FIELD_LIMITS.course },
+      parentName: { max: FIELD_LIMITS.personName },
+      email: { max: FIELD_LIMITS.email },
+      stream: { max: FIELD_LIMITS.subject },
+      currentGrade: { max: FIELD_LIMITS.course },
+      notes: { max: FIELD_LIMITS.notes },
+      mobile: { required: true, max: FIELD_LIMITS.mobile }
     });
     if (text.error) {
       return res.status(400).json({ status: 'error', message: text.error });

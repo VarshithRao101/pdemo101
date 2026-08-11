@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LIMITS } from '../constants/fieldLimits';
 import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -1899,7 +1900,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', alignItems: 'flex-end' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 <label style={styles.formLabel}>Admission Number *</label>
-                <input
+                <input maxLength={LIMITS.admissionNumber}
                   type="text"
                   placeholder={`ADM2400${students.length + 1}`}
                   value={newStuAdmissionNumber}
@@ -1909,7 +1910,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 <label style={styles.formLabel}>Student Name *</label>
-                <input
+                <input maxLength={LIMITS.personName}
                   type="text"
                   placeholder="e.g. Rahul Sharma"
                   value={newStuName}
@@ -1919,7 +1920,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 <label style={styles.formLabel}>Mobile Number *</label>
-                <input
+                <input maxLength={LIMITS.mobile}
                   type="text"
                   placeholder="e.g. 9900000000"
                   value={newStuMobile}
@@ -2115,15 +2116,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
                           <div>
                             <label style={styles.formLabel}>Admission Number *</label>
-                            <input type="text" placeholder="e.g. 2400101" value={newStuAdmissionNumber} onChange={(e) => setNewStuAdmissionNumber(e.target.value)} style={styles.textInputBox} />
+                            <input maxLength={LIMITS.admissionNumber} type="text" placeholder="e.g. 2400101" value={newStuAdmissionNumber} onChange={(e) => setNewStuAdmissionNumber(e.target.value)} style={styles.textInputBox} />
                           </div>
                           <div>
                             <label style={styles.formLabel}>Student Full Name *</label>
-                            <input type="text" placeholder="e.g. Rahul Sharma" value={newStuName} onChange={(e) => setNewStuName(e.target.value)} style={styles.textInputBox} />
+                            <input maxLength={LIMITS.personName} type="text" placeholder="e.g. Rahul Sharma" value={newStuName} onChange={(e) => setNewStuName(e.target.value)} style={styles.textInputBox} />
                           </div>
                           <div>
                             <label style={styles.formLabel}>Student Mobile Number *</label>
-                            <input type="text" placeholder="10-digit mobile" value={newStuMobile} onChange={(e) => setNewStuMobile(e.target.value)} style={styles.textInputBox} />
+                            <input maxLength={LIMITS.mobile} type="text" placeholder="10-digit mobile" value={newStuMobile} onChange={(e) => setNewStuMobile(e.target.value)} style={styles.textInputBox} />
                           </div>
                           <div>
                             <label style={styles.formLabel}>Campus / Branch *</label>
@@ -2146,7 +2147,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           </div>
                           <div>
                             <label style={styles.formLabel}>Section *</label>
-                            <input type="text" placeholder="e.g. MPC-A" value={newStuSection} onChange={(e) => setNewStuSection(e.target.value)} style={styles.textInputBox} />
+                            <input maxLength={LIMITS.section} type="text" placeholder="e.g. MPC-A" value={newStuSection} onChange={(e) => setNewStuSection(e.target.value)} style={styles.textInputBox} />
                           </div>
                         </div>
                       </div>
@@ -2186,11 +2187,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
                           <div>
                             <label style={styles.formLabel}>Father's Name</label>
-                            <input type="text" placeholder="e.g. Ramesh Sharma" value={newStuFatherName} onChange={(e) => setNewStuFatherName(e.target.value)} style={styles.textInputBox} />
+                            <input maxLength={LIMITS.personName} type="text" placeholder="e.g. Ramesh Sharma" value={newStuFatherName} onChange={(e) => setNewStuFatherName(e.target.value)} style={styles.textInputBox} />
                           </div>
                           <div>
                             <label style={styles.formLabel}>Mother's Name</label>
-                            <input type="text" placeholder="e.g. Sunitha Sharma" value={newStuMotherName} onChange={(e) => setNewStuMotherName(e.target.value)} style={styles.textInputBox} />
+                            <input maxLength={LIMITS.personName} type="text" placeholder="e.g. Sunitha Sharma" value={newStuMotherName} onChange={(e) => setNewStuMotherName(e.target.value)} style={styles.textInputBox} />
                           </div>
                           <div>
                             <label style={styles.formLabel}>Date of Birth</label>
@@ -2198,11 +2199,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           </div>
                           <div>
                             <label style={styles.formLabel}>Parent Contact Mobile</label>
-                            <input type="text" placeholder="e.g. 9876543210" value={newStuParentMobile} onChange={(e) => setNewStuParentMobile(e.target.value)} style={styles.textInputBox} />
+                            <input maxLength={LIMITS.mobile} type="text" placeholder="e.g. 9876543210" value={newStuParentMobile} onChange={(e) => setNewStuParentMobile(e.target.value)} style={styles.textInputBox} />
                           </div>
                           <div>
                             <label style={styles.formLabel}>Previous School</label>
-                            <input type="text" placeholder="e.g. ZPHS / St. Johns High School" value={newStuPreviousSchool} onChange={(e) => setNewStuPreviousSchool(e.target.value)} style={styles.textInputBox} />
+                            <input maxLength={LIMITS.previousSchool} type="text" placeholder="e.g. ZPHS / St. Johns High School" value={newStuPreviousSchool} onChange={(e) => setNewStuPreviousSchool(e.target.value)} style={styles.textInputBox} />
                           </div>
                           <div>
                             <label style={styles.formLabel}>Previous School Board</label>
@@ -2215,7 +2216,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           </div>
                           <div style={{ gridColumn: 'span 2' }}>
                             <label style={styles.formLabel}>Permanent Address</label>
-                            <input type="text" placeholder="H.No., Street, Village/Mandal, District" value={newStuAddress} onChange={(e) => setNewStuAddress(e.target.value)} style={styles.textInputBox} />
+                            <input maxLength={LIMITS.address} type="text" placeholder="H.No., Street, Village/Mandal, District" value={newStuAddress} onChange={(e) => setNewStuAddress(e.target.value)} style={styles.textInputBox} />
                           </div>
                         </div>
                       </div>
@@ -2292,7 +2293,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                                     <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--royal-gold)', backgroundColor: 'var(--surface-sunken)', padding: '1px 4px', borderRadius: '4px' }}>Custom</span>
                                   )}
                                 </div>
-                                <input
+                                <input min={0} max={999999999}
                                   type="number"
                                   placeholder="0"
                                   value={slot.amount}
@@ -2317,14 +2318,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                         {newStuIsAddingSlot ? (
                           <div style={{ display: 'flex', gap: '8px', padding: '8px', backgroundColor: 'var(--surface-sunken)', borderRadius: '8px', border: '1px dashed var(--line-strong)', marginTop: '4px' }}>
-                            <input
+                            <input maxLength={LIMITS.feeSlotName}
                               type="text"
                               placeholder="Fee Section Description"
                               value={newStuSlotName}
                               onChange={(e) => setNewStuSlotName(e.target.value)}
                               style={{ ...styles.textInputBox, flex: 2, fontSize: '12px' }}
                             />
-                            <input
+                            <input min={0} max={999999999}
                               type="number"
                               placeholder="Amount (Rs)"
                               value={newStuSlotAmount}
@@ -2405,7 +2406,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <input
+              <input maxLength={100}
                 type="text"
                 placeholder="Search student by Name or Admission Number..."
                 value={searchAdm}
@@ -2584,11 +2585,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Full Student Name</label>
-                        <input type="text" value={editStudent.name || ''} onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.personName} type="text" value={editStudent.name || ''} onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })} style={styles.textInputBox} />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Admission Number</label>
-                        <input type="text" value={editStudent.admissionNumber || ''} onChange={(e) => setEditStudent({ ...editStudent, admissionNumber: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.admissionNumber} type="text" value={editStudent.admissionNumber || ''} onChange={(e) => setEditStudent({ ...editStudent, admissionNumber: e.target.value })} style={styles.textInputBox} />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Campus / Branch</label>
@@ -2601,7 +2602,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Student Mobile</label>
-                        <input type="text" value={editStudent.mobile || ''} onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.mobile} type="text" value={editStudent.mobile || ''} onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })} style={styles.textInputBox} />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Course</label>
@@ -2613,7 +2614,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Section</label>
-                        <input type="text" placeholder="e.g. Section A" value={editStudent.section || ''} onChange={(e) => setEditStudent({ ...editStudent, section: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.section} type="text" placeholder="e.g. Section A" value={editStudent.section || ''} onChange={(e) => setEditStudent({ ...editStudent, section: e.target.value })} style={styles.textInputBox} />
                       </div>
                     </div>
                   </div>
@@ -2626,11 +2627,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Father Name</label>
-                        <input type="text" value={editStudent.fatherName || ''} onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.personName} type="text" value={editStudent.fatherName || ''} onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })} style={styles.textInputBox} />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Mother Name</label>
-                        <input type="text" value={editStudent.motherName || ''} onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.personName} type="text" value={editStudent.motherName || ''} onChange={(e) => setEditStudent({ ...editStudent, motherName: e.target.value })} style={styles.textInputBox} />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Date of Birth</label>
@@ -2638,20 +2639,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Parent Mobile Contact</label>
-                        <input type="text" value={editStudent.parentMobile || ''} onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.mobile} type="text" value={editStudent.parentMobile || ''} onChange={(e) => setEditStudent({ ...editStudent, parentMobile: e.target.value })} style={styles.textInputBox} />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Past School</label>
-                        <input type="text" value={editStudent.pastSchool || ''} onChange={(e) => setEditStudent({ ...editStudent, pastSchool: e.target.value })} style={styles.textInputBox} />
+                        <input type="text" maxLength={LIMITS.previousSchool} value={editStudent.pastSchool || ''} onChange={(e) => setEditStudent({ ...editStudent, pastSchool: e.target.value })} style={styles.textInputBox} />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Previous School / Board</label>
-                        <input type="text" value={editStudent.previousSchool || ''} onChange={(e) => setEditStudent({ ...editStudent, previousSchool: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.previousSchool} type="text" value={editStudent.previousSchool || ''} onChange={(e) => setEditStudent({ ...editStudent, previousSchool: e.target.value })} style={styles.textInputBox} />
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <label style={styles.formLabel}>Permanent Address</label>
-                      <input type="text" value={editStudent.address || ''} onChange={(e) => setEditStudent({ ...editStudent, address: e.target.value })} style={styles.textInputBox} />
+                      <input maxLength={LIMITS.address} type="text" value={editStudent.address || ''} onChange={(e) => setEditStudent({ ...editStudent, address: e.target.value })} style={styles.textInputBox} />
                     </div>
                   </div>
 
@@ -3019,7 +3020,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 {/* Search, Register & Filters Bar */}
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <input
+                  <input maxLength={100}
                     type="text"
                     placeholder="Search staff name, role (e.g. Electrician, Mechanic), mobile, ID..."
                     value={searchFac}
@@ -3221,7 +3222,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
                     <div>
                       <label style={styles.formLabel}>Employee Name</label>
-                      <input
+                      <input maxLength={LIMITS.personName}
                         type="text"
                         value={editTeacher.name || ''}
                         readOnly={!canEditFaculty}
@@ -3232,7 +3233,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                     <div>
                       <label style={styles.formLabel}>Role / Designation</label>
-                      <input
+                      <input maxLength={LIMITS.subject}
                         type="text"
                         value={editTeacher.role || editTeacher.subject || ''}
                         readOnly={!canEditFaculty}
@@ -3271,7 +3272,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                     <div>
                       <label style={styles.formLabel}>Base Monthly Salary (Rs.)</label>
-                      <input
+                      <input min={0} max={999999999}
                         type="number"
                         value={editTeacher.salary || 0}
                         readOnly={!canEditFaculty}
@@ -3282,7 +3283,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                     <div>
                       <label style={styles.formLabel}>Mobile Number</label>
-                      <input
+                      <input maxLength={LIMITS.mobile}
                         type="text"
                         value={editTeacher.mobile || ''}
                         readOnly={!canEditFaculty}
@@ -3423,7 +3424,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                       <div>
                         <label style={styles.formLabel}>Amount Disbursed (Rs.)</label>
-                        <input
+                        <input min={0} max={999999999}
                           type="number"
                           value={staffMonthAmount}
                           onChange={(e) => setStaffMonthAmount(e.target.value)}
@@ -3459,7 +3460,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                     <div style={{ marginTop: '10px' }}>
                       <label style={styles.formLabel}>Payment Remarks / Notes</label>
-                      <input
+                      <input maxLength={LIMITS.notes}
                         type="text"
                         value={staffMonthNote}
                         onChange={(e) => setStaffMonthNote(e.target.value)}
@@ -3589,7 +3590,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     {newStaffRolePreset === 'Custom' && (
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Enter Custom Role Name</label>
-                        <input
+                        <input maxLength={LIMITS.department}
                           type="text"
                           placeholder="e.g. Carpenter / IT Specialist"
                           value={newStaffCustomRole}
@@ -3604,7 +3605,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <label style={styles.formLabel}>Full Employee Name</label>
-                      <input
+                      <input maxLength={LIMITS.personName}
                         type="text"
                         placeholder="e.g. Mr. K. Sammaiah"
                         value={newFacName}
@@ -3615,7 +3616,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <label style={styles.formLabel}>Contact Mobile</label>
-                      <input
+                      <input maxLength={LIMITS.mobile}
                         type="text"
                         placeholder="e.g. 9848011223"
                         value={newFacMobile}
@@ -3629,7 +3630,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <label style={styles.formLabel}>Base Monthly Salary (Rs.)</label>
-                      <input
+                      <input min={0} max={999999999}
                         type="number"
                         placeholder="e.g. 45000"
                         value={newFacSal}
@@ -3640,7 +3641,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <label style={styles.formLabel}>Email (Optional)</label>
-                      <input
+                      <input maxLength={LIMITS.email}
                         type="email"
                         placeholder="staff@inspire.edu"
                         value={newFacEmail}
@@ -3791,7 +3792,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={{ width: '140px', flexShrink: 0 }}>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                       <span style={{ position: 'absolute', left: '10px', fontSize: '13px', fontWeight: 900, color: locked ? 'var(--muted-gray)' : 'var(--royal-gold)' }}>Rs.</span>
-                      <input
+                      <input max={999999999}
                         type="number"
                         min="0"
                         disabled={locked}
@@ -3933,7 +3934,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         <main style={{ ...styles.content, gap: '16px' }}>
           {/* Controls Bar */}
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', zIndex: 1 }}>
-            <input
+            <input maxLength={100}
               type="text"
               placeholder="Search student, parent, mobile, ref code..."
               value={searchEnquiry}
@@ -4219,7 +4220,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <h4 style={styles.sectionSubtitle}>Search Student</h4>
             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-              <input type="text" placeholder="Search student by Name or Admission Number..." value={feeEditSearch} onChange={(e) => { setFeeEditSearch(e.target.value); setFeeEditorPage(1); }} style={{ ...styles.textInputBox, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && handleFeeSearch()} />
+              <input maxLength={100} type="text" placeholder="Search student by Name or Admission Number..." value={feeEditSearch} onChange={(e) => { setFeeEditSearch(e.target.value); setFeeEditorPage(1); }} style={{ ...styles.textInputBox, flex: 1 }} onKeyDown={(e) => e.key === 'Enter' && handleFeeSearch()} />
               <button onClick={handleFeeSearch} style={{ ...styles.saveSubmitBtn, marginTop: 0, padding: '12px 24px' }} className="press-interactive">Load</button>
             </div>
           </GlassCard>
@@ -4882,23 +4883,23 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               {newExpCat === 'Others' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={styles.formLabel}>Custom Category Name</label>
-                  <input type="text" placeholder="e.g. Office Equipment" value={customExpCat} onChange={(e) => setCustomExpCat(e.target.value)} style={styles.textInputBox} />
+                  <input maxLength={LIMITS.category} type="text" placeholder="e.g. Office Equipment" value={customExpCat} onChange={(e) => setCustomExpCat(e.target.value)} style={styles.textInputBox} />
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={styles.formLabel}>Amount (Rs.)</label>
-                  <input type="number" min="0" value={newExpAmt} onChange={(e) => setNewExpAmt(e.target.value)} style={styles.textInputBox} placeholder="e.g. 12000" />
+                  <input max={999999999} type="number" min="0" value={newExpAmt} onChange={(e) => setNewExpAmt(e.target.value)} style={styles.textInputBox} placeholder="e.g. 12000" />
                 </div>
               )}
               {newExpCat === 'Others' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={styles.formLabel}>Amount (Rs.)</label>
-                  <input type="number" min="0" value={newExpAmt} onChange={(e) => setNewExpAmt(e.target.value)} style={styles.textInputBox} placeholder="e.g. 12000" />
+                  <input max={999999999} type="number" min="0" value={newExpAmt} onChange={(e) => setNewExpAmt(e.target.value)} style={styles.textInputBox} placeholder="e.g. 12000" />
                 </div>
               )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: '1 / -1' }}>
                 <label style={styles.formLabel}>Description</label>
-                <input type="text" value={newExpDesc} onChange={(e) => setNewExpDesc(e.target.value)} style={styles.textInputBox} placeholder="Brief description of the expense" />
+                <input maxLength={LIMITS.remarks} type="text" value={newExpDesc} onChange={(e) => setNewExpDesc(e.target.value)} style={styles.textInputBox} placeholder="Brief description of the expense" />
               </div>
             </div>
             <button onClick={() => { if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; } handleLogExpenditure(undefined); }} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">
@@ -5076,7 +5077,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div style={{ ...styles.readOnlyBlock, border: '1.5px solid var(--royal-gold)', zIndex: 1, marginBottom: '12px', width: '100%' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ ...styles.formLabel, color: 'var(--royal-gold)', fontWeight: 800 }}>Enter Authenticator Security Key</label>
-              <input
+              <input maxLength={LIMITS.backupCode}
                 type="text"
                 placeholder="Enter Finance Key (OTP) e.g. FIN-1234"
                 value={securityKey}
@@ -5181,7 +5182,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   {salaryActionType === 'paid' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <label style={styles.formLabel}>Exact Amount Paid</label>
-                      <input
+                      <input max={999999999}
                         type="number"
                         min="0"
                         value={salaryAmountInput}
@@ -5298,7 +5299,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           {/* Search & Filter Bar */}
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', zIndex: 1 }}>
             <div style={{ flex: 1, position: 'relative' }}>
-              <input
+              <input maxLength={100}
                 type="text"
                 placeholder="Search Worker by Name, Role, Month Period, ID..."
                 value={workerSearch}
@@ -5529,7 +5530,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
                   <label style={styles.formLabel}>Amount Paid (Rs.) *</label>
-                  <input
+                  <input max={999999999}
                     type="number"
                     min="0"
                     placeholder="Enter paid amount"
@@ -5608,7 +5609,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1 }}>
             {/* Search and Subject Filter */}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <input
+              <input maxLength={100}
                 type="text"
                 placeholder="Search student name or ID..."
                 value={searchFac}

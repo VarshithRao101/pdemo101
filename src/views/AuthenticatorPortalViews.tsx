@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LIMITS } from '../constants/fieldLimits';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
 import { apiClient } from '../services/apiClient';
@@ -989,7 +990,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   </button>
                 ))}
               </div>
-              <input
+              <input maxLength={100}
                 type="text"
                 placeholder="Search transaction ID, action, user..."
                 value={ledgerSearch}
@@ -1074,7 +1075,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   <label style={{ fontSize: '11px', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
                     Authenticator Password Verification
                   </label>
-                  <input
+                  <input maxLength={LIMITS.password}
                     type="password"
                     value={backupPasscode}
                     onChange={(e) => setBackupPasscode(e.target.value)}
@@ -1172,7 +1173,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   <label style={{ fontSize: '11px', fontWeight: 900, color: 'var(--critical)', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
                     Authenticator Password Verification
                   </label>
-                  <input
+                  <input maxLength={LIMITS.password}
                     type="password"
                     value={wipePasscode}
                     onChange={(e) => setWipePasscode(e.target.value)}
@@ -1427,7 +1428,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div style={styles.formGroup}>
                   <label style={styles.inputLabel}>Username / ID</label>
-                  <input
+                  <input maxLength={LIMITS.username}
                     type="text"
                     placeholder="e.g. admin2_beemaram_c1"
                     value={accountUsername}
@@ -1438,7 +1439,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 <div style={styles.formGroup}>
                   <label style={styles.inputLabel}>Password</label>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    <input
+                    <input maxLength={LIMITS.password}
                       type={showModalPassword ? "text" : "password"}
                       placeholder="Set Password"
                       value={accountPassword}
@@ -1467,7 +1468,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
               <div style={styles.formGroup}>
                 <label style={styles.inputLabel}>Full Name</label>
-                <input
+                <input maxLength={LIMITS.personName}
                   type="text"
                   placeholder="Staff Member Full Name"
                   value={accountName}
