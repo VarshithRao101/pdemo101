@@ -61,7 +61,7 @@ const C = PDF_COLORS;
  * status badge back to plain white.
  */
 export const PDF_CSS = `
-@page { size: A4; margin: 12mm; }
+@page { size: A4; margin: 10mm; }
 * { box-sizing: border-box; }
 html, body {
   margin: 0; padding: 0; background: #fff; color: ${C.ink};
@@ -69,55 +69,99 @@ html, body {
   font-size: 11px; line-height: 1.45;
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
-.page { max-width: 186mm; margin: 0 auto; }
+.page { max-width: 190mm; margin: 0 auto; padding: 2mm; }
 
-/* Header */
+/* --- Decorative frame ------------------------------------------------
+   A double rule: a thin accent keyline inside a heavier dark border, which
+   is the convention on printed certificates and financial statements and
+   reads as deliberate rather than as a stray table border.
+
+   Applied only to single-page documents. A bordered box spanning pages
+   draws its top edge on the first page and its bottom on the last, leaving
+   the middle pages open on two sides — worse than no frame at all. */
+.pdf-frame {
+  border: 2.5px solid ${C.ink};
+  border-radius: 5px;
+  padding: 5mm;
+  position: relative;
+}
+.pdf-frame::before {
+  content: ''; position: absolute; inset: 2.5mm;
+  border: 0.9px solid ${C.accent}; border-radius: 3px; pointer-events: none;
+}
+.pdf-frame > * { position: relative; }
+
+/* --- Letterhead ------------------------------------------------------ */
 .pdf-hdr {
   display: flex; justify-content: space-between; align-items: center;
-  gap: 16px; padding: 16px 20px; margin-bottom: 16px;
-  background: ${C.ink}; border-radius: 12px; border-bottom: 3px solid ${C.accent};
+  gap: 14px; padding: 15px 18px; margin-bottom: 15px;
+  background: linear-gradient(135deg, ${C.ink} 0%, #1F2937 100%);
+  border-radius: 10px;
+  border-bottom: 3px solid ${C.accent};
 }
-.pdf-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pdf-brand { display: flex; align-items: center; gap: 15px; min-width: 0; }
 .pdf-logo {
-  width: 42px; height: 42px; object-fit: contain; flex: none;
-  background: #fff; border-radius: 9px; padding: 4px;
+  width: 68px; height: 68px; object-fit: contain; flex: none;
+  background: #fff; border-radius: 10px; padding: 5px;
+  border: 2px solid ${C.accent};
 }
-.pdf-org { color: #fff; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
-.pdf-sub { color: #C7D2DE; font-size: 9px; margin-top: 2px; }
+.pdf-org {
+  color: #fff; font-size: 16.5px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .05em; line-height: 1.2;
+}
+.pdf-rule { width: 48px; height: 2.5px; background: ${C.accent}; margin: 6px 0 5px; border-radius: 2px; }
+.pdf-sub { color: #C3CEDC; font-size: 9px; letter-spacing: .03em; }
 .pdf-title { text-align: right; flex: none; }
-.pdf-title strong { display: block; color: #fff; font-size: 15px; font-weight: 800; text-transform: uppercase; }
-.pdf-title span { display: block; color: ${C.warning}; font-size: 9px; font-weight: 700; text-transform: uppercase; margin-top: 2px; }
-
-/* Detail card */
-.pdf-card {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
-  padding: 13px 16px; margin-bottom: 16px;
-  background: ${C.surfaceSunken}; border: 1px solid ${C.line}; border-radius: 10px;
+.pdf-title strong {
+  display: block; color: #fff; font-size: 15px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .05em;
+  padding-bottom: 5px; border-bottom: 2px solid ${C.warning};
 }
-.pdf-card .k { display: block; font-size: 8px; font-weight: 700; color: ${C.inkSecondary}; text-transform: uppercase; letter-spacing: .05em; }
+.pdf-title span { display: block; color: ${C.warning}; font-size: 8.5px; font-weight: 700; text-transform: uppercase; margin-top: 5px; }
+
+/* --- Detail card ----------------------------------------------------- */
+.pdf-card {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px 16px;
+  padding: 13px 16px; margin-bottom: 14px;
+  background: ${C.surfaceSunken};
+  border: 1px solid ${C.line}; border-left: 4px solid ${C.accent};
+  border-radius: 8px;
+}
+.pdf-card .k { display: block; font-size: 7.5px; font-weight: 700; color: ${C.inkSecondary}; text-transform: uppercase; letter-spacing: .07em; }
 .pdf-card .v { display: block; font-size: 12px; font-weight: 700; color: ${C.ink}; margin-top: 2px; word-break: break-word; }
 
-/* Section heading */
+/* --- Section heading -------------------------------------------------- */
 .pdf-sec {
-  font-size: 9px; font-weight: 800; color: ${C.ink}; text-transform: uppercase;
-  letter-spacing: .07em; margin: 16px 0 7px; padding-bottom: 4px;
-  border-bottom: 1.5px solid ${C.line};
+  display: flex; align-items: center; gap: 8px;
+  font-size: 9.5px; font-weight: 800; color: ${C.ink}; text-transform: uppercase;
+  letter-spacing: .09em; margin: 18px 0 8px;
 }
+.pdf-sec::before { content: ''; width: 4px; height: 13px; background: ${C.accent}; border-radius: 2px; flex: none; }
+.pdf-sec::after { content: ''; flex: 1; height: 1px; background: ${C.line}; }
 
-/* Tables */
-.pdf-tbl { width: 100%; border-collapse: collapse; font-size: 10.5px; border: 1px solid ${C.lineStrong}; }
-.pdf-tbl th {
-  padding: 7px 9px; text-align: left; font-size: 8px; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .04em;
-  background: ${C.surfaceSunken}; color: ${C.inkSecondary};
-  border-bottom: 1.5px solid ${C.lineStrong};
+/* --- Tables ----------------------------------------------------------- */
+.pdf-tbl {
+  width: 100%; border-collapse: collapse; font-size: 10.5px;
+  border: 1.5px solid ${C.ink};
 }
-.pdf-tbl td { padding: 7px 9px; border-bottom: 1px solid ${C.line}; vertical-align: top; }
-.pdf-tbl tr:last-child td { border-bottom: none; }
-.pdf-tbl .num { text-align: right; font-weight: 700; white-space: nowrap; }
-.pdf-tbl .muted { color: ${C.inkMuted}; text-align: center; padding: 14px; }
+.pdf-tbl th {
+  padding: 8px 10px; text-align: left; font-size: 8px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .06em;
+  background: ${C.ink}; color: #fff;
+  border-right: 1px solid rgba(255,255,255,0.15);
+}
+.pdf-tbl th:last-child { border-right: none; }
+.pdf-tbl td { padding: 7px 10px; border-bottom: 1px solid ${C.line}; border-right: 1px solid ${C.line}; vertical-align: top; }
+.pdf-tbl td:last-child { border-right: none; }
+.pdf-tbl tbody tr:nth-child(even) td { background: #FBFCFD; }
+.pdf-tbl tbody tr:last-child td { border-bottom: none; }
+.pdf-tbl .num { text-align: right; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pdf-tbl .muted { color: ${C.inkMuted}; text-align: center; padding: 16px; font-style: italic; }
 .pdf-tbl tr.credit td { background: ${C.goodWash}; color: ${C.good}; font-weight: 700; }
-.pdf-tbl tfoot td { font-weight: 800; background: ${C.surfaceSunken}; border-top: 1.5px solid ${C.lineStrong}; }
+.pdf-tbl tfoot td {
+  font-weight: 800; font-size: 11px; background: ${C.surfaceSunken};
+  border-top: 2px solid ${C.ink}; color: ${C.ink};
+}
 
 /* Rows must not be split down the middle by a page break, and a long table
    must repeat its header on each page rather than orphaning the columns. */
@@ -125,74 +169,48 @@ html, body {
 .pdf-tbl thead { display: table-header-group; }
 .pdf-tbl tfoot { display: table-footer-group; }
 
-/* Summary tiles */
-.pdf-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin-top: 14px; }
-.pdf-tile { padding: 11px 13px; border: 1px solid ${C.line}; border-radius: 9px; background: #fff; }
-.pdf-tile .k { font-size: 8px; font-weight: 700; color: ${C.inkSecondary}; text-transform: uppercase; letter-spacing: .05em; }
-.pdf-tile .v { display: block; margin-top: 4px; font-size: 15px; font-weight: 800; color: ${C.ink}; }
-.pdf-tile.good { border-color: ${C.good}; background: ${C.goodWash}; }
+/* --- Summary tiles ---------------------------------------------------- */
+.pdf-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+.pdf-tile {
+  padding: 12px 14px; border: 1.5px solid ${C.lineStrong};
+  border-top: 3px solid ${C.ink}; border-radius: 8px; background: #fff;
+}
+.pdf-tile .k { font-size: 7.5px; font-weight: 700; color: ${C.inkSecondary}; text-transform: uppercase; letter-spacing: .07em; }
+.pdf-tile .v { display: block; margin-top: 5px; font-size: 16px; font-weight: 800; color: ${C.ink}; font-variant-numeric: tabular-nums; }
+.pdf-tile.good { border-top-color: ${C.good}; background: ${C.goodWash}; border-color: ${C.good}; }
 .pdf-tile.good .v { color: ${C.good}; }
-.pdf-tile.due { border-color: ${C.critical}; background: ${C.criticalWash}; }
+.pdf-tile.due { border-top-color: ${C.critical}; background: ${C.criticalWash}; border-color: ${C.critical}; }
 .pdf-tile.due .v { color: ${C.critical}; }
-.pdf-tile.warn { border-color: ${C.warning}; background: ${C.warningWash}; }
+.pdf-tile.warn { border-top-color: ${C.warning}; background: ${C.warningWash}; border-color: ${C.warning}; }
 .pdf-tile.warn .v { color: ${C.warning}; }
 
-/* Badges */
-.pdf-badge { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 8.5px; font-weight: 800; text-transform: uppercase; }
-.pdf-badge.paid { background: ${C.goodWash}; color: ${C.good}; border: 1px solid ${C.good}; }
-.pdf-badge.due { background: ${C.criticalWash}; color: ${C.critical}; border: 1px solid ${C.critical}; }
-.pdf-badge.part { background: ${C.warningWash}; color: ${C.warning}; border: 1px solid ${C.warning}; }
+/* --- Badges ----------------------------------------------------------- */
+.pdf-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.pdf-badge.paid { background: ${C.goodWash}; color: ${C.good}; border: 1.2px solid ${C.good}; }
+.pdf-badge.due { background: ${C.criticalWash}; color: ${C.critical}; border: 1.2px solid ${C.critical}; }
+.pdf-badge.part { background: ${C.warningWash}; color: ${C.warning}; border: 1.2px solid ${C.warning}; }
 
-/* Footer */
+/* --- Footer ----------------------------------------------------------- */
 .pdf-ftr {
-  margin-top: 22px; padding-top: 10px; border-top: 1.5px dashed ${C.lineStrong};
+  margin-top: 26px; padding-top: 12px;
+  border-top: 2px solid ${C.ink};
   display: flex; justify-content: space-between; align-items: flex-end;
   font-size: 8.5px; color: ${C.inkSecondary};
 }
-.pdf-sig { width: 140px; margin-top: 26px; padding-top: 4px; border-top: 1.5px solid ${C.ink};
-  text-align: center; font-size: 8px; font-weight: 800; color: ${C.ink}; text-transform: uppercase; }
-.pdf-note { max-width: 60%; line-height: 1.4; }
-
-/* Receipts: two copies to a page with a cut line between them.
-   Everything inside a copy is scaled down so both fit on one A4 sheet without
-   the second spilling onto a second page. */
-.pdf-copy { border: 1px solid ${C.lineStrong}; border-radius: 10px; padding: 12px 14px; }
-.pdf-copy .pdf-hdr { padding: 10px 14px; margin-bottom: 10px; border-radius: 9px; }
-.pdf-copy .pdf-org { font-size: 12px; }
-.pdf-copy .pdf-title strong { font-size: 12px; }
-.pdf-copy .pdf-card { padding: 9px 12px; margin-bottom: 10px; gap: 8px; }
-.pdf-copy .pdf-card .v { font-size: 10.5px; }
-.pdf-copy .pdf-sec { margin: 10px 0 5px; }
-.pdf-copy .pdf-tiles { margin-top: 9px; }
-.pdf-copy .pdf-tile { padding: 8px 10px; }
-.pdf-copy .pdf-tile .v { font-size: 13px; }
-.pdf-copy .pdf-ftr { margin-top: 12px; padding-top: 7px; }
-.pdf-copy .pdf-sig { margin-top: 16px; }
-
-.pdf-copy-tag {
-  display: inline-block; margin-bottom: 8px; padding: 3px 9px; border-radius: 999px;
-  font-size: 8px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
-  background: ${C.warningWash}; color: ${C.warning}; border: 1px solid ${C.warning};
+.pdf-sig {
+  width: 150px; margin-top: 30px; padding-top: 5px;
+  border-top: 1.5px solid ${C.ink}; text-align: center;
+  font-size: 8px; font-weight: 800; color: ${C.ink};
+  text-transform: uppercase; letter-spacing: .06em;
 }
-.pdf-cut {
-  border-top: 1.5px dashed ${C.lineStrong}; margin: 12px 0;
-  text-align: center; font-size: 7.5px; color: ${C.inkMuted};
-  letter-spacing: .18em; text-transform: uppercase;
-}
-.pdf-cut span { position: relative; top: -6px; background: #fff; padding: 0 8px; }
+.pdf-note { max-width: 58%; line-height: 1.5; }
+.pdf-note strong { color: ${C.ink}; }
 
-.pdf-words {
-  margin-top: 9px; padding: 8px 11px; border-radius: 8px;
-  background: ${C.surfaceSunken}; border: 1px solid ${C.line};
-}
-.pdf-words .k { font-size: 8px; font-weight: 700; color: ${C.inkSecondary}; text-transform: uppercase; letter-spacing: .05em; }
-.pdf-words .v { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 700; color: ${C.ink}; font-style: italic; }
-
-/* Print button — screen only */
+/* --- Print button, screen only ---------------------------------------- */
 .pdf-print-btn {
-  display: block; margin: 0 auto 16px; padding: 10px 26px; cursor: pointer;
-  background: ${C.ink}; color: #fff; border: none; border-radius: 9px;
-  font-size: 12px; font-weight: 800; font-family: inherit;
+  display: block; margin: 0 auto 14px; padding: 11px 28px; cursor: pointer;
+  background: ${C.ink}; color: #fff; border: none; border-radius: 8px;
+  font-size: 12px; font-weight: 800; font-family: inherit; letter-spacing: .03em;
 }
 .pdf-print-btn:hover { background: #000; }
 @media print { .pdf-print-btn { display: none !important; } }
@@ -238,6 +256,7 @@ export const pdfHeader = ({ logoSrc, title, subtitle, campus }: PdfHeaderOptions
       <img class="pdf-logo" src="${escapeHtml(logoSrc)}" alt="" />
       <div>
         <div class="pdf-org">${escapeHtml(PDF_ORG_NAME)}</div>
+        <div class="pdf-rule"></div>
         <div class="pdf-sub">${escapeHtml(campus || 'All Campuses')}${subtitle ? ` &middot; ${escapeHtml(subtitle)}` : ''}</div>
       </div>
     </div>
@@ -317,6 +336,16 @@ export interface OpenPrintOptions {
   onBlocked?: () => void;
   /** Landscape for wide tables — an audit ledger does not fit in portrait. */
   landscape?: boolean;
+  /**
+   * Draws the decorative double border.
+   *
+   * Only for documents that fit on one page — a receipt, payslip or bill. A
+   * bordered box that spans pages draws its top edge on the first page and
+   * its bottom on the last, leaving the middle pages open on two sides, which
+   * looks like a rendering fault rather than a frame. Long ledgers and audit
+   * reports therefore leave it off.
+   */
+  framed?: boolean;
 }
 
 /**
@@ -327,7 +356,7 @@ export interface OpenPrintOptions {
  * — and the title is what the browser offers as the default PDF filename.
  */
 export const openPrintDocument = ({
-  title, body, buttonLabel = 'Print / Save as PDF', onBlocked, landscape = false
+  title, body, buttonLabel = 'Print / Save as PDF', onBlocked, landscape = false, framed = false
 }: OpenPrintOptions): boolean => {
   const win = window.open('', '_blank');
   if (!win) {
@@ -350,7 +379,7 @@ export const openPrintDocument = ({
 <body>
 <div class="page">
 <button class="pdf-print-btn" onclick="window.print()">${escapeHtml(buttonLabel)}</button>
-${body}
+${framed ? `<div class="pdf-frame">${body}</div>` : body}
 </div>
 </body>
 </html>`);

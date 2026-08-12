@@ -904,6 +904,7 @@ export const AccountantDashboardView: React.FC = () => {
       title: `Receipt ${receipt.receiptNumber}`,
       body,
       buttonLabel: 'Print / Save Receipt as PDF',
+      framed: true,
       onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to print the receipt.')
     });
     if (opened) triggerToast('Receipt opened for printing.');
@@ -1036,6 +1037,7 @@ export const AccountantDashboardView: React.FC = () => {
       title: `Fee Statement - ${student.admissionNumber || student.name}`,
       body,
       buttonLabel: 'Print / Save Fee Statement as PDF',
+      framed: true,
       onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the statement.', 'error')
     });
     if (opened) triggerToast('Fee statement opened for printing.');

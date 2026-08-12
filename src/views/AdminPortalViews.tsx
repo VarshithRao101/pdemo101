@@ -673,6 +673,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       title: `Worker Payslip - ${workerName}`,
       body,
       buttonLabel: 'Print / Save Payslip as PDF',
+      framed: true,
       onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the payslip.')
     });
     if (opened) triggerToast('Worker payslip opened for ' + workerName);
@@ -954,6 +955,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       title: `Salary Payslip - ${t.name} (${monthName})`,
       body,
       buttonLabel: 'Print / Save Payslip as PDF',
+      framed: true,
       onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the payslip.')
     });
     if (opened) triggerToast(`Payslip opened for ${t.name} (${monthName}).`);
@@ -4627,6 +4629,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         title: `Expenditure Bill - ${exp.category}`,
         body,
         buttonLabel: 'Print / Save Bill as PDF',
+        framed: true,
         onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the bill.')
       });
       if (opened) triggerToast('Expenditure bill opened for printing.');
