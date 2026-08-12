@@ -1842,11 +1842,19 @@ export const PortfolioView: React.FC = () => {
                       { val: '100%', sub: 'Doubt Assistance', c: ACCENT_GOLD },
                       { val: 'Top AIR', sub: 'Competitive Ranks', c: '#38BDF8' },
                       { val: '4', sub: 'Premium Campuses', c: '#34D399' },
-                      { val: '1500+', sub: 'Alumni &amp; Counting', c: '#C084FC' },
+                      { val: '1500+', sub: 'Alumni & Counting', c: '#C084FC' },
                     ].map((s, i) => (
+                      // Rendered as text, not HTML. These two used
+                      // dangerouslySetInnerHTML purely to turn "&amp;" back
+                      // into an ampersand — which the character itself does,
+                      // in JSX, with no raw-HTML sink. The values here are
+                      // hardcoded so nothing was exploitable, but the pattern
+                      // becomes a stored-XSS hole the day someone makes this
+                      // array come from the API, and on this app that means
+                      // handing over the access token in localStorage.
                       <div key={i} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '12px 14px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        <div style={{ fontSize: 19, fontWeight: 900, color: s.c, marginBottom: 2 }} dangerouslySetInnerHTML={{ __html: s.val }} />
-                        <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700 }} dangerouslySetInnerHTML={{ __html: s.sub }} />
+                        <div style={{ fontSize: 19, fontWeight: 900, color: s.c, marginBottom: 2 }}>{s.val}</div>
+                        <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700 }}>{s.sub}</div>
                       </div>
                     ))}
                   </div>

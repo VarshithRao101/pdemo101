@@ -39,6 +39,23 @@ const campusBackup = require('./services/campusBackupService.cjs');
 
 const app = express();
 
+/**
+ * How many reverse proxies sit in front of this process.
+ *
+ * Without this, Express refuses to interpret X-Forwarded-For at all and
+ * req.ip is the proxy's address — so every visitor looks like one client.
+ * With it set too high, or to `true`, Express trusts the whole chain
+ * including whatever the client prepended, which is the vulnerability this
+ * replaces: the rate limiter keyed on a value the caller chose.
+ *
+ * One hop is right for Hostinger's edge. Set TRUSTED_PROXY_HOPS=0 if this
+ * ever runs directly exposed, and req.ip becomes the socket address.
+ */
+const TRUSTED_PROXY_HOPS = process.env.TRUSTED_PROXY_HOPS === undefined
+  ? 1
+  : Number(process.env.TRUSTED_PROXY_HOPS);
+app.set('trust proxy', Number.isFinite(TRUSTED_PROXY_HOPS) ? TRUSTED_PROXY_HOPS : 1);
+
 // Security Headers via Helmet with Hardened Content Security Policy (CSP) Enabled (unsafe-eval removed)
 app.use(helmet({
   contentSecurityPolicy: {
@@ -653,9 +670,7 @@ function rateLimitBudgetFor(path) {
 }
 
 async function mongoRateLimiter(req, res, next) {
-  const rawIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-  const ip = String(rawIp).split(',')[0].trim();
-  const key = `ratelimit_${req.path}_${ip}`;
+  const key = `ratelimit_${req.path}_${clientIp(req)}`;
   const now = new Date();
   const maxAttempts = rateLimitBudgetFor(req.path);
 
@@ -1219,8 +1234,9 @@ async function issueSession(user, res, req = null) {
   user.sessionStartedAt = now;
   user.lastSeenAt = now;
   if (req) {
-    const fwd = req.headers['x-forwarded-for'];
-    user.sessionIp = String(fwd || req.socket?.remoteAddress || '').split(',')[0].trim().slice(0, 64);
+    // Through clientIp, so the recorded address respects the trusted-proxy
+    // depth rather than believing whatever the caller put in the header.
+    user.sessionIp = clientIp(req).slice(0, 64);
     user.sessionUserAgent = String(req.headers['user-agent'] || '').slice(0, 250);
   }
   await user.save();
@@ -1267,11 +1283,29 @@ async function issueSession(user, res, req = null) {
   });
 }
 
-// Source IP for audit lines. Behind Hostinger's edge the socket address is the
-// proxy, so the forwarded header is the only view of the real client.
+/**
+ * The client's address, as far as it can be trusted.
+ *
+ * This used to read X-Forwarded-For straight off the request and take its
+ * leftmost entry. That header is set by the CLIENT, and only overwritten by a
+ * proxy for the hop it controls — so anyone could send whatever they liked.
+ * The rate limiter keyed on this value, which made it bypassable outright: a
+ * fresh X-Forwarded-For bought a fresh budget on every request. Confirmed by
+ * test — 14 login attempts, none blocked, against a limit of 10.
+ *
+ * Express computes this correctly once it knows how many proxies sit in
+ * front. With `trust proxy` set to that number it walks in from the RIGHT of
+ * the chain, past exactly the hops we control, and anything the client
+ * prepended is ignored. TRUSTED_PROXY_HOPS is 1 for Hostinger's edge; set it
+ * to 0 for a directly exposed server, which makes req.ip the socket address
+ * and ignores the header entirely.
+ *
+ * The per-account lockout is keyed by username rather than address precisely
+ * because address-based limits can be evaded this way. Both matter: one
+ * bounds a single machine, the other bounds a single account.
+ */
 function clientIp(req) {
-  const raw = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-  return String(raw).split(',')[0].trim();
+  return String(req.ip || req.socket.remoteAddress || 'unknown').trim();
 }
 
 /**
