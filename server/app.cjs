@@ -848,11 +848,65 @@ function callerOwnsCampus(req, recordCampus) {
   return normalizeCampus(recordCampus) === normalizeCampus(req.user.campus);
 }
 
+// Makes a string safe to interpolate into a RegExp. Any value from a request
+// that ends up in a pattern must go through this: unescaped, a metacharacter
+// changes what the pattern matches, and a nested quantifier can make it take
+// exponential time.
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Mongo filter that limits a query to the caller's campus. Returns {} only for
 // genuinely org-wide accounts, never as a fallback when campus is missing.
 function campusScopeFilter(req) {
   if (String(req.user.campus || '').toLowerCase() === 'all') return {};
   return { branch: req.user.campus };
+}
+
+/**
+ * The campus a READ may cover, or null once a refusal has been sent.
+ *
+ * Three separate routes took ?branch straight from the query and used it
+ * without checking it against the caller — the student list, the fee settings
+ * and the enquiries list. Each was written with a different idea of who
+ * needed guarding, and each missed at least one role. This is the single
+ * answer to "which campus may this request see", so a new route gets the rule
+ * by calling one function rather than by remembering to write it again.
+ *
+ * A scoped account is pinned to its own campus and refused outright if it
+ * names another — never silently narrowed, because silently returning
+ * different data than was asked for hides the fact that a boundary exists.
+ */
+function resolveReadCampus(req, res, { requireExplicit = false } = {}) {
+  const requested = String(req.query.branch || req.query.campus || '').trim();
+  const own = String(req.user.campus || '');
+  const isOrgWide = own.toLowerCase() === 'all';
+
+  if (!isOrgWide) {
+    if (requested && requested.toLowerCase() !== 'all'
+        && normalizeCampus(requested) !== normalizeCampus(own)) {
+      res.status(403).json({
+        status: 'error',
+        message: `Your account may only view data for ${own}.`
+      });
+      return null;
+    }
+    return own;
+  }
+
+  // Org-wide: may narrow to any real campus, or see everything.
+  if (!requested || requested.toLowerCase() === 'all') {
+    if (requireExplicit) {
+      res.status(400).json({ status: 'error', message: 'Specify which campus to view.' });
+      return null;
+    }
+    return null; // null means "no campus filter" for an org-wide caller
+  }
+  if (!isValidCampus(requested)) {
+    res.status(400).json({ status: 'error', message: `Unknown campus [${requested}].` });
+    return null;
+  }
+  return normalizeCampus(requested);
 }
 
 // Campus Isolation Middleware
@@ -2351,14 +2405,12 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
 app.get('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
   try {
     await connectToDatabase();
-    const branch = req.query.branch || req.user.campus;
-    if (!branch || branch.toLowerCase() === 'all') {
-      return res.status(400).json({ status: 'error', message: 'Specific campus branch query parameter required.' });
-    }
 
-    if (!isValidCampus(branch)) {
-      return res.status(400).json({ status: 'error', message: `Invalid campus branch [${branch}]. Must be one of: ${VALID_CAMPUSES.join(', ')}` });
-    }
+    // This route read ?branch with no check against the caller at all, so a
+    // scoped account could read — and, since it creates a default record when
+    // none exists, WRITE — another campus's fee structure.
+    const branch = resolveReadCampus(req, res, { requireExplicit: true });
+    if (!branch) return;
 
     let settings = await FeeSettings.findOne({ branch });
     if (!settings) {
@@ -3945,8 +3997,24 @@ app.patch('/api/enquiries/:id', authenticateToken, requireRole('admin1', 'admin2
 app.get('/api/enquiries', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
   try {
     await connectToDatabase();
-    const campus = req.query.branch || (req.user.role === 'admin1' ? 'All' : req.user.campus);
-    const filter = (!campus || campus === 'All') ? {} : { preferredCampus: new RegExp(campus.split(' ')[0], 'i') };
+    // Took ?branch straight from the query with no check against the caller,
+    // so a scoped account could list another campus's admissions enquiries.
+    const campus = resolveReadCampus(req, res);
+    if (campus === null && res.headersSent) return;
+
+    // Enquiries store the campus the enquirer chose on the public form, whose
+    // wording ("Erragattugutta Campus 1") does not match the internal campus
+    // names, so this matches on the town rather than the exact string.
+    //
+    // The town is escaped before it becomes a regex. It was interpolated raw,
+    // which let a query parameter compile into a pattern — loose matching at
+    // best, and a denial of service at worst if someone sent a pathological
+    // one. It is validated against the campus list before reaching here, but
+    // a value that ends up inside a RegExp must be escaped regardless.
+    const filter = !campus
+      ? {}
+      : { preferredCampus: new RegExp(escapeRegex(String(campus).split(' ')[0]), 'i') };
+
     const enquiries = await Enquiry.find(filter).sort({ createdAt: -1 }).lean();
     return res.json({ status: 'success', data: enquiries });
   } catch (err) {
