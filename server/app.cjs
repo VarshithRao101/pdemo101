@@ -4590,19 +4590,18 @@ app.use((err, req, res, _next) => {
   });
 });
 
-// Last-resort crash containment for the persistent Hostinger process.
+// NOTE: the process-level unhandledRejection and uncaughtException handlers
+// used to live here. They have moved to server/start.cjs for two reasons.
 //
-// An unhandled rejection anywhere in the codebase would otherwise terminate
-// the Node process and take the whole site down until the host restarted it.
-// Log loudly, keep serving: one bad request must not end the process for
-// every other user.
-process.on('unhandledRejection', (reason) => {
-  console.error('[FATAL-CONTAINED] Unhandled promise rejection:', reason && reason.stack ? reason.stack : reason);
-});
-
-process.on('uncaughtException', (err) => {
-  console.error('[FATAL-CONTAINED] Uncaught exception:', err && err.stack ? err.stack : err);
-});
+// First, this module is imported by test suites and tooling, and a module has
+// no business installing process-wide handlers on whoever imports it.
+//
+// Second, and more importantly, the uncaughtException handler here logged the
+// error and CARRIED ON. After an uncaught exception the process state is
+// undefined, and continuing is how this app ended up alive but serving
+// nothing: a failed port bind threw, the handler swallowed it, and the result
+// was a healthy-looking process listening on no port at all. Nothing restarted
+// it because nothing had crashed. start.cjs now exits instead.
 
 module.exports = app;
 
