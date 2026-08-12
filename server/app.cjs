@@ -2927,6 +2927,29 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
       ? `client_${String(clientKey).trim()}`
       : `srv_${student.studentId}_${payAmt}_${String(category).trim()}_${String(transactionRef || '').trim()}_${Math.floor(Date.now() / 15000)}`;
 
+    // A payment may not exceed what is still owed.
+    //
+    // This existed only in the browser. The server accepted any positive
+    // amount under the per-transaction cap, so posting directly recorded a
+    // 50,000 payment against a 10,000 balance: totalPaid went to 50,000, the
+    // balance clamped to 0, and the 40,000 difference became money marked as
+    // received with nothing recording that it was owed back. It also breaks
+    // the invariant the reconciliation check relies on, that paid plus
+    // balance equals the fee.
+    //
+    // Checked here for a clear message, and enforced again in the update
+    // below, which is the part that holds under two tills at once.
+    const owed = Math.round(Number(student.remainingBalance || 0) * 100) / 100;
+    if (payAmt > owed) {
+      return res.status(400).json({
+        status: 'error',
+        message: owed <= 0
+          ? 'This student has no outstanding balance. Nothing to collect.'
+          : `Payment of Rs. ${payAmt.toLocaleString('en-IN')} exceeds the outstanding balance of Rs. ${owed.toLocaleString('en-IN')}.`,
+        outstandingBalance: owed
+      });
+    }
+
     const receiptNumber = `REC-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex')}`;
 
     let newPayment;
@@ -2968,8 +2991,11 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
 
     // One atomic update: increment totalPaid and recompute remainingBalance
     // from the document's own fields, server-side, in the same operation.
+    // The filter carries the balance condition, so two tills collecting at the
+    // same moment cannot both pass the check above and jointly overpay: the
+    // second update simply does not match, and is rolled back below.
     const updatedStudent = await Student.findOneAndUpdate(
-      { _id: student._id },
+      { _id: student._id, remainingBalance: { $gte: payAmt } },
       [
         {
           $set: {
@@ -3014,8 +3040,30 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
     );
 
     if (!updatedStudent) {
-      // The receipt exists but the ledger did not move. Say so loudly rather
-      // than returning a success the books will not agree with.
+      // Two reasons the update can match nothing, and they are not the same.
+      const current = await Student.findById(student._id).select('remainingBalance').lean();
+      const nowOwed = Math.round(Number(current?.remainingBalance || 0) * 100) / 100;
+
+      if (current && payAmt > nowOwed) {
+        // Another till collected in between and this payment would overpay.
+        // The receipt was written before the ledger, so remove it: a payment
+        // row that was never applied would inflate every reconciliation.
+        await Payment.deleteOne({ _id: newPayment._id }).catch(err =>
+          console.error(`[Payments]: Could not roll back unapplied receipt ${receiptNumber}:`, err.message));
+
+        console.warn(`[Payments]: Receipt ${receiptNumber} rolled back — balance moved to ${nowOwed} before it applied.`);
+        return res.status(409).json({
+          status: 'error',
+          message: nowOwed <= 0
+            ? 'This balance was cleared by another payment a moment ago. Nothing left to collect.'
+            : `Another payment was recorded first. Only Rs. ${nowOwed.toLocaleString('en-IN')} is now outstanding.`,
+          outstandingBalance: nowOwed
+        });
+      }
+
+      // Anything else is a genuine anomaly: the receipt exists but the ledger
+      // did not move. Say so loudly rather than returning a success the books
+      // will not agree with.
       console.error(`[Payments]: Receipt ${receiptNumber} created but student ${student.studentId} balance update matched nothing.`);
       return res.status(500).json({
         status: 'error',
