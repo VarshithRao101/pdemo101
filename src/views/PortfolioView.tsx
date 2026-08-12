@@ -1079,7 +1079,12 @@ export const PortfolioView: React.FC = () => {
               ))}
             </div>
             {/* Mobile menu toggle */}
-            <button className="mob-btn" onClick={() => setMobileOpen(o => !o)}
+            {/* Its only content is an SVG, so without a label a screen reader
+                announced it as an unnamed button. aria-expanded tells the user
+                whether the menu is currently open. */}
+            <button className="mob-btn" type="button" onClick={() => setMobileOpen(o => !o)}
+              aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileOpen}
               style={{ display: 'none', background: 'none', border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: 8, padding: '8px 12px', color: '#fff', cursor: 'pointer', alignItems: 'center', gap: 6, minWidth: 44, minHeight: 44, justifyContent: 'center', transition: 'border-color 0.2s' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 {mobileOpen ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></> : <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>}
@@ -1585,22 +1590,42 @@ export const PortfolioView: React.FC = () => {
                 </div>
 
                 {/* Bottom Dots Indicator */}
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
+                {/* The dot is the visual; the BUTTON is the tap target.
+                    These were 7x7px hit areas — impossible to hit reliably on
+                    a phone, which is where this gallery is mostly viewed. The
+                    button is now 28px tall with the dot drawn inside it, so
+                    the target grows without the dots getting bigger. */}
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, marginTop: 8, flexWrap: 'wrap' }}>
                   {CAMPUS_PHOTOS.map((_, idx) => (
                     <button
                       key={idx}
+                      type="button"
                       onClick={() => setPhotoIndex(idx)}
-                      aria-label={`Go to photo ${idx + 1}`}
+                      aria-label={`Go to photo ${idx + 1} of ${CAMPUS_PHOTOS.length}`}
+                      aria-current={idx === photoIndex ? 'true' : undefined}
                       style={{
-                        width: idx === photoIndex ? 22 : 7,
-                        height: 7,
-                        borderRadius: 4,
-                        background: idx === photoIndex ? '#2563EB' : '#CBD5E1',
+                        width: 28,
+                        height: 28,
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'none',
                         border: 'none',
                         cursor: 'pointer',
-                        transition: 'all 0.3s ease',
                       }}
-                    />
+                    >
+                      <span
+                        style={{
+                          display: 'block',
+                          width: idx === photoIndex ? 22 : 7,
+                          height: 7,
+                          borderRadius: 4,
+                          background: idx === photoIndex ? '#2563EB' : '#CBD5E1',
+                          transition: 'all 0.3s ease',
+                        }}
+                      />
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1995,14 +2020,21 @@ export const PortfolioView: React.FC = () => {
                     { label: 'Academic Stream Preference', val: stuStream, set: setStuStream, opts: ['MPC (JEE Mains & Advanced)', 'BiPC (NEET Medical)', 'MEC & CEC (CA Foundation / Civils)', 'Long-Term Repeater Batch'] },
                     { label: 'Preferred Campus Location', val: stuCampus, set: setStuCampus, opts: ['Erragattugutta Campus 1', 'Erragattugutta Campus 2', 'Bheemaram Campus 1', 'Bheemaram Campus 2'] },
                     { label: 'Current Grade / Qualification', val: stuGrade, set: setStuGrade, opts: ['Grade 10 (Completed)', 'Grade 12 / Intermediate (Completed)', 'Appearing Grade 10', 'Appearing Grade 12'] },
-                  ].map(f => (
-                    <div key={f.label}>
-                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</label>
-                      <select value={f.val} onChange={e => f.set(e.target.value)} className="ig" style={inputSt}>
-                        {f.opts.map(o => <option key={o}>{o}</option>)}
-                      </select>
-                    </div>
-                  ))}
+                  ].map(f => {
+                    // The label was visually adjacent but not associated with
+                    // the control, so a screen reader announced these three as
+                    // an unnamed combo box. On the public admissions form,
+                    // which is the one page anyone can reach.
+                    const id = `enq-${f.label.toLowerCase().replace(/[^a-z]+/g, '-')}`;
+                    return (
+                      <div key={f.label}>
+                        <label htmlFor={id} style={{ display: 'block', fontSize: 12.5, fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</label>
+                        <select id={id} name={id} value={f.val} onChange={e => f.set(e.target.value)} className="ig" style={inputSt}>
+                          {f.opts.map(o => <option key={o}>{o}</option>)}
+                        </select>
+                      </div>
+                    );
+                  })}
 
                   <div style={{ gridColumn: '1/-1' }}>
                     <label style={{ display: 'block', fontSize: 12.5, fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message / Specific Requirements</label>
