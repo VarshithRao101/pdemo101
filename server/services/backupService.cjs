@@ -35,6 +35,38 @@ try {
   console.warn('⚠️ [BackupService]: Safe notice - Could not create local backup directory:', dirErr.message);
 }
 
+// How many local encrypted copies to keep. These are a convenience for
+// recovery when Drive is unreachable; Drive remains the system of record, so
+// a deep local history buys little and costs disk on a shared host.
+const LOCAL_BACKUP_KEEP = Number(process.env.LOCAL_BACKUP_KEEP) || 5;
+
+/** Keeps the newest LOCAL_BACKUP_KEEP encrypted copies and deletes the rest. */
+function pruneLocalBackups(keep = LOCAL_BACKUP_KEEP) {
+  try {
+    const files = fs.readdirSync(LOCAL_BACKUP_DIR)
+      .filter(f => f.startsWith('inspire-erp-backup-') && f.endsWith('.json.enc'))
+      .map(f => {
+        const full = path.join(LOCAL_BACKUP_DIR, f);
+        return { full, name: f, mtime: fs.statSync(full).mtimeMs };
+      })
+      // Newest first. Sorting explicitly rather than trusting readdir order,
+      // because getting this backwards deletes the recent copies and keeps
+      // the useless old ones.
+      .sort((a, b) => b.mtime - a.mtime);
+
+    let removed = 0;
+    for (const stale of files.slice(keep)) {
+      fs.unlinkSync(stale.full);
+      removed++;
+    }
+    if (removed) console.log(`[BackupService]: Pruned ${removed} local backup copy(ies), keeping ${keep}.`);
+    return removed;
+  } catch (err) {
+    console.warn('⚠️ [BackupService]: Local backup prune skipped:', err.message);
+    return 0;
+  }
+}
+
 // Retrievable backup audit log memory
 const backupLogs = [];
 
@@ -132,10 +164,17 @@ async function generateAndUploadBackup(triggeredBy = 'system') {
   const dateStr = new Date().toISOString().slice(0, 10);
   const fileName = `inspire-erp-backup-${dateStr}-${Date.now().toString().slice(-6)}.json.enc`;
 
-  // Save encrypted copy locally if storage directory is writable
+  // Save encrypted copy locally if storage directory is writable, then prune.
+  //
+  // The prune is the point: this wrote a file on every run and never removed
+  // one. Drive had a retention policy, local disk had none, so the directory
+  // grew forever. On a shared host a full disk takes the whole site down, and
+  // it does it in a way that looks like a mystery outage rather than a full
+  // disk — which is the same class of failure this app has already had twice.
   try {
     const localFilePath = path.join(LOCAL_BACKUP_DIR, fileName);
     fs.writeFileSync(localFilePath, encryptedPayload, 'utf-8');
+    pruneLocalBackups();
   } catch (localWriteErr) {
     console.warn('⚠️ [BackupService]: Safe notice - local backup file write skipped:', localWriteErr.message);
   }
@@ -323,5 +362,6 @@ module.exports = {
   getBackupLogs,
   getAllAvailableBackupFiles,
   encryptPayload,
-  decryptPayload
+  decryptPayload,
+  pruneLocalBackups
 };

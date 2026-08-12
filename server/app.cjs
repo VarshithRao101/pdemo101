@@ -2114,7 +2114,11 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
       return res.status(400).json({ status: 'error', message: 'Month description is required.' });
     }
 
-    const validMonths = ['June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March', 'April', 'May'];
+    // One month list, defined with ACADEMIC_YEARS at the top of the file. This
+    // route carried its own identical copy, so the twelve-month completeness
+    // rule that unlocks the next academic year was counting against a list
+    // that could drift from the canonical one.
+    const validMonths = LEDGER_MONTHS;
     if (!validMonths.includes(month)) {
       return res.status(400).json({ status: 'error', message: `Invalid month [${month}]. Must be one of: ${validMonths.join(', ')}` });
     }
