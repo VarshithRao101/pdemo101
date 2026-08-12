@@ -23,32 +23,43 @@
  */
 
 /**
- * The institution name printed on every document.
+ * The institution name.
  *
- * The old templates disagreed with each other: fee statements carried
- * "Inspire Royal Residential Junior College" while payslips and reports said
- * "INSPIRE JUNIOR COLLEGE". Two different names on documents issued by the
- * same office to the same parents. The fuller form is the formal one, so that
- * is what all of them use now.
+ * Used for the document <title>, which is what a browser offers as the
+ * default PDF filename. It is NOT printed in the letterhead: the official
+ * logo already contains the name, so setting it again beside the logo would
+ * print it twice on every page.
  */
-export const PDF_ORG_NAME = 'Inspire Royal Residential Junior College';
+export const PDF_ORG_NAME = 'Inspire Junior College';
 
-/** Literal palette. Deliberately not CSS variables — see the note above. */
+/**
+ * Monochrome palette. Black, white and grey only.
+ *
+ * Still literal values rather than CSS variables — that is what made the old
+ * documents print white-on-white, and the reason has not changed.
+ *
+ * The semantic names are kept so call sites do not all have to change, but
+ * they now resolve to greys. Emphasis on these documents comes from weight,
+ * rules and whitespace, never from hue. The one exception on the page is the
+ * college logo itself, which is a brand asset and stays as issued.
+ */
 export const PDF_COLORS = {
-  ink: '#111827',
-  inkSecondary: '#4B5563',
-  inkMuted: '#9CA3AF',
-  line: '#E5E7EB',
-  lineStrong: '#D1D5DB',
+  ink: '#111111',
+  inkSecondary: '#555555',
+  inkMuted: '#8A8A8A',
+  line: '#DDDDDD',
+  lineStrong: '#BBBBBB',
   surface: '#FFFFFF',
-  surfaceSunken: '#F9FAFB',
-  accent: '#2A78D6',
-  good: '#1BAF7A',
-  goodWash: '#ECFDF5',
-  warning: '#EDA100',
-  warningWash: '#FFFBEB',
-  critical: '#DC2626',
-  criticalWash: '#FEF2F2'
+  surfaceSunken: '#F5F5F5',
+  // Retained as aliases so existing call sites keep compiling. Anything that
+  // used to be blue, green, amber or red is now simply ink or a grey.
+  accent: '#111111',
+  good: '#111111',
+  goodWash: '#F5F5F5',
+  warning: '#555555',
+  warningWash: '#F5F5F5',
+  critical: '#111111',
+  criticalWash: '#F5F5F5'
 } as const;
 
 const C = PDF_COLORS;
@@ -61,106 +72,83 @@ const C = PDF_COLORS;
  * status badge back to plain white.
  */
 export const PDF_CSS = `
-@page { size: A4; margin: 10mm; }
+@page { size: A4; margin: 14mm; }
 * { box-sizing: border-box; }
 html, body {
   margin: 0; padding: 0; background: #fff; color: ${C.ink};
   font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  font-size: 11px; line-height: 1.45;
+  font-size: 10.5px; line-height: 1.5;
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
-.page { max-width: 190mm; margin: 0 auto; padding: 2mm; }
+.page { max-width: 182mm; margin: 0 auto; }
 
-/* --- Decorative frame ------------------------------------------------
-   A double rule: a thin accent keyline inside a heavier dark border, which
-   is the convention on printed certificates and financial statements and
-   reads as deliberate rather than as a stray table border.
+/* --- Frame ------------------------------------------------------------
+   A single hairline. The earlier version used a heavy border with a second
+   inset keyline, which fought the content for attention on a page whose job
+   is to present numbers.
 
-   Applied only to single-page documents. A bordered box spanning pages
-   draws its top edge on the first page and its bottom on the last, leaving
-   the middle pages open on two sides — worse than no frame at all. */
-.pdf-frame {
-  border: 2.5px solid ${C.ink};
-  border-radius: 5px;
-  padding: 5mm;
-  position: relative;
-}
-.pdf-frame::before {
-  content: ''; position: absolute; inset: 2.5mm;
-  border: 0.9px solid ${C.accent}; border-radius: 3px; pointer-events: none;
-}
-.pdf-frame > * { position: relative; }
+   Single-page documents only: a bordered box spanning pages draws its top
+   edge on the first page and its bottom on the last, leaving middle pages
+   open on two sides. */
+.pdf-frame { border: 1px solid ${C.line}; padding: 8mm; }
 
-/* --- Letterhead ------------------------------------------------------ */
+/* --- Letterhead -------------------------------------------------------
+   The logo is the letterhead. It already contains the college name, the
+   stream badge and the tagline, so setting the name again beside it would
+   print it twice. */
 .pdf-hdr {
-  display: flex; justify-content: space-between; align-items: center;
-  gap: 14px; padding: 15px 18px; margin-bottom: 15px;
-  background: linear-gradient(135deg, ${C.ink} 0%, #1F2937 100%);
-  border-radius: 10px;
-  border-bottom: 3px solid ${C.accent};
+  text-align: center;
+  padding-bottom: 12px; margin-bottom: 6px;
+  border-bottom: 1px solid ${C.ink};
 }
-.pdf-brand { display: flex; align-items: center; gap: 15px; min-width: 0; }
-.pdf-logo {
-  width: 68px; height: 68px; object-fit: contain; flex: none;
-  background: #fff; border-radius: 10px; padding: 5px;
-  border: 2px solid ${C.accent};
+.pdf-logo { width: 260px; max-width: 62%; height: auto; display: block; margin: 0 auto 12px; }
+.pdf-sub {
+  color: ${C.inkSecondary}; font-size: 8.5px;
+  letter-spacing: .16em; text-transform: uppercase;
 }
-.pdf-org {
-  color: #fff; font-size: 16.5px; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .05em; line-height: 1.2;
+.pdf-meta {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 7px 0 0; margin-bottom: 16px;
+  font-size: 8px; color: ${C.inkSecondary};
+  letter-spacing: .1em; text-transform: uppercase;
 }
-.pdf-rule { width: 48px; height: 2.5px; background: ${C.accent}; margin: 6px 0 5px; border-radius: 2px; }
-.pdf-sub { color: #C3CEDC; font-size: 9px; letter-spacing: .03em; }
-.pdf-title { text-align: right; flex: none; }
-.pdf-title strong {
-  display: block; color: #fff; font-size: 15px; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .05em;
-  padding-bottom: 5px; border-bottom: 2px solid ${C.warning};
-}
-.pdf-title span { display: block; color: ${C.warning}; font-size: 8.5px; font-weight: 700; text-transform: uppercase; margin-top: 5px; }
+.pdf-doctype { font-size: 12px; font-weight: 700; color: ${C.ink}; letter-spacing: .18em; }
 
-/* --- Detail card ----------------------------------------------------- */
+/* --- Detail block ----------------------------------------------------- */
 .pdf-card {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px 16px;
-  padding: 13px 16px; margin-bottom: 14px;
-  background: ${C.surfaceSunken};
-  border: 1px solid ${C.line}; border-left: 4px solid ${C.accent};
-  border-radius: 8px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 20px;
+  padding: 12px 0 14px; margin-bottom: 4px;
+  border-bottom: 1px solid ${C.line};
 }
-.pdf-card .k { display: block; font-size: 7.5px; font-weight: 700; color: ${C.inkSecondary}; text-transform: uppercase; letter-spacing: .07em; }
-.pdf-card .v { display: block; font-size: 12px; font-weight: 700; color: ${C.ink}; margin-top: 2px; word-break: break-word; }
+.pdf-card .k { display: block; font-size: 7.5px; font-weight: 600; color: ${C.inkMuted}; text-transform: uppercase; letter-spacing: .1em; }
+.pdf-card .v { display: block; font-size: 11.5px; font-weight: 600; color: ${C.ink}; margin-top: 3px; word-break: break-word; }
 
 /* --- Section heading -------------------------------------------------- */
 .pdf-sec {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 9.5px; font-weight: 800; color: ${C.ink}; text-transform: uppercase;
-  letter-spacing: .09em; margin: 18px 0 8px;
+  font-size: 8.5px; font-weight: 700; color: ${C.ink};
+  text-transform: uppercase; letter-spacing: .16em;
+  margin: 20px 0 8px; padding-bottom: 5px;
+  border-bottom: 1px solid ${C.line};
 }
-.pdf-sec::before { content: ''; width: 4px; height: 13px; background: ${C.accent}; border-radius: 2px; flex: none; }
-.pdf-sec::after { content: ''; flex: 1; height: 1px; background: ${C.line}; }
 
-/* --- Tables ----------------------------------------------------------- */
-.pdf-tbl {
-  width: 100%; border-collapse: collapse; font-size: 10.5px;
-  border: 1.5px solid ${C.ink};
-}
+/* --- Tables ------------------------------------------------------------
+   Horizontal rules only. Vertical gridlines and banded fills turn a short
+   table into a block of texture; on a fee statement the numbers should be
+   the darkest thing on the page. */
+.pdf-tbl { width: 100%; border-collapse: collapse; font-size: 10.5px; }
 .pdf-tbl th {
-  padding: 8px 10px; text-align: left; font-size: 8px; font-weight: 800;
-  text-transform: uppercase; letter-spacing: .06em;
-  background: ${C.ink}; color: #fff;
-  border-right: 1px solid rgba(255,255,255,0.15);
+  padding: 7px 8px 6px; text-align: left;
+  font-size: 7.5px; font-weight: 700; color: ${C.inkSecondary};
+  text-transform: uppercase; letter-spacing: .1em;
+  border-bottom: 1px solid ${C.ink};
 }
-.pdf-tbl th:last-child { border-right: none; }
-.pdf-tbl td { padding: 7px 10px; border-bottom: 1px solid ${C.line}; border-right: 1px solid ${C.line}; vertical-align: top; }
-.pdf-tbl td:last-child { border-right: none; }
-.pdf-tbl tbody tr:nth-child(even) td { background: #FBFCFD; }
-.pdf-tbl tbody tr:last-child td { border-bottom: none; }
-.pdf-tbl .num { text-align: right; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.pdf-tbl .muted { color: ${C.inkMuted}; text-align: center; padding: 16px; font-style: italic; }
-.pdf-tbl tr.credit td { background: ${C.goodWash}; color: ${C.good}; font-weight: 700; }
+.pdf-tbl td { padding: 7px 8px; border-bottom: 1px solid ${C.line}; vertical-align: top; }
+.pdf-tbl .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pdf-tbl .muted { color: ${C.inkMuted}; text-align: center; padding: 18px; }
+.pdf-tbl tr.credit td { color: ${C.inkSecondary}; }
 .pdf-tbl tfoot td {
-  font-weight: 800; font-size: 11px; background: ${C.surfaceSunken};
-  border-top: 2px solid ${C.ink}; color: ${C.ink};
+  font-weight: 700; font-size: 11px; color: ${C.ink};
+  border-top: 1px solid ${C.ink}; border-bottom: none; padding-top: 8px;
 }
 
 /* Rows must not be split down the middle by a page break, and a long table
@@ -169,50 +157,56 @@ html, body {
 .pdf-tbl thead { display: table-header-group; }
 .pdf-tbl tfoot { display: table-footer-group; }
 
-/* --- Summary tiles ---------------------------------------------------- */
-.pdf-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
-.pdf-tile {
-  padding: 12px 14px; border: 1.5px solid ${C.lineStrong};
-  border-top: 3px solid ${C.ink}; border-radius: 8px; background: #fff;
+/* --- Summary figures ---------------------------------------------------
+   Separated by rules rather than boxed. Four bordered cards in a row read as
+   four buttons; these read as a summary. */
+.pdf-tiles {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  margin-top: 18px; border-top: 1px solid ${C.ink}; border-bottom: 1px solid ${C.line};
 }
-.pdf-tile .k { font-size: 7.5px; font-weight: 700; color: ${C.inkSecondary}; text-transform: uppercase; letter-spacing: .07em; }
-.pdf-tile .v { display: block; margin-top: 5px; font-size: 16px; font-weight: 800; color: ${C.ink}; font-variant-numeric: tabular-nums; }
-.pdf-tile.good { border-top-color: ${C.good}; background: ${C.goodWash}; border-color: ${C.good}; }
-.pdf-tile.good .v { color: ${C.good}; }
-.pdf-tile.due { border-top-color: ${C.critical}; background: ${C.criticalWash}; border-color: ${C.critical}; }
-.pdf-tile.due .v { color: ${C.critical}; }
-.pdf-tile.warn { border-top-color: ${C.warning}; background: ${C.warningWash}; border-color: ${C.warning}; }
-.pdf-tile.warn .v { color: ${C.warning}; }
+.pdf-tile { padding: 12px 14px; border-right: 1px solid ${C.line}; }
+.pdf-tile:last-child { border-right: none; }
+.pdf-tile .k { font-size: 7.5px; font-weight: 600; color: ${C.inkMuted}; text-transform: uppercase; letter-spacing: .1em; }
+.pdf-tile .v { display: block; margin-top: 5px; font-size: 15px; font-weight: 700; color: ${C.ink}; font-variant-numeric: tabular-nums; }
+/* Emphasis is weight and rule, never hue. */
+.pdf-tile.good .v, .pdf-tile.warn .v { color: ${C.ink}; }
+.pdf-tile.due { background: ${C.surfaceSunken}; }
+.pdf-tile.due .v { color: ${C.ink}; }
 
-/* --- Badges ----------------------------------------------------------- */
-.pdf-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
-.pdf-badge.paid { background: ${C.goodWash}; color: ${C.good}; border: 1.2px solid ${C.good}; }
-.pdf-badge.due { background: ${C.criticalWash}; color: ${C.critical}; border: 1.2px solid ${C.critical}; }
-.pdf-badge.part { background: ${C.warningWash}; color: ${C.warning}; border: 1.2px solid ${C.warning}; }
+/* --- Status labels ----------------------------------------------------- */
+.pdf-badge {
+  display: inline-block; padding: 2px 7px;
+  font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  border: 1px solid ${C.lineStrong}; color: ${C.inkSecondary};
+}
+.pdf-badge.paid { border-color: ${C.ink}; color: ${C.ink}; }
+.pdf-badge.due { border-color: ${C.ink}; color: #fff; background: ${C.ink}; }
+.pdf-badge.part { border-color: ${C.inkSecondary}; color: ${C.inkSecondary}; }
 
-/* --- Footer ----------------------------------------------------------- */
+/* --- Footer ------------------------------------------------------------ */
 .pdf-ftr {
-  margin-top: 26px; padding-top: 12px;
-  border-top: 2px solid ${C.ink};
+  margin-top: 30px; padding-top: 10px;
+  border-top: 1px solid ${C.line};
   display: flex; justify-content: space-between; align-items: flex-end;
-  font-size: 8.5px; color: ${C.inkSecondary};
+  font-size: 8px; color: ${C.inkMuted}; line-height: 1.6;
 }
 .pdf-sig {
-  width: 150px; margin-top: 30px; padding-top: 5px;
-  border-top: 1.5px solid ${C.ink}; text-align: center;
-  font-size: 8px; font-weight: 800; color: ${C.ink};
-  text-transform: uppercase; letter-spacing: .06em;
+  width: 150px; margin-top: 34px; padding-top: 6px;
+  border-top: 1px solid ${C.ink}; text-align: center;
+  font-size: 7.5px; font-weight: 600; color: ${C.ink};
+  text-transform: uppercase; letter-spacing: .12em;
 }
-.pdf-note { max-width: 58%; line-height: 1.5; }
-.pdf-note strong { color: ${C.ink}; }
+.pdf-note { max-width: 58%; }
+.pdf-note strong { color: ${C.inkSecondary}; font-weight: 600; }
 
-/* --- Print button, screen only ---------------------------------------- */
+/* --- Print button, screen only ----------------------------------------- */
 .pdf-print-btn {
-  display: block; margin: 0 auto 14px; padding: 11px 28px; cursor: pointer;
-  background: ${C.ink}; color: #fff; border: none; border-radius: 8px;
-  font-size: 12px; font-weight: 800; font-family: inherit; letter-spacing: .03em;
+  display: block; margin: 0 auto 18px; padding: 10px 26px; cursor: pointer;
+  background: #fff; color: ${C.ink}; border: 1px solid ${C.ink}; border-radius: 2px;
+  font-size: 10px; font-weight: 700; font-family: inherit;
+  letter-spacing: .12em; text-transform: uppercase;
 }
-.pdf-print-btn:hover { background: #000; }
+.pdf-print-btn:hover { background: ${C.ink}; color: #fff; }
 @media print { .pdf-print-btn { display: none !important; } }
 `;
 
@@ -250,20 +244,25 @@ export interface PdfHeaderOptions {
   campus?: string;
 }
 
+/**
+ * Centred letterhead: the official logo, large, and nothing competing with it.
+ *
+ * The logo carries the college name, the stream badge and the tagline, so no
+ * name is set alongside it — the previous layout printed "Inspire Junior
+ * College" in type immediately next to a logo that already said exactly that.
+ *
+ * The document type and campus sit below the rule in small letterspaced caps,
+ * which keeps the top of the page quiet and makes the logo the only thing
+ * anyone sees first.
+ */
 export const pdfHeader = ({ logoSrc, title, subtitle, campus }: PdfHeaderOptions): string => `
   <div class="pdf-hdr">
-    <div class="pdf-brand">
-      <img class="pdf-logo" src="${escapeHtml(logoSrc)}" alt="" />
-      <div>
-        <div class="pdf-org">${escapeHtml(PDF_ORG_NAME)}</div>
-        <div class="pdf-rule"></div>
-        <div class="pdf-sub">${escapeHtml(campus || 'All Campuses')}${subtitle ? ` &middot; ${escapeHtml(subtitle)}` : ''}</div>
-      </div>
-    </div>
-    <div class="pdf-title">
-      <strong>${escapeHtml(title)}</strong>
-      <span>${dateTimeStr()}</span>
-    </div>
+    <img class="pdf-logo" src="${escapeHtml(logoSrc)}" alt="${escapeHtml(PDF_ORG_NAME)}" />
+    ${subtitle ? `<div class="pdf-sub">${escapeHtml(subtitle)}</div>` : ''}
+  </div>
+  <div class="pdf-meta">
+    <span class="pdf-doctype">${escapeHtml(title)}</span>
+    <span>${escapeHtml(campus || 'All Campuses')} &nbsp;&middot;&nbsp; ${dateTimeStr()}</span>
   </div>
 `;
 
