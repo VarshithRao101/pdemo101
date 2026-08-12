@@ -9,6 +9,10 @@ import { admin2Service } from '../services/admin2Service';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import { AnalyticsDashboard } from '../components/AnalyticsDashboard';
 import collegeLogo from '../assets/college logo.png';
+import {
+  openPrintDocument, pdfHeader, pdfFooter, pdfSection, pdfTable, pdfTiles,
+  pdfDetailCard, money, dateStr, PDF_COLORS
+} from '../utils/pdfDocument';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 
 
@@ -642,280 +646,137 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   //  Worker PDF Generator Helpers
   const handleDownloadWorkerBill = (w: any) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      triggerToast('Popup blocked by browser. Please allow popups to download bill.');
-      return;
-    }
-
     const workerName = w.workerName || w.name || 'Worker';
-    const role = w.role || 'Staff';
-    const month = w.monthPeriod || 'Current Month';
     const wage = Number(w.amount || w.salary || 0);
     const paidAmt = Number(w.amountPaid !== undefined ? w.amountPaid : (w.paid ? wage : 0));
     const balance = Math.max(0, wage - paidAmt);
-    const statusText = w.paid ? 'PAID' : 'UNPAID';
-    const generatedDate = new Date().toLocaleString('en-IN');
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Worker Payslip - ${escapeHtml(workerName)}</title>
-      <style>
-        @page { size: A4; margin: 12mm }
-        * { box-sizing: border-box }
-        body { margin: 0; color: var(--ink); background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
-        .page { max-width: 182mm; margin: 0 auto; padding: 4px }
-        .hdr { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: linear-gradient(135deg, var(--ink) 0%, var(--ink) 100%); border-radius: 16px; margin-bottom: 20px; border-bottom: 3px solid var(--accent) }
-        .brand { display: flex; align-items: center; gap: 14px }
-        .logo { width: 44px; height: 44px; object-fit: contain; background: #FFF; border-radius: 10px; padding: 4px; border: 1px solid var(--accent) }
-        .iname { color: #FFF; font-size: 15px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase }
-        .iaddr { color: var(--ink-muted); font-size: 10px; line-height: 1.4; margin-top: 2px }
-        .slbl strong { display: block; color: #FFF; font-size: 16px; font-weight: 900; text-transform: uppercase; text-align: right; letter-spacing: 0.04em }
-        .slbl span { color: var(--warning); font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-top: 2px }
-        .scard { background: var(--surface-sunken); border: 1.5px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(3,1fr); gap: 16px }
-        .fl { font-size: 9px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; letter-spacing: 0.06em; display: block }
-        .fv { font-size: 13.5px; font-weight: 800; color: var(--ink); display: block; margin-top: 4px }
-        .sgrid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 16px }
-        .sc { border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; background: #FFF }
-        .sc.hi { border-color: var(--accent); background: var(--surface-sunken) }
-        .sc .sl { font-size: 9px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; letter-spacing: 0.06em }
-        .sc .sv { font-size: 19px; font-weight: 900; color: var(--ink); display: block; margin-top: 6px }
-        .sc.pd .sv { color: var(--good) }
-        .sc.hi .sv { color: var(--warning) }
-        .ftr { margin-top: 32px; padding-top: 16px; border-top: 1.5px dashed var(--line-strong); display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: var(--ink-secondary) }
-        .sig { border-top: 1.5px solid var(--ink); padding-top: 6px; font-size: 9px; font-weight: 800; color: var(--ink); text-transform: uppercase; margin-top: 32px; text-align: center; width: 140px }
-        .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 20px; padding: 12px 26px; background: linear-gradient(135deg, var(--ink), var(--ink)); color: #FFF; border: none; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,0.15) }
-        @media print { .pbtn { display: none } }
-      </style></head><body>
-      <div class="page">
-        <button class="pbtn" onclick="window.print()">⬇ Print Worker Payslip PDF</button>
-        <div class="hdr">
-          <div class="brand">
-            <img class="logo" src="${collegeLogo}" alt="Logo"/>
-            <div>
-              <div class="iname">INSPIRE JUNIOR COLLEGE</div>
-              <div class="iaddr">Campus: ${escapeHtml(loggedInCampus)} &middot; Official Worker Payslip</div>
-            </div>
-          </div>
-          <div class="slbl">
-            <strong>Worker Payslip</strong>
-            <span>Period: ${escapeHtml(month)}</span>
-          </div>
-        </div>
-        <div class="scard">
-          <div><span class="fl">Worker Name</span><span class="fv">${escapeHtml(workerName)}</span></div>
-          <div><span class="fl">Role / Designation</span><span class="fv">${escapeHtml(role)}</span></div>
-          <div><span class="fl">Payroll Period</span><span class="fv">${escapeHtml(month)}</span></div>
-          <div><span class="fl">Campus Branch</span><span class="fv">${escapeHtml(loggedInCampus)}</span></div>
-          <div><span class="fl">Payment Status</span><span class="fv" style="color:${w.paid ? 'var(--good)' : 'var(--critical)'}">${statusText}</span></div>
-          <div><span class="fl">Reference Voucher</span><span class="fv">${escapeHtml(w._id || w.id || 'WRK-REC')}</span></div>
-        </div>
-        <div class="sgrid">
-          <div class="sc"><span class="sl">Monthly Wage</span><span class="sv">Rs. ${wage.toLocaleString('en-IN')}</span></div>
-          <div class="sc pd"><span class="sl">Amount Disbursed</span><span class="sv">Rs. ${paidAmt.toLocaleString('en-IN')}</span></div>
-          <div class="sc hi"><span class="sl">Remaining Due</span><span class="sv">Rs. ${balance.toLocaleString('en-IN')}</span></div>
-        </div>
-        <div class="ftr">
-          <div>
-            <div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div>
-            <div style="margin-top:3px">Computer-generated payroll record &middot; Verified via Inspire ERP</div>
-          </div>
-          <div class="sig">Authorized Signatory</div>
-        </div>
-      </div>
-      <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>
-      </body></html>`;
+    const body = [
+      pdfHeader({
+        logoSrc: collegeLogo,
+        title: 'Worker Payslip',
+        subtitle: `Period: ${w.monthPeriod || 'Current month'}`,
+        campus: loggedInCampus
+      }),
+      pdfDetailCard([
+        ['Worker Name', workerName],
+        ['Role / Designation', w.role || 'Staff'],
+        ['Payroll Period', w.monthPeriod || 'Current month'],
+        ['Campus', loggedInCampus],
+        ['Payment Status', w.paid ? 'PAID' : 'UNPAID'],
+        ['Reference Voucher', w._id || w.id || 'WRK-REC']
+      ]),
+      pdfTiles([
+        { label: 'Monthly Wage', value: money(wage) },
+        { label: 'Amount Disbursed', value: money(paidAmt), tone: 'good' },
+        { label: 'Remaining Due', value: money(balance), tone: balance > 0 ? 'due' : 'good' }
+      ]),
+      pdfFooter({ note: 'Computer-generated payroll record, verified against the Inspire ERP payroll ledger.' })
+    ].join('');
 
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    triggerToast('Worker payslip opened for ' + workerName);
+    const opened = openPrintDocument({
+      title: `Worker Payslip - ${workerName}`,
+      body,
+      buttonLabel: 'Print / Save Payslip as PDF',
+      onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the payslip.')
+    });
+    if (opened) triggerToast('Worker payslip opened for ' + workerName);
   };
 
   const handleDownloadAllWorkerRecords = (workerList: any[]) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      triggerToast('Popup blocked by browser. Please allow popups to download report.');
-      return;
-    }
-
-    const totalStaff = workerList.length;
     const totalSalary = workerList.reduce((sum, w) => sum + Number(w.amount || w.salary || 0), 0);
-    const totalPaid = workerList.reduce((sum, w) => sum + Number(w.amountPaid !== undefined ? w.amountPaid : (w.paid ? (w.amount || w.salary || 0) : 0)), 0);
+    const totalPaid = workerList.reduce(
+      (sum, w) => sum + Number(w.amountPaid !== undefined ? w.amountPaid : (w.paid ? (w.amount || w.salary || 0) : 0)), 0);
     const totalPending = Math.max(0, totalSalary - totalPaid);
-    const generatedDate = new Date().toLocaleString('en-IN');
 
-    const tableRows = workerList.map((w, idx) => {
-      const wName = w.workerName || w.name || 'Worker';
-      const wRole = w.role || 'Staff';
-      const wMonth = w.monthPeriod || 'Current Month';
-      const wSal = Number(w.amount || w.salary || 0);
-      const wPaid = Number(w.amountPaid !== undefined ? w.amountPaid : (w.paid ? wSal : 0));
-      const wBal = Math.max(0, wSal - wPaid);
-      const stColor = w.paid ? 'var(--good)' : 'var(--critical)';
+    const body = [
+      pdfHeader({
+        logoSrc: collegeLogo,
+        title: 'Worker Payroll Ledger',
+        subtitle: `${workerList.length} record(s)`,
+        campus: loggedInCampus
+      }),
+      pdfTiles([
+        { label: 'Total Workers', value: String(workerList.length) },
+        { label: 'Total Payroll', value: money(totalSalary) },
+        { label: 'Disbursed', value: money(totalPaid), tone: 'good' },
+        { label: 'Pending', value: money(totalPending), tone: totalPending > 0 ? 'due' : 'good' }
+      ]),
+      pdfSection('Worker Payment Records'),
+      pdfTable({
+        headers: ['#', 'Worker', 'Role', 'Period', 'Wage', 'Paid', 'Balance', 'Status'],
+        numeric: [4, 5, 6],
+        rows: workerList.map((w, idx) => {
+          const wSal = Number(w.amount || w.salary || 0);
+          const wPaid = Number(w.amountPaid !== undefined ? w.amountPaid : (w.paid ? wSal : 0));
+          const wBal = Math.max(0, wSal - wPaid);
+          return [
+            String(idx + 1),
+            `<strong>${escapeHtml(w.workerName || w.name || 'Worker')}</strong>`,
+            escapeHtml(w.role || 'Staff'),
+            escapeHtml(w.monthPeriod || 'Current month'),
+            money(wSal),
+            `<span style="color:${PDF_COLORS.good};font-weight:800">${money(wPaid)}</span>`,
+            money(wBal),
+            `<span class="pdf-badge ${w.paid ? 'paid' : 'due'}">${w.paid ? 'Paid' : 'Unpaid'}</span>`
+          ];
+        }),
+        footer: ['', 'Total', '', '', money(totalSalary), money(totalPaid), money(totalPending), ''],
+        emptyMessage: 'No worker payment records for this campus.'
+      }),
+      pdfFooter({ note: 'Computer-generated payroll ledger, verified against the Inspire ERP records.' })
+    ].join('');
 
-      return '<tr>'
-        + '<td style="text-align:center;font-weight:700;">' + (idx + 1) + '</td>'
-        + '<td style="font-weight:800;color:var(--ink);">' + escapeHtml(wName) + '</td>'
-        + '<td>' + escapeHtml(wRole) + '</td>'
-        + '<td>' + escapeHtml(wMonth) + '</td>'
-        + '<td class="tr">Rs. ' + wSal.toLocaleString('en-IN') + '</td>'
-        + '<td class="tr" style="color:var(--good);font-weight:800;">Rs. ' + wPaid.toLocaleString('en-IN') + '</td>'
-        + '<td class="tr" style="color:' + (wBal > 0 ? 'var(--critical)' : 'var(--good)') + ';font-weight:800;">Rs. ' + wBal.toLocaleString('en-IN') + '</td>'
-        + '<td style="text-align:center;"><span style="color:' + stColor + ';font-weight:900;padding:3px 8px;border-radius:6px;background:' + (w.paid ? 'var(--good-wash)' : 'var(--critical-wash)') + ';font-size:9.5px;letter-spacing:0.04em;">' + (w.paid ? 'PAID' : 'UNPAID') + '</span></td>'
-        + '</tr>';
-    }).join('');
-
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Master Worker Payroll Ledger Report</title>
-      <style>
-        @page { size: A4 landscape; margin: 10mm }
-        * { box-sizing: border-box }
-        body { margin: 0; color: var(--ink); background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
-        .page { max-width: 275mm; margin: 0 auto; padding: 4px }
-        .hdr { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; background: linear-gradient(135deg, var(--ink) 0%, var(--ink) 100%); border-radius: 14px; margin-bottom: 16px; border-bottom: 3px solid var(--accent) }
-        .brand { display: flex; align-items: center; gap: 12px }
-        .logo { width: 42px; height: 42px; object-fit: contain; background: #FFF; border-radius: 10px; padding: 4px; border: 1px solid var(--accent) }
-        .iname { color: #FFF; font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em }
-        .iaddr { color: var(--ink-muted); font-size: 10px; margin-top: 2px }
-        .slbl strong { display: block; color: #FFF; font-size: 15px; font-weight: 900; text-transform: uppercase; text-align: right }
-        .slbl span { color: var(--warning); font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-top: 2px }
-        .sgrid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 16px }
-        .sc { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 16px; background: var(--surface-sunken) }
-        .sc.hi { border-color: var(--accent); background: var(--surface-sunken) }
-        .sc .sl { font-size: 9px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; letter-spacing: 0.06em }
-        .sc .sv { font-size: 18px; font-weight: 900; color: var(--ink); display: block; margin-top: 4px }
-        .sc.pd .sv { color: var(--good) }
-        .sc.hi .sv { color: var(--warning) }
-        .tbl { width: 100%; border-collapse: collapse; border: 1.5px solid var(--line-strong); border-radius: 12px; overflow: hidden; font-size: 10.5px }
-        .tbl th { padding: 10px 12px; background: var(--surface-sunken); color: var(--ink-secondary); font-size: 8.5px; text-transform: uppercase; text-align: left; border-bottom: 1.5px solid var(--line-strong); font-weight: 800; letter-spacing: 0.06em }
-        .tbl td { padding: 9px 12px; border-bottom: 1px solid var(--line) }
-        .tbl tr:last-child td { border-bottom: none }
-        .tbl tr:nth-child(even) td { background: #FAFBFC }
-        .tr { text-align: right }
-        .ftr { margin-top: 20px; padding-top: 12px; border-top: 1.5px dashed var(--line-strong); display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: var(--ink-secondary) }
-        .sig { border-top: 1.5px solid var(--ink); padding-top: 6px; font-size: 9px; font-weight: 800; color: var(--ink); text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
-        .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 16px; padding: 10px 24px; background: linear-gradient(135deg, var(--ink), var(--ink)); color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,0.15) }
-        @media print { .pbtn { display: none } }
-      </style></head><body>
-      <div class="page">
-        <button class="pbtn" onclick="window.print()">⬇ Download Master Worker Payroll PDF</button>
-        <div class="hdr">
-          <div class="brand">
-            <img class="logo" src="${collegeLogo}" alt="Logo"/>
-            <div>
-              <div class="iname">INSPIRE JUNIOR COLLEGE</div>
-              <div class="iaddr">Master Worker Payroll Ledger &middot; Campus: ${escapeHtml(loggedInCampus)}</div>
-            </div>
-          </div>
-          <div class="slbl">
-            <strong>Payroll Master Ledger</strong>
-            <span>Total Records: ${totalStaff}</span>
-          </div>
-        </div>
-        <div class="sgrid">
-          <div class="sc"><span class="sl">Total Workers</span><span class="sv">${totalStaff}</span></div>
-          <div class="sc"><span class="sl">Total Monthly Payroll</span><span class="sv">Rs. ${totalSalary.toLocaleString('en-IN')}</span></div>
-          <div class="sc pd"><span class="sl">Total Disbursed</span><span class="sv">Rs. ${totalPaid.toLocaleString('en-IN')}</span></div>
-          <div class="sc hi"><span class="sl">Total Outstanding Due</span><span class="sv">Rs. ${totalPending.toLocaleString('en-IN')}</span></div>
-        </div>
-        <table class="tbl">
-          <thead><tr><th>#</th><th>Worker Name</th><th>Role</th><th>Period</th><th class="tr">Monthly Wage</th><th class="tr">Paid Amount</th><th class="tr">Pending Balance</th><th style="text-align:center;">Status</th></tr></thead>
-          <tbody>${tableRows}</tbody>
-        </table>
-        <div class="ftr">
-          <div><div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Computer-generated master payroll summary &middot; Verified via Inspire ERP</div></div>
-          <div class="sig">Authorized Signatory</div>
-        </div>
-      </div>
-      <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>
-      </body></html>`;
-
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    triggerToast('Master worker payroll report downloaded (' + totalStaff + ' records).');
+    const opened = openPrintDocument({
+      title: 'Worker Payroll Ledger',
+      body,
+      buttonLabel: 'Print / Save Payroll Ledger as PDF',
+      onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the report.')
+    });
+    if (opened) triggerToast('Worker payroll ledger opened for printing.');
   };
 
   const handleDownloadDisbursementLogPDF = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      triggerToast('Popup blocked by browser. Please allow popups.');
-      return;
-    }
+    const totalAmount = workerPaymentsHistory.reduce(
+      (sum: number, item: any) => sum + Number(item.amount || 0), 0);
 
-    const generatedDate = new Date().toLocaleString('en-IN');
-    const totalAmount = workerPaymentsHistory.reduce((sum: number, item: any) => sum + Number(item.amount || 0), 0);
+    const body = [
+      pdfHeader({
+        logoSrc: collegeLogo,
+        title: 'Disbursement Log',
+        subtitle: `${workerPaymentsHistory.length} disbursement(s)`,
+        campus: loggedInCampus
+      }),
+      pdfTiles([
+        { label: 'Disbursements', value: String(workerPaymentsHistory.length) },
+        { label: 'Total Disbursed', value: money(totalAmount), tone: 'good' }
+      ]),
+      pdfSection('Payment History'),
+      pdfTable({
+        headers: ['Date', 'Staff Member', 'Role', 'Amount', 'Period', 'Campus', 'Status'],
+        numeric: [3],
+        rows: workerPaymentsHistory.map((item: any) => [
+          dateStr(item.createdAt),
+          `<strong>${escapeHtml(item.workerName || item.name || 'Staff Member')}</strong>`,
+          escapeHtml(item.role || 'Staff'),
+          `<span style="color:${PDF_COLORS.good};font-weight:800">${money(item.amount)}</span>`,
+          escapeHtml(item.monthPeriod || '—'),
+          escapeHtml(item.branch || loggedInCampus),
+          '<span class="pdf-badge paid">Disbursed</span>'
+        ]),
+        footer: ['', 'Total', '', money(totalAmount), '', '', ''],
+        emptyMessage: 'No disbursements recorded.'
+      }),
+      pdfFooter({ note: 'Computer-generated disbursement log, verified against the Inspire ERP payroll records.' })
+    ].join('');
 
-    const rowsHtml = workerPaymentsHistory.map((item: any) => `
-      <tr>
-        <td style="padding:10px 12px; border-bottom:1px solid var(--line); font-weight:700;">${new Date(item.createdAt || Date.now()).toLocaleDateString('en-IN')}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid var(--line); font-weight:800; color:var(--ink);">${escapeHtml(item.workerName || item.name || 'Staff Member')}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid var(--line);">${escapeHtml(item.role || 'Staff')}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid var(--line); font-weight:900; color:var(--good); text-align:right;">Rs. ${Number(item.amount || 0).toLocaleString('en-IN')}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid var(--line); text-align:center;">${escapeHtml(item.monthPeriod || 'N/A')}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid var(--line); text-align:center;">${escapeHtml(item.branch || loggedInCampus)}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid var(--line); text-align:center;"><span style="background:var(--good-wash); color:var(--good); padding:3px 8px; border-radius:6px; font-weight:900; font-size:10px;">DISBURSED</span></td>
-      </tr>
-    `).join('');
-
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Disbursement Payment History Log - Inspire College</title>
-    <style>
-      @page { size: A4; margin: 12mm }
-      * { box-sizing: border-box }
-      body { margin: 0; color: var(--ink); background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
-      .page { max-width: 182mm; margin: 0 auto; padding: 4px }
-      .top-logo-block { text-align: center; margin-bottom: 16px }
-      .top-logo-block img { height: 74px; width: auto; display: block; margin: 0 auto 6px; object-fit: contain }
-      .top-logo-title { font-size: 22px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: 0.06em }
-      .top-logo-sub { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
-      .scard { background: var(--surface-sunken); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(3,1fr); gap: 12px }
-      .fl { font-size: 8.5px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; display: block }
-      .fv { font-size: 13px; font-weight: 800; color: var(--ink); display: block; margin-top: 3px }
-      table { width: 100%; border-collapse: collapse; border: 1.5px solid var(--line-strong); border-radius: 10px; overflow: hidden }
-      th { background: var(--surface-sunken); color: var(--ink-secondary); padding: 10px 12px; font-size: 8.5px; text-transform: uppercase; text-align: left; font-weight: 800; border-bottom: 1.5px solid var(--line-strong) }
-      .ftr { margin-top: 24px; padding-top: 12px; border-top: 1.5px dashed var(--line-strong); display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: var(--ink-secondary) }
-      .sig { border-top: 1.5px solid var(--ink); padding-top: 6px; font-size: 9px; font-weight: 800; color: var(--ink); text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
-      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; padding: 10px 24px; background: var(--ink); color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; }
-      @media print { .pbtn { display: none } }
-    </style></head>
-    <body>
-      <div class="page">
-        <button class="pbtn" onclick="window.print()">Print Disbursement Record PDF</button>
-        <div class="top-logo-block">
-          <img src="${collegeLogo}" alt="Inspire College Logo"/>
-          <div class="top-logo-title">INSPIRE COLLEGE</div>
-          <div class="top-logo-sub">Staff & Faculty Disbursement Audit Log</div>
-        </div>
-        <div class="scard">
-          <div><span class="fl">Total Disbursed Records</span><span class="fv">${workerPaymentsHistory.length} Transactions</span></div>
-          <div><span class="fl">Total Amount Disbursed</span><span class="fv" style="color:var(--good)">Rs. ${totalAmount.toLocaleString('en-IN')}</span></div>
-          <div><span class="fl">Generated On</span><span class="fv">${escapeHtml(generatedDate)}</span></div>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Employee Name</th>
-              <th>Role</th>
-              <th style="text-align:right">Amount</th>
-              <th style="text-align:center">Month Period</th>
-              <th style="text-align:center">Campus</th>
-              <th style="text-align:center">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHtml || '<tr><td colspan="7" style="text-align:center; padding:16px;">No disbursement history records found.</td></tr>'}
-          </tbody>
-        </table>
-        <div class="ftr">
-          <div><div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Verified via Inspire College ERP</div></div>
-          <div class="sig">Authorized Signatory</div>
-        </div>
-      </div>
-      <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>
-    </body></html>`;
-
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
+    const opened = openPrintDocument({
+      title: 'Disbursement Log',
+      body,
+      buttonLabel: 'Print / Save Disbursement Log as PDF',
+      onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the log.')
+    });
+    if (opened) triggerToast('Disbursement log opened for printing.');
   };
 
   const handleDownloadStudentHistoryPDF = (student: any) => {

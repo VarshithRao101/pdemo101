@@ -22,6 +22,17 @@
  * be self-contained; it cannot borrow from the app it was launched from.
  */
 
+/**
+ * The institution name printed on every document.
+ *
+ * The old templates disagreed with each other: fee statements carried
+ * "Inspire Royal Residential Junior College" while payslips and reports said
+ * "INSPIRE JUNIOR COLLEGE". Two different names on documents issued by the
+ * same office to the same parents. The fuller form is the formal one, so that
+ * is what all of them use now.
+ */
+export const PDF_ORG_NAME = 'Inspire Royal Residential Junior College';
+
 /** Literal palette. Deliberately not CSS variables — see the note above. */
 export const PDF_COLORS = {
   ink: '#111827',
@@ -191,7 +202,7 @@ export const pdfHeader = ({ logoSrc, title, subtitle, campus }: PdfHeaderOptions
     <div class="pdf-brand">
       <img class="pdf-logo" src="${escapeHtml(logoSrc)}" alt="" />
       <div>
-        <div class="pdf-org">Inspire Junior College</div>
+        <div class="pdf-org">${escapeHtml(PDF_ORG_NAME)}</div>
         <div class="pdf-sub">${escapeHtml(campus || 'All Campuses')}${subtitle ? ` &middot; ${escapeHtml(subtitle)}` : ''}</div>
       </div>
     </div>

@@ -232,7 +232,9 @@ interface Student {
 
 
 //  MAIN CONSOLIDATED ACCOUNTANT COCKPIT VIEW
-const RECEIPT_INSTITUTION_NAME = 'Inspire Royal Residential Junior College';
+// The institution name now lives in utils/pdfDocument.ts as PDF_ORG_NAME, so
+// every printed document uses the same one. It used to differ between the fee
+// statement and the payslips.
 
 const numberToReceiptWords = (amount: number) => {
   const cleanAmount = Math.max(0, Math.floor(amount));
