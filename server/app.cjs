@@ -372,9 +372,78 @@ function normalizePaymentForClient(p) {
   };
 }
 
+/**
+ * Sums a student's fee components.
+ *
+ * `Number(x || 0)` is not enough on its own. `NaN || 0` is 0 because NaN is
+ * falsy, so that case was covered by luck — but a non-numeric string is
+ * truthy, so `Number('abc' || 0)` is NaN, and Infinity stays Infinity. Either
+ * one poisons the sum, and the resulting NaN was written straight to
+ * remainingBalance: a student record whose balance is literally "not a
+ * number", which then fails every comparison silently, including the
+ * zero-balance test that unlocks the year upgrade.
+ *
+ * Anything that is not a finite number counts as zero. The routes reject bad
+ * input long before this, but the arithmetic must not depend on that.
+ */
+function finiteAmount(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function calcStudentGrossFees(tuitionFee, hostelFee, transportFee, miscellaneousFee, previousPending, customFeeSlots) {
-  const customTotal = (Array.isArray(customFeeSlots) ? customFeeSlots : []).reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
-  return Number(tuitionFee || 0) + Number(hostelFee || 0) + Number(transportFee || 0) + Number(miscellaneousFee || 0) + Number(previousPending || 0) + customTotal;
+  const customTotal = (Array.isArray(customFeeSlots) ? customFeeSlots : [])
+    .reduce((acc, slot) => acc + finiteAmount(slot && slot.amount), 0);
+  return finiteAmount(tuitionFee) + finiteAmount(hostelFee) + finiteAmount(transportFee)
+    + finiteAmount(miscellaneousFee) + finiteAmount(previousPending) + customTotal;
+}
+
+/**
+ * The one place a student's money is calculated.
+ *
+ * This arithmetic was written out inline in four separate routes, and they had
+ * drifted from each other:
+ *
+ *   - Two rounded the balance to paise; two did not, so the figure the fee
+ *     screen previewed could disagree with the figure that was stored.
+ *   - The waiver total in the override route summed the fields raw, with no
+ *     Number() coercion. Every other copy coerced. A waiver arriving as a
+ *     string would have concatenated instead of added — "500" + 200 giving
+ *     "500200" — and been written to the balance.
+ *   - The ten-lakh fee cap was enforced in three routes and missed in the
+ *     year-upgrade route, so fees above the cap could be set there.
+ *
+ * Everything is coerced, rounded once at the end, and clamped at zero.
+ * Rounding at the end rather than per-component is deliberate: rounding each
+ * fee first and then summing accumulates a paisa of error per line.
+ */
+function computeStudentFees(source, { totalPaid } = {}) {
+  const num = finiteAmount;
+  const round2 = (n) => Math.round(n * 100) / 100;
+
+  const gross = calcStudentGrossFees(
+    source.tuitionFee, source.hostelFee, source.transportFee,
+    source.miscellaneousFee, source.previousPending, source.customFeeSlots
+  );
+
+  const waivers = num(source.tuitionWaiver) + num(source.hostelWaiver)
+    + num(source.transportWaiver) + num(source.miscWaiver);
+
+  const paid = num(totalPaid !== undefined ? totalPaid : source.totalPaid);
+
+  // Waivers cannot reduce the bill below zero, and a student who has overpaid
+  // owes nothing rather than a negative amount.
+  const netOwed = Math.max(0, round2(gross - waivers));
+  const balance = Math.max(0, round2(netOwed - paid));
+
+  return {
+    gross: round2(gross),
+    waivers: round2(waivers),
+    netOwed,
+    paid: round2(paid),
+    balance,
+    exceedsCap: round2(gross) > MAX_STUDENT_FEE
+  };
 }
 
 // --- MANAGED PORTAL SLOTS ---
@@ -1676,13 +1745,7 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
 
     // Keep the derived balance consistent with whatever fees just changed,
     // rather than leaving a stale figure on the record.
-    const slotTotal = (student.customFeeSlots || []).reduce((a, s) => a + Number(s.amount || 0), 0);
-    const gross = Number(student.tuitionFee || 0) + Number(student.hostelFee || 0)
-      + Number(student.transportFee || 0) + Number(student.miscellaneousFee || 0)
-      + Number(student.previousPending || 0) + slotTotal;
-    const waivers = Number(student.tuitionWaiver || 0) + Number(student.hostelWaiver || 0)
-      + Number(student.transportWaiver || 0) + Number(student.miscWaiver || 0);
-    student.remainingBalance = Math.max(0, Math.round((gross - waivers - Number(student.totalPaid || 0)) * 100) / 100);
+    student.remainingBalance = computeStudentFees(student).balance;
 
     await student.save();
 
@@ -1801,21 +1864,18 @@ app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students
       return !standardKeys.includes(k) && !['tuition fee', 'hostel fee', 'transport fee', 'miscellaneous fee', 'previous pending'].includes(n);
     });
 
-    const totalCustomFees = cleanedSlots.reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
-    const grossFees = Number(student.tuitionFee || 0) + Number(student.hostelFee || 0) + Number(student.transportFee || 0) + Number(student.miscellaneousFee || 0) + Number(student.previousPending || 0) + totalCustomFees;
+    student.customFeeSlots = cleanedSlots;
+    const totals = computeStudentFees(student);
 
-    // Fee cap enforcement on waiver override (gross fees cannot exceed cap regardless of waivers)
-    if (grossFees > MAX_STUDENT_FEE) {
+    // Fee cap applies to the gross, regardless of waivers.
+    if (totals.exceedsCap) {
       return res.status(400).json({
         status: 'error',
-        message: `Total fees (Rs. ${grossFees.toLocaleString('en-IN')}) exceed the maximum allowed per student (Rs. ${MAX_STUDENT_FEE.toLocaleString('en-IN')}).`
+        message: `Total fees (Rs. ${totals.gross.toLocaleString('en-IN')}) exceed the maximum allowed per student (Rs. ${MAX_STUDENT_FEE.toLocaleString('en-IN')}).`
       });
     }
 
-    const totalWaivers = student.tuitionWaiver + student.hostelWaiver + student.transportWaiver + student.miscWaiver;
-
-    student.customFeeSlots = cleanedSlots;
-    student.remainingBalance = Math.max(0, grossFees - totalWaivers - Number(student.totalPaid || 0));
+    student.remainingBalance = totals.balance;
     await student.save();
 
     return res.json({
@@ -2864,7 +2924,33 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
 // and the drift would show up as a button that appears and then errors.
 function evaluateUpgradeEligibility(student) {
   const year = String(student.studentYear || 'First Year');
-  const balance = Number(student.remainingBalance || 0);
+
+  // A balance that is not a finite number must never read as "cleared".
+  //
+  // NaN fails EVERY comparison: `NaN > 0` is false, so a corrupt balance fell
+  // straight through the fees-pending check and returned ELIGIBLE, while the
+  // UI's own `balance <= 0` test was also false and showed the control as
+  // locked. Server said upgrade, screen said locked, and a student who had
+  // paid nothing could be moved up by posting to the route directly.
+  // Objects and arrays are rejected before coercion, because Number([]) is 0
+  // and Number([7]) is 7 — an array would otherwise read as a real balance,
+  // and an empty one as a CLEARED balance that unlocks the upgrade.
+  const rawValue = student.remainingBalance;
+  const isNumericScalar =
+    typeof rawValue === 'number' ||
+    (typeof rawValue === 'string' && rawValue.trim() !== '');
+  const raw = isNumericScalar ? Number(rawValue) : NaN;
+
+  if (!Number.isFinite(raw)) {
+    return {
+      eligible: false,
+      code: 'BALANCE_UNKNOWN',
+      year,
+      balance: 0,
+      reason: 'This student\'s balance could not be read as a number. Recalculate the fees before upgrading.'
+    };
+  }
+  const balance = raw;
 
   if (year === 'Short Term') {
     return { eligible: false, reason: 'Short Term students do not progress to another year.', code: 'NOT_APPLICABLE', year, balance };
@@ -2988,13 +3074,25 @@ app.post('/api/accountant/students/:studentId/upgrade',
       }
     }
 
-    const slotTotal = slots.reduce((a, s) => a + Number(s.amount || 0), 0);
-    const gross = next.tuitionFee + next.hostelFee + next.transportFee + next.miscellaneousFee + slotTotal;
-    const waivers = next.tuitionWaiver + next.hostelWaiver + next.transportWaiver + next.miscWaiver;
-    if (waivers > gross) {
+    // Same arithmetic as every other fee path, through the shared function.
+    // A new year starts with nothing paid against it.
+    const totals = computeStudentFees({ ...next, customFeeSlots: slots, previousPending: 0 }, { totalPaid: 0 });
+
+    if (totals.waivers > totals.gross) {
       return res.status(400).json({ status: 'error', message: 'Total waivers cannot exceed the total fees.' });
     }
-    const payable = Math.max(0, Math.round((gross - waivers) * 100) / 100);
+
+    // The ten-lakh cap is enforced on the create, edit and override routes.
+    // This route was missing it, so the upgrade form was a way to set fees
+    // above a limit the rest of the system treats as absolute.
+    if (totals.exceedsCap) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Total fees (Rs. ${totals.gross.toLocaleString('en-IN')}) exceed the maximum allowed per student (Rs. ${MAX_STUDENT_FEE.toLocaleString('en-IN')}).`
+      });
+    }
+
+    const payable = totals.balance;
 
     const requestedYear = cleanText(body.academicYear, { field: 'Academic year', max: 20 });
     if (requestedYear.error) {
@@ -4613,6 +4711,20 @@ module.exports = app;
 // the backup chain that cannot be exercised without a live session, so it is
 // testable directly rather than left unproven.
 module.exports.resolveBackupCampus = resolveBackupCampus;
+
+// Pure functions, exposed so the unit suite can drive them directly at
+// boundary values rather than inferring their behaviour from HTTP responses.
+module.exports.computeStudentFees = computeStudentFees;
+module.exports.calcStudentGrossFees = calcStudentGrossFees;
+module.exports.evaluateUpgradeEligibility = evaluateUpgradeEligibility;
+module.exports.cleanText = cleanText;
+module.exports.cleanTextFields = cleanTextFields;
+module.exports.normalizeCampus = normalizeCampus;
+module.exports.isValidCampus = isValidCampus;
+module.exports.rateLimitBudgetFor = rateLimitBudgetFor;
+module.exports.MAX_STUDENT_FEE = MAX_STUDENT_FEE;
+module.exports.MAX_TEXT = MAX_TEXT;
+module.exports.FIELD_LIMITS = FIELD_LIMITS;
 
 
 
