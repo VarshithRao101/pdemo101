@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LIMITS } from '../constants/fieldLimits';
 import {
   openPrintDocument, pdfHeader, pdfFooter, pdfSection, pdfTable, pdfTiles,
-  pdfDetailCard, money, dateStr, escapeHtml, PDF_COLORS
+  pdfDetailCard, money, dateStr, escapeHtml
 } from '../utils/pdfDocument';
 import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
@@ -978,8 +978,8 @@ export const AccountantDashboardView: React.FC = () => {
         rows: [
           ...feeRows.map(([label, amount]) => [escapeHtml(label), money(amount)]),
           ...waiverRows.map(([label, amount]) => [
-            `<span style="color:${PDF_COLORS.good};font-weight:700">${escapeHtml(label)}</span>`,
-            `<span style="color:${PDF_COLORS.good}">- ${money(amount)}</span>`
+            `<span class="pdf-strong">${escapeHtml(label)}</span>`,
+            `<span class="pdf-strong">- ${money(amount)}</span>`
           ])
         ],
         footer: ['Net Payable', money(Math.max(0, totalBaseFee - totalWaiver))],
@@ -1006,7 +1006,7 @@ export const AccountantDashboardView: React.FC = () => {
           dateStr(r.date),
           `${escapeHtml(r.category || 'Tuition')} &middot; ${escapeHtml(r.installment || 'Installment')}`,
           escapeHtml(r.mode || 'Cash'),
-          `<span style="color:${PDF_COLORS.good};font-weight:800">${money(r.amount)}</span>`,
+          `<span class="pdf-strong">${money(r.amount)}</span>`,
           money(r.balance)
         ]),
         footer: ['', '', '', 'Total Paid', money(totalPaid), ''],
@@ -1021,7 +1021,7 @@ export const AccountantDashboardView: React.FC = () => {
           escapeHtml(h.studentYear || '—'),
           escapeHtml(h.academicYear || '—'),
           money(h.totalPayable),
-          `<span style="color:${PDF_COLORS.good};font-weight:800">${money(h.totalPaid)}</span>`,
+          `<span class="pdf-strong">${money(h.totalPaid)}</span>`,
           dateStr(h.closedAt),
           escapeHtml(h.closedBy || '—')
         ])
@@ -2749,7 +2749,7 @@ export const AccountantDashboardView: React.FC = () => {
                         escapeHtml(tx.receipt.installment),
                         escapeHtml(tx.receipt.mode),
                         dateStr(tx.receipt.date),
-                        `<span style="color:${PDF_COLORS.good};font-weight:800">${money(tx.receipt.amount)}</span>`
+                        `<span class="pdf-strong">${money(tx.receipt.amount)}</span>`
                       ]),
                       footer: ['', '', '', '', '', '', '', 'Total', money(totalAmount)]
                     }),

@@ -11,7 +11,7 @@ import { AnalyticsDashboard } from '../components/AnalyticsDashboard';
 import collegeLogo from '../assets/college logo.png';
 import {
   openPrintDocument, pdfHeader, pdfFooter, pdfSection, pdfTable, pdfTiles,
-  pdfDetailCard, money, dateStr, escapeHtml, PDF_COLORS
+  pdfDetailCard, money, dateStr, escapeHtml
 } from '../utils/pdfDocument';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 
@@ -712,7 +712,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             escapeHtml(w.role || 'Staff'),
             escapeHtml(w.monthPeriod || 'Current month'),
             money(wSal),
-            `<span style="color:${PDF_COLORS.good};font-weight:800">${money(wPaid)}</span>`,
+            `<span class="pdf-strong">${money(wPaid)}</span>`,
             money(wBal),
             `<span class="pdf-badge ${w.paid ? 'paid' : 'due'}">${w.paid ? 'Paid' : 'Unpaid'}</span>`
           ];
@@ -755,7 +755,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           dateStr(item.createdAt),
           `<strong>${escapeHtml(item.workerName || item.name || 'Staff Member')}</strong>`,
           escapeHtml(item.role || 'Staff'),
-          `<span style="color:${PDF_COLORS.good};font-weight:800">${money(item.amount)}</span>`,
+          `<span class="pdf-strong">${money(item.amount)}</span>`,
           escapeHtml(item.monthPeriod || '—'),
           escapeHtml(item.branch || loggedInCampus),
           '<span class="pdf-badge paid">Disbursed</span>'
@@ -845,8 +845,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         rows: [
           ...feeRows.map(([l, a]) => [escapeHtml(l), money(a)]),
           ...waiverRows.map(([l, a]) => [
-            `<span style="color:${PDF_COLORS.good};font-weight:700">${escapeHtml(l)}</span>`,
-            `<span style="color:${PDF_COLORS.good}">- ${money(a)}</span>`
+            `<span class="pdf-strong">${escapeHtml(l)}</span>`,
+            `<span class="pdf-strong">- ${money(a)}</span>`
           ])
         ],
         footer: ['Net Payable', money(Math.max(0, totalBaseFee - totalWaiver))],
@@ -871,7 +871,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           dateStr(r.date),
           `${escapeHtml(r.category || 'Tuition')} &middot; ${escapeHtml(r.installment || 'Installment')}`,
           escapeHtml(r.mode || 'Cash'),
-          `<span style="color:${PDF_COLORS.good};font-weight:800">${money(r.amount)}</span>`,
+          `<span class="pdf-strong">${money(r.amount)}</span>`,
           money(r.balance)
         ]),
         footer: ['', '', '', 'Total Paid', money(totalPaid), ''],
@@ -885,7 +885,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           escapeHtml(h.studentYear || '—'),
           escapeHtml(h.academicYear || '—'),
           money(h.totalPayable),
-          `<span style="color:${PDF_COLORS.good};font-weight:800">${money(h.totalPaid)}</span>`,
+          `<span class="pdf-strong">${money(h.totalPaid)}</span>`,
           dateStr(h.closedAt),
           escapeHtml(h.closedBy || '—')
         ])
@@ -983,7 +983,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       return [
         `<strong>${escapeHtml(m)}</strong>`,
         `<span class="pdf-badge ${isPaid ? 'paid' : 'due'}">${isPaid ? 'Paid' : 'Unpaid'}</span>`,
-        isPaid ? `<span style="color:${PDF_COLORS.good};font-weight:800">${money(amt)}</span>` : money(0),
+        isPaid ? `<span class="pdf-strong">${money(amt)}</span>` : money(0),
         dateStr(rec.paidAt || rec.paymentDate || rec.date),
         escapeHtml(rec.paymentMode || '—')
       ];
@@ -4545,12 +4545,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         const pct = total > 0 ? (amt / total) * 100 : 0;
         return `
           <div style="margin-bottom:7px">
-            <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:${PDF_COLORS.ink}">
+            <div class="pdf-callout-row">
               <span>${escapeHtml(cat)}</span>
               <span>${money(amt)} &middot; ${pct.toFixed(1)}%</span>
             </div>
-            <div style="height:9px;border-radius:4px;background:${PDF_COLORS.line};margin-top:3px;overflow:hidden">
-              <div style="height:9px;width:${pct.toFixed(2)}%;background:${PDF_COLORS.accent}"></div>
+            <div class="pdf-bar">
+              <div style="width:${pct.toFixed(2)}%"></div>
             </div>
           </div>`;
       }).join('');
@@ -4616,7 +4616,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           ['Campus', (exp as any).branch || loggedInCampus]
         ]),
         pdfSection('Description'),
-        `<div style="padding:10px 12px;border:1px solid ${PDF_COLORS.line};border-radius:9px;background:${PDF_COLORS.surfaceSunken};font-size:11px">
+        `<div class="pdf-callout">
            ${escapeHtml((exp as any).description || (exp as any).note || 'No description recorded.')}
          </div>`,
         pdfTiles([

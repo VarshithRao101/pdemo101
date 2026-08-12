@@ -144,6 +144,20 @@ html, body {
 }
 .pdf-tbl td { padding: 7px 8px; border-bottom: 1px solid ${C.line}; vertical-align: top; }
 .pdf-tbl .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* The one way to emphasise a figure. Call sites used to set colour and weight
+   inline, differently in each document; with a greyscale palette those became
+   stray weights that made otherwise identical tables look unalike. */
+.pdf-strong { font-weight: 700; color: ${C.ink}; }
+.pdf-dim { color: ${C.inkMuted}; }
+
+/* Proportion bar, for reports that show a share of a total. Monochrome: a
+   dark fill on a light track, no rounded ends, no colour coding. */
+.pdf-bar { height: 5px; background: ${C.line}; margin-top: 4px; overflow: hidden; }
+.pdf-bar > span { display: block; height: 5px; background: ${C.ink}; }
+
+/* Small boxed note, for a summary line inside a report. */
+.pdf-callout { padding: 10px 12px; background: ${C.surfaceSunken}; font-size: 10.5px; }
+.pdf-callout-row { display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; color: ${C.ink}; }
 .pdf-tbl .muted { color: ${C.inkMuted}; text-align: center; padding: 18px; }
 .pdf-tbl tr.credit td { color: ${C.inkSecondary}; }
 .pdf-tbl tfoot td {
