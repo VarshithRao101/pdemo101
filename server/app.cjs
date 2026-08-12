@@ -126,6 +126,60 @@ app.use(cors((req, done) => {
 // Cap the request body. Without a limit a single request can pin memory and
 // push arbitrarily large strings into the database.
 app.use(express.json({ limit: '100kb' }));
+
+// Turn body-parser failures into this API's own error shape.
+//
+// Without this, a malformed body surfaced the parser's internal text verbatim
+// — `Unexpected token 'n', "null" is not valid JSON` — which is both useless
+// to a client and a different shape from every other error the API returns.
+// A 413 from the size limit came through the same path.
+app.use((err, req, res, next) => {
+  if (!err) return next();
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({
+      status: 'error',
+      message: 'That request is too large. The limit is 100 KB.'
+    });
+  }
+  if (err instanceof SyntaxError || err.type === 'entity.parse.failed') {
+    return res.status(400).json({
+      status: 'error',
+      message: 'The request body is not valid JSON.'
+    });
+  }
+  return next(err);
+});
+
+/**
+ * Every query-string value must be a plain string.
+ *
+ * Express parses `?branch[$ne]=Beemaram C2` into `{ branch: { $ne: '...' } }`
+ * — a real object, which routes then hand to Mongo. On the student list that
+ * became `Student.find({ branch: { $ne: 'Beemaram C2' } })`: every student
+ * NOT in the caller's campus. A campus isolation bypass.
+ *
+ * It did not actually leak, because the route happens to call
+ * `.toLowerCase()` on the value first and an object has no such method, so it
+ * threw a TypeError and returned 500. Security by accidental type error is
+ * not security: the next route to use that parameter without a string method
+ * would have leaked, and nothing would have flagged it.
+ *
+ * Rejecting non-scalar query values here covers every route at once, present
+ * and future, and turns a 500 into an honest 400.
+ */
+app.use((req, res, next) => {
+  for (const [key, value] of Object.entries(req.query || {})) {
+    if (typeof value !== 'string') {
+      console.warn(`[Query]: Refused non-scalar query parameter [${key}] from ${req.ip}`);
+      return res.status(400).json({
+        status: 'error',
+        message: `Query parameter [${key}] must be a single plain value.`
+      });
+    }
+  }
+  return next();
+});
+
 app.use(morgan('dev'));
 
 // URL Path Normalization Middleware (Fixes double /api/api/ prefixing & serverless routing quirks)
@@ -1033,6 +1087,16 @@ app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/veri
     // simply get five here and another five there. It was previously an
     // unlimited password oracle with only the IP limiter in front of it.
     const attempted = String(username || identifier || '').trim().toLowerCase();
+
+    // Same rule as /auth/login: a missing identifier or password is a
+    // malformed request, not a failed guess, and must not spend an attempt.
+    if (!attempted || typeof password !== 'string' || password === '') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'A username and password are both required.'
+      });
+    }
+
     const key = attemptKey('login', attempted);
 
     const before = await getLockState(key);
@@ -1254,6 +1318,23 @@ async function handleLogin(req, res, label) {
   try {
     const { username, identifier, password, pin } = req.body || {};
     const attempted = String(username || identifier || '').trim().toLowerCase();
+
+    // A request that supplies no identifier or no password is malformed, not a
+    // guess: reject it 400 and do NOT charge the lockout budget.
+    //
+    // It used to fall through to the credential check, come back 401, and burn
+    // an attempt. That made the lockout reachable by accident — a client bug
+    // posting an empty or wrong-shaped body five times would lock a real
+    // member of staff out for fifteen minutes without anyone typing a
+    // password. It also gave an attacker nothing, since guessing requires
+    // sending a password anyway.
+    if (!attempted || typeof password !== 'string' || password === '') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'A username and password are both required.'
+      });
+    }
+
     const key = attemptKey('login', attempted);
 
     // Check the lock BEFORE verifying anything. A locked account must not
@@ -2645,21 +2726,38 @@ app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('ad
 app.get('/api/accountant/students', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
   try {
     await connectToDatabase();
-    const branch = req.query.branch || req.user.campus;
 
-    if (req.user.role === 'accountant') {
-      if (branch && branch.toLowerCase() !== 'all' && branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
-        return res.status(403).json({
-          status: 'error',
-          message: `Accountants can only view students in their assigned campus [${req.user.campus}].`
-        });
-      }
+    // Coerced to a string as well as being guarded by the global query check.
+    // Defence in depth: this value ends up in a Mongo filter and must be a
+    // string by the time it gets there whether or not the middleware ran.
+    const requested = String(req.query.branch || '').trim();
+
+    // Campus scope comes from the signed-in account. A scoped account —
+    // accountant OR admin2 — may not name a different campus.
+    //
+    // Only the accountant branch of this check existed. An admin2 asking for
+    // ?branch=<another campus> had that value written straight into the Mongo
+    // filter, and the route returned the other campus's entire student list.
+    // Every campus-scoped role has to be pinned here, not just the one that
+    // happened to be considered when the check was written.
+    const isOrgWide = String(req.user.campus || '').toLowerCase() === 'all';
+
+    if (!isOrgWide && requested && requested.toLowerCase() !== 'all'
+        && normalizeCampus(requested) !== normalizeCampus(req.user.campus)) {
+      return res.status(403).json({
+        status: 'error',
+        message: `Your account may only view students in ${req.user.campus}.`
+      });
     }
 
-    let filter = {};
-    const targetCampus = (req.user.role === 'accountant') ? req.user.campus : (branch || req.user.campus);
-    if (targetCampus && targetCampus.toLowerCase() !== 'all') {
-      filter.branch = targetCampus;
+    const filter = campusScopeFilter(req);
+
+    // Org-wide accounts may narrow to one campus, but never widen.
+    if (isOrgWide && requested && requested.toLowerCase() !== 'all') {
+      if (!isValidCampus(requested)) {
+        return res.status(400).json({ status: 'error', message: `Unknown campus [${requested}].` });
+      }
+      filter.branch = normalizeCampus(requested);
     }
 
     const students = await Student.find(filter).sort({ name: 1 });
