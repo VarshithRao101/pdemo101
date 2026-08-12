@@ -153,6 +153,41 @@ html, body {
   text-align: center; font-size: 8px; font-weight: 800; color: ${C.ink}; text-transform: uppercase; }
 .pdf-note { max-width: 60%; line-height: 1.4; }
 
+/* Receipts: two copies to a page with a cut line between them.
+   Everything inside a copy is scaled down so both fit on one A4 sheet without
+   the second spilling onto a second page. */
+.pdf-copy { border: 1px solid ${C.lineStrong}; border-radius: 10px; padding: 12px 14px; }
+.pdf-copy .pdf-hdr { padding: 10px 14px; margin-bottom: 10px; border-radius: 9px; }
+.pdf-copy .pdf-org { font-size: 12px; }
+.pdf-copy .pdf-title strong { font-size: 12px; }
+.pdf-copy .pdf-card { padding: 9px 12px; margin-bottom: 10px; gap: 8px; }
+.pdf-copy .pdf-card .v { font-size: 10.5px; }
+.pdf-copy .pdf-sec { margin: 10px 0 5px; }
+.pdf-copy .pdf-tiles { margin-top: 9px; }
+.pdf-copy .pdf-tile { padding: 8px 10px; }
+.pdf-copy .pdf-tile .v { font-size: 13px; }
+.pdf-copy .pdf-ftr { margin-top: 12px; padding-top: 7px; }
+.pdf-copy .pdf-sig { margin-top: 16px; }
+
+.pdf-copy-tag {
+  display: inline-block; margin-bottom: 8px; padding: 3px 9px; border-radius: 999px;
+  font-size: 8px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  background: ${C.warningWash}; color: ${C.warning}; border: 1px solid ${C.warning};
+}
+.pdf-cut {
+  border-top: 1.5px dashed ${C.lineStrong}; margin: 12px 0;
+  text-align: center; font-size: 7.5px; color: ${C.inkMuted};
+  letter-spacing: .18em; text-transform: uppercase;
+}
+.pdf-cut span { position: relative; top: -6px; background: #fff; padding: 0 8px; }
+
+.pdf-words {
+  margin-top: 9px; padding: 8px 11px; border-radius: 8px;
+  background: ${C.surfaceSunken}; border: 1px solid ${C.line};
+}
+.pdf-words .k { font-size: 8px; font-weight: 700; color: ${C.inkSecondary}; text-transform: uppercase; letter-spacing: .05em; }
+.pdf-words .v { display: block; margin-top: 2px; font-size: 10.5px; font-weight: 700; color: ${C.ink}; font-style: italic; }
+
 /* Print button — screen only */
 .pdf-print-btn {
   display: block; margin: 0 auto 16px; padding: 10px 26px; cursor: pointer;
@@ -280,6 +315,8 @@ export interface OpenPrintOptions {
   buttonLabel?: string;
   /** Called when the popup could not be opened, so the caller can warn. */
   onBlocked?: () => void;
+  /** Landscape for wide tables — an audit ledger does not fit in portrait. */
+  landscape?: boolean;
 }
 
 /**
@@ -289,12 +326,18 @@ export interface OpenPrintOptions {
  * blank document, because the latter leaves the popup's title as "about:blank"
  * — and the title is what the browser offers as the default PDF filename.
  */
-export const openPrintDocument = ({ title, body, buttonLabel = 'Print / Save as PDF', onBlocked }: OpenPrintOptions): boolean => {
+export const openPrintDocument = ({
+  title, body, buttonLabel = 'Print / Save as PDF', onBlocked, landscape = false
+}: OpenPrintOptions): boolean => {
   const win = window.open('', '_blank');
   if (!win) {
     onBlocked?.();
     return false;
   }
+
+  const orientation = landscape
+    ? '@page { size: A4 landscape; margin: 10mm; } .page { max-width: 272mm; }'
+    : '';
 
   win.document.write(`<!DOCTYPE html>
 <html lang="en">
@@ -302,7 +345,7 @@ export const openPrintDocument = ({ title, body, buttonLabel = 'Print / Save as 
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(title)}</title>
-<style>${PDF_CSS}</style>
+<style>${PDF_CSS}${orientation}</style>
 </head>
 <body>
 <div class="page">

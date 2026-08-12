@@ -11,7 +11,7 @@ import { AnalyticsDashboard } from '../components/AnalyticsDashboard';
 import collegeLogo from '../assets/college logo.png';
 import {
   openPrintDocument, pdfHeader, pdfFooter, pdfSection, pdfTable, pdfTiles,
-  pdfDetailCard, money, dateStr, PDF_COLORS
+  pdfDetailCard, money, dateStr, escapeHtml, PDF_COLORS
 } from '../utils/pdfDocument';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 
@@ -110,14 +110,9 @@ interface ExpenditureItem {
   branch?: string;
 }
 
-const escapeHtml = (str: any): string => {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-};
+// escapeHtml now comes from utils/pdfDocument. The copy that lived here used
+// String(str || ''), which turned 0 and false into an empty string — so a zero
+// amount printed as a blank cell rather than as 0.
 
 interface WorkerItem {
   _id?: string;
@@ -781,17 +776,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const handleDownloadStudentHistoryPDF = (student: any) => {
     if (!student) return;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      triggerToast('Popup blocked by browser. Please allow popups.');
-      return;
-    }
 
-    const generatedDate = new Date().toLocaleString('en-IN');
-    const customSlots: Array<[string, number]> = (student.customFeeSlots || []).map((s: any) => [s.name, Number(s.amount || 0)]);
-    const allFeeRows: Array<[string, number]> = [
+    const customSlots: Array<[string, number]> = (student.customFeeSlots || [])
+      .map((s: any) => [s.name, Number(s.amount || 0)] as [string, number]);
+
+    const feeRows: Array<[string, number]> = ([
       ['Tuition Fee', Number(student.tuitionFee || 0)],
       ['Hostel Fee', Number(student.hostelFee || 0)],
+      ['Transport Fee', Number(student.transportFee || 0)],
       ['Miscellaneous Fee', Number(student.miscellaneousFee || 0)],
       ['Previous Pending', Number(student.previousPending || 0)],
       ['Books Fee', Number(student.booksFee || 0)],
@@ -801,279 +793,242 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       ['Lab Fee', Number(student.labFees || 0)],
       ['Bus Fee', Number(student.busFees || 0)],
       ...customSlots
-    ];
-    const feeRows = allFeeRows.filter(([, amount]) => amount > 0);
+    ] as Array<[string, number]>).filter(([, a]) => a > 0);
 
     const tuitionWaiver = Number(student.tuitionWaiver || 0);
     const hostelWaiver = Number(student.hostelWaiver || 0);
-    const transportWaiver = Number(student.transportWaiver || 0);
     const miscWaiver = Number(student.miscWaiver || 0);
-    const overrideDeduction = Number(student.individualOverrideDeduction || student.scholarshipDeduction || 0);
+    const override = Number(student.individualOverrideDeduction || student.scholarshipDeduction || 0);
 
-    const allWaiverRows: Array<[string, number]> = [
+    const waiverRows: Array<[string, number]> = ([
       ['Tuition Waiver', tuitionWaiver],
       ['Hostel Waiver', hostelWaiver],
-      ['Transport Waiver', transportWaiver],
-      ['Miscellaneous Waiver', miscWaiver]
-    ];
-    if (overrideDeduction > 0 && tuitionWaiver === 0 && hostelWaiver === 0 && miscWaiver === 0) {
-      allWaiverRows.push(['Special Scholarship Waiver', overrideDeduction]);
-    }
-    const waiverRows = allWaiverRows.filter(([, amount]) => amount > 0);
-    const totalWaiver = waiverRows.reduce((sum, [, amount]) => sum + amount, 0);
+      ['Transport Waiver', Number(student.transportWaiver || 0)],
+      ['Miscellaneous Waiver', miscWaiver],
+      ...(override > 0 && tuitionWaiver === 0 && hostelWaiver === 0 && miscWaiver === 0
+        ? [['Special Scholarship Waiver', override] as [string, number]] : [])
+    ] as Array<[string, number]>).filter(([, a]) => a > 0);
 
-    const totalBaseFee = feeRows.reduce((total, [, amount]) => total + amount, 0) || Number(student.totalBaseFee || student.calculatedFee || student.tuitionFee || 0);
+    const totalWaiver = waiverRows.reduce((s2, [, a]) => s2 + a, 0);
+    const totalBaseFee = feeRows.reduce((s2, [, a]) => s2 + a, 0)
+      || Number(student.totalBaseFee || student.calculatedFee || student.tuitionFee || 0);
     const totalPaid = Number(student.totalPaid || student.paidFee || 0);
     const remaining = Number(student.remainingBalance ?? Math.max(0, totalBaseFee - totalWaiver - totalPaid));
-    const receipts = [...(student.receipts || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const feeTableRows = feeRows.length > 0
-      ? feeRows.map(([label, amount]) => `<tr><td>${escapeHtml(label)}</td><td class="tr">Rs. ${amount.toLocaleString('en-IN')}</td></tr>`).join('')
-      : `<tr><td>Baseline Academic Course Fee</td><td class="tr">Rs. ${totalBaseFee.toLocaleString('en-IN')}</td></tr>`;
+    const receipts = [...(student.receipts || [])]
+      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const history = student.yearHistory || [];
 
-    const waiverTableRows = waiverRows.map(([label, amount]) =>
-      `<tr class="wr" style="background:var(--good-wash);color:var(--good);font-weight:800;"><td>${escapeHtml(label)}</td><td class="tr" style="color:var(--good);">&minus; Rs. ${amount.toLocaleString('en-IN')}</td></tr>`
-    ).join('');
+    const body = [
+      pdfHeader({
+        logoSrc: collegeLogo,
+        title: 'Student Fee History',
+        subtitle: student.studentYear || undefined,
+        campus: student.branch || loggedInCampus
+      }),
+      pdfDetailCard([
+        ['Student Name', student.name],
+        ['Admission No.', student.admissionNumber || student.studentId],
+        ['Course / Section', `${student.course || 'N/A'} — ${student.section || 'N/A'}`],
+        ["Father's Name", student.fatherName],
+        ['Contact Mobile', student.mobile],
+        ['Academic Year', student.academicYear],
+        ['Year', student.studentYear],
+        ['Hostel Status', student.hostelStatus],
+        ['Roll Number', student.rollNumber]
+      ]),
+      pdfSection('Fee Structure and Applied Waivers'),
+      pdfTable({
+        headers: ['Particulars', 'Amount'],
+        numeric: [1],
+        rows: [
+          ...feeRows.map(([l, a]) => [escapeHtml(l), money(a)]),
+          ...waiverRows.map(([l, a]) => [
+            `<span style="color:${PDF_COLORS.good};font-weight:700">${escapeHtml(l)}</span>`,
+            `<span style="color:${PDF_COLORS.good}">- ${money(a)}</span>`
+          ])
+        ],
+        footer: ['Net Payable', money(Math.max(0, totalBaseFee - totalWaiver))],
+        emptyMessage: 'No fee components recorded.'
+      }),
+      pdfTiles([
+        { label: 'Gross Fee', value: money(totalBaseFee) },
+        { label: 'Waivers', value: `- ${money(totalWaiver)}`, tone: 'good' },
+        { label: 'Total Paid', value: money(totalPaid), tone: 'good' },
+        {
+          label: remaining > 0 ? 'Outstanding' : 'Fully Cleared',
+          value: money(remaining),
+          tone: remaining > 0 ? 'due' : 'good'
+        }
+      ]),
+      pdfSection('Receipt and Payment History'),
+      pdfTable({
+        headers: ['Receipt No.', 'Date', 'Category / Installment', 'Mode', 'Amount Paid', 'Balance After'],
+        numeric: [4, 5],
+        rows: receipts.map((r: any) => [
+          `<strong>${escapeHtml(r.receiptNumber)}</strong>`,
+          dateStr(r.date),
+          `${escapeHtml(r.category || 'Tuition')} &middot; ${escapeHtml(r.installment || 'Installment')}`,
+          escapeHtml(r.mode || 'Cash'),
+          `<span style="color:${PDF_COLORS.good};font-weight:800">${money(r.amount)}</span>`,
+          money(r.balance)
+        ]),
+        footer: ['', '', '', 'Total Paid', money(totalPaid), ''],
+        emptyMessage: 'No payments recorded for this academic year.'
+      }),
+      history.length ? pdfSection('Completed Academic Years') : '',
+      history.length ? pdfTable({
+        headers: ['Year', 'Academic Year', 'Payable', 'Paid', 'Closed On', 'Closed By'],
+        numeric: [2, 3],
+        rows: history.map((h: any) => [
+          escapeHtml(h.studentYear || '—'),
+          escapeHtml(h.academicYear || '—'),
+          money(h.totalPayable),
+          `<span style="color:${PDF_COLORS.good};font-weight:800">${money(h.totalPaid)}</span>`,
+          dateStr(h.closedAt),
+          escapeHtml(h.closedBy || '—')
+        ])
+      }) : '',
+      pdfFooter({ note: 'Computer-generated fee history, verified against the Inspire College ERP records.' })
+    ].join('');
 
-    const receiptLogRows = receipts.length > 0
-      ? receipts.map(r => `
-          <tr>
-            <td><strong>${escapeHtml(r.receiptNumber)}</strong></td>
-            <td>${escapeHtml(r.date)}</td>
-            <td>${escapeHtml(r.category || 'Tuition')} &middot; ${escapeHtml(r.installment || 'Installment')}</td>
-            <td>${escapeHtml(r.mode || 'Cash')}</td>
-            <td class="tr" style="color:var(--good);font-weight:900;">Rs. ${Number(r.amount || 0).toLocaleString('en-IN')}</td>
-            <td class="tr" style="font-weight:800;color:var(--ink);">Rs. ${Number(r.balance || 0).toLocaleString('en-IN')}</td>
-          </tr>
-        `).join('')
-      : `<tr><td colspan="6" style="text-align:center;color:var(--ink-muted);padding:12px;">No payment receipts logged yet.</td></tr>`;
-
-    const css = `@page{size:A4;margin:12mm}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:#fff;font-family:'Inter','Segoe UI',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:11px}.page{max-width:182mm;margin:0 auto;padding:4px}.hdr{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:linear-gradient(135deg,var(--ink),var(--ink));border-radius:14px;margin-bottom:16px;border-bottom:3px solid var(--accent)}.brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;object-fit:contain;background:#fff;border-radius:10px;padding:4px;border:1px solid var(--accent)}.iname{color:#fff;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}.iaddr{color:var(--ink-muted);font-size:9.5px;line-height:1.3;margin-top:2px}.slbl strong{display:block;color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;text-align:right}.slbl span{color:var(--warning);font-size:9.5px;font-weight:800;text-transform:uppercase}.scard{background:var(--surface-sunken);border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.fl{font-size:8.5px;font-weight:800;color:var(--ink-secondary);text-transform:uppercase;display:block}.fv{font-size:12.5px;font-weight:800;color:var(--ink);display:block;margin-top:3px}.stit{font-size:9.5px;font-weight:900;color:var(--ink);text-transform:uppercase;letter-spacing:.08em;margin:16px 0 8px;border-bottom:1.5px solid var(--line);padding-bottom:4px}.ftbl{width:100%;border-collapse:collapse;border:1.5px solid var(--line-strong);border-radius:10px;overflow:hidden;font-size:11px}.ftbl th{padding:8px 10px;background:var(--surface-sunken);color:var(--ink-secondary);font-size:8.5px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid var(--line-strong);font-weight:800}.ftbl td{padding:8px 10px;border-bottom:1px solid var(--line)}.ftbl tr:last-child td{border-bottom:none}.tr{text-align:right;font-weight:800}.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.sc{border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;background:#FFF}.sc.hi{border-color:var(--accent);background:var(--surface-sunken)}.sc .sl{font-size:8.5px;font-weight:800;color:var(--ink-secondary);text-transform:uppercase}.sc .sv{font-size:16px;font-weight:900;color:var(--ink);display:block;margin-top:4px}.sc.pd .sv{color:var(--good)}.sc.hi .sv{color:var(--warning)}.ftr{margin-top:24px;padding-top:12px;border-top:1.5px dashed var(--line-strong);display:flex;justify-content:space-between;align-items:flex-end;font-size:9px;color:var(--ink-secondary)}.sig{border-top:1.5px solid var(--ink);padding-top:4px;font-size:8px;font-weight:800;color:var(--ink);text-transform:uppercase;margin-top:24px;text-align:center;width:130px}.pbtn{display:flex;align-items:center;justify-content:center;margin:0 auto 16px;padding:10px 24px;background:linear-gradient(135deg,var(--ink),var(--ink));color:#fff;border:none;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer}@media print{.pbtn{display:none}}`;
-
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fee Statement - ${escapeHtml(student.admissionNumber || student.name)}</title><style>${css}</style></head><body><div class="page">
-      <button class="pbtn" onclick="window.print()">Print Complete Fee Statement PDF</button>
-      <div class="hdr">
-        <div class="brand">
-          <img class="logo" src="${collegeLogo}" alt="Logo"/>
-          <div>
-            <div class="iname">INSPIRE ROYAL RESIDENTIAL JUNIOR COLLEGE</div>
-            <div class="iaddr">Campus: ${escapeHtml(student.branch || loggedInCampus)} &middot; Complete Financial Statement</div>
-          </div>
-        </div>
-        <div class="slbl">
-          <strong>Fee Statement</strong>
-          <span>Adm No: ${escapeHtml(student.admissionNumber || student.studentId || 'N/A')}</span>
-        </div>
-      </div>
-      <div class="scard">
-        <div><span class="fl">Student Name</span><span class="fv">${escapeHtml(student.name)}</span></div>
-        <div><span class="fl">Admission No.</span><span class="fv">${escapeHtml(student.admissionNumber || student.studentId || 'N/A')}</span></div>
-        <div><span class="fl">Course / Section</span><span class="fv">${escapeHtml(student.course || 'N/A')} &mdash; ${escapeHtml(student.section || 'N/A')}</span></div>
-        <div><span class="fl">Father's Name</span><span class="fv">${escapeHtml(student.fatherName || 'N/A')}</span></div>
-        <div><span class="fl">Contact Mobile</span><span class="fv">${escapeHtml(student.mobile || 'N/A')}</span></div>
-        <div><span class="fl">Hostel Status</span><span class="fv">${escapeHtml(student.hostelStatus || 'Day Scholar')}</span></div>
-      </div>
-      <div class="stit">Baseline Fee Structure & Applied Waivers</div>
-      <table class="ftbl">
-        <thead><tr><th>Fee Component / Particulars</th><th class="tr">Amount</th></tr></thead>
-        <tbody>${feeTableRows}${waiverTableRows}</tbody>
-      </table>
-      <div class="sgrid">
-        <div class="sc"><span class="sl">Gross Base Fee</span><span class="sv">Rs. ${totalBaseFee.toLocaleString('en-IN')}</span></div>
-        <div class="sc" style="border-color:var(--good); background:var(--good-wash);"><span class="sl" style="color:var(--good);">Waivers Applied</span><span class="sv" style="color:var(--good);">- Rs. ${totalWaiver.toLocaleString('en-IN')}</span></div>
-        <div class="sc"><span class="sl" style="color:var(--good)">Total Paid</span><span class="sv" style="color:var(--good)">Rs. ${totalPaid.toLocaleString('en-IN')}</span></div>
-        <div class="sc hi"><span class="sl" style="color:var(--warning)">Outstanding Balance</span><span class="sv" style="color:var(--warning)">Rs. ${remaining.toLocaleString('en-IN')}</span></div>
-      </div>
-      <div class="stit">Complete Receipt & Payment Transaction History</div>
-      <table class="ftbl">
-        <thead><tr><th>Receipt No.</th><th>Date</th><th>Category & Installment</th><th>Payment Mode</th><th class="tr">Amount Paid</th><th class="tr">Balance After</th></tr></thead>
-        <tbody>${receiptLogRows}</tbody>
-      </table>
-      <div class="ftr">
-        <div><div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Computer-generated official statement &middot; Verified via Inspire College ERP System</div></div>
-        <div class="sig">Authorized Signatory</div>
-      </div>
-    </div>
-    <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>
-    </body></html>`;
-
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
+    const opened = openPrintDocument({
+      title: `Student Fee History - ${student.admissionNumber || student.name}`,
+      body,
+      buttonLabel: 'Print / Save Fee History as PDF',
+      onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the history.')
+    });
+    if (opened) triggerToast('Student fee history opened for printing.');
   };
 
   const handleDownloadStaffPayslip = (t: Teacher, monthName: string) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      triggerToast('Popup blocked by browser. Please allow popups.');
-      return;
-    }
-    const monthlyRec = (t.monthlySalaries as any)?.[monthName] || {
-      month: monthName,
-      status: 'Unpaid',
-      amountPaid: 0,
-      paymentDate: 'N/A',
-      paymentMode: 'N/A',
-      note: ''
-    };
+    // Prefer the per-academic-year ledger, which is what the salary screen
+    // actually writes to. monthlySalaries is the older flat map and is only a
+    // fallback for records created before the ledger existed.
+    const ledgerRec = (t.salaryLedger?.[selectedAcademicYear] as any)?.[monthName];
+    const rec = ledgerRec || (t.monthlySalaries as any)?.[monthName] || {};
+
     const baseSal = Number(t.salary || 0);
-    const paidAmt = Number(monthlyRec.amountPaid || (monthlyRec.status === 'Paid' ? baseSal : 0));
+    const isPaid = rec.status === 'Paid' || rec.paid === true;
+    const paidAmt = Number(rec.amountPaid || (isPaid ? baseSal : 0));
     const dueAmt = Math.max(0, baseSal - paidAmt);
-    const generatedDate = new Date().toLocaleString('en-IN');
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Salary Payslip - ${escapeHtml(t.name)} (${monthName})</title>
-    <style>
-      @page { size: A4; margin: 12mm }
-      * { box-sizing: border-box }
-      body { margin: 0; color: var(--ink); background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
-      .page { max-width: 182mm; margin: 0 auto; padding: 4px }
-      .top-logo-block { text-align: center; margin-bottom: 16px }
-      .top-logo-block img { height: 74px; width: auto; display: block; margin: 0 auto 6px; object-fit: contain }
-      .top-logo-title { font-size: 22px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: 0.06em }
-      .top-logo-sub { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
-      .scard { background: var(--surface-sunken); border: 1.5px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(3,1fr); gap: 16px }
-      .fl { font-size: 9px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; letter-spacing: 0.06em; display: block }
-      .fv { font-size: 13.5px; font-weight: 800; color: var(--ink); display: block; margin-top: 4px }
-      .sgrid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 16px }
-      .sc { border: 1.5px solid var(--line); border-radius: 12px; padding: 16px; background: #FFF }
-      .sc.hi { border-color: var(--accent); background: var(--surface-sunken) }
-      .sc .sl { font-size: 9px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; letter-spacing: 0.06em }
-      .sc .sv { font-size: 19px; font-weight: 900; color: var(--ink); display: block; margin-top: 6px }
-      .sc.pd .sv { color: var(--good) }
-      .sc.hi .sv { color: var(--warning) }
-      .ftr { margin-top: 32px; padding-top: 16px; border-top: 1.5px dashed var(--line-strong); display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: var(--ink-secondary) }
-      .sig { border-top: 1.5px solid var(--ink); padding-top: 6px; font-size: 9px; font-weight: 800; color: var(--ink); text-transform: uppercase; margin-top: 32px; text-align: center; width: 140px }
-      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; padding: 12px 26px; background: var(--ink); color: #FFF; border: none; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; }
-      @media print { .pbtn { display: none } }
-    </style></head>
-    <body>
-      <div class="page">
-        <button class="pbtn" onclick="window.print()">Print Staff Payslip PDF</button>
-        <div class="top-logo-block">
-          <img src="${collegeLogo}" alt="Inspire College Logo"/>
-          <div class="top-logo-title">INSPIRE COLLEGE</div>
-          <div class="top-logo-sub">Staff Payroll - Monthly Payslip (${escapeHtml(monthName)})</div>
-        </div>
-        <div class="scard">
-          <div><span class="fl">Employee Name</span><span class="fv">${escapeHtml(t.name)}</span></div>
-          <div><span class="fl">Designation / Role</span><span class="fv">${escapeHtml(t.role || t.subject || 'Staff Member')}</span></div>
-          <div><span class="fl">Classification</span><span class="fv">${escapeHtml(t.classification || 'Teaching')}</span></div>
-          <div><span class="fl">Employee ID</span><span class="fv">${escapeHtml(t.id || t._id || 'STF-000')}</span></div>
-          <div><span class="fl">Mobile</span><span class="fv">${escapeHtml(t.mobile || 'N/A')}</span></div>
-          <div><span class="fl">Campus Branch</span><span class="fv">${escapeHtml(t.branch || loggedInCampus)}</span></div>
-        </div>
-        <div class="sgrid">
-          <div class="sc"><span class="sl">Base Monthly Salary</span><span class="sv">Rs. ${baseSal.toLocaleString('en-IN')}</span></div>
-          <div class="sc pd"><span class="sl">Amount Disbursed</span><span class="sv">Rs. ${paidAmt.toLocaleString('en-IN')}</span></div>
-          <div class="sc hi"><span class="sl">Status / Balance</span><span class="sv">${monthlyRec.status === 'Paid' ? 'PAID' : `DUE Rs. ${dueAmt.toLocaleString('en-IN')}`}</span></div>
-        </div>
-        <div style="margin-top:20px; padding:16px; background:var(--surface-sunken); border:1.5px solid var(--line); border-radius:12px; font-size:11.5px;">
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-            <div><strong>Payment Mode:</strong> ${escapeHtml(monthlyRec.paymentMode || 'Bank Transfer')}</div>
-            <div><strong>Payment Date:</strong> ${escapeHtml(monthlyRec.paymentDate || monthlyRec.paidAt ? new Date(monthlyRec.paidAt).toLocaleDateString('en-IN') : 'N/A')}</div>
-          </div>
-          ${monthlyRec.note ? `<div style="margin-top:8px;"><strong>Remarks:</strong> ${escapeHtml(monthlyRec.note)}</div>` : ''}
-        </div>
-        <div class="ftr">
-          <div>
-            <div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div>
-            <div style="margin-top:3px">Computer-generated staff salary statement &middot; Verified via Inspire College ERP</div>
-          </div>
-          <div class="sig">Authorized Signatory</div>
-        </div>
-      </div>
-      <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>
-    </body></html>`;
+    // The old template read
+    //   rec.paymentDate || rec.paidAt ? new Date(rec.paidAt)... : 'N/A'
+    // which parses as (a || b) ? c : d — so a record WITH a paymentDate but no
+    // paidAt formatted `new Date(undefined)` and printed "Invalid Date" on the
+    // payslip. Take the first value that exists, then format it.
+    const paidOn = rec.paidAt || rec.paymentDate || rec.date;
 
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
+    const body = [
+      pdfHeader({
+        logoSrc: collegeLogo,
+        title: 'Salary Payslip',
+        subtitle: `${monthName} · ${selectedAcademicYear}`,
+        campus: t.branch || loggedInCampus
+      }),
+      pdfDetailCard([
+        ['Employee Name', t.name],
+        ['Designation', t.role || t.subject || 'Staff Member'],
+        ['Classification', t.classification || 'Teaching'],
+        ['Employee ID', t.id || t._id],
+        ['Mobile', t.mobile],
+        ['Campus', t.branch || loggedInCampus],
+        ['Payment Mode', rec.paymentMode],
+        ['Payment Date', paidOn ? dateStr(paidOn) : undefined],
+        ['Remarks', rec.note]
+      ]),
+      pdfTiles([
+        { label: 'Base Monthly Salary', value: money(baseSal) },
+        { label: 'Amount Disbursed', value: money(paidAmt), tone: 'good' },
+        {
+          label: isPaid ? 'Status' : 'Balance Due',
+          value: isPaid ? 'PAID' : money(dueAmt),
+          tone: isPaid ? 'good' : 'due'
+        }
+      ]),
+      pdfFooter({ note: 'Computer-generated staff salary statement, verified against the Inspire ERP payroll ledger.' })
+    ].join('');
+
+    const opened = openPrintDocument({
+      title: `Salary Payslip - ${t.name} (${monthName})`,
+      body,
+      buttonLabel: 'Print / Save Payslip as PDF',
+      onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the payslip.')
+    });
+    if (opened) triggerToast(`Payslip opened for ${t.name} (${monthName}).`);
   };
 
   const handleDownloadStaffAnnualStatement = (t: Teacher) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      triggerToast('Popup blocked by browser. Please allow popups.');
-      return;
-    }
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    // The academic year runs June to May, and the figures live in
+    // salaryLedger[year]. The old statement listed January to December and
+    // read the legacy monthlySalaries map instead, so it showed the wrong
+    // twelve months against the wrong source and hardcoded "2026" in its
+    // title regardless of which year was selected.
+    const months = [
+      'June', 'July', 'August', 'September', 'October', 'November',
+      'December', 'January', 'February', 'March', 'April', 'May'
+    ];
     const baseSal = Number(t.salary || 0);
+    const ledger = (t.salaryLedger?.[selectedAcademicYear] || {}) as any;
+
     let totalDisbursed = 0;
-
-    const monthRows = months.map(m => {
-      const rec = (t.monthlySalaries as any)?.[m] || { status: 'Unpaid', amountPaid: 0, paymentDate: '—', paymentMode: '—' };
-      const amt = Number(rec.amountPaid || (rec.status === 'Paid' ? baseSal : 0));
+    const rows = months.map(m => {
+      const rec = ledger[m] || (t.monthlySalaries as any)?.[m] || {};
+      const isPaid = rec.status === 'Paid' || rec.paid === true;
+      const amt = Number(rec.amountPaid || (isPaid ? baseSal : 0));
       totalDisbursed += amt;
-      return `<tr>
-        <td style="padding:10px 12px; border-bottom:1px solid var(--line); font-weight:700; color:var(--ink)">${m}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid var(--line); color:${rec.status === 'Paid' ? 'var(--good)' : 'var(--critical)'}; font-weight:800">${rec.status || 'Unpaid'}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid var(--line); text-align:right; font-weight:800; color:var(--ink)">Rs. ${amt.toLocaleString('en-IN')}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid var(--line); text-align:center">${rec.paymentDate || '—'}</td>
-        <td style="padding:10px 12px; border-bottom:1px solid var(--line); text-align:center">${rec.paymentMode || '—'}</td>
-      </tr>`;
-    }).join('');
+      return [
+        `<strong>${escapeHtml(m)}</strong>`,
+        `<span class="pdf-badge ${isPaid ? 'paid' : 'due'}">${isPaid ? 'Paid' : 'Unpaid'}</span>`,
+        isPaid ? `<span style="color:${PDF_COLORS.good};font-weight:800">${money(amt)}</span>` : money(0),
+        dateStr(rec.paidAt || rec.paymentDate || rec.date),
+        escapeHtml(rec.paymentMode || '—')
+      ];
+    });
 
-    const generatedDate = new Date().toLocaleString('en-IN');
+    const expected = baseSal * 12;
+    const outstanding = Math.max(0, expected - totalDisbursed);
+    const paidMonths = rows.filter(r => r[1].includes('paid')).length;
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Annual Salary Ledger - ${escapeHtml(t.name)}</title>
-    <style>
-      @page { size: A4; margin: 12mm }
-      * { box-sizing: border-box }
-      body { margin: 0; color: var(--ink); background: #FFF; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact }
-      .page { max-width: 182mm; margin: 0 auto; padding: 4px }
-      .top-logo-block { text-align: center; margin-bottom: 16px }
-      .top-logo-block img { height: 74px; width: auto; display: block; margin: 0 auto 6px; object-fit: contain }
-      .top-logo-title { font-size: 22px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: 0.06em }
-      .top-logo-sub { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px }
-      .scard { background: var(--surface-sunken); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(4,1fr); gap: 12px }
-      .fl { font-size: 8.5px; font-weight: 800; color: var(--ink-secondary); text-transform: uppercase; letter-spacing: 0.06em; display: block }
-      .fv { font-size: 12px; font-weight: 800; color: var(--ink); display: block; margin-top: 3px }
-      table { width: 100%; border-collapse: collapse; border: 1.5px solid var(--line-strong); border-radius: 12px; overflow: hidden; margin-top: 12px }
-      th { background: var(--surface-sunken); color: var(--ink-secondary); padding: 10px 12px; font-size: 8.5px; text-transform: uppercase; text-align: left; font-weight: 800; letter-spacing: 0.06em; border-bottom: 1.5px solid var(--line-strong) }
-      .ftr { margin-top: 24px; padding-top: 12px; border-top: 1.5px dashed var(--line-strong); display: flex; justify-content: space-between; align-items: flex-end; font-size: 9px; color: var(--ink-secondary) }
-      .sig { border-top: 1.5px solid var(--ink); padding-top: 6px; font-size: 9px; font-weight: 800; color: var(--ink); text-transform: uppercase; margin-top: 24px; text-align: center; width: 140px }
-      .pbtn { display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; padding: 10px 24px; background: var(--ink); color: #FFF; border: none; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; }
-      @media print { .pbtn { display: none } }
-    </style></head>
-    <body>
-      <div class="page">
-        <button class="pbtn" onclick="window.print()">Print Annual Ledger Statement PDF</button>
-        <div class="top-logo-block">
-          <img src="${collegeLogo}" alt="Inspire College Logo"/>
-          <div class="top-logo-title">INSPIRE COLLEGE</div>
-          <div class="top-logo-sub">Staff Annual Payroll Statement - 2026</div>
-        </div>
-        <div class="scard">
-          <div><span class="fl">Employee Name</span><span class="fv">${escapeHtml(t.name)}</span></div>
-          <div><span class="fl">Role</span><span class="fv">${escapeHtml(t.role || t.subject)}</span></div>
-          <div><span class="fl">Classification</span><span class="fv">${escapeHtml(t.classification || 'Teaching')}</span></div>
-          <div><span class="fl">Campus</span><span class="fv">${escapeHtml(t.branch || loggedInCampus)}</span></div>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Month</th>
-              <th>Status</th>
-              <th style="text-align:right">Amount Paid</th>
-              <th style="text-align:center">Payment Date</th>
-              <th style="text-align:center">Mode</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${monthRows}
-          </tbody>
-        </table>
-        <div class="ftr">
-          <div><div><strong>Generated On:</strong> ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Computer-generated annual salary ledger &middot; Verified via Inspire College ERP</div></div>
-          <div class="sig">Authorized Signatory</div>
-        </div>
-      </div>
-      <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},300);});</script>
-    </body></html>`;
+    const body = [
+      pdfHeader({
+        logoSrc: collegeLogo,
+        title: 'Annual Salary Ledger',
+        subtitle: `Academic year ${selectedAcademicYear} (June to May)`,
+        campus: t.branch || loggedInCampus
+      }),
+      pdfDetailCard([
+        ['Employee Name', t.name],
+        ['Role', t.role || t.subject],
+        ['Classification', t.classification || 'Teaching'],
+        ['Employee ID', t.id || t._id],
+        ['Campus', t.branch || loggedInCampus],
+        ['Academic Year', selectedAcademicYear]
+      ]),
+      pdfTiles([
+        { label: 'Months Settled', value: `${paidMonths} of 12`, tone: paidMonths === 12 ? 'good' : 'warn' },
+        { label: 'Annual Expected', value: money(expected) },
+        { label: 'Total Disbursed', value: money(totalDisbursed), tone: 'good' },
+        { label: 'Outstanding', value: money(outstanding), tone: outstanding > 0 ? 'due' : 'good' }
+      ]),
+      pdfSection(`Monthly Disbursements — ${selectedAcademicYear}`),
+      pdfTable({
+        headers: ['Month', 'Status', 'Amount Paid', 'Payment Date', 'Mode'],
+        numeric: [2],
+        rows,
+        footer: ['Total', '', money(totalDisbursed), '', '']
+      }),
+      pdfFooter({ note: 'Computer-generated annual salary ledger, verified against the Inspire ERP payroll records.' })
+    ].join('');
 
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
+    const opened = openPrintDocument({
+      title: `Annual Salary Ledger - ${t.name} (${selectedAcademicYear})`,
+      body,
+      buttonLabel: 'Print / Save Annual Ledger as PDF',
+      onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the ledger.')
+    });
+    if (opened) triggerToast(`Annual ledger opened for ${t.name}.`);
   };
 
   //  Admin2 Fetch Helpers
@@ -4568,203 +4523,113 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     };
 
     const handleDownloadExpenditureReport = () => {
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        triggerToast('Popup blocked by browser.');
-        return;
-      }
-
       const campus = role === 'admin1' ? selectedExpBranch : loggedInCampus;
-      const list = role === 'admin1'
-        ? expenditures.filter(e => e.branch === selectedExpBranch)
-        : expenditures.filter(e => e.branch === loggedInCampus);
+      const list = expenditures.filter(e => e.branch === campus);
 
-      const catTotals: { [key: string]: number } = {};
+      const catTotals: Record<string, number> = {};
       let total = 0;
-      list.forEach(e => {
-        catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
-        total += e.amount;
-      });
+      for (const e of list) {
+        catTotals[e.category] = (catTotals[e.category] || 0) + Number(e.amount || 0);
+        total += Number(e.amount || 0);
+      }
+      const categories = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
 
-      const categories = Object.keys(catTotals);
-      let svgBars = '';
-      categories.forEach((cat, index) => {
+      // A proportion bar per category, drawn with plain divs and literal
+      // colours. The old version drew an SVG chart whose bars were filled with
+      // var(--line-strong) and whose labels used var(--ink-secondary), so in a
+      // print window the bars had no background and the labels no colour.
+      const breakdown = categories.map(cat => {
         const amt = catTotals[cat];
-        const width = total > 0 ? (amt / total) * 270 : 0;
-        const y = 30 + index * 24;
+        const pct = total > 0 ? (amt / total) * 100 : 0;
+        return `
+          <div style="margin-bottom:7px">
+            <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:${PDF_COLORS.ink}">
+              <span>${escapeHtml(cat)}</span>
+              <span>${money(amt)} &middot; ${pct.toFixed(1)}%</span>
+            </div>
+            <div style="height:9px;border-radius:4px;background:${PDF_COLORS.line};margin-top:3px;overflow:hidden">
+              <div style="height:9px;width:${pct.toFixed(2)}%;background:${PDF_COLORS.accent}"></div>
+            </div>
+          </div>`;
+      }).join('');
 
-        svgBars += `
-          <text x="10" y="${y + 12}" font-size="9" font-weight="bold" fill="var(--ink-secondary)">${cat}</text>
-          <rect x="90" y="${y}" width="280" height="14" rx="4" fill="var(--line-strong)" />
-          <rect x="90" y="${y}" width="${width}" height="14" rx="4" fill="#0D9488" />
-          <text x="${95 + width}" y="${y + 11}" font-size="8.5" font-weight="bold" fill="#0D9488">Rs.${amt.toLocaleString('en-IN')}</text>
-        `;
+      const body = [
+        pdfHeader({
+          logoSrc: collegeLogo,
+          title: 'Expenditure Report',
+          subtitle: `${list.length} entr${list.length === 1 ? 'y' : 'ies'}`,
+          campus
+        }),
+        pdfTiles([
+          { label: 'Total Spend', value: money(total), tone: 'warn' },
+          { label: 'Entries', value: String(list.length) },
+          { label: 'Categories', value: String(categories.length) },
+          { label: 'Largest Category', value: categories[0] ? `${categories[0]}` : '—' }
+        ]),
+        categories.length ? pdfSection('Spend by Category') : '',
+        categories.length ? breakdown : '',
+        pdfSection('Expenditure Entries'),
+        pdfTable({
+          headers: ['Date', 'Category', 'Description', 'Paid To', 'Amount'],
+          numeric: [4],
+          rows: list
+            .slice()
+            .sort((a: any, b: any) => new Date(b.date as any).getTime() - new Date(a.date as any).getTime())
+            .map((e: any) => [
+              dateStr(e.date),
+              `<strong>${escapeHtml(e.category)}</strong>`,
+              escapeHtml(e.description || e.note || '—'),
+              escapeHtml(e.paidTo || e.vendor || '—'),
+              money(e.amount)
+            ]),
+          footer: ['', '', '', 'Total', money(total)],
+          emptyMessage: 'No expenditure recorded for this campus.'
+        }),
+        pdfFooter({ note: 'Computer-generated expenditure report, verified against the Inspire ERP records.' })
+      ].join('');
+
+      const opened = openPrintDocument({
+        title: `Expenditure Report - ${campus}`,
+        body,
+        buttonLabel: 'Print / Save Expenditure Report as PDF',
+        onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the report.')
       });
-
-      const chartHeight = 40 + categories.length * 24;
-      const svgChart = `
-        <svg width="100%" height="${chartHeight}" viewBox="0 0 400 ${chartHeight}" xmlns="http://www.w3.org/2000/svg" style="font-family: sans-serif; background: #fafafa; border: 1px solid var(--line); border-radius: 8px; padding: 10px;">
-          <text x="10" y="18" font-size="11" font-weight="bold" fill="#0F766E">CAMPUS EXPENDITURES BY CATEGORY</text>
-          ${svgBars}
-        </svg>
-      `;
-
-      const reportHtml = `<!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8"/>
-          <title>Expenditure Audit Report - ${campus}</title>
-          <style>
-            @page { size: A4; margin: 12mm; }
-            * { box-sizing: border-box; }
-            body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; color: var(--ink); margin: 0; padding: 0; background: var(--surface); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .page { max-width: 182mm; margin: 0 auto; padding: 4px; }
-            .hdr { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: linear-gradient(135deg, var(--ink) 0%, var(--ink) 100%); border-radius: 16px; margin-bottom: 20px; border-bottom: 3px solid var(--accent); }
-            .brand { display: flex; align-items: center; gap: 14px; }
-            .logo { width: 44px; height: 44px; object-fit: contain; background: #FFF; border-radius: 10px; padding: 4px; border: 1px solid var(--accent); }
-            .iname { color: #FFF; font-size: 15px; font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; }
-            .iaddr { color: var(--ink-muted); font-size: 10px; line-height: 1.4; margin-top: 2px; }
-            .slbl strong { display: block; color: #FFF; font-size: 16px; font-weight: 900; text-transform: uppercase; text-align: right; letter-spacing: 0.04em; }
-            .slbl span { color: var(--warning); font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-top: 2px; }
-            .chart-container { margin: 20px 0; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; border: 1.5px solid var(--line-strong); border-radius: 12px; overflow: hidden; }
-            th, td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; }
-            th { background: var(--surface-sunken); color: var(--ink-secondary); font-size: 8.5px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.06em; }
-            td { font-size: 11px; }
-            .total-row { font-weight: 900; background: var(--surface-sunken); border-top: 2px solid var(--accent); font-size: 12px; }
-            .pbtn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 20px; padding: 12px 26px; background: linear-gradient(135deg, var(--ink), var(--ink)); color: #FFF; border: none; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(15,23,42,0.15); }
-            @media print {
-              .pbtn { display: none !important; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="page">
-            <button onclick="window.print()" class="pbtn">⬇ Print Expenditure Report PDF</button>
-            <div class="hdr">
-              <div class="brand">
-                <img class="logo" src="${collegeLogo}" alt="Logo"/>
-                <div>
-                  <div class="iname">INSPIRE JUNIOR COLLEGE</div>
-                  <div class="iaddr">Campus: ${escapeHtml(campus)} &middot; Expenditure Audit System</div>
-                </div>
-              </div>
-              <div class="slbl">
-                <strong>Expenditure Audit</strong>
-                <span>Generated: ${new Date().toLocaleDateString('en-GB')}</span>
-              </div>
-            </div>
-
-            <div class="chart-container">
-              ${list.length > 0 ? svgChart : '<div style="padding: 20px; text-align: center; color: var(--ink-secondary);">No category chart data available.</div>'}
-            </div>
-
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Category</th>
-                  <th>Description</th>
-                  <th style="text-align: right;">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${list.map(e => `
-                  <tr>
-                    <td>${typeof e.date === 'string' ? e.date.split('T')[0] : e.date}</td>
-                    <td><strong style="color:var(--ink)">${escapeHtml(e.category)}</strong></td>
-                    <td>${escapeHtml(e.description)}</td>
-                    <td style="text-align: right; font-weight: 800; color: var(--ink)">Rs. ${e.amount.toLocaleString('en-IN')}</td>
-                  </tr>
-                `).join('')}
-                <tr class="total-row">
-                  <td colspan="3">Grand Total Campus Expenditures</td>
-                  <td style="text-align: right; color:var(--warning)">Rs. ${total.toLocaleString('en-IN')}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <script>
-            window.addEventListener('load', function () {
-              setTimeout(function () {
-                window.print();
-              }, 250);
-            });
-          </script>
-        </body>
-        </html>
-      `;
-      printWindow.document.write(reportHtml);
-      printWindow.document.close();
-      printWindow.focus();
+      if (opened) triggerToast('Expenditure report opened for printing.');
     };
 
     const handleDownloadBill = (exp: ExpenditureItem) => {
-      const dateStr = typeof exp.date === 'string' ? exp.date.split('T')[0] : String(exp.date || '');
-      const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8"/>
-  <title>Expenditure Bill - ${escapeHtml(exp.category)}</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-    *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:'Inter',sans-serif;background:#fff;color:var(--ink);padding:40px;}
-    .page{max-width:720px;margin:auto;border:2px solid var(--accent);border-radius:16px;overflow:hidden;}
-    .header{background:linear-gradient(135deg,#1a1a2e 0%,#0d1b2a 100%);padding:32px 40px;display:flex;justify-content:space-between;align-items:center;}
-    .logo-text{color:var(--accent);font-size:22px;font-weight:900;letter-spacing:0.04em;}
-    .logo-sub{color:rgba(212,175,55,0.6);font-size:11px;font-weight:700;margin-top:2px;}
-    .bill-no{color:rgba(212,175,55,0.8);font-size:12px;font-weight:700;text-align:right;}
-    .body{padding:36px 40px;}
-    .title{font-size:28px;font-weight:900;color:var(--ink);margin-bottom:4px;}
-    .sub{font-size:13px;color:#666;margin-bottom:32px;}
-    .row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f0f0;font-size:14px;}
-    .row:last-of-type{border-bottom:none;}
-    .row span{color:#888;}
-    .row strong{font-weight:700;color:var(--ink);}
-    .total-row{display:flex;justify-content:space-between;align-items:center;background:#fffbea;border:2px solid var(--accent);border-radius:12px;padding:16px 20px;margin-top:20px;}
-    .total-label{font-size:14px;font-weight:700;color:var(--ink);}
-    .total-amt{font-size:28px;font-weight:900;color:var(--accent);}
-    .footer{background:#f9f9f9;padding:20px 40px;border-top:1px solid #eee;text-align:center;font-size:11px;color:#999;}
-    .stamp{display:inline-block;border:2px solid var(--accent);border-radius:8px;padding:6px 16px;font-size:11px;font-weight:700;color:var(--accent);margin-top:10px;}
-  </style>
-</head>
-<body>
-<div class="page">
-  <div class="header" style="text-align: center; display: block;">
-    <img src="${collegeLogo}" style="height: 60px; width: auto; display: block; margin: 0 auto 6px;" alt="Inspire College Logo"/>
-    <div class="logo-text" style="font-size: 20px; font-weight: 900; color: var(--ink); text-transform: uppercase;">INSPIRE COLLEGE</div>
-    <div class="logo-sub" style="font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; margin-top: 2px;">Expenditure Audit System</div>
-  </div>
-  <div class="body">
-    <div class="title" style="margin-top: 14px;">Expenditure Voucher Bill</div>
-    <div class="sub">Official financial voucher for campus expenditure accounting</div>
-    <div class="row"><span>Category</span><strong>${escapeHtml(exp.category)}</strong></div>
-    <div class="row"><span>Description</span><strong>${escapeHtml(exp.description || 'General expenditure')}</strong></div>
-    <div class="row"><span>Branch / Campus</span><strong>${escapeHtml(exp.branch || 'N/A')}</strong></div>
-    <div class="row"><span>Date of Expenditure</span><strong>${escapeHtml(dateStr)}</strong></div>
-    <div class="row"><span>Voucher Ref</span><strong>${escapeHtml(exp._id || exp.id || 'EXP-BILL')}</strong></div>
-    <div class="total-row">
-      <div class="total-label">Total Amount Disbursed</div>
-      <div class="total-amt">Rs.${exp.amount.toLocaleString('en-IN')}</div>
-    </div>
-    <div style="margin-top:20px;text-align:right;">
-      <div class="stamp">VERIFIED & APPROVED</div>
-    </div>
-  </div>
-  <div class="footer">
-    This voucher is system-generated by Inspire College ERP Expenditure Audit. Verified internal document.
-  </div>
-</div>
-</body>
-</html>`;
-      const win = window.open('', '_blank', 'width=800,height=900');
-      if (win) {
-        win.document.write(html);
-        win.document.close();
-        setTimeout(() => win.print(), 600);
-      }
+      const body = [
+        pdfHeader({
+          logoSrc: collegeLogo,
+          title: 'Expenditure Bill',
+          subtitle: escapeHtml(String(exp.category || '')),
+          campus: (exp as any).branch || loggedInCampus
+        }),
+        pdfDetailCard([
+          ['Category', exp.category],
+          ['Date', dateStr(exp.date as any)],
+          ['Paid To', (exp as any).paidTo || (exp as any).vendor],
+          ['Payment Mode', (exp as any).paymentMode],
+          ['Reference', (exp as any).id || (exp as any)._id],
+          ['Campus', (exp as any).branch || loggedInCampus]
+        ]),
+        pdfSection('Description'),
+        `<div style="padding:10px 12px;border:1px solid ${PDF_COLORS.line};border-radius:9px;background:${PDF_COLORS.surfaceSunken};font-size:11px">
+           ${escapeHtml((exp as any).description || (exp as any).note || 'No description recorded.')}
+         </div>`,
+        pdfTiles([
+          { label: 'Amount', value: money(exp.amount), tone: 'warn' }
+        ]),
+        pdfFooter({ note: 'Computer-generated expenditure voucher, verified against the Inspire ERP records.' })
+      ].join('');
+
+      const opened = openPrintDocument({
+        title: `Expenditure Bill - ${exp.category}`,
+        body,
+        buttonLabel: 'Print / Save Bill as PDF',
+        onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the bill.')
+      });
+      if (opened) triggerToast('Expenditure bill opened for printing.');
     };
 
     const normalizeBranch = (b?: string) => {

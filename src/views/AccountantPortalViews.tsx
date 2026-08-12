@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LIMITS } from '../constants/fieldLimits';
 import {
   openPrintDocument, pdfHeader, pdfFooter, pdfSection, pdfTable, pdfTiles,
-  pdfDetailCard, money, dateStr, PDF_COLORS
+  pdfDetailCard, money, dateStr, escapeHtml, PDF_COLORS
 } from '../utils/pdfDocument';
 import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
@@ -276,13 +276,7 @@ const numberToReceiptWords = (amount: number) => {
   return `${segments.join(' ')} Rupees Only`.replace(/\s+/g, ' ').trim();
 };
 
-const escapeHtml = (value: string | number | null | undefined) =>
-  String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+// escapeHtml now comes from utils/pdfDocument, so there is one implementation.
 
 const normalizeStudentSearch = (value: string) => value.toLowerCase().trim();
 
@@ -846,246 +840,73 @@ export const AccountantDashboardView: React.FC = () => {
 
 
   const handleDownloadPDF = (receipt: Receipt, student: Student) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      triggerToast('Popup blocked by browser.');
-      return;
-    }
-
     const receiptWords = numberToReceiptWords(receipt.amount);
-    const studentClass = student.course || student.branch || 'Junior College';
-    const studentSection = student.section || 'N/A';
-    const studentRoll = student.rollNumber || student.studentId || student.admissionNumber;
-    const receiptAmount = `Rs. ${receipt.amount.toLocaleString('en-IN')}`;
-    const receiptBalance = `Rs. ${receipt.balance.toLocaleString('en-IN')}`;
-    const txnRefDisplay = receipt.transactionRef || receipt.referenceNo || receipt.receiptNumber;
-    const receiptHtml = `
-      <html>
-      <head>
-        <title>Receipt ${escapeHtml(receipt.receiptNumber)}</title>
-        <style>
-          @page { size: A4; margin: 0; }
-          html, body { margin: 0; padding: 0; background: var(--surface); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 8mm 9mm 7mm; display: flex; flex-direction: column; gap: 4mm; background: #fff; }
-          .copy { flex: 1 1 0; border: 1.2px solid #E7D39A; border-radius: 14px; padding: 10px 11px 9px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; background: #fffdf8; overflow: hidden; }
-          .copy-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-          .copy-tag { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--warning); font-weight: 900; background: #FFF6DB; border: 1px solid #E7D39A; border-radius: 999px; padding: 4px 8px; }
-          .header { text-align: center; border-bottom: 2px solid var(--accent); padding-bottom: 8px; margin-bottom: 6px; }
-          .brand-logo { height: 50px; width: auto; object-fit: contain; margin: 0 auto 4px; display: block; }
-          .brand-name { font-size: 18px; font-weight: 900; color: #8F6A00; text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.1; margin: 0; }
-          .receipt-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; border-top: 1px dashed var(--line); padding-top: 4px; }
-          .receipt-title { font-size: 13px; font-weight: 900; color: var(--ink); letter-spacing: 0.08em; text-transform: uppercase; }
-          .receipt-number { font-size: 9px; font-weight: 800; color: var(--warning); }
-          .receipt-date { font-size: 8.5px; color: var(--ink-secondary); }
-          .section-title { font-size: 9px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--warning); margin-bottom: 5px; }
-          .student-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
-          .field { display: flex; flex-direction: column; gap: 2px; padding: 5px 6px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); padding-left: 10px; }
-          .label { font-size: 8px; text-transform: uppercase; color: var(--warning); font-weight: 800; letter-spacing: 0.05em; }
-          .value { font-size: 11px; font-weight: 800; color: var(--ink); line-height: 1.2; word-break: break-word; }
-          .amount-wrap { display: flex; gap: 8px; align-items: stretch; }
-          .amount-box { flex: 0 0 47%; background: linear-gradient(180deg, #FFF9E6 0%, #FFF2C7 100%); border: 1.4px solid var(--accent); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; }
-          .amount-label { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; color: var(--warning); }
-          .amount-value { font-size: 18px; font-weight: 900; color: var(--warning); margin-top: 4px; line-height: 1; }
-          .amount-words { flex: 1 1 auto; border: 1.2px solid var(--line); border-radius: 12px; padding: 10px; background: #fff; display: flex; flex-direction: column; justify-content: center; }
-          .words-text { font-size: 11px; font-weight: 800; color: var(--ink); line-height: 1.35; }
-          .balance-row { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: 9px; color: var(--ink-secondary); }
-          .table-wrap { border: 1.2px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border-bottom: 1px solid var(--line); padding: 6px 7px; text-align: left; vertical-align: top; }
-          th { background: #FFF6DB; color: var(--warning); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 900; }
-          td { font-size: 10px; color: var(--ink); font-weight: 700; }
-          tr:last-child td { border-bottom: none; }
-          .footer { margin-top: auto; padding-top: 7px; border-top: 1px dashed var(--accent); display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
-          .footer-note { font-size: 8.5px; color: var(--ink-secondary); line-height: 1.35; max-width: 68%; }
-          .signature { min-width: 24%; text-align: right; }
-          .signature-line { height: 20px; border-bottom: 1px solid var(--ink); margin-bottom: 4px; }
-          .signature-label { font-size: 8px; font-weight: 800; color: var(--ink); text-transform: uppercase; letter-spacing: 0.08em; }
-          .cut-line { border-top: 2px dashed #B88900; margin: 0 4px; }
-          .no-print { display: inline-flex; align-self: center; margin-bottom: 2mm; }
-          .print-btn { padding: 11px 18px; background: linear-gradient(180deg, #F9E6A8 0%, var(--accent) 100%); border: 1px solid #C79A15; border-radius: 12px; color: var(--ink); font-weight: 900; cursor: pointer; box-shadow: 0 4px 12px rgba(212,175,55,0.18); }
-          @media print {
-            .no-print { display: none !important; }
-            .page { padding: 0; gap: 0; }
-            .copy { border-radius: 0; border-left: none; border-right: none; }
+
+    // One copy. Rendered twice — for the parent and for the campus file —
+    // with a cut line between, which is how these are issued at the desk.
+    const copy = (tag: string) => `
+      <div class="pdf-copy">
+        <div class="pdf-copy-tag">${escapeHtml(tag)}</div>
+        ${pdfHeader({
+          logoSrc: collegeLogo,
+          title: 'Payment Receipt',
+          subtitle: `Receipt No. ${receipt.receiptNumber}`,
+          campus: student.branch || loggedInCampus
+        })}
+        ${pdfDetailCard([
+          ['Student Name', student.name],
+          ['Roll / ID No.', student.rollNumber || student.studentId || student.admissionNumber],
+          ['Course / Class', student.course || 'Junior College'],
+          ['Section', student.section],
+          ['Mobile', student.mobile],
+          ['Admission No.', student.admissionNumber],
+          ['Receipt Date', dateStr(receipt.date)],
+          ['Payment Mode', receipt.mode],
+          ['Year', (student as any).studentYear]
+        ])}
+        ${pdfTiles([
+          { label: 'Amount Paid', value: money(receipt.amount), tone: 'good' },
+          {
+            label: 'Remaining Balance',
+            value: money(receipt.balance),
+            tone: Number(receipt.balance || 0) > 0 ? 'due' : 'good'
           }
-        </style>
-      </head>
-      <body>
-        <div class="page">
-          <div class="no-print">
-            <button onclick="window.print()" class="print-btn">Print Receipt Now</button>
-          </div>
-          <div class="copy">
-            <div class="copy-top">
-              <div class="copy-tag">Parent Copy</div>
-              <div style="width: 68px;"></div>
-            </div>
-            <div class="header">
-              <img src="${collegeLogo}" alt="Institution Logo" class="brand-logo" />
-              <div class="brand-name">INSPIRE JUNIOR COLLEGE</div>
-              <div class="receipt-meta">
-                <div class="receipt-title">Payment Receipt</div>
-                <div class="receipt-number">Receipt No. ${escapeHtml(receipt.receiptNumber)}</div>
-                <div class="receipt-date">Date: ${escapeHtml(receipt.date)}</div>
-              </div>
-            </div>
-            <div>
-              <div class="section-title">Student Details</div>
-              <div class="student-grid">
-                <div class="field"><span class="label">Student Name</span><span class="value">${escapeHtml(student.name)}</span></div>
-                <div class="field"><span class="label">Roll / ID No.</span><span class="value">${escapeHtml(studentRoll)}</span></div>
-                <div class="field"><span class="label">Course / Class</span><span class="value">${escapeHtml(studentClass)}</span></div>
-                <div class="field"><span class="label">Section</span><span class="value">${escapeHtml(studentSection)}</span></div>
-                <div class="field"><span class="label">Mobile</span><span class="value">${escapeHtml(student.mobile)}</span></div>
-                <div class="field"><span class="label">Admission No.</span><span class="value">${escapeHtml(student.admissionNumber)}</span></div>
-              </div>
-            </div>
-            <div class="amount-wrap">
-              <div class="amount-box">
-                <div class="amount-label">Amount Paid</div>
-                <div class="amount-value">${receiptAmount}</div>
-                <div class="balance-row" style="margin-top: 10px;">
-                  <span>Remaining Balance</span>
-                  <strong>${receiptBalance}</strong>
-                </div>
-              </div>
-              <div class="amount-words">
-                <div class="amount-label">Amount in Words</div>
-                <div class="words-text" style="margin-top: 5px;">${escapeHtml(receiptWords)}</div>
-                <div class="balance-row" style="margin-top: 12px;">
-                  <span>Payment Mode</span>
-                  <strong>${escapeHtml(receipt.mode)}</strong>
-                </div>
-              </div>
-            </div>
-            <div>
-              <div class="section-title">Particulars</div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th style="width: 38%;">Description</th>
-                      <th style="width: 20%;">Payment Type</th>
-                      <th style="width: 26%;">Transaction / UPI Ref No.</th>
-                      <th style="width: 16%; text-align: right;">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>${escapeHtml(`${receipt.category} - ${receipt.installment}`)}</td>
-                      <td>${escapeHtml(receipt.mode)}</td>
-                      <td>${escapeHtml(txnRefDisplay)}</td>
-                      <td style="text-align: right;">${receiptAmount}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div class="footer">
-              <div class="footer-note">
-                Thank you for your payment. This is a computer-generated receipt.
-                <div style="margin-top: 6px;">Cashier: ${escapeHtml(receipt.cashier)}</div>
-              </div>
-              <div class="signature">
-                <div class="signature-line"></div>
-                <div class="signature-label">Authorized Signature</div>
-              </div>
-            </div>
-          </div>
-          <div class="cut-line"></div>
-          <div class="copy">
-            <div class="copy-top">
-              <div class="copy-tag">Campus Copy</div>
-              <div style="width: 68px;"></div>
-            </div>
-            <div class="header">
-              <img src="${collegeLogo}" alt="Institution Logo" class="brand-logo" />
-              <div class="brand-name">INSPIRE JUNIOR COLLEGE</div>
-              <div class="receipt-meta">
-                <div class="receipt-title">Payment Receipt</div>
-                <div class="receipt-number">Receipt No. ${escapeHtml(receipt.receiptNumber)}</div>
-                <div class="receipt-date">Date: ${escapeHtml(receipt.date)}</div>
-              </div>
-            </div>
-            <div>
-              <div class="section-title">Student Details</div>
-              <div class="student-grid">
-                <div class="field"><span class="label">Student Name</span><span class="value">${escapeHtml(student.name)}</span></div>
-                <div class="field"><span class="label">Roll / ID No.</span><span class="value">${escapeHtml(studentRoll)}</span></div>
-                <div class="field"><span class="label">Course / Class</span><span class="value">${escapeHtml(studentClass)}</span></div>
-                <div class="field"><span class="label">Section</span><span class="value">${escapeHtml(studentSection)}</span></div>
-                <div class="field"><span class="label">Mobile</span><span class="value">${escapeHtml(student.mobile)}</span></div>
-                <div class="field"><span class="label">Admission No.</span><span class="value">${escapeHtml(student.admissionNumber)}</span></div>
-              </div>
-            </div>
-            <div class="amount-wrap">
-              <div class="amount-box">
-                <div class="amount-label">Amount Paid</div>
-                <div class="amount-value">${receiptAmount}</div>
-                <div class="balance-row" style="margin-top: 10px;">
-                  <span>Remaining Balance</span>
-                  <strong>${receiptBalance}</strong>
-                </div>
-              </div>
-              <div class="amount-words">
-                <div class="amount-label">Amount in Words</div>
-                <div class="words-text" style="margin-top: 5px;">${escapeHtml(receiptWords)}</div>
-                <div class="balance-row" style="margin-top: 12px;">
-                  <span>Payment Mode</span>
-                  <strong>${escapeHtml(receipt.mode)}</strong>
-                </div>
-              </div>
-            </div>
-            <div>
-              <div class="section-title">Particulars</div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th style="width: 38%;">Description</th>
-                      <th style="width: 20%;">Payment Type</th>
-                      <th style="width: 26%;">Transaction / UPI Ref No.</th>
-                      <th style="width: 16%; text-align: right;">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>${escapeHtml(`${receipt.category} - ${receipt.installment}`)}</td>
-                      <td>${escapeHtml(receipt.mode)}</td>
-                      <td>${escapeHtml(txnRefDisplay)}</td>
-                      <td style="text-align: right;">${receiptAmount}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div class="footer">
-              <div class="footer-note">
-                Thank you for your payment. This is a computer-generated receipt.
-                <div style="margin-top: 6px;">Cashier: ${escapeHtml(receipt.cashier)}</div>
-              </div>
-              <div class="signature">
-                <div class="signature-line"></div>
-                <div class="signature-label">Authorized Signature</div>
-              </div>
-            </div>
-          </div>
+        ])}
+        <div class="pdf-words">
+          <span class="k">Amount in words</span>
+          <span class="v">${escapeHtml(receiptWords)}</span>
         </div>
-        <script>
-          window.addEventListener('load', function () {
-            setTimeout(function () {
-              window.print();
-            }, 250);
-          });
-        </script>
-      </body>
-      </html>
+        ${pdfSection('Particulars')}
+        ${pdfTable({
+          headers: ['Particulars', 'Mode', 'Reference', 'Amount'],
+          numeric: [3],
+          rows: [[
+            escapeHtml(`${receipt.category} - ${receipt.installment}`),
+            escapeHtml(receipt.mode),
+            escapeHtml(receipt.transactionRef || (receipt as any).referenceNo || receipt.receiptNumber),
+            money(receipt.amount)
+          ]]
+        })}
+        ${pdfFooter({
+          note: 'Thank you for your payment. This is a computer-generated receipt and is valid without a stamp.',
+          signatory: 'Authorised Signature'
+        })}
+      </div>
     `;
-    printWindow.document.write(receiptHtml);
-    printWindow.document.close();
-    printWindow.focus();
-    triggerToast('PDF receipt opened in a new tab.');
+
+    const body = [
+      copy('Parent Copy'),
+      '<div class="pdf-cut"><span>cut here</span></div>',
+      copy('Campus Copy')
+    ].join('');
+
+    const opened = openPrintDocument({
+      title: `Receipt ${receipt.receiptNumber}`,
+      body,
+      buttonLabel: 'Print / Save Receipt as PDF',
+      onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to print the receipt.')
+    });
+    if (opened) triggerToast('Receipt opened for printing.');
   };
 
   const handleDownloadStudentStatement = (student: Student) => {
@@ -2900,105 +2721,48 @@ export const AccountantDashboardView: React.FC = () => {
               <button
                 onClick={() => {
                   if (allTransactions.length === 0) { triggerToast('No transactions to export.'); return; }
-                  const csvRows = [
-                    ['Receipt No.', 'Student Name', 'Admission No.', 'Category', 'Installment', 'Mode', 'Date', 'Amount (Rs.)'].join(','),
-                    ...allTransactions.map(tx => [
-                      '"' + (tx.receipt.receiptNumber || '') + '"',
-                      '"' + (tx.student.name || '').replace(/"/g, '""') + '"',
-                      '"' + (tx.student.admissionNumber || '') + '"',
-                      '"' + (tx.receipt.category || '') + '"',
-                      '"' + (tx.receipt.installment || '') + '"',
-                      '"' + (tx.receipt.mode || '') + '"',
-                      '"' + (tx.receipt.date || '') + '"',
-                      tx.receipt.amount || 0
-                    ].join(','))
-                  ];
-                  const csvContent = csvRows.join('\n');
-                  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'Audit_Report_' + loggedInCampus.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.csv';
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
-                  triggerToast('Exported ' + allTransactions.length + ' transactions as Excel/CSV.');
-                }}
-                style={{ ...styles.sheetBtn, backgroundColor: 'var(--line)', color: 'var(--dark-charcoal)', padding: '10px 18px', borderRadius: '10px', fontWeight: 700 }}
-                className="press-interactive"
-              >
-                 Export Excel
-              </button>
-              <button
-                onClick={() => {
-                  if (allTransactions.length === 0) { triggerToast('No transactions to export.'); return; }
-                  const printWindow = window.open('', '_blank');
-                  if (!printWindow) { triggerToast('Popup blocked — please allow popups and try again.'); return; }
                   const totalAmount = allTransactions.reduce((sum, tx) => sum + Number(tx.receipt.amount || 0), 0);
-                  const generatedDate = new Date().toLocaleString('en-IN');
-                  const tableRows = allTransactions.map((tx, idx) =>
-                    '<tr>' +
-                    '<td>' + (idx + 1) + '</td>' +
-                    '<td style="font-weight:800">' + escapeHtml(tx.receipt.receiptNumber) + '</td>' +
-                    '<td>' + escapeHtml(tx.student.name) + '</td>' +
-                    '<td>' + escapeHtml(tx.student.admissionNumber) + '</td>' +
-                    '<td>' + escapeHtml(tx.receipt.category) + '</td>' +
-                    '<td>' + escapeHtml(tx.receipt.installment) + '</td>' +
-                    '<td>' + escapeHtml(tx.receipt.mode) + '</td>' +
-                    '<td>' + escapeHtml(tx.receipt.date) + '</td>' +
-                    '<td class="tr" style="font-weight:900;color:var(--good)">Rs.' + Number(tx.receipt.amount || 0).toLocaleString('en-IN') + '</td>' +
-                    '</tr>'
-                  ).join('');
-                  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Audit Report</title><style>
-                    @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;color:var(--ink);background:#fff;font-family:'Segoe UI',sans-serif;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-                    .page{max-width:270mm;margin:0 auto;padding:0 4mm}
-                    .hdr{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:linear-gradient(135deg,var(--ink),var(--ink));border-radius:12px;margin-bottom:14px}
-                    .iname{color:#fff;font-size:15px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em}
-                    .iaddr{color:var(--ink-muted);font-size:9px;margin-top:3px}
-                    .slbl strong{display:block;color:#fff;font-size:13px;font-weight:900;text-align:right}
-                    .slbl span{color:var(--warning);font-size:9px;font-weight:800;text-transform:uppercase}
-                    .sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
-                    .sc{border:1.5px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--surface-sunken)}
-                    .sc .sl{font-size:8px;font-weight:800;color:var(--ink-secondary);text-transform:uppercase;letter-spacing:0.06em}
-                    .sc .sv{font-size:18px;font-weight:900;color:var(--ink);display:block;margin-top:4px}
-                    table{width:100%;border-collapse:collapse;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;font-size:10px}
-                    th{padding:8px 10px;background:var(--surface-sunken);color:var(--ink-secondary);font-size:8px;text-transform:uppercase;text-align:left;border-bottom:1.5px solid var(--line);font-weight:800;letter-spacing:0.05em}
-                    td{padding:7px 10px;border-bottom:1px solid var(--surface-sunken)}
-                    tr:last-child td{border-bottom:none}
-                    tr:nth-child(even) td{background:#FAFBFC}
-                    .tr{text-align:right}
-                    .ftr{margin-top:14px;padding-top:10px;border-top:1.5px solid var(--line);display:flex;justify-content:space-between;align-items:flex-end;font-size:8px;color:var(--ink-muted)}
-                    .sig{border-top:1.5px solid var(--ink);padding-top:4px;font-size:8px;font-weight:800;color:var(--ink);text-transform:uppercase;margin-top:24px;text-align:center;width:140px}
-                    .pbtn{display:block;margin:0 auto 16px;padding:9px 22px;background:linear-gradient(135deg,var(--ink),var(--ink-secondary));color:#fff;border:none;border-radius:8px;font-weight:900;font-size:12px;cursor:pointer;letter-spacing:0.04em}
-                    @media print{.pbtn{display:none}}
-                  </style></head><body>
-                  <div class="page">
-                    <button class="pbtn" onclick="window.print()">&#11015; Download Audit Report PDF</button>
-                    <div class="hdr">
-                      <div><div class="iname">Inspire Junior College</div><div class="iaddr">Collection Audit Report &middot; Campus: ${escapeHtml(loggedInCampus)}</div></div>
-                      <div class="slbl"><strong>Audit Log</strong><span>Generated: ${escapeHtml(generatedDate)}</span></div>
-                    </div>
-                    <div class="sgrid">
-                      <div class="sc"><span class="sl">Total Transactions</span><span class="sv">${allTransactions.length}</span></div>
-                      <div class="sc"><span class="sl">Total Collected</span><span class="sv" style="color:var(--good)">Rs.${totalAmount.toLocaleString('en-IN')}</span></div>
-                      <div class="sc"><span class="sl">Campus</span><span class="sv" style="font-size:13px">${escapeHtml(loggedInCampus)}</span></div>
-                    </div>
-                    <table>
-                      <thead><tr><th>#</th><th>Receipt No.</th><th>Student Name</th><th>Admission No.</th><th>Category</th><th>Installment</th><th>Mode</th><th>Date</th><th class="tr">Amount</th></tr></thead>
-                      <tbody>${tableRows}</tbody>
-                    </table>
-                    <div class="ftr">
-                      <div><div>Generated: ${escapeHtml(generatedDate)}</div><div style="margin-top:3px">Computer-generated audit report. No physical signature required.</div></div>
-                      <div class="sig">Authorised Signatory</div>
-                    </div>
-                  </div>
-                  <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},400);});<\/script>
-                  </body></html>`;
-                  printWindow.document.write(html);
-                  printWindow.document.close();
-                  printWindow.focus();
-                  triggerToast('PDF opened — ' + allTransactions.length + ' records.');
+
+                  const body = [
+                    pdfHeader({
+                      logoSrc: collegeLogo,
+                      title: 'Audit Report',
+                      subtitle: `${allTransactions.length} transaction(s)`,
+                      campus: loggedInCampus
+                    }),
+                    pdfTiles([
+                      { label: 'Transactions', value: String(allTransactions.length) },
+                      { label: 'Total Collected', value: money(totalAmount), tone: 'good' }
+                    ]),
+                    pdfSection('Transaction Ledger'),
+                    pdfTable({
+                      headers: ['#', 'Receipt No.', 'Student', 'Adm No.', 'Category', 'Installment', 'Mode', 'Date', 'Amount'],
+                      numeric: [8],
+                      rows: allTransactions.map((tx, idx) => [
+                        String(idx + 1),
+                        `<strong>${escapeHtml(tx.receipt.receiptNumber)}</strong>`,
+                        escapeHtml(tx.student.name),
+                        escapeHtml(tx.student.admissionNumber),
+                        escapeHtml(tx.receipt.category),
+                        escapeHtml(tx.receipt.installment),
+                        escapeHtml(tx.receipt.mode),
+                        dateStr(tx.receipt.date),
+                        `<span style="color:${PDF_COLORS.good};font-weight:800">${money(tx.receipt.amount)}</span>`
+                      ]),
+                      footer: ['', '', '', '', '', '', '', 'Total', money(totalAmount)]
+                    }),
+                    pdfFooter({ note: 'Computer-generated audit report, verified against the Inspire College ERP records.' })
+                  ].join('');
+
+                  // Landscape: nine columns do not fit across a portrait page.
+                  const opened = openPrintDocument({
+                    title: 'Audit Report',
+                    body,
+                    landscape: true,
+                    buttonLabel: 'Print / Save Audit Report as PDF',
+                    onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the report.')
+                  });
+                  if (opened) triggerToast('Audit report opened — ' + allTransactions.length + ' records.');
                 }}
                 style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)', fontWeight: 800, padding: '10px 18px', borderRadius: '10px' }}
                 className="press-interactive"
