@@ -59,6 +59,13 @@ async function claimNightlyLock() {
       claimedBy: INSTANCE,
       claimedAt: new Date()
     });
+
+    // Drop locks older than a week. There is no TTL index here on purpose —
+    // autoIndex is off, so an index would have to be created by a migration —
+    // and one tiny document a day is cheap to clear inline instead.
+    await locks.deleteMany({ claimedAt: { $lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } })
+      .catch(() => {});
+
     return true;
   } catch (err) {
     // Duplicate key means another instance already claimed tonight's run.
