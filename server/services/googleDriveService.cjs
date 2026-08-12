@@ -1,6 +1,22 @@
 const { google } = require('googleapis');
 const stream = require('stream');
 
+/**
+ * Ceilings on how long a Drive call may take.
+ *
+ * There were none. googleapis has no default timeout, so a Drive request that
+ * stalled never settled: the HTTP socket to our own client eventually closed
+ * at the server's request timeout, but the promise inside the process stayed
+ * pending forever, holding its connection and whatever it had allocated. A
+ * handful of those is a leak; a Drive outage during the nightly backup is
+ * twenty-four of them at once.
+ *
+ * Metadata calls are quick and get a short ceiling. Uploads and downloads
+ * carry a whole encrypted backup and are given considerably longer.
+ */
+const DRIVE_META_TIMEOUT_MS = Number(process.env.DRIVE_TIMEOUT_MS) || 20000;
+const DRIVE_TRANSFER_TIMEOUT_MS = Number(process.env.DRIVE_TRANSFER_TIMEOUT_MS) || 90000;
+
 async function getGoogleDriveClient() {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
@@ -63,7 +79,8 @@ async function ensureFolderPath(segments) {
       fields: 'files(id, name)',
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
-      pageSize: 1
+      pageSize: 1,
+      timeout: DRIVE_META_TIMEOUT_MS
     }), { label: `folder lookup ${name}` });
 
     let id = found.data.files && found.data.files[0] && found.data.files[0].id;
@@ -71,7 +88,8 @@ async function ensureFolderPath(segments) {
       const created = await drive.files.create({
         requestBody: { name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] },
         fields: 'id',
-        supportsAllDrives: true
+        supportsAllDrives: true,
+        timeout: DRIVE_META_TIMEOUT_MS
       });
       id = created.data.id;
       console.log(`[Drive]: Created folder ${cacheKey.split('/').slice(1).join('/')}`);
@@ -97,7 +115,8 @@ async function uploadFileToFolder(folderId, fileName, contents) {
     requestBody: { name: fileName, parents: [folderId], mimeType: 'application/octet-stream' },
     media: { mimeType: 'application/octet-stream', body: bufferStream },
     supportsAllDrives: true,
-    fields: 'id, name, createdTime, size, parents'
+    fields: 'id, name, createdTime, size, parents',
+    timeout: DRIVE_TRANSFER_TIMEOUT_MS
   });
   return response.data;
 }
@@ -165,7 +184,8 @@ async function listFilesInFolders(folderIds) {
         supportsAllDrives: true,
         includeItemsFromAllDrives: true,
         pageSize: 1000,
-        pageToken: pageToken || undefined
+        pageToken: pageToken || undefined,
+        timeout: DRIVE_META_TIMEOUT_MS
       }), { label: 'batch folder listing' });
 
       for (const f of res.data.files || []) {
@@ -196,7 +216,8 @@ async function listFilesInFolder(folderId) {
     orderBy: 'createdTime desc',
     supportsAllDrives: true,
     includeItemsFromAllDrives: true,
-    pageSize: 100
+    pageSize: 100,
+    timeout: DRIVE_META_TIMEOUT_MS
   });
   return response.data.files || [];
 }
@@ -227,7 +248,8 @@ async function uploadBackupFile(fileName, fileBufferOrString) {
     },
     supportsAllDrives: true,
     supportsTeamDrives: true,
-    fields: 'id, name, createdTime, size'
+    fields: 'id, name, createdTime, size',
+    timeout: DRIVE_TRANSFER_TIMEOUT_MS
   });
 
   return response.data;
@@ -252,7 +274,8 @@ async function listBackupFiles() {
     supportsAllDrives: true,
     includeItemsFromAllDrives: true,
     fields: 'files(id, name, createdTime, size, mimeType)',
-    orderBy: 'createdTime desc'
+    orderBy: 'createdTime desc',
+    timeout: DRIVE_META_TIMEOUT_MS
   });
 
   return response.data.files || [];
@@ -264,7 +287,9 @@ async function listBackupFiles() {
 async function downloadBackupFile(fileId) {
   const drive = await getGoogleDriveClient();
   const response = await drive.files.get(
-    { fileId, alt: 'media', supportsAllDrives: true },
+    { fileId, alt: 'media', supportsAllDrives: true ,
+      timeout: DRIVE_TRANSFER_TIMEOUT_MS
+    },
     { responseType: 'arraybuffer' }
   );
 
@@ -276,7 +301,9 @@ async function downloadBackupFile(fileId) {
  */
 async function deleteBackupFile(fileId) {
   const drive = await getGoogleDriveClient();
-  await drive.files.delete({ fileId, supportsAllDrives: true });
+  await drive.files.delete({ fileId, supportsAllDrives: true ,
+    timeout: DRIVE_META_TIMEOUT_MS
+  });
   return true;
 }
 
