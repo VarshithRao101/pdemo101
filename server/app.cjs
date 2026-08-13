@@ -56,36 +56,15 @@ const TRUSTED_PROXY_HOPS = process.env.TRUSTED_PROXY_HOPS === undefined
   : Number(process.env.TRUSTED_PROXY_HOPS);
 app.set('trust proxy', Number.isFinite(TRUSTED_PROXY_HOPS) ? TRUSTED_PROXY_HOPS : 1);
 
-// Security Headers via Helmet with Hardened Content Security Policy (CSP) Enabled (unsafe-eval removed)
+// Security headers. The CSP directives live in server/security/csp.cjs
+// because the same policy has to be emitted twice — once here as a header,
+// once as a meta tag injected at build time — and Hostinger's edge rewrites
+// the header away, so the meta copy is the one that actually protects users.
+// Defining them in one place is what stops the two from drifting apart.
+const { DIRECTIVES: CSP_DIRECTIVES } = require('./security/csp.cjs');
+
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      // No 'unsafe-inline' here, deliberately. The access token is kept in
-      // localStorage, so any script an attacker gets to run is a full account
-      // takeover — which makes script-src the single most valuable directive
-      // in this policy, and 'unsafe-inline' would hand back most of what it
-      // buys. The built page loads exactly one module by src and contains no
-      // inline script, no inline event handler, no eval and no new Function,
-      // so nothing legitimate needs it.
-      //
-      // If a build ever does emit an inline script, do NOT restore
-      // 'unsafe-inline' — give that script a nonce or a hash instead.
-      scriptSrc: ["'self'"],
-      // Styles still allow it: React sets element style attributes throughout
-      // the UI, and inline CSS cannot be used to execute script under this
-      // policy, so the trade is a poor one to refuse.
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-      imgSrc: ["'self'", "data:", "blob:", "https:"],
-      connectSrc: ["'self'", "https:", "wss:"],
-      objectSrc: ["'none'"],
-      baseUri: ["'self'"],
-      formAction: ["'self'"],
-      frameAncestors: ["'self'"],
-      upgradeInsecureRequests: []
-    }
-  },
+  contentSecurityPolicy: { directives: CSP_DIRECTIVES },
   crossOriginEmbedderPolicy: false
 }));
 

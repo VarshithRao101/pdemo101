@@ -1078,10 +1078,10 @@ export const AccountantDashboardView: React.FC = () => {
             animation: 'spin 0.8s linear infinite',
             marginBottom: '20px'
           }} />
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: 'var(--warning)', letterSpacing: '0.04em' }}>
+          <h3 style={{ margin: 0, fontSize: '1.2857rem', fontWeight: 900, color: 'var(--warning)', letterSpacing: '0.04em' }}>
             Processing & Uploading...
           </h3>
-          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 600 }}>
+          <p style={{ margin: '6px 0 0', fontSize: '0.8571rem', color: 'var(--ink-muted)', fontWeight: 600 }}>
             Please wait while your request is being saved to the database.
           </p>
         </div>
@@ -1094,13 +1094,13 @@ export const AccountantDashboardView: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--line)', paddingBottom: '12px' }}>
               <div>
                 <h3 style={styles.modalTitle}>Student Profile & Complete Fee Structure Editor</h3>
-                <p style={{ fontSize: '11px', color: 'var(--ink-secondary)', margin: 0 }}>
+                <p style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', margin: 0 }}>
                   Campus: <strong>{loggedInCampus}</strong> (Locked) | Adm No: <strong>{selectedStudent.admissionNumber || 'N/A'}</strong>
                 </p>
               </div>
               <button
                 onClick={() => { setIsStudentModalOpen(false); setSelectedStudent(null); setEditStudent(null); }}
-                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                style={{ background: 'none', border: 'none', fontSize: '1.4286rem', cursor: 'pointer', color: 'var(--muted-gray)' }}
               >
                 ✕
               </button>
@@ -1109,17 +1109,17 @@ export const AccountantDashboardView: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Summary Stats Header Bar */}
               <div style={{ ...styles.readOnlyBlock, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
-                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Student Name</span><strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>{selectedStudent.name || 'N/A'}</strong></div>
-                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Adm Number</span><strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>{selectedStudent.admissionNumber || 'N/A'}</strong></div>
-                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Campus</span><strong style={{ fontSize: '13px', color: 'var(--good)' }}>{loggedInCampus}</strong></div>
-                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Gross Total Fee</span><strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>Rs.{((editStudent.tuitionFee || 0) + (editStudent.hostelFee || 0) + (editStudent.transportFee || 0) + (editStudent.miscellaneousFee || 0) + (editStudent.previousPending || 0) + ((editStudent.customFeeSlots || []).reduce((sum: number, s: any) => sum + (Number(s.amount) || 0), 0))).toLocaleString('en-IN')}</strong></div>
-                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Total Paid</span><strong style={{ fontSize: '13px', color: 'var(--good)' }}>Rs.{(selectedStudent.totalPaid || 0).toLocaleString('en-IN')}</strong></div>
-                <div><span style={{ fontSize: '10px', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Remaining Balance</span><strong style={{ fontSize: '13px', color: selectedStudent.remainingBalance > 0 ? 'var(--critical)' : 'var(--good)' }}>Rs.{(selectedStudent.remainingBalance || 0).toLocaleString('en-IN')}</strong></div>
+                <div><span style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Student Name</span><strong style={{ fontSize: '0.9286rem', color: 'var(--dark-charcoal)' }}>{selectedStudent.name || 'N/A'}</strong></div>
+                <div><span style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Adm Number</span><strong style={{ fontSize: '0.9286rem', color: 'var(--dark-charcoal)' }}>{selectedStudent.admissionNumber || 'N/A'}</strong></div>
+                <div><span style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Campus</span><strong style={{ fontSize: '0.9286rem', color: 'var(--good)' }}>{loggedInCampus}</strong></div>
+                <div><span style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Gross Total Fee</span><strong style={{ fontSize: '0.9286rem', color: 'var(--dark-charcoal)' }}>Rs.{((editStudent.tuitionFee || 0) + (editStudent.hostelFee || 0) + (editStudent.transportFee || 0) + (editStudent.miscellaneousFee || 0) + (editStudent.previousPending || 0) + ((editStudent.customFeeSlots || []).reduce((sum: number, s: any) => sum + (Number(s.amount) || 0), 0))).toLocaleString('en-IN')}</strong></div>
+                <div><span style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Total Paid</span><strong style={{ fontSize: '0.9286rem', color: 'var(--good)' }}>Rs.{(selectedStudent.totalPaid || 0).toLocaleString('en-IN')}</strong></div>
+                <div><span style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Remaining Balance</span><strong style={{ fontSize: '0.9286rem', color: selectedStudent.remainingBalance > 0 ? 'var(--critical)' : 'var(--good)' }}>Rs.{(selectedStudent.remainingBalance || 0).toLocaleString('en-IN')}</strong></div>
               </div>
 
               {/* Section 1: Personal & Academic Details */}
               <div style={{ backgroundColor: 'var(--surface-sunken)', padding: '16px', borderRadius: '12px', border: '1px solid var(--line)' }}>
-                <h4 style={{ margin: '0 0 12px 0', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '0.8571rem', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                    Profile & Personal Details
                 </h4>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
@@ -1200,9 +1200,9 @@ export const AccountantDashboardView: React.FC = () => {
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--royal-gold)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h3 style={{ ...styles.modalTitle, color: 'var(--warning)' }}>Confirm Save Changes</h3>
-              <button onClick={() => setIsStuOtpModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
+              <button onClick={() => setIsStuOtpModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2857rem', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
-            <p style={{ fontSize: '13px', color: 'var(--dark-charcoal)', lineHeight: 1.5, marginBottom: '16px', fontWeight: 600 }}>
+            <p style={{ fontSize: '0.9286rem', color: 'var(--dark-charcoal)', lineHeight: 1.5, marginBottom: '16px', fontWeight: 600 }}>
               Are you sure you want to update student details for <strong>{editStudent.name}</strong>?
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -1227,20 +1227,20 @@ export const AccountantDashboardView: React.FC = () => {
           <div style={{ ...styles.overlaySheet, maxWidth: '920px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1.5px solid var(--line)', paddingBottom: '10px' }}>
               <div>
-                <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   INSPIRE JUNIOR COLLEGE • ACCOUNTANT STUDENT ADMISSION
                 </span>
-                <h3 style={{ margin: '2px 0 0', fontSize: '17px', fontWeight: 900, color: 'var(--ink)' }}>
+                <h3 style={{ margin: '2px 0 0', fontSize: '1.2143rem', fontWeight: 900, color: 'var(--ink)' }}>
                   {newStuFormPage === 1 ? 'Screen 1 of 3: Basic Academic Information' : newStuFormPage === 2 ? 'Screen 2 of 3: Personal & Family Information' : 'Screen 3 of 3: Fee Structure & Bill Format'}
                 </h3>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 800, backgroundColor: newStuFormPage === 1 ? 'var(--ink)' : 'var(--line)', color: newStuFormPage === 1 ? 'var(--surface)' : 'var(--ink-secondary)' }}>1. Basic Info</span>
-                  <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 800, backgroundColor: newStuFormPage === 2 ? 'var(--ink)' : 'var(--line)', color: newStuFormPage === 2 ? 'var(--surface)' : 'var(--ink-secondary)' }}>2. Personal & Family</span>
-                  <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 800, backgroundColor: newStuFormPage === 3 ? 'var(--ink)' : 'var(--line)', color: newStuFormPage === 3 ? 'var(--surface)' : 'var(--ink-secondary)' }}>3. Fee Structure</span>
+                  <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.7857rem', fontWeight: 800, backgroundColor: newStuFormPage === 1 ? 'var(--ink)' : 'var(--line)', color: newStuFormPage === 1 ? 'var(--surface)' : 'var(--ink-secondary)' }}>1. Basic Info</span>
+                  <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.7857rem', fontWeight: 800, backgroundColor: newStuFormPage === 2 ? 'var(--ink)' : 'var(--line)', color: newStuFormPage === 2 ? 'var(--surface)' : 'var(--ink-secondary)' }}>2. Personal & Family</span>
+                  <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.7857rem', fontWeight: 800, backgroundColor: newStuFormPage === 3 ? 'var(--ink)' : 'var(--line)', color: newStuFormPage === 3 ? 'var(--surface)' : 'var(--ink-secondary)' }}>3. Fee Structure</span>
                 </div>
-                <button onClick={() => { setIsAddStudentModalOpen(false); setNewStudentAdmissionError(''); }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
+                <button onClick={() => { setIsAddStudentModalOpen(false); setNewStudentAdmissionError(''); }} style={{ background: 'none', border: 'none', fontSize: '1.4286rem', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
               </div>
             </div>
 
@@ -1249,7 +1249,7 @@ export const AccountantDashboardView: React.FC = () => {
                 <div>
                   {/* Screen 1: Basic Information */}
                   <div style={{ marginBottom: '18px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
+                    <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
                       1. Basic Academic Information
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
@@ -1262,7 +1262,7 @@ export const AccountantDashboardView: React.FC = () => {
                           onChange={(e) => { setNewStudentData({ ...newStudentData, admissionNumber: e.target.value }); setNewStudentAdmissionError(''); }}
                           style={{ ...styles.textInputBox, borderColor: newStudentAdmissionError ? 'var(--critical)' : undefined }}
                         />
-                        {newStudentAdmissionError && <span style={{ color: 'var(--critical)', fontSize: '11px', fontWeight: 700 }}>{newStudentAdmissionError}</span>}
+                        {newStudentAdmissionError && <span style={{ color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 700 }}>{newStudentAdmissionError}</span>}
                       </div>
                       <div>
                         <label style={styles.formLabel}>Student Full Name *</label>
@@ -1350,7 +1350,7 @@ export const AccountantDashboardView: React.FC = () => {
                 <div>
                   {/* Screen 2: Personal & Family Information */}
                   <div style={{ marginBottom: '18px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
+                    <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
                       2. Personal & Family Information
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
@@ -1424,14 +1424,14 @@ export const AccountantDashboardView: React.FC = () => {
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid var(--line)', paddingBottom: '10px' }}>
                       <div>
-                        <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        <span style={{ fontSize: '0.6786rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                           INSPIRE JUNIOR COLLEGE
                         </span>
-                        <h4 style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 900, color: 'var(--ink)' }}>
+                        <h4 style={{ margin: '2px 0 0', fontSize: '1rem', fontWeight: 900, color: 'var(--ink)' }}>
                           Fee Structure & Bill Format
                         </h4>
                       </div>
-                      <div style={{ fontSize: '12px', fontWeight: 900, color: 'var(--good)', backgroundColor: 'var(--good-wash)', padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--good-wash)' }}>
+                      <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--good)', backgroundColor: 'var(--good-wash)', padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--good-wash)' }}>
                         Gross Base Fee: Rs.{(
                           (Number(newStudentData.tuitionFee) || 0) +
                           (Number(newStudentData.hostelFee) || 0) +
@@ -1459,12 +1459,12 @@ export const AccountantDashboardView: React.FC = () => {
                         <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <label style={styles.formLabel}>
-                              {slot.name} <span style={{ fontSize: '9px', color: 'var(--royal-gold)', fontWeight: 800 }}>(Custom)</span>
+                              {slot.name} <span style={{ fontSize: '0.6429rem', color: 'var(--royal-gold)', fontWeight: 800 }}>(Custom)</span>
                             </label>
                             <button
                               type="button"
                               onClick={() => handleRemoveNewStuCustomSlot(slot.id)}
-                              style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', fontSize: '11px', padding: '0 2px' }}
+                              style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', fontSize: '0.7857rem', padding: '0 2px' }}
                               title="Remove section slot"
                             >
                               ✕
@@ -1490,14 +1490,14 @@ export const AccountantDashboardView: React.FC = () => {
                           placeholder="Fee Section Description"
                           value={newStuSlotName}
                           onChange={(e) => setNewStuSlotName(e.target.value)}
-                          style={{ ...styles.textInputBox, flex: 2, fontSize: '12px' }}
+                          style={{ ...styles.textInputBox, flex: 2, fontSize: '0.8571rem' }}
                         />
                         <input min={0} max={999999999}
                           type="number"
                           placeholder="Amount (Rs)"
                           value={newStuSlotAmount}
                           onChange={(e) => setNewStuSlotAmount(e.target.value)}
-                          style={{ ...styles.textInputBox, flex: 1, fontSize: '12px' }}
+                          style={{ ...styles.textInputBox, flex: 1, fontSize: '0.8571rem' }}
                         />
                         <button
                           type="button"
@@ -1531,7 +1531,7 @@ export const AccountantDashboardView: React.FC = () => {
                           border: '1px dashed var(--royal-gold)',
                           backgroundColor: 'var(--surface-sunken)',
                           color: 'var(--warning)',
-                          fontSize: '11.5px',
+                          fontSize: '0.8214rem',
                           fontWeight: 800,
                           cursor: 'pointer'
                         }}
@@ -1581,12 +1581,12 @@ export const AccountantDashboardView: React.FC = () => {
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--good)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h3 style={{ ...styles.modalTitle, color: 'var(--good)' }}>Confirm Student Registration</h3>
-              <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
+              <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ background: 'none', border: 'none', fontSize: '1.2857rem', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
-            <p style={{ fontSize: '13px', color: 'var(--dark-charcoal)', lineHeight: 1.5, marginBottom: '16px', fontWeight: 600 }}>
+            <p style={{ fontSize: '0.9286rem', color: 'var(--dark-charcoal)', lineHeight: 1.5, marginBottom: '16px', fontWeight: 600 }}>
               Are you sure you want to register student <strong>{newStudentData.name || '—'}</strong> (Admission No: <strong>{newStudentData.admissionNumber || '—'}</strong>)?
             </p>
-            {regStuError && <div style={{ color: 'var(--critical)', fontSize: '11px', fontWeight: 700, marginBottom: '8px', padding: '8px 12px', background: 'rgba(220,38,38,0.05)', borderRadius: '8px', border: '1px solid rgba(220,38,38,0.2)' }}>{regStuError}</div>}
+            {regStuError && <div style={{ color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 700, marginBottom: '8px', padding: '8px 12px', background: 'rgba(220,38,38,0.05)', borderRadius: '8px', border: '1px solid rgba(220,38,38,0.2)' }}>{regStuError}</div>}
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
                 Cancel
@@ -1605,9 +1605,9 @@ export const AccountantDashboardView: React.FC = () => {
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--critical)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <h3 style={{ ...styles.modalTitle, color: 'var(--critical)' }}>Confirm Permanent Deletion</h3>
-              <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); setDeleteOtpInput(''); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
+              <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); setDeleteOtpInput(''); }} style={{ background: 'none', border: 'none', fontSize: '1.2857rem', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
-            <p style={{ fontSize: '13px', color: 'var(--ink-secondary)', lineHeight: 1.5, marginBottom: '14px' }}>
+            <p style={{ fontSize: '0.9286rem', color: 'var(--ink-secondary)', lineHeight: 1.5, marginBottom: '14px' }}>
               Are you sure you want to permanently delete student <strong>{studentToDelete.name}</strong> (Adm No: <strong>{studentToDelete.admissionNumber || studentToDelete.studentId}</strong>)?
               <br /><br />
               <span style={{ color: 'var(--critical)', fontWeight: 700 }}>
@@ -1652,7 +1652,7 @@ export const AccountantDashboardView: React.FC = () => {
                 color: 'var(--surface)',
                 border: 'none',
                 fontWeight: 900,
-                fontSize: '12px',
+                fontSize: '0.8571rem',
                 padding: '10px 18px',
                 borderRadius: '10px',
                 boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
@@ -1678,7 +1678,7 @@ export const AccountantDashboardView: React.FC = () => {
                   placeholder="Search Student by Name, ID, Adm No, Roll No, Phone..."
                   value={searchAdmNo}
                   onChange={(e) => setSearchAdmNo(e.target.value)}
-                  style={{ ...styles.textInputBox, fontSize: '13px', padding: '12px 14px' }}
+                  style={{ ...styles.textInputBox, fontSize: '0.9286rem', padding: '12px 14px' }}
                 />
               </div>
               {searchAdmNo && (
@@ -1691,7 +1691,7 @@ export const AccountantDashboardView: React.FC = () => {
                     borderRadius: '8px',
                     padding: '8px 14px',
                     cursor: 'pointer',
-                    fontSize: '11px',
+                    fontSize: '0.7857rem',
                     fontWeight: 800,
                     textTransform: 'uppercase'
                   }}
@@ -1699,7 +1699,7 @@ export const AccountantDashboardView: React.FC = () => {
                   Clear Search
                 </button>
               )}
-              <div style={{ fontSize: '12px', color: 'var(--muted-gray)', fontWeight: 700, padding: '0 8px' }}>
+              <div style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)', fontWeight: 700, padding: '0 8px' }}>
                 Showing <strong>{filteredSearchList.length}</strong> Students
               </div>
             </div>
@@ -1714,12 +1714,12 @@ export const AccountantDashboardView: React.FC = () => {
               {totalPages > 1 && (
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '4px' }}>
                   <button onClick={() => setRegistryPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                    style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: currentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: currentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: currentPage === 1 ? 'default' : 'pointer' }}>
+                    style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: currentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: currentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: currentPage === 1 ? 'default' : 'pointer' }}>
                     ←  Prev
                   </button>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>Page {currentPage} / {totalPages}</span>
+                  <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>Page {currentPage} / {totalPages}</span>
                   <button onClick={() => setRegistryPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                    style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: currentPage === totalPages ? 'var(--surface-sunken)' : '#fff', color: currentPage === totalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: currentPage === totalPages ? 'default' : 'pointer' }}>
+                    style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: currentPage === totalPages ? 'var(--surface-sunken)' : '#fff', color: currentPage === totalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: currentPage === totalPages ? 'default' : 'pointer' }}>
                     Next ← ’
                   </button>
                 </div>
@@ -1765,7 +1765,7 @@ export const AccountantDashboardView: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '15px',
+                        fontSize: '1.0714rem',
                         fontWeight: 900,
                         flexShrink: 0
                       }}>
@@ -1773,28 +1773,28 @@ export const AccountantDashboardView: React.FC = () => {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <strong style={{ fontSize: '15px', color: 'var(--dark-charcoal)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <strong style={{ fontSize: '1.0714rem', color: 'var(--dark-charcoal)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {s.name}
                           </strong>
                         </div>
-                        <div style={{ fontSize: '11px', color: 'var(--ink-secondary)', marginTop: '2px', fontWeight: 600 }}>
+                        <div style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginTop: '2px', fontWeight: 600 }}>
                           Adm: <span style={{ color: 'var(--ink)', fontWeight: 800 }}>{s.admissionNumber || s.studentId}</span>  Roll: <span style={{ color: 'var(--ink)', fontWeight: 800 }}>{s.rollNumber || s.studentId}</span>
                         </div>
-                        <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
                           {s.branch || loggedInCampus} ({s.course || 'MPC'}{s.section ? ` - ${s.section}` : ''})
                         </div>
                       </div>
                     </div>
 
                     {/* Middle Info Row: Contact & Badges */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--surface-sunken)', padding: '10px 12px', borderRadius: '10px', fontSize: '11px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--surface-sunken)', padding: '10px 12px', borderRadius: '10px', fontSize: '0.7857rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink-secondary)' }}>
                         <span>Student Mob: <strong>{s.mobile || 'N/A'}</strong></span>
                         <span>Parent: <strong>{s.parentMobile || 'N/A'}</strong></span>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                         <span style={{
-                          fontSize: '10px',
+                          fontSize: '0.7143rem',
                           fontWeight: 800,
                           padding: '2px 8px',
                           borderRadius: '999px',
@@ -1808,7 +1808,7 @@ export const AccountantDashboardView: React.FC = () => {
 
                     {/* Financial Progress Bar */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7857rem', fontWeight: 800 }}>
                         <span style={{ color: 'var(--good)' }}>Paid: Rs.{totalPaid.toLocaleString('en-IN')}</span>
                         <span style={{ color: remaining > 0 ? 'var(--critical)' : 'var(--good)' }}>
                           Due: Rs.{remaining.toLocaleString('en-IN')}
@@ -1831,7 +1831,7 @@ export const AccountantDashboardView: React.FC = () => {
                           backgroundColor: 'var(--surface-sunken)',
                           borderRadius: '8px',
                           fontWeight: 800,
-                          fontSize: '11px',
+                          fontSize: '0.7857rem',
                           cursor: 'pointer'
                         }}
                         className="press-interactive"
@@ -1851,7 +1851,7 @@ export const AccountantDashboardView: React.FC = () => {
                           backgroundColor: 'rgba(254, 242, 242, 0.8)',
                           borderRadius: '8px',
                           fontWeight: 800,
-                          fontSize: '11px',
+                          fontSize: '0.7857rem',
                           cursor: 'pointer'
                         }}
                         className="press-interactive"
@@ -1863,7 +1863,7 @@ export const AccountantDashboardView: React.FC = () => {
                 );
               })}
               {paginated.length === 0 && (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px 20px', color: 'var(--muted-gray)', fontSize: '13px', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: '16px' }}>
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px 20px', color: 'var(--muted-gray)', fontSize: '0.9286rem', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: '16px' }}>
                   No student records match your search criteria. Try searching by Name, Admission Number, or Phone.
                 </div>
               )}
@@ -1945,23 +1945,23 @@ export const AccountantDashboardView: React.FC = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: '16px',
+                          fontSize: '1.1429rem',
                           fontWeight: 900,
                           flexShrink: 0
                         }}>
                           {(s.name || 'S').charAt(0).toUpperCase()}
                         </div>
                         <div style={{ minWidth: 0 }}>
-                          <strong style={{ fontSize: '14px', color: 'var(--dark-charcoal)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</strong>
-                          <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '3px' }}>
+                          <strong style={{ fontSize: '1rem', color: 'var(--dark-charcoal)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</strong>
+                          <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '3px' }}>
                             Adm: {s.admissionNumber || s.studentId}  |  ID: {s.studentId || s.admissionNumber}
                           </div>
-                          <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
+                          <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
                             {s.branch || loggedInCampus} ({s.course || 'MPC'}{s.section ? ` - ${s.section}` : ''})
                           </div>
                         </div>
                       </div>
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: s.remainingBalance > 0 ? 'var(--critical)' : 'var(--good)', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: s.remainingBalance > 0 ? 'var(--critical)' : 'var(--good)', whiteSpace: 'nowrap' }}>
                         {s.remainingBalance > 0 ? `Pending: Rs.${Number(s.remainingBalance || 0).toLocaleString('en-IN')}` : 'Settled'}
                       </span>
                     </div>
@@ -1979,7 +1979,7 @@ export const AccountantDashboardView: React.FC = () => {
                           backgroundColor: 'var(--surface-sunken)',
                           borderRadius: '10px',
                           fontWeight: 800,
-                          fontSize: '11px',
+                          fontSize: '0.7857rem',
                           cursor: 'pointer'
                         }}
                         className="press-interactive"
@@ -1990,7 +1990,7 @@ export const AccountantDashboardView: React.FC = () => {
                   </GlassCard>
                 ))}
                 {filteredCollectList.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted-gray)', fontSize: '12px' }}>
+                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted-gray)', fontSize: '0.8571rem' }}>
                     No student records match your query. Try searching by Name or Admission Number.
                   </div>
                 )}
@@ -2001,8 +2001,8 @@ export const AccountantDashboardView: React.FC = () => {
               {/* Profile Bar */}
               <GlassCard hoverable={false} style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.85)' }}>
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{selectedStudent.name}</h4>
-                  <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                  <h4 style={{ margin: 0, fontSize: '1.0714rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{selectedStudent.name}</h4>
+                  <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
                     Adm No: {selectedStudent.admissionNumber}  Roll: {selectedStudent.rollNumber || 'N/A'}  Branch: {selectedStudent.branch}
                   </div>
                 </div>
@@ -2047,15 +2047,15 @@ export const AccountantDashboardView: React.FC = () => {
                     paddingBottom: '12px'
                   }}>
                     <div>
-                      <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                         INSPIRE JUNIOR COLLEGE
                       </span>
-                      <h3 style={{ margin: '2px 0 0', fontSize: '15px', fontWeight: 900, color: 'var(--ink)' }}>
+                      <h3 style={{ margin: '2px 0 0', fontSize: '1.0714rem', fontWeight: 900, color: 'var(--ink)' }}>
                         Fee Structure & Bill Statement
                       </h3>
                     </div>
                     <span style={{
-                      fontSize: '11px',
+                      fontSize: '0.7857rem',
                       fontWeight: 800,
                       padding: '4px 10px',
                       borderRadius: '20px',
@@ -2069,13 +2069,13 @@ export const AccountantDashboardView: React.FC = () => {
 
                   {/* Fee Section Description (Left) & Amount (Right) Table */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--surface-sunken)', paddingBottom: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--surface-sunken)', paddingBottom: '6px' }}>
                       <span>Fee Section Description</span>
                       <span>Amount (Rs)</span>
                     </div>
 
                     {getActiveFeeSlots(selectedStudent).map((slot) => (
-                      <div key={slot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '5px 0', borderBottom: '1px dashed var(--surface-sunken)' }}>
+                      <div key={slot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9286rem', padding: '5px 0', borderBottom: '1px dashed var(--surface-sunken)' }}>
                         <span style={{ color: 'var(--ink-secondary)', fontWeight: 600 }}>
                           {slot.name}
                         </span>
@@ -2086,25 +2086,25 @@ export const AccountantDashboardView: React.FC = () => {
                     ))}
 
                     {Number((selectedStudent as any).tuitionWaiver || 0) > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '5px 0', borderBottom: '1px dashed var(--surface-sunken)', color: 'var(--good)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9286rem', padding: '5px 0', borderBottom: '1px dashed var(--surface-sunken)', color: 'var(--good)' }}>
                         <span style={{ fontWeight: 700 }}>Tuition Waiver</span>
                         <strong style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>- Rs.{Number((selectedStudent as any).tuitionWaiver).toLocaleString('en-IN')}</strong>
                       </div>
                     )}
                     {Number((selectedStudent as any).hostelWaiver || 0) > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '5px 0', borderBottom: '1px dashed var(--surface-sunken)', color: 'var(--good)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9286rem', padding: '5px 0', borderBottom: '1px dashed var(--surface-sunken)', color: 'var(--good)' }}>
                         <span style={{ fontWeight: 700 }}>Hostel Waiver</span>
                         <strong style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>- Rs.{Number((selectedStudent as any).hostelWaiver).toLocaleString('en-IN')}</strong>
                       </div>
                     )}
                     {Number((selectedStudent as any).transportWaiver || 0) > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '5px 0', borderBottom: '1px dashed var(--surface-sunken)', color: 'var(--good)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9286rem', padding: '5px 0', borderBottom: '1px dashed var(--surface-sunken)', color: 'var(--good)' }}>
                         <span style={{ fontWeight: 700 }}>Transport Waiver</span>
                         <strong style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>- Rs.{Number((selectedStudent as any).transportWaiver).toLocaleString('en-IN')}</strong>
                       </div>
                     )}
                     {Number((selectedStudent as any).miscWaiver || 0) > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '5px 0', borderBottom: '1px dashed var(--surface-sunken)', color: 'var(--good)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9286rem', padding: '5px 0', borderBottom: '1px dashed var(--surface-sunken)', color: 'var(--good)' }}>
                         <span style={{ fontWeight: 700 }}>Miscellaneous Waiver</span>
                         <strong style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>- Rs.{Number((selectedStudent as any).miscWaiver).toLocaleString('en-IN')}</strong>
                       </div>
@@ -2129,44 +2129,44 @@ export const AccountantDashboardView: React.FC = () => {
 
                       return (
                         <>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9286rem' }}>
                             <span style={{ color: 'var(--ink-secondary)', fontWeight: 700 }}>Gross Total Base Fee</span>
                             <strong style={{ color: 'var(--ink)', fontWeight: 800 }}>Rs.{grossTotal.toLocaleString('en-IN')}</strong>
                           </div>
 
                           {tW > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: 'var(--good)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8929rem', color: 'var(--good)' }}>
                               <span style={{ fontWeight: 600 }}>Tuition Waiver</span>
                               <strong style={{ fontWeight: 800 }}>- Rs.{tW.toLocaleString('en-IN')}</strong>
                             </div>
                           )}
                           {hW > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: 'var(--good)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8929rem', color: 'var(--good)' }}>
                               <span style={{ fontWeight: 600 }}>Hostel Waiver</span>
                               <strong style={{ fontWeight: 800 }}>- Rs.{hW.toLocaleString('en-IN')}</strong>
                             </div>
                           )}
                           {trW > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: 'var(--good)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8929rem', color: 'var(--good)' }}>
                               <span style={{ fontWeight: 600 }}>Transport Waiver</span>
                               <strong style={{ fontWeight: 800 }}>- Rs.{trW.toLocaleString('en-IN')}</strong>
                             </div>
                           )}
                           {mW > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: 'var(--good)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8929rem', color: 'var(--good)' }}>
                               <span style={{ fontWeight: 600 }}>Miscellaneous Waiver</span>
                               <strong style={{ fontWeight: 800 }}>- Rs.{mW.toLocaleString('en-IN')}</strong>
                             </div>
                           )}
 
                           {totalWaivers > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: 'var(--good)', borderTop: '1px dashed var(--good-wash)', paddingTop: '4px', marginTop: '2px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8929rem', color: 'var(--good)', borderTop: '1px dashed var(--good-wash)', paddingTop: '4px', marginTop: '2px' }}>
                               <span style={{ fontWeight: 700 }}>Total Waivers Applied</span>
                               <strong style={{ fontWeight: 900 }}>- Rs.{totalWaivers.toLocaleString('en-IN')}</strong>
                             </div>
                           )}
 
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', color: 'var(--good)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8929rem', color: 'var(--good)' }}>
                             <span style={{ fontWeight: 600 }}>Total Payments Received</span>
                             <strong style={{ fontWeight: 800 }}>- Rs.{totalPaid.toLocaleString('en-IN')}</strong>
                           </div>
@@ -2184,10 +2184,10 @@ export const AccountantDashboardView: React.FC = () => {
                             backgroundColor: remaining > 0 ? 'var(--warning-wash)' : 'var(--good-wash)',
                             border: remaining > 0 ? '1.5px solid #FCD34D' : '1.5px solid var(--good-wash)'
                           }}>
-                            <span style={{ fontSize: '12px', fontWeight: 800, color: remaining > 0 ? 'var(--warning)' : 'var(--good)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            <span style={{ fontSize: '0.8571rem', fontWeight: 800, color: remaining > 0 ? 'var(--warning)' : 'var(--good)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                               Net Remaining Balance
                             </span>
-                            <strong style={{ fontSize: '18px', fontWeight: 900, color: remaining > 0 ? 'var(--warning)' : 'var(--good)', fontVariantNumeric: 'tabular-nums' }}>
+                            <strong style={{ fontSize: '1.2857rem', fontWeight: 900, color: remaining > 0 ? 'var(--warning)' : 'var(--good)', fontVariantNumeric: 'tabular-nums' }}>
                               Rs.{remaining.toLocaleString('en-IN')}
                             </strong>
                           </div>
@@ -2355,7 +2355,7 @@ export const AccountantDashboardView: React.FC = () => {
                         rather than leaving a dead control on screen. */}
                     {selectedStudent.studentYear === 'Second Year' && (
                       <span style={{
-                        fontSize: '11px', fontWeight: 800, color: 'var(--good)',
+                        fontSize: '0.7857rem', fontWeight: 800, color: 'var(--good)',
                         backgroundColor: '#ECFDF5', border: '1.5px solid var(--good)',
                         borderRadius: '8px', padding: '5px 10px', whiteSpace: 'nowrap'
                       }}>
@@ -2364,7 +2364,7 @@ export const AccountantDashboardView: React.FC = () => {
                     )}
                     {selectedStudent.studentYear === 'Short Term' && (
                       <span style={{
-                        fontSize: '11px', fontWeight: 800, color: 'var(--ink-secondary)',
+                        fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)',
                         backgroundColor: 'var(--surface-sunken)', border: '1.5px solid var(--line-strong)',
                         borderRadius: '8px', padding: '5px 10px', whiteSpace: 'nowrap'
                       }}>
@@ -2386,15 +2386,15 @@ export const AccountantDashboardView: React.FC = () => {
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px'
                   }}>
                     <div>
-                      <strong style={{ fontSize: '12px', color: 'var(--ink)' }}>
+                      <strong style={{ fontSize: '0.8571rem', color: 'var(--ink)' }}>
                         {h.studentYear} completed{h.academicYear ? ` — ${h.academicYear}` : ''}
                       </strong>
-                      <div style={{ fontSize: '10px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                      <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
                         Closed {h.closedAt ? new Date(h.closedAt).toLocaleDateString('en-GB') : 'n/a'}
                         {h.closedBy ? ` by ${h.closedBy}` : ''}
                       </div>
                     </div>
-                    <span style={{ fontWeight: 800, fontSize: '13px', color: 'var(--good)' }}>
+                    <span style={{ fontWeight: 800, fontSize: '0.9286rem', color: 'var(--good)' }}>
                       Rs.{Number(h.totalPaid || 0).toLocaleString('en-IN')} paid
                     </span>
                   </div>
@@ -2403,23 +2403,23 @@ export const AccountantDashboardView: React.FC = () => {
                   {selectedStudent.feeAdjustments?.map((adjustment) => (
                     <div key={adjustment._id || adjustment.id || adjustment.createdAt} style={{ ...styles.receiptRowItem, borderColor: 'var(--warning)', backgroundColor: 'var(--warning-wash)' }}>
                       <div>
-                        <strong style={{ fontSize: '13px', color: 'var(--warning)' }}>Fee Structure Revision</strong>
-                        <div style={{ fontSize: '10px', color: 'var(--warning)', marginTop: '2px' }}>{adjustment.note || 'Baseline fee structure was updated.'}</div>
-                        <div style={{ fontSize: '10px', color: 'var(--muted-gray)', marginTop: '2px' }}>Balance: Rs.{adjustment.previousBalance.toLocaleString('en-IN')}  Rs.{adjustment.updatedBalance.toLocaleString('en-IN')} {adjustment.createdAt ? `| ${new Date(adjustment.createdAt).toLocaleDateString('en-GB')}` : ''}</div>
+                        <strong style={{ fontSize: '0.9286rem', color: 'var(--warning)' }}>Fee Structure Revision</strong>
+                        <div style={{ fontSize: '0.7143rem', color: 'var(--warning)', marginTop: '2px' }}>{adjustment.note || 'Baseline fee structure was updated.'}</div>
+                        <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', marginTop: '2px' }}>Balance: Rs.{adjustment.previousBalance.toLocaleString('en-IN')}  Rs.{adjustment.updatedBalance.toLocaleString('en-IN')} {adjustment.createdAt ? `| ${new Date(adjustment.createdAt).toLocaleDateString('en-GB')}` : ''}</div>
                       </div>
-                      <span style={{ fontWeight: 800, fontSize: '14px', color: adjustment.amount >= 0 ? 'var(--warning)' : 'var(--good)' }}>{adjustment.amount >= 0 ? '+' : '-'}Rs.{Math.abs(adjustment.amount).toLocaleString('en-IN')}</span>
+                      <span style={{ fontWeight: 800, fontSize: '1rem', color: adjustment.amount >= 0 ? 'var(--warning)' : 'var(--good)' }}>{adjustment.amount >= 0 ? '+' : '-'}Rs.{Math.abs(adjustment.amount).toLocaleString('en-IN')}</span>
                     </div>
                   ))}
                   {selectedStudent.receipts && selectedStudent.receipts.map((receipt) => (
                     <div key={receipt.receiptNumber} style={styles.receiptRowItem}>
                       <div>
-                        <strong style={{ fontSize: '13px', color: 'var(--dark-charcoal)' }}>{receipt.installment} ({receipt.category})</strong>
-                        <div style={{ fontSize: '10px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                        <strong style={{ fontSize: '0.9286rem', color: 'var(--dark-charcoal)' }}>{receipt.installment} ({receipt.category})</strong>
+                        <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
                           Ref ID: {receipt.receiptNumber}  {new Date(receipt.date).toLocaleDateString('en-GB')}  Mode: {receipt.mode}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontWeight: 800, fontSize: '14px', color: 'var(--good)' }}>Rs.{receipt.amount.toLocaleString('en-IN')}</span>
+                        <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--good)' }}>Rs.{receipt.amount.toLocaleString('en-IN')}</span>
                         <button
                           onClick={() => {
                             setSelectedReceipt(receipt);
@@ -2434,7 +2434,7 @@ export const AccountantDashboardView: React.FC = () => {
                     </div>
                   ))}
                   {(!selectedStudent.receipts || selectedStudent.receipts.length === 0) && (
-                    <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted-gray)', fontSize: '11px' }}>
+                    <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted-gray)', fontSize: '0.7857rem' }}>
                       No payments have been recorded for this student account yet.
                     </div>
                   )}
@@ -2451,13 +2451,13 @@ export const AccountantDashboardView: React.FC = () => {
                   <h3 style={styles.modalTitle}>Confirm Fee Payment</h3>
                   <button
                     onClick={() => setIsPayOtpModalOpen(false)}
-                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                    style={{ background: 'none', border: 'none', fontSize: '1.2857rem', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
                     ×
                   </button>
                 </div>
 
-                <p style={{ fontSize: '13px', color: 'var(--dark-charcoal)', lineHeight: 1.5, marginBottom: '16px', fontWeight: 600 }}>
+                <p style={{ fontSize: '0.9286rem', color: 'var(--dark-charcoal)', lineHeight: 1.5, marginBottom: '16px', fontWeight: 600 }}>
                   Are you sure you want to log a fee payment of <strong>Rs.{(pendingPayType === 'full' ? selectedStudent.remainingBalance : pendingPayType === 'partial' ? Math.floor(selectedStudent.remainingBalance / 2) : (parseFloat(collectAmount) || 0)).toLocaleString('en-IN')}</strong> for student <strong>{selectedStudent.name}</strong>?
                 </p>
 
@@ -2490,10 +2490,10 @@ export const AccountantDashboardView: React.FC = () => {
           <div style={styles.overlayOverlay} className="anim-fade-in">
             <div style={{ ...styles.overlaySheet, position: 'relative', maxWidth: '560px' }} className="glass-panel-heavy">
               <div style={{ marginBottom: '14px', borderBottom: '2px solid var(--line)', paddingBottom: '10px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: 'var(--ink)' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1429rem', fontWeight: 900, color: 'var(--ink)' }}>
                   Upgrade to Second Year
                 </h3>
-                <p style={{ margin: '4px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
                   {selectedStudent.name} · {selectedStudent.admissionNumber}
                   {upgradeInfo?.academicYear ? ` · currently ${upgradeInfo.academicYear}` : ''}
                 </p>
@@ -2502,7 +2502,7 @@ export const AccountantDashboardView: React.FC = () => {
               <div style={{
                 padding: '10px 12px', borderRadius: '10px', marginBottom: '14px',
                 backgroundColor: '#ECFDF5', border: '1.5px solid var(--good)',
-                fontSize: '11.5px', fontWeight: 700, color: 'var(--good)'
+                fontSize: '0.8214rem', fontWeight: 700, color: 'var(--good)'
               }}>
                 First year fully paid. Its receipts and fee structure are kept and stay
                 visible in the history below.
@@ -2520,7 +2520,7 @@ export const AccountantDashboardView: React.FC = () => {
                   ['miscWaiver', 'Misc Waiver']
                 ].map(([key, label]) => (
                   <div key={key}>
-                    <label style={{ display: 'block', fontSize: '10px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '0.7143rem', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', marginBottom: '4px' }}>
                       {label}
                     </label>
                     <input
@@ -2537,7 +2537,7 @@ export const AccountantDashboardView: React.FC = () => {
 
               {(upgradeFees.customFeeSlots || []).length > 0 && (
                 <div style={{ marginTop: '12px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                  <div style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Additional Fees
                   </div>
                   {upgradeFees.customFeeSlots.map((slot: any, i: number) => (
@@ -2593,18 +2593,18 @@ export const AccountantDashboardView: React.FC = () => {
                 marginTop: '16px', padding: '12px', borderRadius: '10px',
                 backgroundColor: 'var(--surface-sunken)', border: '2px solid var(--ink)'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
                   <span>Total fees</span><span>Rs.{upgradeTotals.gross.toLocaleString('en-IN')}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700, color: 'var(--good)', marginTop: '3px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--good)', marginTop: '3px' }}>
                   <span>Less waivers</span><span>- Rs.{upgradeTotals.waivers.toLocaleString('en-IN')}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 900, color: 'var(--ink)', marginTop: '8px', paddingTop: '8px', borderTop: '1.5px solid var(--line-strong)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.0714rem', fontWeight: 900, color: 'var(--ink)', marginTop: '8px', paddingTop: '8px', borderTop: '1.5px solid var(--line-strong)' }}>
                   <span>Payable in Second Year</span>
                   <span>Rs.{upgradeTotals.payable.toLocaleString('en-IN')}</span>
                 </div>
                 {upgradeTotals.waivers > upgradeTotals.gross && (
-                  <div style={{ marginTop: '8px', fontSize: '11px', fontWeight: 800, color: 'var(--critical)' }}>
+                  <div style={{ marginTop: '8px', fontSize: '0.7857rem', fontWeight: 800, color: 'var(--critical)' }}>
                     Waivers cannot exceed the total fees.
                   </div>
                 )}
@@ -2666,8 +2666,8 @@ export const AccountantDashboardView: React.FC = () => {
               <div style={styles.printableReceiptBlock}>
                 <div style={{ border: '2px solid var(--royal-gold)', borderRadius: '16px', padding: '18px', backgroundColor: 'rgba(255,255,255,0.45)' }}>
                   <div style={{ textAlign: 'center', borderBottom: '1.5px solid var(--royal-gold)', paddingBottom: '10px', marginBottom: '14px' }}>
-                    <h4 style={{ fontSize: '15px', fontWeight: 900, color: 'var(--royal-gold)', letterSpacing: '0.04em' }}>Inspire Junior College X TRNT BEE</h4>
-                    <span style={{ fontSize: '9px', color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Official Fee Receipt</span>
+                    <h4 style={{ fontSize: '1.0714rem', fontWeight: 900, color: 'var(--royal-gold)', letterSpacing: '0.04em' }}>Inspire Junior College X TRNT BEE</h4>
+                    <span style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Official Fee Receipt</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={styles.metaRow}><span>Receipt Number:</span><strong>{selectedReceipt.receiptNumber}</strong></div>
@@ -2675,7 +2675,7 @@ export const AccountantDashboardView: React.FC = () => {
                     <div style={styles.metaRow}><span>Student Name:</span><strong>{selectedStudent.name}</strong></div>
                     <div style={styles.metaRow}><span>Admission No:</span><strong>{selectedStudent.admissionNumber}</strong></div>
                     <div style={styles.metaRow}><span>Fee Category:</span><strong>{selectedReceipt.category}</strong></div>
-                    <div style={styles.metaRow}><span>Amount Paid:</span><strong style={{ color: 'var(--good)', fontSize: '15px' }}>Rs.{selectedReceipt.amount.toLocaleString('en-IN')}</strong></div>
+                    <div style={styles.metaRow}><span>Amount Paid:</span><strong style={{ color: 'var(--good)', fontSize: '1.0714rem' }}>Rs.{selectedReceipt.amount.toLocaleString('en-IN')}</strong></div>
                     <div style={styles.metaRow}><span>Remaining Bal:</span><strong>Rs.{selectedReceipt.balance.toLocaleString('en-IN')}</strong></div>
                   </div>
                 </div>
@@ -2779,17 +2779,17 @@ export const AccountantDashboardView: React.FC = () => {
           {/* Pagination Controls — top */}
           {auditTotalPages > 1 && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+              <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
                 Showing {((auditCurrentPage - 1) * AUDIT_PER_PAGE) + 1}–{Math.min(auditCurrentPage * AUDIT_PER_PAGE, allTransactions.length)} of {allTransactions.length}
               </span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => setAuditPage(p => Math.max(1, p - 1))} disabled={auditCurrentPage === 1}
-                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: auditCurrentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: auditCurrentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: auditCurrentPage === 1 ? 'default' : 'pointer' }}>
+                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: auditCurrentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: auditCurrentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: auditCurrentPage === 1 ? 'default' : 'pointer' }}>
                   ← Prev
                 </button>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)', display: 'flex', alignItems: 'center' }}>Page {auditCurrentPage} / {auditTotalPages}</span>
+                <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)', display: 'flex', alignItems: 'center' }}>Page {auditCurrentPage} / {auditTotalPages}</span>
                 <button onClick={() => setAuditPage(p => Math.min(auditTotalPages, p + 1))} disabled={auditCurrentPage === auditTotalPages}
-                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: auditCurrentPage === auditTotalPages ? 'var(--surface-sunken)' : '#fff', color: auditCurrentPage === auditTotalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: auditCurrentPage === auditTotalPages ? 'default' : 'pointer' }}>
+                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: auditCurrentPage === auditTotalPages ? 'var(--surface-sunken)' : '#fff', color: auditCurrentPage === auditTotalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: auditCurrentPage === auditTotalPages ? 'default' : 'pointer' }}>
                   Next →
                 </button>
               </div>
@@ -2799,7 +2799,7 @@ export const AccountantDashboardView: React.FC = () => {
           <h4 style={styles.sectionSubtitle}>Collection Audit Logs</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
             {auditPagedTx.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted-gray)', fontSize: '13px', backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: '16px' }}>
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted-gray)', fontSize: '0.9286rem', backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: '16px' }}>
                 No transactions recorded yet.
               </div>
             )}
@@ -2807,11 +2807,11 @@ export const AccountantDashboardView: React.FC = () => {
               <div key={idx} style={styles.receiptRowItem}>
                 <div>
                   <strong>{tx.receipt.receiptNumber} — {tx.student.name}</strong>
-                  <div style={{ fontSize: '10px', color: 'var(--muted-gray)' }}>{tx.receipt.category} · {tx.receipt.installment} · Adm: {tx.student.admissionNumber}</div>
+                  <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)' }}>{tx.receipt.category} · {tx.receipt.installment} · Adm: {tx.student.admissionNumber}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ fontWeight: 850, color: 'var(--good)' }}>+ Rs.{tx.receipt.amount.toLocaleString('en-IN')}</span>
-                  <div style={{ fontSize: '8px', color: 'var(--muted-gray)' }}>{tx.receipt.date} · {tx.receipt.mode}</div>
+                  <div style={{ fontSize: '0.5714rem', color: 'var(--muted-gray)' }}>{tx.receipt.date} · {tx.receipt.mode}</div>
                 </div>
               </div>
             ))}
@@ -2821,12 +2821,12 @@ export const AccountantDashboardView: React.FC = () => {
           {auditTotalPages > 1 && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center', zIndex: 1, marginTop: '8px' }}>
               <button onClick={() => setAuditPage(p => Math.max(1, p - 1))} disabled={auditCurrentPage === 1}
-                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid var(--line)', background: auditCurrentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: auditCurrentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: auditCurrentPage === 1 ? 'default' : 'pointer' }}>
+                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid var(--line)', background: auditCurrentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: auditCurrentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: auditCurrentPage === 1 ? 'default' : 'pointer' }}>
                 ← Previous
               </button>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>Page {auditCurrentPage} of {auditTotalPages}</span>
+              <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>Page {auditCurrentPage} of {auditTotalPages}</span>
               <button onClick={() => setAuditPage(p => Math.min(auditTotalPages, p + 1))} disabled={auditCurrentPage === auditTotalPages}
-                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid var(--line)', background: auditCurrentPage === auditTotalPages ? 'var(--surface-sunken)' : '#fff', color: auditCurrentPage === auditTotalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: auditCurrentPage === auditTotalPages ? 'default' : 'pointer' }}>
+                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid var(--line)', background: auditCurrentPage === auditTotalPages ? 'var(--surface-sunken)' : '#fff', color: auditCurrentPage === auditTotalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: auditCurrentPage === auditTotalPages ? 'default' : 'pointer' }}>
                 Next →
               </button>
             </div>
@@ -2915,11 +2915,11 @@ export const AccountantDashboardView: React.FC = () => {
             boxShadow: '0 4px 16px rgba(0,0,0,0.02)'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Campus Registration Summary
               </span>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: 'var(--dark-charcoal)' }}>
-                Total Students in {loggedInCampus}: <span style={{ color: 'var(--good)', fontSize: '20px' }}>{students.length}</span>
+              <h3 style={{ margin: 0, fontSize: '1.2857rem', fontWeight: 900, color: 'var(--dark-charcoal)' }}>
+                Total Students in {loggedInCampus}: <span style={{ color: 'var(--good)', fontSize: '1.4286rem' }}>{students.length}</span>
               </h3>
             </div>
             <div style={{
@@ -2927,7 +2927,7 @@ export const AccountantDashboardView: React.FC = () => {
               borderRadius: '10px',
               backgroundColor: 'rgba(16, 185, 129, 0.1)',
               color: 'var(--good)',
-              fontSize: '12px',
+              fontSize: '0.8571rem',
               fontWeight: 800,
               border: '1px solid rgba(16, 185, 129, 0.25)'
             }}>
@@ -2984,7 +2984,7 @@ export const AccountantDashboardView: React.FC = () => {
         {/* Footer */}
         <footer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 28px 12px', gap: '8px', opacity: 0.85 }}>
           <InspireLogo size="sm" inPortal={true} />
-          <span style={{ fontSize: '9px', color: 'var(--muted-gray)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
+          <span style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
             Inspire ERP Bursar Portal v2.6.4 • Powered by TRNT BEE Technologies
           </span>
         </footer>
@@ -3021,11 +3021,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(20px)',
   },
   title: {
-    fontSize: '18px', fontWeight: 800, color: 'var(--dark-charcoal)',
+    fontSize: '1.2857rem', fontWeight: 800, color: 'var(--dark-charcoal)',
     letterSpacing: '-0.025em', lineHeight: 1.2,
   },
   subtitle: {
-    fontSize: '11.5px', color: 'var(--muted-gray)', fontWeight: 500,
+    fontSize: '0.8214rem', color: 'var(--muted-gray)', fontWeight: 500,
     marginTop: '3px', letterSpacing: '0.005em',
   },
   content: {
@@ -3035,18 +3035,18 @@ const styles: { [key: string]: React.CSSProperties } = {
   avatarMini: {
     width: '42px', height: '42px', borderRadius: '10px',
     backgroundColor: 'var(--dark-charcoal)', display: 'flex',
-    alignItems: 'center', justifyContent: 'center', fontSize: '13px',
+    alignItems: 'center', justifyContent: 'center', fontSize: '0.9286rem',
     fontWeight: 900, color: 'var(--royal-gold)',
     border: '1px solid rgba(212,175,55,0.25)', letterSpacing: '0.04em', flexShrink: 0,
   },
   parentWelcomeTitle: {
-    fontSize: '16px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.02em',
+    fontSize: '1.1429rem', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.02em',
   },
   greetingText: {
-    fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 600,
+    fontSize: '0.7143rem', color: 'var(--muted-gray)', fontWeight: 600,
     textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '3px',
   },
-  childMetaText: { fontSize: '11px', color: 'var(--muted-gray)', fontWeight: 500, marginTop: '1px' },
+  childMetaText: { fontSize: '0.7857rem', color: 'var(--muted-gray)', fontWeight: 500, marginTop: '1px' },
   metricsGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' },
   metricCard: {
     padding: '18px 20px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '4px',
@@ -3054,20 +3054,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: 'none',
   },
   metricLabel: {
-    fontSize: '9.5px', fontWeight: 700, color: 'var(--muted-gray)',
+    fontSize: '0.6786rem', fontWeight: 700, color: 'var(--muted-gray)',
     textTransform: 'uppercase', letterSpacing: '0.08em',
   },
   metricValue: {
-    fontSize: '22px', fontWeight: 900, color: 'var(--dark-charcoal)',
+    fontSize: '1.5714rem', fontWeight: 900, color: 'var(--dark-charcoal)',
     letterSpacing: '-0.03em', lineHeight: 1, marginTop: '4px',
   },
-  metricSub: { fontSize: '9.5px', color: 'var(--muted-gray)', fontWeight: 500, marginTop: '2px' },
+  metricSub: { fontSize: '0.6786rem', color: 'var(--muted-gray)', fontWeight: 500, marginTop: '2px' },
   sectionTitle: {
-    fontSize: '11px', fontWeight: 700, color: 'var(--muted-gray)',
+    fontSize: '0.7857rem', fontWeight: 700, color: 'var(--muted-gray)',
     textTransform: 'uppercase', letterSpacing: '0.07em',
   },
   sectionSubtitle: {
-    fontSize: '11px', fontWeight: 700, color: 'var(--muted-gray)',
+    fontSize: '0.7857rem', fontWeight: 700, color: 'var(--muted-gray)',
     textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: '8px', marginBottom: '4px',
   },
   moduleCardNew: {
@@ -3080,16 +3080,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: '36px', height: '36px', borderRadius: '9px', display: 'flex',
     alignItems: 'center', justifyContent: 'center',
   },
-  moduleTitle: { fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.01em' },
-  moduleDesc: { fontSize: '11px', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 400 },
+  moduleTitle: { fontSize: '0.9286rem', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.01em' },
+  moduleDesc: { fontSize: '0.7857rem', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 400 },
   textInputBox: {
     flex: 1, padding: '11px 14px', borderRadius: '10px', border: '2px solid var(--card-border)',
-    fontSize: '13px', outline: 'none', backgroundColor: 'rgba(255,255,255,0.7)',
+    fontSize: '0.9286rem', outline: 'none', backgroundColor: 'rgba(255,255,255,0.7)',
     color: 'var(--dark-charcoal)', fontFamily: 'var(--font-family)', fontWeight: 500,
   },
   saveSubmitBtn: {
     padding: '13px 20px', borderRadius: '10px', backgroundColor: 'var(--dark-charcoal)',
-    color: 'var(--surface)', fontFamily: 'var(--font-family)', fontSize: '12.5px', fontWeight: 700,
+    color: 'var(--surface)', fontFamily: 'var(--font-family)', fontSize: '0.8929rem', fontWeight: 700,
     border: 'none', cursor: 'pointer', textAlign: 'center', marginTop: '8px', letterSpacing: '0.01em',
   },
   readOnlyBlock: {
@@ -3098,15 +3098,15 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   metaRow: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    fontSize: '12.5px', padding: '5px 0',
+    fontSize: '0.8929rem', padding: '5px 0',
   },
   formLabel: {
-    fontSize: '9.5px', fontWeight: 700, color: 'var(--muted-gray)', textTransform: 'uppercase',
+    fontSize: '0.6786rem', fontWeight: 700, color: 'var(--muted-gray)', textTransform: 'uppercase',
     letterSpacing: '0.07em', display: 'block', marginBottom: '4px',
   },
   selectInput: {
     width: '100%', padding: '11px 14px', borderRadius: '10px', border: '2px solid var(--card-border)',
-    backgroundColor: 'rgba(255,255,255,0.7)', fontSize: '13px', fontWeight: 600,
+    backgroundColor: 'rgba(255,255,255,0.7)', fontSize: '0.9286rem', fontWeight: 600,
     color: 'var(--dark-charcoal)', outline: 'none', fontFamily: 'var(--font-family)',
   },
   receiptRowItem: {
@@ -3116,12 +3116,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   actionItemBtn: {
     padding: '8px 14px', borderRadius: '8px', border: '2px solid var(--card-border)',
-    backgroundColor: 'rgba(255,255,255,0.9)', fontSize: '11px', fontWeight: 700,
+    backgroundColor: 'rgba(255,255,255,0.9)', fontSize: '0.7857rem', fontWeight: 700,
     color: 'var(--dark-charcoal)', cursor: 'pointer', fontFamily: 'var(--font-family)',
   },
   statusBadge: {
     display: 'inline-flex', alignItems: 'center', padding: '3px 9px', borderRadius: '999px',
-    fontSize: '9.5px', fontWeight: 700, letterSpacing: '0.04em',
+    fontSize: '0.6786rem', fontWeight: 700, letterSpacing: '0.04em',
     border: '2px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.9)',
     color: 'var(--dark-charcoal)',
   },
@@ -3134,7 +3134,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   sheetBtn: {
     padding: '10px', borderRadius: '8px', border: 'none',
-    fontFamily: 'var(--font-family)', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+    fontFamily: 'var(--font-family)', fontSize: '0.8571rem', fontWeight: 700, cursor: 'pointer',
   },
   printableReceiptBlock: { marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' },
   toastContainer: {
@@ -3146,32 +3146,32 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: 'var(--dark-charcoal)', border: 'none',
     boxShadow: '0 8px 24px rgba(15,23,42,0.18)', borderRadius: '10px',
   },
-  toastText: { fontSize: '12px', fontWeight: 700, color: 'var(--surface)' },
+  toastText: { fontSize: '0.8571rem', fontWeight: 700, color: 'var(--surface)' },
   heroAvatar: {
     width: '56px', height: '56px', borderRadius: '12px', backgroundColor: 'var(--dark-charcoal)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1429rem',
     fontWeight: 900, color: 'var(--royal-gold)', border: '2px solid rgba(212,175,55,0.25)',
     letterSpacing: '0.04em',
   },
-  studentName: { fontSize: '16px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' },
-  studentID: { fontSize: '11.5px', color: 'var(--muted-gray)', fontWeight: 500, display: 'block', marginTop: '2px' },
+  studentName: { fontSize: '1.1429rem', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' },
+  studentID: { fontSize: '0.8214rem', color: 'var(--muted-gray)', fontWeight: 500, display: 'block', marginTop: '2px' },
   heroLineDivider: { width: '100%', height: '2px', backgroundColor: 'var(--card-border)', margin: '16px 0' },
   heroMetaGrid: { display: 'flex', flexDirection: 'column', gap: '10px' },
   logoutBtn: {
     width: '100%', padding: '14px', borderRadius: '10px', backgroundColor: 'transparent',
     border: '2px solid rgba(211,47,47,0.25)', color: '#D32F2F',
-    fontFamily: 'var(--font-family)', fontSize: '13px', fontWeight: 700,
+    fontFamily: 'var(--font-family)', fontSize: '0.9286rem', fontWeight: 700,
     cursor: 'pointer', textAlign: 'center', letterSpacing: '0.01em',
   },
   quickFillContainer: { padding: '4px 0' },
   quickFillPill: {
-    fontSize: '10px', fontWeight: 700, color: 'var(--royal-gold)',
+    fontSize: '0.7143rem', fontWeight: 700, color: 'var(--royal-gold)',
     backgroundColor: 'rgba(212,175,55,0.06)', border: '2px solid rgba(212,175,55,0.25)',
     borderRadius: '6px', padding: '4px 9px', cursor: 'pointer', fontFamily: 'var(--font-family)',
   },
   backArrowBtn: {
     background: 'none', border: 'none', color: 'var(--muted-gray)',
-    fontFamily: 'var(--font-family)', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+    fontFamily: 'var(--font-family)', fontSize: '0.8571rem', fontWeight: 700, cursor: 'pointer',
     display: 'flex', alignItems: 'center', gap: '5px', padding: 0,
     textTransform: 'uppercase', letterSpacing: '0.06em',
   },
@@ -3186,5 +3186,5 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: 'none', padding: '24px',
     display: 'flex', flexDirection: 'column', maxHeight: '90%', overflowY: 'auto',
   },
-  modalTitle: { fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' },
+  modalTitle: { fontSize: '1.0714rem', fontWeight: 800, color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' },
 };

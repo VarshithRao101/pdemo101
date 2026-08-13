@@ -469,7 +469,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
               <path d="m9 12 2 2 4-4"/>
             </svg>
-            <span style={{ color: 'var(--surface)', fontWeight: 800, fontSize: '13px' }}>{toast}</span>
+            <span style={{ color: 'var(--surface)', fontWeight: 800, fontSize: '0.9286rem' }}>{toast}</span>
           </div>
         </div>
       )}
@@ -547,7 +547,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
               <GlassCard hoverable={false} style={{ ...styles.metricCard, borderTop: '5px solid #7C3AED' }}>
                 <span style={styles.metricLabel}>Last System Backup</span>
-                <strong style={{ ...styles.metricValue, color: '#6D28D9', fontSize: '15px', marginTop: '6px' }}>
+                <strong style={{ ...styles.metricValue, color: '#6D28D9', fontSize: '1.0714rem', marginTop: '6px' }}>
                   {stats.lastBackupAt
                     ? new Date(stats.lastBackupAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
                     : 'No backup found'}
@@ -563,10 +563,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
               {/* Active Sessions Panel */}
               <GlassCard hoverable={false} style={{ padding: '20px', backgroundColor: 'var(--surface)', border: '2.5px solid var(--ink)', boxShadow: '4px 4px 0px var(--ink)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '2px solid var(--line-strong)', paddingBottom: '10px' }}>
-                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Connected Portal Sessions
                   </h4>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent)', backgroundColor: 'var(--accent-wash)', padding: '2px 8px', borderRadius: '6px', border: '1px solid #BFDBFE' }}>
+                  <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--accent)', backgroundColor: 'var(--accent-wash)', padding: '2px 8px', borderRadius: '6px', border: '1px solid #BFDBFE' }}>
                     Live Sync
                   </span>
                 </div>
@@ -576,10 +576,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       <div key={session.sessionGuid || `session-${session.name}-${idx}`} style={{ padding: '12px 14px', borderRadius: '12px', border: '2px solid var(--line-strong)', backgroundColor: 'var(--surface-sunken)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div>
-                            <div style={{ fontWeight: 900, fontSize: '13px', color: 'var(--ink)' }}>{session.name}</div>
-                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink-secondary)', marginTop: '2px' }}>{session.role} | {session.campus}</div>
+                            <div style={{ fontWeight: 900, fontSize: '0.9286rem', color: 'var(--ink)' }}>{session.name}</div>
+                            <div style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink-secondary)', marginTop: '2px' }}>{session.role} | {session.campus}</div>
                           </div>
-                          <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--good)', backgroundColor: 'var(--good-wash)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--good-wash)' }}>
+                          <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--good)', backgroundColor: 'var(--good-wash)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--good-wash)' }}>
                             Active
                           </span>
                         </div>
@@ -587,7 +587,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <div style={{ padding: '16px', textAlign: 'center', backgroundColor: 'var(--surface-sunken)', borderRadius: '12px', border: '2px solid var(--line)', fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                  <div style={{ padding: '16px', textAlign: 'center', backgroundColor: 'var(--surface-sunken)', borderRadius: '12px', border: '2px solid var(--line)', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
                     All 4 Campus Portal slots are online & synced.
                   </div>
                 )}
@@ -596,10 +596,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
               {/* Transaction Widget */}
               <GlassCard hoverable={false} style={{ padding: '20px', backgroundColor: 'var(--surface)', border: '2.5px solid var(--ink)', boxShadow: '4px 4px 0px var(--ink)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '2px solid var(--line-strong)', paddingBottom: '10px' }}>
-                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 900, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 900, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Transaction Ledger Journal
                   </h4>
-                  <button onClick={() => setActiveTab('sync_integrity')} style={{ fontSize: '11px', fontWeight: 850, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  <button onClick={() => setActiveTab('sync_integrity')} style={{ fontSize: '0.7857rem', fontWeight: 850, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>
                     View All &rarr;
                   </button>
                 </div>
@@ -607,11 +607,11 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   {filteredSyncLogs.slice(0, 5).map((log, idx) => (
                     <div key={log.transactionId ? `dash-tx-${log.transactionId}-${idx}` : `dash-tx-${idx}`} style={{ padding: '10px 12px', borderRadius: '10px', border: '1.5px solid var(--line-strong)', backgroundColor: 'var(--surface-sunken)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <div style={{ fontSize: '12px', fontWeight: 900, color: 'var(--ink)' }}>{log.action}</div>
-                        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--ink-secondary)' }}>By {log.performedBy || 'System'} | {log.timestamp}</div>
+                        <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)' }}>{log.action}</div>
+                        <div style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>By {log.performedBy || 'System'} | {log.timestamp}</div>
                       </div>
                       <span style={{
-                        fontSize: '10px',
+                        fontSize: '0.7143rem',
                         fontWeight: 900,
                         padding: '2px 8px',
                         borderRadius: '6px',
@@ -642,10 +642,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <GlassCard hoverable={false} style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', backgroundColor: 'var(--surface)', border: '2.5px solid var(--ink)', boxShadow: '4px 4px 0px var(--ink)' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: 'var(--ink)' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1429rem', fontWeight: 900, color: 'var(--ink)' }}>
                   Account Security PINs
                 </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)', maxWidth: '520px' }}>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)', maxWidth: '520px' }}>
                   PINs are stored as one-way hashes and cannot be displayed. Issue a new PIN to see its value — it is shown once only.
                 </p>
               </div>
@@ -654,7 +654,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 onClick={handleManualRegeneratePins}
                 style={{
                   padding: '12px 20px', borderRadius: '12px', border: '2px solid var(--warning)',
-                  backgroundColor: 'var(--warning)', color: 'var(--surface)', fontWeight: 900, fontSize: '13px',
+                  backgroundColor: 'var(--warning)', color: 'var(--surface)', fontWeight: 900, fontSize: '0.9286rem',
                   boxShadow: '3px 3px 0px var(--warning)', cursor: 'pointer', display: 'flex',
                   alignItems: 'center', gap: '8px', fontFamily: 'var(--font-family)'
                 }}
@@ -670,16 +670,16 @@ export const AuthenticatorDashboardView: React.FC = () => {
             {/* Freshly issued PINs — visible only until this view reloads. */}
             {issuedPins && Object.keys(issuedPins).length > 0 && (
               <GlassCard hoverable={false} style={{ padding: '20px 24px', border: '2.5px solid var(--warning)', backgroundColor: 'var(--warning-wash)', boxShadow: '4px 4px 0px var(--warning)' }}>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: 900, color: 'var(--warning)' }}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', fontWeight: 900, color: 'var(--warning)' }}>
                   New PINs — shown once
                 </h4>
-                <p style={{ margin: '0 0 16px 0', fontSize: '12px', fontWeight: 700, color: 'var(--warning)' }}>
+                <p style={{ margin: '0 0 16px 0', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--warning)' }}>
                   Copy and distribute these now. They cannot be retrieved again; the only way to recover an account is to issue another PIN.
                 </p>
                 <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
                   {Object.entries(issuedPins).map(([username, pin]) => (
                     <GlassCard key={username} hoverable={false} style={styles.keyCard}>
-                      <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink-secondary)' }}>{username}</span>
+                      <span style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>{username}</span>
                       <div style={styles.keyDisplayBlock}>
                         <strong style={{ ...styles.keyValue, color: 'var(--warning)' }}>{String(pin)}</strong>
                       </div>
@@ -691,7 +691,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setIssuedPins(null)}
-                  style={{ marginTop: '16px', padding: '10px 16px', borderRadius: '10px', border: '2px solid var(--warning)', backgroundColor: 'transparent', color: 'var(--warning)', fontWeight: 900, fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
+                  style={{ marginTop: '16px', padding: '10px 16px', borderRadius: '10px', border: '2px solid var(--warning)', backgroundColor: 'transparent', color: 'var(--warning)', fontWeight: 900, fontSize: '0.8571rem', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
                   className="press-interactive"
                 >
                   I have saved these — hide them
@@ -701,23 +701,23 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
             {/* Status of every portal account. */}
             <div>
-              <h4 style={{ fontSize: '12px', fontWeight: 900, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
+              <h4 style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
                 Portal Accounts
               </h4>
               <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
                 {(keysData.accounts || []).map((acc: any) => (
                   <GlassCard key={acc.username} hoverable={false} style={styles.keyCard}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 900, color: 'var(--ink)' }}>{acc.name || acc.username}</span>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--ink-secondary)' }}>{acc.role}</span>
+                      <span style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)' }}>{acc.name || acc.username}</span>
+                      <span style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>{acc.role}</span>
                     </div>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--ink-muted)' }}>{acc.username}</span>
+                    <span style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-muted)' }}>{acc.username}</span>
                     <div style={styles.keyDisplayBlock}>
-                      <strong style={{ ...styles.keyValue, fontSize: '13px', color: acc.pinConfigured ? 'var(--good)' : 'var(--critical)' }}>
+                      <strong style={{ ...styles.keyValue, fontSize: '0.9286rem', color: acc.pinConfigured ? 'var(--good)' : 'var(--critical)' }}>
                         {acc.pinConfigured ? 'PIN SET' : 'NO PIN'}
                       </strong>
                     </div>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--ink-muted)' }}>
+                    <span style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-muted)' }}>
                       {acc.campus || '—'}
                       {acc.lastUpdatedAt ? ` · updated ${new Date(acc.lastUpdatedAt).toLocaleDateString('en-IN')}` : ''}
                     </span>
@@ -732,10 +732,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
         {activeTab === 'accounts' && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: 'var(--ink)' }}>Staff Accounts Registry</h3>
+              <h3 style={{ margin: 0, fontSize: '1.1429rem', fontWeight: 900, color: 'var(--ink)' }}>Staff Accounts Registry</h3>
             </div>
 
-            <div style={{ padding: '12px 14px', borderRadius: '14px', border: '1.5px solid var(--line-strong)', backgroundColor: 'var(--surface-sunken)', fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+            <div style={{ padding: '12px 14px', borderRadius: '14px', border: '1.5px solid var(--line-strong)', backgroundColor: 'var(--surface-sunken)', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
               Portal slots are fixed. Update the existing accounts only. Creating or deleting IDs is disabled.
             </div>
 
@@ -788,17 +788,17 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           alignItems: 'center',
                           justifyContent: 'center',
                           fontWeight: 900,
-                          fontSize: '14px',
+                          fontSize: '1rem',
                           border: '2px solid var(--ink)',
                           boxShadow: '2px 2px 0px var(--ink)'
                         }}>
                           {roleCode}
                         </div>
                         <div>
-                          <div style={{ fontSize: '15px', fontWeight: 900, color: 'var(--ink)' }}>
+                          <div style={{ fontSize: '1.0714rem', fontWeight: 900, color: 'var(--ink)' }}>
                             {acc.name || acc.username}
                           </div>
-                          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                          <div style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
                             {acc.email || `${acc.username}@inspire.edu`} | {acc.mobile || 'No Mobile'}
                           </div>
                         </div>
@@ -812,7 +812,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           color: roleBadgeBg,
                           border: `1.5px solid ${roleBadgeBg}`,
                           fontWeight: 900,
-                          fontSize: '11px',
+                          fontSize: '0.7857rem',
                           textTransform: 'uppercase'
                         }}>
                           {roleLabel}
@@ -824,7 +824,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           color: 'var(--ink-secondary)',
                           border: '1.5px solid var(--line-strong)',
                           fontWeight: 800,
-                          fontSize: '11px'
+                          fontSize: '0.7857rem'
                         }}>
                           {acc.campus || 'All Campuses'}
                         </span>
@@ -844,8 +844,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       {/* ID / Username Row */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', backgroundColor: 'var(--surface)', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid var(--line-strong)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>User ID:</span>
-                          <code style={{ fontSize: '13px', fontWeight: 900, fontFamily: 'monospace', color: 'var(--ink)', backgroundColor: 'var(--line)', padding: '3px 8px', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>User ID:</span>
+                          <code style={{ fontSize: '0.9286rem', fontWeight: 900, fontFamily: 'monospace', color: 'var(--ink)', backgroundColor: 'var(--line)', padding: '3px 8px', borderRadius: '6px' }}>
                             {acc.username}
                           </code>
                         </div>
@@ -857,7 +857,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                             border: '1.5px solid var(--ink)',
                             backgroundColor: 'var(--accent)',
                             color: 'var(--surface)',
-                            fontSize: '11px',
+                            fontSize: '0.7857rem',
                             fontWeight: 800,
                             cursor: 'pointer',
                             display: 'flex',
@@ -880,27 +880,27 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', backgroundColor: 'var(--surface)', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid var(--line-strong)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>Password</span>
+                            <span style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>Password</span>
                             {acc.passwordSet !== false ? (
                               <code title="A password is set. Its value cannot be displayed — only a bcrypt hash is stored."
-                                    style={{ fontSize: '13px', letterSpacing: '2px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--ink)', backgroundColor: 'var(--surface-sunken)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                                    style={{ fontSize: '0.9286rem', letterSpacing: '2px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--ink)', backgroundColor: 'var(--surface-sunken)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--line)' }}>
                                 ••••••••
                               </code>
                             ) : (
                               <code title="No usable password hash is stored for this account."
-                                    style={{ fontSize: '11px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--critical)', backgroundColor: 'var(--critical-wash)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--critical)' }}>
+                                    style={{ fontSize: '0.7857rem', fontWeight: 800, fontFamily: 'monospace', color: 'var(--critical)', backgroundColor: 'var(--critical-wash)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--critical)' }}>
                                 NOT SET
                               </code>
                             )}
                           </span>
                           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>PIN</span>
+                            <span style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>PIN</span>
                             {acc.pinSet !== false ? (
-                              <code style={{ fontSize: '13px', letterSpacing: '2px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--ink)', backgroundColor: 'var(--surface-sunken)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                              <code style={{ fontSize: '0.9286rem', letterSpacing: '2px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--ink)', backgroundColor: 'var(--surface-sunken)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--line)' }}>
                                 ••••••
                               </code>
                             ) : (
-                              <code style={{ fontSize: '11px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--critical)', backgroundColor: 'var(--critical-wash)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--critical)' }}>
+                              <code style={{ fontSize: '0.7857rem', fontWeight: 800, fontFamily: 'monospace', color: 'var(--critical)', backgroundColor: 'var(--critical-wash)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--critical)' }}>
                                 NOT SET
                               </code>
                             )}
@@ -931,7 +931,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           border: '2px solid var(--ink)',
                           backgroundColor: 'var(--surface)',
                           color: 'var(--ink)',
-                          fontSize: '12px',
+                          fontSize: '0.8571rem',
                           fontWeight: 900,
                           boxShadow: '2px 2px 0px var(--ink)',
                           cursor: 'pointer'
@@ -953,16 +953,16 @@ export const AuthenticatorDashboardView: React.FC = () => {
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <GlassCard hoverable={false} style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface)', border: '2.5px solid var(--ink)', boxShadow: '4px 4px 0px var(--ink)', flexWrap: 'wrap', gap: '16px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: 'var(--ink)' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1429rem', fontWeight: 900, color: 'var(--ink)' }}>
                   Transaction Ledger Console
                 </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
                   Real-time audit log of security events, administrative updates, and system operations.
                 </p>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <button onClick={loadData} style={{ padding: '8px 14px', borderRadius: '10px', border: '2px solid var(--accent)', backgroundColor: 'var(--accent)', color: 'var(--surface)', fontWeight: 850, fontSize: '12px', cursor: 'pointer' }} className="press-interactive">
+                <button onClick={loadData} style={{ padding: '8px 14px', borderRadius: '10px', border: '2px solid var(--accent)', backgroundColor: 'var(--accent)', color: 'var(--surface)', fontWeight: 850, fontSize: '0.8571rem', cursor: 'pointer' }} className="press-interactive">
                   Refresh Ledger
                 </button>
               </div>
@@ -981,7 +981,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       backgroundColor: ledgerFilter === filter ? 'var(--ink)' : 'var(--surface)',
                       color: ledgerFilter === filter ? 'var(--surface)' : 'var(--ink-secondary)',
                       fontWeight: 850,
-                      fontSize: '12px',
+                      fontSize: '0.8571rem',
                       cursor: 'pointer'
                     }}
                     className="press-interactive"
@@ -1000,7 +1000,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   borderRadius: '10px',
                   border: '2px solid var(--line-strong)',
                   backgroundColor: 'var(--surface)',
-                  fontSize: '12px',
+                  fontSize: '0.8571rem',
                   fontWeight: 700,
                   width: '260px',
                   outline: 'none'
@@ -1013,17 +1013,17 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 <GlassCard key={log.transactionId ? `tx-ledger-${log.transactionId}-${idx}` : `tx-ledger-${idx}`} hoverable={false} style={{ padding: '14px 18px', backgroundColor: 'var(--surface)', border: '2px solid var(--ink)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: 900, color: 'var(--ink)' }}>{log.action}</div>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink-secondary)', marginTop: '4px' }}>
+                      <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)' }}>{log.action}</div>
+                      <div style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink-secondary)', marginTop: '4px' }}>
                         ID: {log.transactionId} | Performed By: {log.performedBy || 'System'}
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ink-secondary)', marginTop: '4px' }}>
+                      <div style={{ fontSize: '0.7857rem', fontWeight: 600, color: 'var(--ink-secondary)', marginTop: '4px' }}>
                         {log.details || log.errorDetails || 'Transaction logged'}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <span style={{
-                        fontSize: '10px',
+                        fontSize: '0.7143rem',
                         fontWeight: 900,
                         padding: '4px 8px',
                         borderRadius: '6px',
@@ -1033,7 +1033,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       }}>
                         {log.status.toUpperCase()}
                       </span>
-                      <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--ink-muted)', marginTop: '6px' }}>{log.timestamp}</div>
+                      <div style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-muted)', marginTop: '6px' }}>{log.timestamp}</div>
                     </div>
                   </div>
                 </GlassCard>
@@ -1056,8 +1056,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     </svg>
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 900, color: 'var(--ink)' }}>1. Automated Google Drive 24-Hour Backup Engine</h3>
-                    <p style={{ margin: '3px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.2143rem', fontWeight: 900, color: 'var(--ink)' }}>1. Automated Google Drive 24-Hour Backup Engine</h3>
+                    <p style={{ margin: '3px 0 0', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
                       Automated daily backup creates 3 category folders (Students, Teachers, Expenditures) with 4 campus subfolders on Google Drive.
                     </p>
                   </div>
@@ -1065,14 +1065,14 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#F0FDF4', padding: '8px 14px', borderRadius: '10px', border: '1.5px solid var(--good)' }}>
                   <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#22C55E' }}></span>
-                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#15803D' }}>Google Drive Active â€¢ 24h Rolling Retention (2 Snapshots/Campus)</span>
+                  <span style={{ fontSize: '0.8571rem', fontWeight: 800, color: '#15803D' }}>Google Drive Active â€¢ 24h Rolling Retention (2 Snapshots/Campus)</span>
                 </div>
               </div>
 
               {/* Security PIN verification for Backup */}
               <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', maxWidth: '680px', marginBottom: '18px' }}>
                 <div style={{ flex: 1, minWidth: '240px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
                     Authenticator Password Verification
                   </label>
                   <input maxLength={LIMITS.password}
@@ -1085,7 +1085,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       padding: '12px 14px',
                       borderRadius: '12px',
                       border: '2px solid var(--line-strong)',
-                      fontSize: '13px',
+                      fontSize: '0.9286rem',
                       fontWeight: 800,
                       color: 'var(--ink)',
                       outline: 'none',
@@ -1105,7 +1105,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       backgroundColor: 'var(--accent)',
                       color: 'var(--surface)',
                       fontWeight: 900,
-                      fontSize: '13px',
+                      fontSize: '0.9286rem',
                       boxShadow: '3px 3px 0px var(--accent)',
                       cursor: (isCreatingBackup || isPurgingDrive) ? 'not-allowed' : 'pointer',
                       whiteSpace: 'nowrap'
@@ -1125,7 +1125,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       backgroundColor: 'var(--critical-wash)',
                       color: 'var(--critical)',
                       fontWeight: 900,
-                      fontSize: '13px',
+                      fontSize: '0.9286rem',
                       boxShadow: '3px 3px 0px var(--critical)',
                       cursor: (isCreatingBackup || isPurgingDrive) ? 'not-allowed' : 'pointer',
                       whiteSpace: 'nowrap'
@@ -1140,7 +1140,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               {/* Progress Bar for Backup */}
               {isCreatingBackup && (
                 <div style={{ marginTop: '12px', backgroundColor: 'var(--accent-wash)', padding: '14px', borderRadius: '12px', border: '2px solid var(--accent)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: 'var(--accent)', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8571rem', fontWeight: 800, color: 'var(--accent)', marginBottom: '6px' }}>
                     <span>Generating JSON Snapshots & Syncing to Google Drive...</span>
                     <span>{backupProgress}%</span>
                   </div>
@@ -1161,8 +1161,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   </svg>
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 900, color: 'var(--critical)' }}>2. Emergency Database Wipe (Purge All Schema Collections)</h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--critical)' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2143rem', fontWeight: 900, color: 'var(--critical)' }}>2. Emergency Database Wipe (Purge All Schema Collections)</h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--critical)' }}>
                     Protected behind Authenticator Account Password Verification. Clears all student, faculty, payment & expense collections.
                   </p>
                 </div>
@@ -1170,7 +1170,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
               <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', maxWidth: '680px' }}>
                 <div style={{ flex: 1, minWidth: '240px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 900, color: 'var(--critical)', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--critical)', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
                     Authenticator Password Verification
                   </label>
                   <input maxLength={LIMITS.password}
@@ -1183,7 +1183,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       padding: '12px 14px',
                       borderRadius: '12px',
                       border: '2px solid var(--critical-wash)',
-                      fontSize: '13px',
+                      fontSize: '0.9286rem',
                       fontWeight: 800,
                       color: 'var(--ink)',
                       outline: 'none',
@@ -1202,7 +1202,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     backgroundColor: 'var(--critical)',
                     color: 'var(--surface)',
                     fontWeight: 900,
-                    fontSize: '13px',
+                    fontSize: '0.9286rem',
                     boxShadow: '3px 3px 0px var(--critical)',
                     cursor: isWipingDb ? 'not-allowed' : 'pointer',
                     marginTop: '18px',
@@ -1217,7 +1217,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               {/* Progress Overlay for Wipe */}
               {isWipingDb && (
                 <div style={{ marginTop: '14px', backgroundColor: 'var(--critical-wash)', padding: '14px', borderRadius: '12px', border: '2px solid var(--critical)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: 'var(--critical)', marginBottom: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8571rem', fontWeight: 800, color: 'var(--critical)', marginBottom: '6px' }}>
                     <span>Wiping entire database, please wait...</span>
                     <span>{wipeProgress}%</span>
                   </div>
@@ -1231,8 +1231,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
             {/* SUB-SECTION 3: DATA RESTORATION SYSTEM (CATEGORIES & CAMPUSES) */}
             <GlassCard hoverable={false} style={{ padding: '24px', backgroundColor: 'var(--surface)', border: '2.5px solid var(--ink)', boxShadow: '4px 4px 0px var(--ink)' }}>
               <div style={{ marginBottom: '18px', borderBottom: '2px solid var(--line)', paddingBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 900, color: 'var(--ink)' }}>3. Data Restoration & Import Engine</h3>
-                <p style={{ margin: '3px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2143rem', fontWeight: 900, color: 'var(--ink)' }}>3. Data Restoration & Import Engine</h3>
+                <p style={{ margin: '3px 0 0', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
                   Select a category to view active Google Drive backups or drag-and-drop local backup files for each of the 4 campuses.
                 </p>
               </div>
@@ -1254,7 +1254,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         backgroundColor: active ? `var(--${cat.tone}-wash)` : 'var(--surface)',
                         color: active ? `var(--${cat.tone})` : 'var(--ink-secondary)',
                         fontWeight: 900,
-                        fontSize: '13px',
+                        fontSize: '0.9286rem',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1302,9 +1302,9 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '14px', fontWeight: 900, color: 'var(--ink)' }}>Campus: {camp.name}</span>
+                          <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--ink)' }}>Campus: {camp.name}</span>
                         </div>
-                        <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--ink-secondary)', backgroundColor: 'var(--line)', padding: '4px 8px', borderRadius: '6px' }}>
+                        <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)', backgroundColor: 'var(--line)', padding: '4px 8px', borderRadius: '6px' }}>
                           {isLoadingBackups ? 'Loading Drive...' : `${campBackups.length} Drive Snapshot(s)`}
                         </span>
                       </div>
@@ -1315,8 +1315,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           {campBackups.slice(0, 2).map((bk: any, bkIdx: number) => (
                             <div key={bk.id || bk.fileName || `bk-${bkIdx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid var(--line-strong)', backgroundColor: 'var(--surface)' }}>
                               <div>
-                                <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink)' }}>{bk.fileName}</div>
-                                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                                <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)' }}>{bk.fileName}</div>
+                                <div style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
                                   Google Drive | {bk.createdAt ? new Date(bk.createdAt).toLocaleString() : 'date unknown'}
                                   {bk.size ? ` | ${Math.max(1, Math.round(Number(bk.size) / 1024))} KB` : ''}
                                 </div>
@@ -1330,7 +1330,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                                   backgroundColor: 'var(--accent)',
                                   color: 'var(--surface)',
                                   fontWeight: 800,
-                                  fontSize: '11px',
+                                  fontSize: '0.7857rem',
                                   cursor: 'pointer'
                                 }}
                                 className="press-interactive"
@@ -1341,7 +1341,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                           ))}
                         </div>
                       ) : (
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--ink-muted)', fontStyle: 'italic', padding: '8px' }}>
+                        <div style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink-muted)', fontStyle: 'italic', padding: '8px' }}>
                           No active Drive backup snapshots found for {camp.name} yet. Trigger a backup or upload a file below.
                         </div>
                       )}
@@ -1359,10 +1359,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         alignItems: 'center',
                         gap: '4px'
                       }}>
-                        <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--accent)' }}>
+                        <span style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--accent)' }}>
                           Drag & Drop or Click to Select Backup (.json / .xlsx)
                         </span>
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+                        <span style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
                           Restores {(BACKUP_CATEGORIES.find(c => c.key === activeRestoreCategory)?.label || activeRestoreCategory)} records for {camp.name} only
                         </span>
                         <input
@@ -1384,10 +1384,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
             {restoringCampus && (
               <div style={styles.modalOverlay} className="anim-fade-in">
                 <div style={{ ...styles.modalContent, maxWidth: '480px', backgroundColor: 'var(--ink)', color: 'var(--surface)', border: '3px solid var(--accent)', textAlign: 'center' }} className="anim-scale-in">
-                  <h3 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: 900, color: 'var(--surface)' }}>
+                  <h3 style={{ margin: '0 0 6px', fontSize: '1.2857rem', fontWeight: 900, color: 'var(--surface)' }}>
                     Restoring Data for {restoringCampus}
                   </h3>
-                  <p style={{ margin: '0 0 18px', fontSize: '12px', fontWeight: 700, color: 'var(--ink-muted)' }}>
+                  <p style={{ margin: '0 0 18px', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-muted)' }}>
                     {restoreStatusText}
                   </p>
 
@@ -1395,7 +1395,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     <div style={{ width: `${restoreProgress}%`, height: '100%', backgroundColor: 'var(--accent)', transition: 'width 0.3s ease' }}></div>
                   </div>
 
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#60A5FA' }}>
+                  <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: '#60A5FA' }}>
                     Extraction & Schema Sync: {restoreProgress}%
                   </div>
                 </div>
@@ -1405,7 +1405,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
         )}
         {/* Footer */}
         <footer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '28px 28px 16px', gap: '8px', opacity: 0.85, marginTop: 'auto' }}>
-          <span style={{ fontSize: '9px', color: 'var(--ink-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
+          <span style={{ fontSize: '0.6429rem', color: 'var(--ink-secondary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
             Inspire ERP Authenticator Portal v2.6.4 | Powered by TRNT BEE Technologies
           </span>
         </footer>
@@ -1418,10 +1418,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
         <div style={styles.modalOverlay} className="anim-fade-in">
           <div style={styles.modalContent} className="anim-scale-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid var(--line-strong)', paddingBottom: '10px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 900, color: 'var(--ink)' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1429rem', fontWeight: 900, color: 'var(--ink)' }}>
                 Edit Staff Account
               </h3>
-              <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', fontWeight: 900 }}>X</button>
+              <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2857rem', fontWeight: 900 }}>X</button>
             </div>
 
             <form onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1455,7 +1455,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         border: '2px solid var(--ink)',
                         backgroundColor: 'var(--surface-sunken)',
                         fontWeight: 800,
-                        fontSize: '11px',
+                        fontSize: '0.7857rem',
                         cursor: 'pointer'
                       }}
                       className="press-interactive"
@@ -1525,7 +1525,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     border: '2px solid var(--line-strong)',
                     backgroundColor: 'var(--surface)',
                     fontWeight: 800,
-                    fontSize: '12px',
+                    fontSize: '0.8571rem',
                     cursor: 'pointer'
                   }}
                 >
@@ -1540,7 +1540,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     backgroundColor: 'var(--ink)',
                     color: 'var(--surface)',
                     fontWeight: 900,
-                    fontSize: '12px',
+                    fontSize: '0.8571rem',
                     boxShadow: '3px 3px 0px var(--ink)',
                     cursor: 'pointer'
                   }}
@@ -1595,7 +1595,7 @@ const styles = {
     gap: '12px'
   },
   meta: {
-    fontSize: '10px',
+    fontSize: '0.7143rem',
     fontWeight: '900',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.08em',
@@ -1603,7 +1603,7 @@ const styles = {
     display: 'block'
   },
   sidebarTitle: {
-    fontSize: '15px',
+    fontSize: '1.0714rem',
     fontWeight: '900',
     letterSpacing: '-0.02em',
     marginTop: '1px',
@@ -1623,7 +1623,7 @@ const styles = {
     width: '100%',
     padding: '12px 14px',
     borderRadius: '12px',
-    fontSize: '12px',
+    fontSize: '0.8571rem',
     fontWeight: '800',
     cursor: 'pointer',
     display: 'flex' as const,
@@ -1657,14 +1657,14 @@ const styles = {
     alignItems: 'center' as const
   },
   workspaceTitle: {
-    fontSize: '22px',
+    fontSize: '1.5714rem',
     fontWeight: '900',
     color: 'var(--ink)',
     letterSpacing: '-0.02em',
     margin: 0
   },
   workspaceSubtitle: {
-    fontSize: '12px',
+    fontSize: '0.8571rem',
     fontWeight: 700,
     color: 'var(--ink-secondary)',
     marginTop: '4px',
@@ -1681,20 +1681,20 @@ const styles = {
     boxShadow: '4px 4px 0px var(--ink)',
   },
   metricLabel: {
-    fontSize: '10px',
+    fontSize: '0.7143rem',
     color: 'var(--ink-secondary)',
     fontWeight: '900',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.07em'
   },
   metricValue: {
-    fontSize: '22px',
+    fontSize: '1.5714rem',
     fontWeight: '900',
     letterSpacing: '-0.02em',
     marginTop: '2px'
   },
   metricSub: {
-    fontSize: '10px',
+    fontSize: '0.7143rem',
     color: 'var(--ink-secondary)',
     fontWeight: '700'
   },
@@ -1715,7 +1715,7 @@ const styles = {
     transition: 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)'
   },
   keyRoleLabel: {
-    fontSize: '10px',
+    fontSize: '0.7143rem',
     fontWeight: '900',
     color: 'var(--accent)',
     letterSpacing: '0.06em',
@@ -1729,7 +1729,7 @@ const styles = {
     backgroundColor: 'var(--surface-sunken)'
   },
   keyValue: {
-    fontSize: '22px',
+    fontSize: '1.5714rem',
     fontFamily: 'monospace',
     letterSpacing: '0.08em',
     fontWeight: '900',
@@ -1742,7 +1742,7 @@ const styles = {
     border: '2px solid var(--ink)',
     backgroundColor: 'var(--surface)',
     color: 'var(--ink)',
-    fontSize: '11px',
+    fontSize: '0.7857rem',
     fontWeight: '900',
     cursor: 'pointer',
     fontFamily: 'var(--font-family)',
@@ -1754,7 +1754,7 @@ const styles = {
     gap: '4px'
   },
   inputLabel: {
-    fontSize: '10px',
+    fontSize: '0.7143rem',
     fontWeight: '900',
     color: 'var(--ink-secondary)',
     textTransform: 'uppercase' as const,
@@ -1767,7 +1767,7 @@ const styles = {
     border: '2px solid var(--line-strong)',
     backgroundColor: 'var(--surface)',
     color: 'var(--ink)',
-    fontSize: '13px',
+    fontSize: '0.9286rem',
     outline: 'none',
     boxSizing: 'border-box' as const,
     fontFamily: 'var(--font-family)',
@@ -1780,7 +1780,7 @@ const styles = {
     border: '2px solid var(--line-strong)',
     backgroundColor: 'var(--surface)',
     color: 'var(--ink)',
-    fontSize: '13px',
+    fontSize: '0.9286rem',
     outline: 'none',
     boxSizing: 'border-box' as const,
     fontFamily: 'var(--font-family)',
@@ -1807,7 +1807,7 @@ const styles = {
     border: '2px solid var(--critical)',
     background: 'var(--critical-wash)',
     color: 'var(--critical)',
-    fontSize: '11px',
+    fontSize: '0.7857rem',
     fontWeight: '900',
     cursor: 'pointer'
   },
@@ -1819,7 +1819,7 @@ const styles = {
     backgroundColor: 'var(--critical-wash)',
     color: 'var(--critical)',
     fontWeight: '900',
-    fontSize: '12px',
+    fontSize: '0.8571rem',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -1838,7 +1838,7 @@ const styles = {
     padding: '12px 20px',
     borderRadius: '14px',
     fontWeight: '900',
-    fontSize: '13px',
+    fontSize: '0.9286rem',
     zIndex: 9999
   },
   modalOverlay: {

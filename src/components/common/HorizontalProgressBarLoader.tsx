@@ -67,7 +67,7 @@ export const HorizontalProgressBarLoader: React.FC<HorizontalProgressBarLoaderPr
         <div style={{ marginTop: '8px' }}>
           <h2
             style={{
-              fontSize: '20px',
+              fontSize: '1.4286rem',
               fontWeight: 800,
               color: '#FFFFFF',
               letterSpacing: '-0.02em',
@@ -78,7 +78,7 @@ export const HorizontalProgressBarLoader: React.FC<HorizontalProgressBarLoaderPr
           </h2>
           <p
             style={{
-              fontSize: '13px',
+              fontSize: '0.9286rem',
               color: '#94A3B8',
               margin: 0,
               fontWeight: 500
@@ -87,7 +87,7 @@ export const HorizontalProgressBarLoader: React.FC<HorizontalProgressBarLoaderPr
             {message}
           </p>
           {subMessage && (
-            <div style={{ fontSize: '11px', color: 'var(--royal-gold)', marginTop: '4px', fontWeight: 700 }}>
+            <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', marginTop: '4px', fontWeight: 700 }}>
               {subMessage}
             </div>
           )}
@@ -101,14 +101,14 @@ export const HorizontalProgressBarLoader: React.FC<HorizontalProgressBarLoaderPr
               justifyContent: 'space-between',
               alignItems: 'center',
               marginBottom: '10px',
-              fontSize: '12px',
+              fontSize: '0.8571rem',
               fontWeight: 700
             }}
           >
             <span style={{ color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               System Ready State
             </span>
-            <span style={{ color: '#FFFFFF', fontSize: '15px', fontWeight: 900, fontFamily: 'monospace' }}>
+            <span style={{ color: '#FFFFFF', fontSize: '1.0714rem', fontWeight: 900, fontFamily: 'monospace' }}>
               {progress}%
             </span>
           </div>
@@ -138,7 +138,7 @@ export const HorizontalProgressBarLoader: React.FC<HorizontalProgressBarLoaderPr
           </div>
         </div>
 
-        <div style={{ marginTop: '24px', fontSize: '11px', color: '#64748B', fontWeight: 600, letterSpacing: '0.04em' }}>
+        <div style={{ marginTop: '24px', fontSize: '0.7857rem', color: '#64748B', fontWeight: 600, letterSpacing: '0.04em' }}>
           TRNT BEE Technologies
         </div>
       </div>

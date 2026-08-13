@@ -135,7 +135,7 @@ const PROGRAM_CARDS = [
     title: 'Intermediate + MPC',
     subtitle: 'IIT-JEE Mains & Advanced',
     body: 'Integrated 2-year coaching combining Board curriculum with daily JEE mock tests, error analysis, and personal mentorship.',
-    gradA: '#0F172A', gradB: '#1E3A8A', accent: '#3B82F6',
+    gradA: '#0F172A', gradB: '#1E3A8A', accent: '#3B82F6', tagBg: '#1E3A8A',
     tag: 'Engineering Focus',
     img: mpcLab,
     highlights: ['Specialized Physics & Math Desks', 'Daily JEE Pattern Mock Tests', 'Personal Rank Mentor Assigned', 'Weekly Performance Analytics'],
@@ -144,7 +144,7 @@ const PROGRAM_CARDS = [
     title: 'Intermediate + BiPC',
     subtitle: 'NEET Medical & AIIMS',
     body: 'Comprehensive medical entrance coaching with NCERT line-by-line coverage, daily NEET practice, and 1-on-1 doubt resolution.',
-    gradA: '#052E16', gradB: '#065F46', accent: '#10B981',
+    gradA: '#052E16', gradB: '#065F46', accent: '#10B981', tagBg: '#065F46',
     tag: 'Medical Focus',
     img: bipcLab,
     highlights: ['Botany & Zoology Expert Faculty', 'Daily NCERT Line-by-Line Tests', 'Biology Diagnostic Lab Sessions', 'AIIMS Pattern Simulations'],
@@ -153,7 +153,7 @@ const PROGRAM_CARDS = [
     title: 'Intermediate + MEC / CEC',
     subtitle: 'CA Foundation & Civils',
     body: 'Commerce and Humanities integrated program with CA Foundation modules, economics workshops, and strong Civils base.',
-    gradA: '#431407', gradB: '#7C2D12', accent: '#F59E0B',
+    gradA: '#431407', gradB: '#7C2D12', accent: '#F59E0B', tagBg: '#7C2D12',
     tag: 'Commerce & Civils',
     img: mecHall,
     highlights: ['CPT / CA Foundation Modules', 'Analytical Economics Workshops', 'Civils Aptitude Foundation', 'Current Affairs & GK Integration'],
@@ -312,7 +312,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#FAFCFF;color:#0F172A
 
 /* ── Nav link with CONTINUOUS MOVING GOOGLE RAINBOW ── */
 .nl{
-  font-size:13.5px;font-weight:700;color:#94A3B8;text-decoration:none;
+  font-size:0.9643rem;font-weight:700;color:#94A3B8;text-decoration:none;
   white-space:nowrap;padding:6px 0;position:relative;
   transition:color 0.25s;letter-spacing:0.01em;
 }
@@ -359,7 +359,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#FAFCFF;color:#0F172A
   display:inline-flex;align-items:center;gap:10px;
   background:linear-gradient(135deg,#F59E0B,#D97706);
   color:#fff;font-weight:900;text-decoration:none;
-  padding:14px 32px;border-radius:10px;font-size:15px;
+  padding:14px 32px;border-radius:10px;font-size:1.0714rem;
   box-shadow:0 6px 20px rgba(217,119,6,0.3);
   transition:transform 0.22s,box-shadow 0.22s,filter 0.22s;
   position:relative;overflow:hidden;border:none;cursor:pointer;
@@ -377,7 +377,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#FAFCFF;color:#0F172A
   display:inline-flex;align-items:center;gap:8px;
   background:rgba(255,255,255,0.1);
   color:#fff;font-weight:700;text-decoration:none;
-  padding:13px 28px;border-radius:10px;font-size:15px;
+  padding:13px 28px;border-radius:10px;font-size:1.0714rem;
   border:1.5px solid rgba(255,255,255,0.32);
   backdrop-filter:blur(8px);
   transition:background 0.22s,border-color 0.22s,transform 0.22s;
@@ -387,7 +387,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#FAFCFF;color:#0F172A
 /* ── Section headings ── */
 .section-label{
   display:inline-flex;align-items:center;gap:8px;
-  font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;
+  font-size:0.7857rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;
   margin-bottom:12px;
 }
 .section-label::before,.section-label::after{content:'';display:block;height:2px;width:28px;background:linear-gradient(90deg, #4285F4, #EA4335, #FBBC05, #34A853);background-size:200% 200%;animation:rainbowFlow 3s linear infinite;border-radius:2px}
@@ -498,13 +498,13 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:#FAFCFF;color:#0F172A
     scroll-snap-align: start !important;
   }
   .stats-inner{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
-  .stat-val{font-size:22px!important}
+  .stat-val{font-size:1.5714rem!important}
   .form-box{padding:24px 16px!important;border-radius:18px!important}
   .form-box form{grid-template-columns:1fr!important;gap:16px!important}
-  .form-box input, .form-box select, .form-box textarea{font-size:16px!important;padding:12px 14px!important}
+  .form-box input, .form-box select, .form-box textarea{font-size:1.1429rem!important;padding:12px 14px!important}
   .footer-grid{grid-template-columns:1fr!important;gap:28px!important}
   .footer-bottom{flex-direction:column!important;text-align:center!important;gap:8px!important}
-  .h1-hero{font-size:22px!important}
+  .h1-hero{font-size:1.5714rem!important}
 }
 `;
 
@@ -519,10 +519,10 @@ function StatCard({ stat, active }: { stat: typeof STAT_CARDS[0]; active: boolea
       {/* Corner accent */}
       <div style={{ position: 'absolute', top: 0, right: 0, width: 60, height: 60, background: `${stat.col}12`, borderRadius: '0 0 0 60px' }} />
       <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: stat.col, boxShadow: `0 0 8px ${stat.col}` }} />
-      <div className="stat-val" style={{ fontSize: 'clamp(26px,2.8vw,40px)', fontWeight: 900, color: stat.col, fontFamily: "'Merriweather',serif", lineHeight: 1, marginBottom: 6 }}>
+      <div className="stat-val" style={{ fontSize: 'clamp(1.8571rem,2.8vw,2.8571rem)', fontWeight: 900, color: stat.col, fontFamily: "'Merriweather',serif", lineHeight: 1, marginBottom: 6 }}>
         {active ? count : 0}{stat.suffix}
       </div>
-      <div style={{ fontSize: 12.5, color: '#64748B', fontWeight: 700, lineHeight: 1.4 }}>{stat.label}</div>
+      <div style={{ fontSize: '0.8929rem', color: '#64748B', fontWeight: 700, lineHeight: 1.4 }}>{stat.label}</div>
       <div style={{ position: 'absolute', bottom: 0, left: 0, height: 3, width: '100%', background: `linear-gradient(90deg,${stat.col},${stat.col}44)`, borderRadius: '0 0 18px 18px' }} />
     </div>
   );
@@ -687,7 +687,7 @@ const SingleFrameColorGallery: React.FC<{ onEnlargePhoto?: (src: string, title: 
                   backdropFilter: 'blur(10px)',
                   WebkitBackdropFilter: 'blur(10px)',
                   color: '#FFFFFF',
-                  fontSize: 12,
+                  fontSize: '0.8571rem',
                   fontWeight: 800,
                   letterSpacing: '0.12em',
                   textTransform: 'uppercase',
@@ -711,7 +711,7 @@ const SingleFrameColorGallery: React.FC<{ onEnlargePhoto?: (src: string, title: 
                   borderRadius: 20,
                   background: 'rgba(245, 158, 11, 0.9)',
                   color: '#0F172A',
-                  fontSize: 11.5,
+                  fontSize: '0.8214rem',
                   fontWeight: 900,
                   border: 'none',
                   cursor: 'pointer',
@@ -978,7 +978,7 @@ export const PortfolioView: React.FC = () => {
   const inputSt: React.CSSProperties = {
     width: '100%', padding: '13px 16px', background: '#F8FAFC',
     border: '1.5px solid #E2E8F0', borderRadius: 10, color: DARK_TEXT,
-    fontSize: 14, fontFamily: "'Plus Jakarta Sans',sans-serif",
+    fontSize: '1rem', fontFamily: "'Plus Jakarta Sans',sans-serif",
   };
 
   const tickerItems = [
@@ -1012,12 +1012,12 @@ export const PortfolioView: React.FC = () => {
               {[...tickerItems, ...tickerItems].map((t, i) => (
                 <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 16, marginRight: 44 }}>
                   {t.highlight ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 20, padding: '2px 12px', fontSize: 11.5, fontWeight: 900, color: ACCENT_GOLD, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 20, padding: '2px 12px', fontSize: '0.8214rem', fontWeight: 900, color: ACCENT_GOLD, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: ACCENT_GOLD, display: 'inline-block', boxShadow: '0 0 6px rgba(245,158,11,0.8)', animation: 'glowPulse 1.4s ease-in-out infinite' }} />
                       {t.text}
                     </span>
                   ) : (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 12, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: '0.8571rem', fontWeight: 600, color: '#94A3B8', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
                       <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#475569', display: 'inline-block' }} />
                       {t.text}
                     </span>
@@ -1037,18 +1037,18 @@ export const PortfolioView: React.FC = () => {
             <a href="#hero" style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none' }}>
               <img src={collegeLogo} alt="Inspire Junior College Logo" style={{ height: 46, width: 'auto', objectFit: 'contain' }} />
               <div>
-                <div style={{ fontSize: 19, fontWeight: 900, color: NAVBAR_NAVY, fontFamily: "'Merriweather',serif", letterSpacing: '-0.02em' }}>Inspire Junior College</div>
-                <div style={{ fontSize: 10.5, color: '#64748B', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase' }}>Hanumakonda, Telangana · IIT-JEE | NEET | Intermediate</div>
+                <div style={{ fontSize: '1.3571rem', fontWeight: 900, color: NAVBAR_NAVY, fontFamily: "'Merriweather',serif", letterSpacing: '-0.02em' }}>Inspire Junior College</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase' }}>Hanumakonda, Telangana · IIT-JEE | NEET | Intermediate</div>
               </div>
             </a>
             <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
               {[['#enquiry','Admissions 2026'],['#paper-clips','News & Media'],['#about','About'],['#contact','Contact']].map(([h,l]) => (
-                <a key={h} href={h} style={{ fontSize: 13, fontWeight: 700, color: '#475569', textDecoration: 'none', transition: 'color 0.2s' }}
+                <a key={h} href={h} style={{ fontSize: '0.9286rem', fontWeight: 700, color: '#475569', textDecoration: 'none', transition: 'color 0.2s' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#2563EB')}
                   onMouseLeave={e => (e.currentTarget.style.color = '#475569')}>{l}</a>
               ))}
             </div>
-            <a href="#enquiry" className="btn-gold pulse" style={{ padding: '9px 22px', fontSize: 13 }}>
+            <a href="#enquiry" className="btn-gold pulse" style={{ padding: '9px 22px', fontSize: '0.9286rem' }}>
               Enquire Now
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </a>
@@ -1070,7 +1070,7 @@ export const PortfolioView: React.FC = () => {
             {/* Mobile brand */}
             <a href="#hero" className="mob-btn" style={{ display: 'none', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
               <img src={collegeLogo} alt="Logo" style={{ height: 34, background: '#fff', padding: '2px 4px', borderRadius: 6 }} />
-              <span style={{ color: '#fff', fontWeight: 900, fontSize: 15, fontFamily: "'Merriweather',serif" }}>Inspire Junior College</span>
+              <span style={{ color: '#fff', fontWeight: 900, fontSize: '1.0714rem', fontFamily: "'Merriweather',serif" }}>Inspire Junior College</span>
             </a>
             {/* Desktop links */}
             <div className="desk-nav" style={{ display: 'flex', alignItems: 'center', gap: 28, width: '100%', justifyContent: 'center' }}>
@@ -1095,7 +1095,7 @@ export const PortfolioView: React.FC = () => {
           {mobileOpen && (
             <div style={{ background: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.1)', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 4, animation: 'navSlide 0.28s ease both' }}>
               {[['#about','About College'],['#streams','Academic Streams'],['#highlights','Campus Highlights'],['#paper-clips','Achievements & Media'],['#campuses','Our 4 Campuses'],['#campus-gallery','Insight Gallery'],['#enquiry','Admission Form'],['#contact','Contact']].map(([h,l]) => (
-                <a key={h} href={h} onClick={() => setMobileOpen(false)} style={{ color: '#CBD5E1', fontSize: 15, fontWeight: 700, textDecoration: 'none', padding: '10px 12px', borderRadius: 8, transition: 'background 0.2s, color 0.2s' }}
+                <a key={h} href={h} onClick={() => setMobileOpen(false)} style={{ color: '#CBD5E1', fontSize: '1.0714rem', fontWeight: 700, textDecoration: 'none', padding: '10px 12px', borderRadius: 8, transition: 'background 0.2s, color 0.2s' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = '#CBD5E1'; }}
                 >{l}</a>
@@ -1130,7 +1130,7 @@ export const PortfolioView: React.FC = () => {
               color: '#FFFFFF',
               padding: '6px 14px',
               borderRadius: 20,
-              fontSize: 11.5,
+              fontSize: '0.8214rem',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
@@ -1163,12 +1163,12 @@ export const PortfolioView: React.FC = () => {
             <div style={{ animation: 'fadeUp 0.8s ease both 0.2s' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <div style={{ width: 28, height: 3, background: 'linear-gradient(90deg,#4285F4,#EA4335,#FBBC05,#34A853)', backgroundSize: '200% 200%', animation: 'rainbowFlow 3s linear infinite', borderRadius: 2 }} />
-                <span style={{ fontSize: 10.5, fontWeight: 900, color: ACCENT_GOLD, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Established &amp; Accredited · Hanumakonda, Telangana</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 900, color: ACCENT_GOLD, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Established &amp; Accredited · Hanumakonda, Telangana</span>
               </div>
-              <h1 className="h1-hero text-shimmer-gold" style={{ fontSize: 'clamp(22px,3.2vw,38px)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 4px', lineHeight: 1.2 }}>
+              <h1 className="h1-hero text-shimmer-gold" style={{ fontSize: 'clamp(1.5714rem,3.2vw,2.7143rem)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 4px', lineHeight: 1.2 }}>
                 Inspire Junior College
               </h1>
-              <p style={{ fontSize: 13.5, color: '#CBD5E1', fontWeight: 600, margin: 0 }}>IIT-JEE Mains &amp; Advanced &nbsp;·&nbsp; NEET Medical &nbsp;·&nbsp; Intermediate Board</p>
+              <p style={{ fontSize: '0.9643rem', color: '#CBD5E1', fontWeight: 600, margin: 0 }}>IIT-JEE Mains &amp; Advanced &nbsp;·&nbsp; NEET Medical &nbsp;·&nbsp; Intermediate Board</p>
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', animation: 'fadeUp 0.8s ease both 0.4s' }}>
               <a href="#enquiry" className="btn-gold pulse">
@@ -1211,10 +1211,10 @@ export const PortfolioView: React.FC = () => {
             {/* Section heading */}
             <div className={`reveal ${clipsRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto' }}>
               <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Media Press &amp; Rank Clippings</div>
-              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
+              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(1.7143rem,3.2vw,2.8571rem)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
                 Our Paper Clips &amp; Rank Achievements
               </h2>
-              <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75, maxWidth: 620, margin: '0 auto' }}>
+              <p style={{ fontSize: '1.0357rem', color: '#64748B', lineHeight: 1.75, maxWidth: 620, margin: '0 auto' }}>
                 Authentic newspaper releases, press coverage, and rank felicitation highlights — Inspire Junior College students dominating national and state competitive entrance exams.
               </p>
             </div>
@@ -1222,7 +1222,7 @@ export const PortfolioView: React.FC = () => {
             <div className={`dec-divider reveal ${clipsRef.visible ? 'visible' : ''} d200`} style={{ marginTop: 24 }}>
               <div className="dec-divider-line" />
               <div className="dec-divider-gem" />
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>CLICK ANY CLIPPING TO ENLARGE</div>
+              <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>CLICK ANY CLIPPING TO ENLARGE</div>
               <div className="dec-divider-gem" />
               <div className="dec-divider-line" />
             </div>
@@ -1242,7 +1242,7 @@ export const PortfolioView: React.FC = () => {
                     {/* Gradient overlay at bottom of image */}
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top,rgba(15,23,42,0.65),transparent)' }} />
                     {/* Tag badge */}
-                    <div style={{ position: 'absolute', bottom: 12, left: 14, background: ACCENT_GOLD, color: '#0F172A', padding: '4px 10px', borderRadius: 20, fontSize: 10.5, fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    <div style={{ position: 'absolute', bottom: 12, left: 14, background: ACCENT_GOLD, color: '#0F172A', padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                       {clip.tag}
                     </div>
                     {/* Zoom icon */}
@@ -1253,9 +1253,9 @@ export const PortfolioView: React.FC = () => {
 
                   {/* Card body */}
                   <div style={{ padding: '20px 22px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10 }}>
-                    <h4 style={{ fontSize: 15.5, fontWeight: 800, color: DARK_TEXT, lineHeight: 1.4, margin: 0 }}>{clip.title}</h4>
-                    <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.65, margin: 0 }}>{clip.subtitle}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#2563EB', fontSize: 12.5, fontWeight: 800, marginTop: 4, paddingTop: 12, borderTop: '1px solid #F1F5F9' }}>
+                    <h4 style={{ fontSize: '1.1071rem', fontWeight: 800, color: DARK_TEXT, lineHeight: 1.4, margin: 0 }}>{clip.title}</h4>
+                    <p style={{ fontSize: '0.9286rem', color: '#64748B', lineHeight: 1.65, margin: 0 }}>{clip.subtitle}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#2563EB', fontSize: '0.8929rem', fontWeight: 800, marginTop: 4, paddingTop: 12, borderTop: '1px solid #F1F5F9' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                       View Full Clipping
                     </div>
@@ -1283,7 +1283,7 @@ export const PortfolioView: React.FC = () => {
                   className="btn-gold pulse"
                   style={{
                     padding: '14px 36px',
-                    fontSize: 15,
+                    fontSize: '1.0714rem',
                     fontWeight: 900,
                     borderRadius: 12,
                     display: 'inline-flex',
@@ -1326,10 +1326,10 @@ export const PortfolioView: React.FC = () => {
           <div ref={streamsRef.ref} className="ic">
             <div className={`reveal ${streamsRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 20px' }}>
               <div className="section-label" style={{ color: ACCENT_GOLD, justifyContent: 'center' }}>Future-Ready Education</div>
-              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
+              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(1.7143rem,3.2vw,2.8571rem)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
                 Academic Programs Offered
               </h2>
-              <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75 }}>
+              <p style={{ fontSize: '1.0357rem', color: '#64748B', lineHeight: 1.75 }}>
                 Specialized 2-year Intermediate programs combining Board curriculum with targeted competitive exam coaching — personalized for every student.
               </p>
             </div>
@@ -1347,34 +1347,34 @@ export const PortfolioView: React.FC = () => {
                   <div className="clip-wrap" style={{ height: 180, overflow: 'hidden', position: 'relative', background: '#0F172A' }}>
                     <img src={prog.img} alt={prog.title} className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, ${prog.gradA} 0%, transparent 80%)` }} />
-                    <span style={{ position: 'absolute', bottom: 12, left: 16, background: prog.accent, color: '#FFFFFF', padding: '4px 12px', borderRadius: 20, fontSize: 10.5, fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+                    <span style={{ position: 'absolute', bottom: 12, left: 16, background: prog.tagBg, color: '#FFFFFF', padding: '4px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
                       {prog.tag}
                     </span>
                   </div>
 
                   {/* Header content — WHITE TEXT */}
                   <div style={{ padding: '22px 24px 18px', background: `linear-gradient(160deg,${prog.gradA},${prog.gradB})`, color: '#FFFFFF', position: 'relative', overflow: 'hidden' }}>
-                    <h3 style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', margin: '0 0 4px', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{prog.title}</h3>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: prog.accent, marginBottom: 10, letterSpacing: '0.03em' }}>{prog.subtitle}</div>
-                    <p style={{ fontSize: 13.5, color: '#FFFFFF', lineHeight: 1.65, margin: 0, opacity: 0.9 }}>{prog.body}</p>
+                    <h3 style={{ fontSize: '1.5714rem', fontWeight: 900, color: '#FFFFFF', margin: '0 0 4px', fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{prog.title}</h3>
+                    <div style={{ fontSize: '0.9286rem', fontWeight: 800, color: prog.accent, marginBottom: 10, letterSpacing: '0.03em' }}>{prog.subtitle}</div>
+                    <p style={{ fontSize: '0.9643rem', color: '#FFFFFF', lineHeight: 1.65, margin: 0, opacity: 0.9 }}>{prog.body}</p>
                   </div>
 
                   {/* Highlights — WHITE & HIGH CONTRAST TEXT */}
                   <div style={{ padding: '20px 24px', flex: 1, display: 'flex', flexDirection: 'column', gap: 14, background: '#0F172A' }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Program Highlights</div>
+                    <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Program Highlights</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {prog.highlights.map((h, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 20, height: 20, borderRadius: 6, background: `${prog.accent}30`, border: `1px solid ${prog.accent}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={prog.accent} strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>
                           </div>
-                          <span style={{ fontSize: 13.5, fontWeight: 700, color: '#FFFFFF' }}>{h}</span>
+                          <span style={{ fontSize: '0.9643rem', fontWeight: 700, color: '#FFFFFF' }}>{h}</span>
                         </div>
                       ))}
                     </div>
                     <div style={{ paddingTop: 14, borderTop: '1px dashed rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#94A3B8' }}>2 Academic Years</span>
-                      <a href="#enquiry" style={{ color: prog.accent, fontWeight: 900, fontSize: 13.5, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, transition: 'gap 0.2s' }}
+                      <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: '#94A3B8' }}>2 Academic Years</span>
+                      <a href="#enquiry" style={{ color: prog.accent, fontWeight: 900, fontSize: '0.9643rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, transition: 'gap 0.2s' }}
                         onMouseEnter={e => (e.currentTarget.style.gap = '8px')} onMouseLeave={e => (e.currentTarget.style.gap = '4px')}>
                         Apply Stream
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -1396,10 +1396,10 @@ export const PortfolioView: React.FC = () => {
             {/* Header */}
             <div style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 20px' }}>
               <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Media &amp; VIP Felicitations</div>
-              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 12px', lineHeight: 1.2 }}>
+              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(1.7143rem,3.2vw,2.8571rem)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 12px', lineHeight: 1.2 }}>
                 Highlights of Our Campus
               </h2>
-              <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75 }}>
+              <p style={{ fontSize: '1.0357rem', color: '#64748B', lineHeight: 1.75 }}>
                 Explore VIP visits, minister felicitations, and student achievement features in full uncropped photos and videos.
               </p>
             </div>
@@ -1407,7 +1407,7 @@ export const PortfolioView: React.FC = () => {
             <div className="dec-divider" style={{ marginTop: 16, marginBottom: 28 }}>
               <div className="dec-divider-line" />
               <div className="dec-divider-gem" />
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>SELECT MEDIA TAB</div>
+              <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>SELECT MEDIA TAB</div>
               <div className="dec-divider-gem" />
               <div className="dec-divider-line" />
             </div>
@@ -1422,7 +1422,7 @@ export const PortfolioView: React.FC = () => {
                   gap: 10,
                   padding: '12px 32px',
                   borderRadius: 30,
-                  fontSize: 15,
+                  fontSize: '1.0714rem',
                   fontWeight: 900,
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
                   cursor: 'pointer',
@@ -1445,7 +1445,7 @@ export const PortfolioView: React.FC = () => {
                   gap: 10,
                   padding: '12px 32px',
                   borderRadius: 30,
-                  fontSize: 15,
+                  fontSize: '1.0714rem',
                   fontWeight: 900,
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
                   cursor: 'pointer',
@@ -1503,12 +1503,12 @@ export const PortfolioView: React.FC = () => {
                     />
 
                     {/* Tag badge */}
-                    <div style={{ position: 'absolute', top: 16, left: 16, background: ACCENT_GOLD, color: '#0F172A', padding: '4px 12px', borderRadius: 20, fontSize: 10.5, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', zIndex: 10 }}>
+                    <div style={{ position: 'absolute', top: 16, left: 16, background: ACCENT_GOLD, color: '#0F172A', padding: '4px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', zIndex: 10 }}>
                       {CAMPUS_PHOTOS[photoIndex].tag}
                     </div>
 
                     {/* Counter badge */}
-                    <div style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(10px)', color: '#FFFFFF', padding: '4px 12px', borderRadius: 20, fontSize: 11.5, fontWeight: 800, border: '1px solid rgba(255,255,255,0.2)', zIndex: 10 }}>
+                    <div style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(15,23,42,0.75)', backdropFilter: 'blur(10px)', color: '#FFFFFF', padding: '4px 12px', borderRadius: 20, fontSize: '0.8214rem', fontWeight: 800, border: '1px solid rgba(255,255,255,0.2)', zIndex: 10 }}>
                       Photo {photoIndex + 1} of {CAMPUS_PHOTOS.length}
                     </div>
                   </div>
@@ -1576,13 +1576,13 @@ export const PortfolioView: React.FC = () => {
                   {/* Photo Title & Description Bar */}
                   <div style={{ padding: '16px 20px', background: '#0F172A', color: '#FFFFFF', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
                     <div>
-                      <h4 style={{ fontSize: 16, fontWeight: 900, color: '#FFFFFF', margin: '0 0 4px', fontFamily: "'Merriweather',serif" }}>{CAMPUS_PHOTOS[photoIndex].title}</h4>
-                      <p style={{ fontSize: 12.5, color: '#CBD5E1', margin: 0, lineHeight: 1.5 }}>{CAMPUS_PHOTOS[photoIndex].subtitle}</p>
+                      <h4 style={{ fontSize: '1.1429rem', fontWeight: 900, color: '#FFFFFF', margin: '0 0 4px', fontFamily: "'Merriweather',serif" }}>{CAMPUS_PHOTOS[photoIndex].title}</h4>
+                      <p style={{ fontSize: '0.8929rem', color: '#CBD5E1', margin: 0, lineHeight: 1.5 }}>{CAMPUS_PHOTOS[photoIndex].subtitle}</p>
                     </div>
                     <button
                       onClick={() => setEnlargedMedia({ src: CAMPUS_PHOTOS[photoIndex].src, title: CAMPUS_PHOTOS[photoIndex].title })}
                       className="btn-gold"
-                      style={{ padding: '8px 18px', fontSize: 12 }}
+                      style={{ padding: '8px 18px', fontSize: '0.8571rem' }}
                     >
                       Enlarge Photo
                     </button>
@@ -1641,7 +1641,7 @@ export const PortfolioView: React.FC = () => {
                 
                 {/* Header info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#475569' }}>
+                  <div style={{ fontSize: '0.9286rem', fontWeight: 800, color: '#475569' }}>
                     Showing Videos {videoIndex + 1} &amp; {Math.min(videoIndex + 2, CAMPUS_VIDEOS.length)} of {CAMPUS_VIDEOS.length} <span style={{ color: '#94A3B8', fontWeight: 600 }}>(Swipe on phone)</span>
                   </div>
                   
@@ -1721,7 +1721,7 @@ export const PortfolioView: React.FC = () => {
                           Your browser does not support the video tag.
                         </video>
 
-                        <div style={{ position: 'absolute', top: 12, left: 14, background: 'rgba(245, 158, 11, 0.95)', color: '#0F172A', padding: '4px 12px', borderRadius: 16, fontSize: 10.5, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em', zIndex: 5, pointerEvents: 'none' }}>
+                        <div style={{ position: 'absolute', top: 12, left: 14, background: 'rgba(245, 158, 11, 0.95)', color: '#0F172A', padding: '4px 12px', borderRadius: 16, fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em', zIndex: 5, pointerEvents: 'none' }}>
                           {vid.tag}
                         </div>
 
@@ -1739,7 +1739,7 @@ export const PortfolioView: React.FC = () => {
                             color: '#FFFFFF',
                             padding: '4px 10px',
                             borderRadius: 16,
-                            fontSize: 11,
+                            fontSize: '0.7857rem',
                             fontWeight: 800,
                             cursor: 'pointer',
                             display: 'flex',
@@ -1754,8 +1754,8 @@ export const PortfolioView: React.FC = () => {
                       </div>
 
                       <div style={{ padding: '20px 22px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 8, background: '#0F172A' }}>
-                        <h4 style={{ fontSize: 16, fontWeight: 800, color: '#FFFFFF', margin: 0, lineHeight: 1.4 }}>{vid.title}</h4>
-                        <p style={{ fontSize: 13, color: '#94A3B8', margin: 0, lineHeight: 1.6 }}>{vid.subtitle}</p>
+                        <h4 style={{ fontSize: '1.1429rem', fontWeight: 800, color: '#FFFFFF', margin: 0, lineHeight: 1.4 }}>{vid.title}</h4>
+                        <p style={{ fontSize: '0.9286rem', color: '#94A3B8', margin: 0, lineHeight: 1.6 }}>{vid.subtitle}</p>
                       </div>
 
                       <div style={{ height: 3.5, background: 'linear-gradient(90deg, #F59E0B, #2563EB)' }} />
@@ -1779,10 +1779,10 @@ export const PortfolioView: React.FC = () => {
               {/* Left text */}
               <div className={`reveal-left ${aboutRef.visible ? 'visible' : ''}`}>
                 <div className="section-label" style={{ color: '#2563EB' }}>Why Choose Inspire Junior College</div>
-                <h2 id="mentorship" style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '12px 0 20px', lineHeight: 1.3 }}>
+                <h2 id="mentorship" style={{ fontSize: 'clamp(1.7143rem,3.2vw,2.8571rem)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '12px 0 20px', lineHeight: 1.3 }}>
                   Individual Mentorship &amp; Specialized Doubt Clarification
                 </h2>
-                <p style={{ fontSize: 14.5, color: '#475569', lineHeight: 1.8, marginBottom: 24 }}>
+                <p style={{ fontSize: '1.0357rem', color: '#475569', lineHeight: 1.8, marginBottom: 24 }}>
                   At <strong style={{ color: DARK_TEXT }}>Inspire Junior College</strong>, every student receives a personal mentor who tracks daily progress, error patterns, and academic growth — ensuring no student is left behind.
                 </p>
 
@@ -1794,14 +1794,14 @@ export const PortfolioView: React.FC = () => {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                       </div>
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: DARK_TEXT, marginBottom: 2 }}>{f.label}</div>
-                        <div style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6 }}>{f.desc}</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 800, color: DARK_TEXT, marginBottom: 2 }}>{f.label}</div>
+                        <div style={{ fontSize: '0.9286rem', color: '#64748B', lineHeight: 1.6 }}>{f.desc}</div>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <a href="#enquiry" style={{ marginTop: 24, display: 'inline-flex', alignItems: 'center', gap: 10, background: NAVBAR_NAVY, color: '#fff', padding: '13px 28px', borderRadius: 10, fontWeight: 800, textDecoration: 'none', fontSize: 14, transition: 'transform 0.22s, box-shadow 0.22s', boxShadow: '0 4px 16px rgba(15,23,42,0.18)' }}
+                <a href="#enquiry" style={{ marginTop: 24, display: 'inline-flex', alignItems: 'center', gap: 10, background: NAVBAR_NAVY, color: '#fff', padding: '13px 28px', borderRadius: 10, fontWeight: 800, textDecoration: 'none', fontSize: '1rem', transition: 'transform 0.22s, box-shadow 0.22s', boxShadow: '0 4px 16px rgba(15,23,42,0.18)' }}
                   onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(15,23,42,0.24)'; }}
                   onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 4px 16px rgba(15,23,42,0.18)'; }}>
                   Schedule a Campus Visit
@@ -1817,10 +1817,10 @@ export const PortfolioView: React.FC = () => {
                   <img src={mentorshipImg} alt="Individual Mentorship & Tutors" className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,23,42,0.85) 0%, transparent 60%)' }} />
                   <div style={{ position: 'absolute', bottom: 16, left: 20, right: 20, color: '#fff' }}>
-                    <span style={{ background: ACCENT_GOLD, color: '#0F172A', padding: '3px 10px', borderRadius: 12, fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <span style={{ background: ACCENT_GOLD, color: '#0F172A', padding: '3px 10px', borderRadius: 12, fontSize: '0.7143rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       1-on-1 Guidance Desk
                     </span>
-                    <div style={{ fontSize: 16, fontWeight: 800, marginTop: 4, textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>Dedicated Subject Mentors</div>
+                    <div style={{ fontSize: '1.1429rem', fontWeight: 800, marginTop: 4, textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>Dedicated Subject Mentors</div>
                   </div>
                 </div>
 
@@ -1829,11 +1829,11 @@ export const PortfolioView: React.FC = () => {
                   <div style={{ position: 'absolute', top: -30, right: -30, width: 150, height: 150, borderRadius: '50%', background: 'radial-gradient(circle,rgba(245,158,11,0.18),transparent)', animation: 'orbPulse 4s ease-in-out infinite' }} />
                   <div style={{ position: 'absolute', bottom: -40, left: -20, width: 130, height: 130, borderRadius: '50%', background: 'radial-gradient(circle,rgba(37,99,235,0.2),transparent)', animation: 'orbPulse 4s ease-in-out infinite 1.5s' }} />
 
-                  <div style={{ fontSize: 11, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Institutional Excellence</div>
-                  <h3 style={{ fontSize: 21, fontWeight: 900, color: '#FFFFFF', marginBottom: 8, fontFamily: "'Merriweather',serif", lineHeight: 1.3, position: 'relative' }}>
+                  <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Institutional Excellence</div>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#FFFFFF', marginBottom: 8, fontFamily: "'Merriweather',serif", lineHeight: 1.3, position: 'relative' }}>
                     Empowering Young Minds in Hanumakonda
                   </h3>
-                  <p style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.65, marginBottom: 20, position: 'relative' }}>
+                  <p style={{ fontSize: '0.9286rem', color: '#94A3B8', lineHeight: 1.65, marginBottom: 20, position: 'relative' }}>
                     Proven track record of academic excellence in Board exams and national entrance tests.
                   </p>
 
@@ -1853,8 +1853,8 @@ export const PortfolioView: React.FC = () => {
                       // array come from the API, and on this app that means
                       // handing over the access token in localStorage.
                       <div key={i} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: '12px 14px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        <div style={{ fontSize: 19, fontWeight: 900, color: s.c, marginBottom: 2 }}>{s.val}</div>
-                        <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 700 }}>{s.sub}</div>
+                        <div style={{ fontSize: '1.3571rem', fontWeight: 900, color: s.c, marginBottom: 2 }}>{s.val}</div>
+                        <div style={{ fontSize: '0.7857rem', color: '#94A3B8', fontWeight: 700 }}>{s.sub}</div>
                       </div>
                     ))}
                   </div>
@@ -1872,10 +1872,10 @@ export const PortfolioView: React.FC = () => {
           <div ref={campusesRef.ref} className="ic">
             <div className={`reveal ${campusesRef.visible ? 'visible' : ''}`} style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 20px' }}>
               <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Infrastructure &amp; Locations</div>
-              <h2 style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
+              <h2 style={{ fontSize: 'clamp(1.7143rem,3.2vw,2.8571rem)', fontWeight: 900, color: DARK_TEXT, fontFamily: "'Merriweather',serif", margin: '0 0 14px', lineHeight: 1.2 }}>
                 Our 4 Premium Campuses
               </h2>
-              <p style={{ fontSize: 14.5, color: '#64748B', lineHeight: 1.75 }}>
+              <p style={{ fontSize: '1.0357rem', color: '#64748B', lineHeight: 1.75 }}>
                 Located across Hanamkonda &amp; Warangal — each campus equipped with digital classrooms, AC hostels, dedicated transport, and round-the-clock security.
               </p>
             </div>
@@ -1889,15 +1889,15 @@ export const PortfolioView: React.FC = () => {
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,23,42,0.85) 0%, transparent 60%)' }} />
               <div style={{ position: 'absolute', bottom: 20, left: 24, right: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 14, color: '#fff' }}>
                 <div>
-                  <span style={{ background: ACCENT_GOLD, color: '#0F172A', padding: '4px 12px', borderRadius: 20, fontSize: 10.5, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <span style={{ background: ACCENT_GOLD, color: '#0F172A', padding: '4px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     State-of-the-Art Facilities
                   </span>
-                  <h3 style={{ fontSize: 'clamp(20px,2.5vw,28px)', fontWeight: 900, margin: '6px 0 2px', fontFamily: "'Merriweather',serif" }}>
+                  <h3 style={{ fontSize: 'clamp(1.4286rem,2.5vw,2rem)', fontWeight: 900, margin: '6px 0 2px', fontFamily: "'Merriweather',serif" }}>
                     Modern Classrooms &amp; Science Labs
                   </h3>
-                  <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.85)', margin: 0 }}>Designed for maximum focus, comfort, and competitive exam preparation</p>
+                  <p style={{ fontSize: '0.9643rem', color: 'rgba(255,255,255,0.85)', margin: 0 }}>Designed for maximum focus, comfort, and competitive exam preparation</p>
                 </div>
-                <a href="#enquiry" className="btn-gold" style={{ padding: '10px 20px', fontSize: 13 }}>
+                <a href="#enquiry" className="btn-gold" style={{ padding: '10px 20px', fontSize: '0.9286rem' }}>
                   Schedule Campus Tour
                 </a>
               </div>
@@ -1911,16 +1911,16 @@ export const PortfolioView: React.FC = () => {
                   <div style={{ height: 4, background: c.col }} />
                   <div style={{ padding: '22px 20px', background: '#0F172A' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
-                      <div style={{ width: 48, height: 48, borderRadius: 14, background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13, color: '#FFFFFF', letterSpacing: '0.02em', border: `1.5px solid ${c.col}60`, flexShrink: 0, boxShadow: `0 4px 12px ${c.col}40` }}>
+                      <div style={{ width: 48, height: 48, borderRadius: 14, background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.9286rem', color: '#FFFFFF', letterSpacing: '0.02em', border: `1.5px solid ${c.col}60`, flexShrink: 0, boxShadow: `0 4px 12px ${c.col}40` }}>
                         {c.code}
                       </div>
                       <div>
-                        <div style={{ fontSize: 10.5, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>Campus Branch</div>
-                        <h3 style={{ fontSize: 17, fontWeight: 900, color: '#FFFFFF', margin: 0 }}>{c.name}</h3>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>Campus Branch</div>
+                        <h3 style={{ fontSize: '1.2143rem', fontWeight: 900, color: '#FFFFFF', margin: 0 }}>{c.name}</h3>
                       </div>
                     </div>
-                    <p style={{ fontSize: 13.5, color: '#CBD5E1', lineHeight: 1.65, margin: '0 0 16px' }}>{c.desc}</p>
-                    <div style={{ paddingTop: 14, borderTop: `1px dashed ${c.col}40`, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 800, color: c.col, transition: 'gap 0.2s', cursor: 'pointer' }}>
+                    <p style={{ fontSize: '0.9643rem', color: '#CBD5E1', lineHeight: 1.65, margin: '0 0 16px' }}>{c.desc}</p>
+                    <div style={{ paddingTop: 14, borderTop: `1px dashed ${c.col}40`, display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9286rem', fontWeight: 800, color: c.col, transition: 'gap 0.2s', cursor: 'pointer' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                       Explore Campus Facilities
                     </div>
@@ -1938,7 +1938,7 @@ export const PortfolioView: React.FC = () => {
           <div ref={galleryRef.ref} className={`ic reveal ${galleryRef.visible ? 'visible' : ''}`}>
             <div style={{ textAlign: 'center', maxWidth: 700, margin: '0 auto 28px' }}>
               <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Infrastructure Exhibit</div>
-              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(24px,3.2vw,40px)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 10px', lineHeight: 1.2 }}>
+              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(1.7143rem,3.2vw,2.8571rem)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 10px', lineHeight: 1.2 }}>
                 Campus Gallery
               </h2>
               <div className="dec-divider" style={{ marginTop: 12, marginBottom: 0 }}>
@@ -1959,10 +1959,10 @@ export const PortfolioView: React.FC = () => {
 
             <div className={`reveal ${enquiryReveal.visible ? 'visible' : ''}`} style={{ textAlign: 'center', marginBottom: 44 }}>
               <div className="section-label" style={{ color: '#2563EB', justifyContent: 'center' }}>Admission Enquiry Desk 2026-27</div>
-              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(26px,3.5vw,44px)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 16px', lineHeight: 1.2 }}>
+              <h2 className="text-shimmer-blue" style={{ fontSize: 'clamp(1.8571rem,3.5vw,3.1429rem)', fontWeight: 900, fontFamily: "'Merriweather',serif", margin: '0 0 16px', lineHeight: 1.2 }}>
                 Enquire for Admission
               </h2>
-              <p style={{ fontSize: 15.5, color: '#64748B', lineHeight: 1.8 }}>
+              <p style={{ fontSize: '1.1071rem', color: '#64748B', lineHeight: 1.8 }}>
                 Fill in the form below and our dedicated admissions counselor will reach out within 24 hours with personalized guidance for stream &amp; campus selection.
               </p>
             </div>
@@ -1977,14 +1977,14 @@ export const PortfolioView: React.FC = () => {
                   <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg,#DEF7EC,#A7F3D0)', border: '2.5px solid #10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 0 0 8px rgba(16,185,129,0.1)' }}>
                     <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                   </div>
-                  <h3 style={{ fontSize: 26, fontWeight: 900, color: DARK_TEXT, marginBottom: 10 }}>Enquiry Submitted Successfully!</h3>
-                  <p style={{ fontSize: 14.5, color: '#64748B', marginBottom: 24, lineHeight: 1.7 }}>Our admissions counselor will reach out on your registered mobile number within 24 hours.</p>
-                  <div style={{ display: 'inline-block', padding: '16px 36px', background: 'linear-gradient(135deg,#EFF6FF,#DBEAFE)', border: '2px solid #2563EB', borderRadius: 14, color: '#1E3A8A', fontWeight: 900, fontSize: 19, marginBottom: 24, letterSpacing: '0.04em', boxShadow: '0 4px 16px rgba(37,99,235,0.15)' }}>
+                  <h3 style={{ fontSize: '1.8571rem', fontWeight: 900, color: DARK_TEXT, marginBottom: 10 }}>Enquiry Submitted Successfully!</h3>
+                  <p style={{ fontSize: '1.0357rem', color: '#64748B', marginBottom: 24, lineHeight: 1.7 }}>Our admissions counselor will reach out on your registered mobile number within 24 hours.</p>
+                  <div style={{ display: 'inline-block', padding: '16px 36px', background: 'linear-gradient(135deg,#EFF6FF,#DBEAFE)', border: '2px solid #2563EB', borderRadius: 14, color: '#1E3A8A', fontWeight: 900, fontSize: '1.3571rem', marginBottom: 24, letterSpacing: '0.04em', boxShadow: '0 4px 16px rgba(37,99,235,0.15)' }}>
                     REFERENCE CODE: {enquiryRef}
                   </div>
-                  <p style={{ fontSize: 13.5, color: '#64748B' }}>For instant assistance, call admissions desk: <strong style={{ color: '#D97706' }}>{orgPhone}</strong></p>
+                  <p style={{ fontSize: '0.9643rem', color: '#64748B' }}>For instant assistance, call admissions desk: <strong style={{ color: '#D97706' }}>{orgPhone}</strong></p>
                   <button onClick={() => { setEnquirySuccess(false); setStuName(''); setStuMobile(''); setEnquiryRef(''); }}
-                    style={{ marginTop: 24, padding: '12px 28px', background: NAVBAR_NAVY, color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'transform 0.2s' }}
+                    style={{ marginTop: 24, padding: '12px 28px', background: NAVBAR_NAVY, color: '#fff', border: 'none', borderRadius: 10, fontSize: '1rem', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.2s' }}
                     onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-1px)')}
                     onMouseLeave={e => (e.currentTarget.style.transform = '')}>
                     Submit Another Enquiry
@@ -1993,7 +1993,7 @@ export const PortfolioView: React.FC = () => {
               ) : (
                 <form onSubmit={handleEnquirySubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 22 }}>
                   {enquiryError && (
-                    <div style={{ gridColumn: '1/-1', padding: '14px 18px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: 10, color: '#DC2626', fontSize: 13.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ gridColumn: '1/-1', padding: '14px 18px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: 10, color: '#DC2626', fontSize: '0.9643rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                       {enquiryError}
                     </div>
@@ -2010,7 +2010,7 @@ export const PortfolioView: React.FC = () => {
                     { label: 'Email Address', placeholder: 'student@example.com', val: stuEmail, set: setStuEmail, type: 'email', max: LIMITS.email },
                   ].map(f => (
                     <div key={f.label}>
-                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</label>
+                      <label style={{ display: 'block', fontSize: '0.8929rem', fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</label>
                       <input
                         type={f.type}
                         required={f.label.includes('*')}
@@ -2036,7 +2036,7 @@ export const PortfolioView: React.FC = () => {
                     const id = `enq-${f.label.toLowerCase().replace(/[^a-z]+/g, '-')}`;
                     return (
                       <div key={f.label}>
-                        <label htmlFor={id} style={{ display: 'block', fontSize: 12.5, fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</label>
+                        <label htmlFor={id} style={{ display: 'block', fontSize: '0.8929rem', fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</label>
                         <select id={id} name={id} value={f.val} onChange={e => f.set(e.target.value)} className="ig" style={inputSt}>
                           {f.opts.map(o => <option key={o}>{o}</option>)}
                         </select>
@@ -2045,12 +2045,12 @@ export const PortfolioView: React.FC = () => {
                   })}
 
                   <div style={{ gridColumn: '1/-1' }}>
-                    <label style={{ display: 'block', fontSize: 12.5, fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message / Specific Requirements</label>
+                    <label style={{ display: 'block', fontSize: '0.8929rem', fontWeight: 800, color: '#475569', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Message / Specific Requirements</label>
                     <textarea rows={3} placeholder="Scholarship queries, hostel facilities, mentorship requirements, batch preferences..." value={stuNotes} onChange={e => setStuNotes(e.target.value)} className="ig" style={{ ...inputSt, resize: 'vertical' }} />
                   </div>
 
                   <div style={{ gridColumn: '1/-1' }}>
-                    <button type="submit" disabled={isSubmitting} className="btn-gold" style={{ width: '100%', justifyContent: 'center', fontSize: 16, padding: '16px', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer', animation: 'none' }}>
+                    <button type="submit" disabled={isSubmitting} className="btn-gold" style={{ width: '100%', justifyContent: 'center', fontSize: '1.1429rem', padding: '16px', opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer', animation: 'none' }}>
                       {isSubmitting ? (
                         <>
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: 'floatY 1s linear infinite' }}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -2079,8 +2079,8 @@ export const PortfolioView: React.FC = () => {
               {/* Modal header */}
               <div style={{ padding: '16px 24px', background: 'linear-gradient(90deg,#0F172A,#1E3A8A)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{selectedClip.tag}</span>
-                  <h3 style={{ fontSize: 15.5, fontWeight: 900, color: '#fff', margin: '2px 0 0' }}>{selectedClip.title}</h3>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{selectedClip.tag}</span>
+                  <h3 style={{ fontSize: '1.1071rem', fontWeight: 900, color: '#fff', margin: '2px 0 0' }}>{selectedClip.title}</h3>
                 </div>
                 <button onClick={() => setSelectedClip(null)} style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
@@ -2091,20 +2091,20 @@ export const PortfolioView: React.FC = () => {
               {/* Image content */}
               <div style={{ flex: 1, overflowY: 'auto', padding: 24, background: '#F8FAFC', textAlign: 'center' }}>
                 <img src={selectedClip.src} alt={selectedClip.title} style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 12, border: '1.5px solid #E2E8F0', boxShadow: '0 8px 28px rgba(0,0,0,0.1)' }} />
-                <p style={{ marginTop: 18, fontSize: 14.5, color: '#475569', fontWeight: 600, lineHeight: 1.7 }}>{selectedClip.subtitle}</p>
+                <p style={{ marginTop: 18, fontSize: '1.0357rem', color: '#475569', fontWeight: 600, lineHeight: 1.7 }}>{selectedClip.subtitle}</p>
               </div>
               {/* Bottom nav between clips */}
               <div style={{ padding: '12px 24px', background: '#fff', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <button onClick={() => { const idx = PAPER_CLIPS.findIndex(c => c.id === selectedClip.id); if (idx > 0) setSelectedClip(PAPER_CLIPS[idx - 1]); }}
                   disabled={selectedClip.id === 1}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: '1.5px solid #E2E8F0', borderRadius: 8, background: 'none', cursor: selectedClip.id === 1 ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, color: selectedClip.id === 1 ? '#CBD5E1' : DARK_TEXT, transition: 'all 0.2s' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: '1.5px solid #E2E8F0', borderRadius: 8, background: 'none', cursor: selectedClip.id === 1 ? 'not-allowed' : 'pointer', fontSize: '0.9286rem', fontWeight: 700, color: selectedClip.id === 1 ? '#CBD5E1' : DARK_TEXT, transition: 'all 0.2s' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
                   Previous
                 </button>
-                <span style={{ fontSize: 12.5, color: '#94A3B8', fontWeight: 700 }}>{selectedClip.id} / {PAPER_CLIPS.length}</span>
+                <span style={{ fontSize: '0.8929rem', color: '#94A3B8', fontWeight: 700 }}>{selectedClip.id} / {PAPER_CLIPS.length}</span>
                 <button onClick={() => { const idx = PAPER_CLIPS.findIndex(c => c.id === selectedClip.id); if (idx < PAPER_CLIPS.length - 1) setSelectedClip(PAPER_CLIPS[idx + 1]); }}
                   disabled={selectedClip.id === PAPER_CLIPS.length}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: '1.5px solid #E2E8F0', borderRadius: 8, background: 'none', cursor: selectedClip.id === PAPER_CLIPS.length ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, color: selectedClip.id === PAPER_CLIPS.length ? '#CBD5E1' : DARK_TEXT, transition: 'all 0.2s' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: '1.5px solid #E2E8F0', borderRadius: 8, background: 'none', cursor: selectedClip.id === PAPER_CLIPS.length ? 'not-allowed' : 'pointer', fontSize: '0.9286rem', fontWeight: 700, color: selectedClip.id === PAPER_CLIPS.length ? '#CBD5E1' : DARK_TEXT, transition: 'all 0.2s' }}>
                   Next
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
@@ -2132,24 +2132,24 @@ export const PortfolioView: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                   <img src={collegeLogo} alt="Logo" style={{ height: 46, background: '#fff', padding: '3px 6px', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.3)' }} />
                   <div>
-                    <div style={{ fontSize: 17, fontWeight: 900, color: '#fff', fontFamily: "'Merriweather',serif" }}>Inspire Junior College</div>
-                    <div style={{ fontSize: 10.5, color: ACCENT_GOLD, fontWeight: 800, letterSpacing: '0.05em' }}>Hanumakonda, Telangana</div>
+                    <div style={{ fontSize: '1.2143rem', fontWeight: 900, color: '#fff', fontFamily: "'Merriweather',serif" }}>Inspire Junior College</div>
+                    <div style={{ fontSize: '0.75rem', color: ACCENT_GOLD, fontWeight: 800, letterSpacing: '0.05em' }}>Hanumakonda, Telangana</div>
                   </div>
                 </div>
-                <p style={{ fontSize: 13.5, color: '#94A3B8', lineHeight: 1.8, marginBottom: 20 }}>
+                <p style={{ fontSize: '0.9643rem', color: '#94A3B8', lineHeight: 1.8, marginBottom: 20 }}>
                   Dedicated to preparing students for IIT-JEE, NEET, and Intermediate Board with top-tier faculty, individual mentorship, and modern campus infrastructure.
                 </p>
                 {/* Quick Links + ERP Portal */}
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                   <a href="#enquiry"
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, fontSize: 12.5, fontWeight: 800, color: ACCENT_GOLD, textDecoration: 'none', transition: 'background 0.2s, transform 0.2s' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, fontSize: '0.8929rem', fontWeight: 800, color: ACCENT_GOLD, textDecoration: 'none', transition: 'background 0.2s, transform 0.2s' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.2)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.1)'; e.currentTarget.style.transform = ''; }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
                     Admissions
                   </a>
                   <a href={portalHash}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.3)', borderRadius: 10, fontSize: 12.5, fontWeight: 800, color: '#93C5FD', textDecoration: 'none', transition: 'background 0.2s, transform 0.2s' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.3)', borderRadius: 10, fontSize: '0.8929rem', fontWeight: 800, color: '#93C5FD', textDecoration: 'none', transition: 'background 0.2s, transform 0.2s' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.22)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.12)'; e.currentTarget.style.transform = ''; }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
@@ -2160,7 +2160,7 @@ export const PortfolioView: React.FC = () => {
 
               {/* Campuses */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: '0.7857rem', fontWeight: 900, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 20, height: 1.5, background: ACCENT_GOLD }} />
                   Our 4 Campuses
                 </div>
@@ -2168,7 +2168,7 @@ export const PortfolioView: React.FC = () => {
                   {CAMPUSES_LIST.map(c => (
                     <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 6, height: 6, borderRadius: '50%', background: c.col, flexShrink: 0 }} />
-                      <span style={{ fontSize: 13.5, color: '#CBD5E1', fontWeight: 600 }}>{c.name}</span>
+                      <span style={{ fontSize: '0.9643rem', color: '#CBD5E1', fontWeight: 600 }}>{c.name}</span>
                     </div>
                   ))}
                 </div>
@@ -2176,7 +2176,7 @@ export const PortfolioView: React.FC = () => {
 
               {/* Streams */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: '0.7857rem', fontWeight: 900, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 20, height: 1.5, background: ACCENT_GOLD }} />
                   Academic Streams
                 </div>
@@ -2184,7 +2184,7 @@ export const PortfolioView: React.FC = () => {
                   {['MPC — IIT-JEE Mains & Advanced', 'BiPC — NEET Medical & AIIMS', 'MEC & CEC — CA / Civils', 'Long-Term Repeater Program'].map(p => (
                     <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#38BDF8', flexShrink: 0 }} />
-                      <span style={{ fontSize: 13.5, color: '#CBD5E1', fontWeight: 600 }}>{p}</span>
+                      <span style={{ fontSize: '0.9643rem', color: '#CBD5E1', fontWeight: 600 }}>{p}</span>
                     </div>
                   ))}
                 </div>
@@ -2192,26 +2192,26 @@ export const PortfolioView: React.FC = () => {
 
               {/* Contact */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ fontSize: '0.7857rem', fontWeight: 900, color: ACCENT_GOLD, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 20, height: 1.5, background: ACCENT_GOLD }} />
                   Contact Us
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Address</div>
-                    <div style={{ fontSize: 13.5, color: '#CBD5E1', lineHeight: 1.65 }}>Inspire Junior College Campus HQ<br />Hanamkonda, Warangal, Telangana</div>
+                    <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Address</div>
+                    <div style={{ fontSize: '0.9643rem', color: '#CBD5E1', lineHeight: 1.65 }}>Inspire Junior College Campus HQ<br />Hanamkonda, Warangal, Telangana</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Admissions Helpline</div>
+                    <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Admissions Helpline</div>
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <a href="tel:7416380320" style={{ fontSize: 14.5, color: ACCENT_GOLD, textDecoration: 'none', fontWeight: 900, letterSpacing: '0.02em' }}>+91 74163 80320</a>
+                      <a href="tel:7416380320" style={{ fontSize: '1.0357rem', color: ACCENT_GOLD, textDecoration: 'none', fontWeight: 900, letterSpacing: '0.02em' }}>+91 74163 80320</a>
                       <span style={{ color: '#64748B', fontWeight: 700 }}>|</span>
-                      <a href="tel:9177657274" style={{ fontSize: 14.5, color: ACCENT_GOLD, textDecoration: 'none', fontWeight: 900, letterSpacing: '0.02em' }}>+91 91776 57274</a>
+                      <a href="tel:9177657274" style={{ fontSize: '1.0357rem', color: ACCENT_GOLD, textDecoration: 'none', fontWeight: 900, letterSpacing: '0.02em' }}>+91 91776 57274</a>
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Email</div>
-                    <a href={`mailto:${orgEmail}`} style={{ fontSize: 13, color: '#93C5FD', textDecoration: 'none', fontWeight: 600 }}>{orgEmail}</a>
+                    <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Email</div>
+                    <a href={`mailto:${orgEmail}`} style={{ fontSize: '0.9286rem', color: '#93C5FD', textDecoration: 'none', fontWeight: 600 }}>{orgEmail}</a>
                   </div>
                 </div>
               </div>
@@ -2220,8 +2220,8 @@ export const PortfolioView: React.FC = () => {
 
             {/* Bottom bar */}
             <div className="footer-bottom" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-              <span style={{ fontSize: 12.5, color: '#64748B' }}>© 2026 Inspire Junior College. All Rights Reserved. Hanumakonda, Telangana.</span>
-              <span style={{ fontSize: 12.5, color: '#475569' }}>IIT-JEE · NEET · Intermediate Board</span>
+              <span style={{ fontSize: '0.8929rem', color: '#64748B' }}>© 2026 Inspire Junior College. All Rights Reserved. Hanumakonda, Telangana.</span>
+              <span style={{ fontSize: '0.8929rem', color: '#475569' }}>IIT-JEE · NEET · Intermediate Board</span>
             </div>
           </div>
         </footer>
@@ -2346,7 +2346,7 @@ export const PortfolioView: React.FC = () => {
                   borderTop: '1px solid rgba(255, 255, 255, 0.1)',
                   color: '#FFFFFF',
                   textAlign: 'center',
-                  fontSize: 14.5,
+                  fontSize: '1.0357rem',
                   fontWeight: 800,
                   letterSpacing: '0.02em',
                 }}

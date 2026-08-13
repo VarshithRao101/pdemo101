@@ -155,13 +155,13 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
             justifyContent: 'space-between',
             background: 'var(--bg-primary)'
           }}>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 850, color: 'var(--dark-charcoal)' }}>{title}</h3>
+            <h3 style={{ margin: 0, fontSize: '1.0714rem', fontWeight: 850, color: 'var(--dark-charcoal)' }}>{title}</h3>
             <button onClick={onClose} style={{
               background: 'none',
               border: 'none',
               cursor: 'pointer',
               color: 'var(--dark-charcoal)',
-              fontSize: '18px',
+              fontSize: '1.2857rem',
               fontWeight: 800,
               padding: '4px',
               display: 'flex',
@@ -194,7 +194,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
         <InspireLogo size="md" inPortal={true} />
       </div>
-      <p style={{ fontSize: '12.5px', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.5, textAlign: 'center' }}>
+      <p style={{ fontSize: '0.8929rem', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.5, textAlign: 'center' }}>
         Inspire Junior College is Hanumakonda's premier institution for IIT-JEE, NEET, and intermediate education, dedicated to training young minds for bright professional careers.
       </p>
 
@@ -205,10 +205,10 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           border: '1.5px solid var(--card-border)',
           backgroundColor: 'var(--bg-primary)',
         }}>
-          <h5 style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
+          <h5 style={{ margin: '0 0 4px 0', fontSize: '0.8571rem', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
             Campus Location
           </h5>
-          <span style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>
+          <span style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>
             Erragattu Gutta, Bheemaram, Hanumakonda, Telangana
           </span>
         </div>
@@ -219,10 +219,10 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           border: '1.5px solid var(--card-border)',
           backgroundColor: 'var(--bg-primary)',
         }}>
-          <h5 style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
+          <h5 style={{ margin: '0 0 4px 0', fontSize: '0.8571rem', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
             Admission Enquiry Numbers
           </h5>
-          <span style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>
+          <span style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>
             +91 7416380320 | +91 9177657274
           </span>
         </div>
@@ -233,10 +233,10 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           border: '1.5px solid var(--card-border)',
           backgroundColor: 'var(--bg-primary)',
         }}>
-          <h5 style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
+          <h5 style={{ margin: '0 0 4px 0', fontSize: '0.8571rem', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
             Web Portal & Email
           </h5>
-          <span style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>
+          <span style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>
             www.inspirehnk.org <br />
             Inspirehnk@gmail.com
           </span>
@@ -248,7 +248,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   // Spotlight Modal Content
   const renderSpotlightModal = () => renderModal("Campus Spotlight", () => setShowSpotlightModal(false), (
     <>
-      <p style={{ fontSize: '12.5px', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45 }}>
+      <p style={{ fontSize: '0.8929rem', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45 }}>
         Recent accolades, news updates, and student achievements from Inspire Junior College Hanumakonda.
       </p>
 
@@ -267,7 +267,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
               <span style={{
-                fontSize: '8.5px',
+                fontSize: '0.6071rem',
                 fontWeight: 800,
                 color: 'var(--royal-gold)',
                 backgroundColor: 'rgba(212,175,55,0.08)',
@@ -276,8 +276,8 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
                 border: '1px solid rgba(212,175,55,0.15)'
               }}>{item.tag}</span>
             </div>
-            <h4 style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{item.title}</h4>
-            <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--muted-gray)', lineHeight: 1.4 }}>{item.desc}</p>
+            <h4 style={{ margin: '0 0 4px 0', fontSize: '0.9286rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{item.title}</h4>
+            <p style={{ margin: 0, fontSize: '0.8214rem', color: 'var(--muted-gray)', lineHeight: 1.4 }}>{item.desc}</p>
           </div>
         ))}
       </div>
@@ -299,12 +299,12 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" strokeWidth="2.5" style={{ marginBottom: '12px' }}>
             <polyline points="20 6 9 17 4 12" />
           </svg>
-          <h4 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--dark-charcoal)', margin: '0 0 6px 0' }}>Thank You!</h4>
-          <p style={{ fontSize: '12px', color: 'var(--muted-gray)', margin: 0 }}>Your rating and comments have been securely submitted to help us improve.</p>
+          <h4 style={{ fontSize: '1.0714rem', fontWeight: 800, color: 'var(--dark-charcoal)', margin: '0 0 6px 0' }}>Thank You!</h4>
+          <p style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)', margin: 0 }}>Your rating and comments have been securely submitted to help us improve.</p>
         </div>
       ) : (
         <>
-          <p style={{ fontSize: '12.5px', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45, textAlign: 'center' }}>
+          <p style={{ fontSize: '0.8929rem', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45, textAlign: 'center' }}>
             Your feedback helps us make the Inspire Portal better for everyone.
           </p>
 
@@ -346,7 +346,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
                 border: '1.5px solid var(--card-border)',
                 backgroundColor: 'var(--bg-primary)',
                 color: 'var(--dark-charcoal)',
-                fontSize: '12.5px',
+                fontSize: '0.8929rem',
                 fontFamily: 'var(--font-family)',
                 resize: 'none',
                 outline: 'none'
@@ -364,7 +364,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               backgroundColor: 'var(--royal-gold)',
               color: '#000',
               fontWeight: 800,
-              fontSize: '13px',
+              fontSize: '0.9286rem',
               cursor: 'pointer',
               width: '100%',
               opacity: (stars === 0 || isSubmittingFeedback) ? 0.6 : 1,
@@ -382,7 +382,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   // Settings Modal Content
   const renderSettingsModal = () => renderModal("Portal Settings", () => setShowSettingsModal(false), (
     <>
-      <p style={{ fontSize: '12.5px', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45 }}>
+      <p style={{ fontSize: '0.8929rem', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45 }}>
         Customize your experience and security options on the Inspire Residential Portal.
       </p>
 
@@ -399,8 +399,8 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           backgroundColor: 'var(--bg-primary)'
         }}>
           <div>
-            <h5 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Theme Toggle</h5>
-            <span style={{ fontSize: '10.5px', color: 'var(--muted-gray)' }}>Light / Dark theme toggle</span>
+            <h5 style={{ margin: 0, fontSize: '0.9286rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Theme Toggle</h5>
+            <span style={{ fontSize: '0.75rem', color: 'var(--muted-gray)' }}>Light / Dark theme toggle</span>
           </div>
           <button
             onClick={() => setThemeMode(theme === 'light' ? 'Dark' : 'Light')}
@@ -410,7 +410,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               border: '1.5px solid var(--card-border)',
               backgroundColor: 'var(--bg-secondary)',
               color: 'var(--dark-charcoal)',
-              fontSize: '11px',
+              fontSize: '0.7857rem',
               fontWeight: 800,
               cursor: 'pointer'
             }}
@@ -431,8 +431,8 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           backgroundColor: 'var(--bg-primary)'
         }}>
           <div>
-            <h5 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>SMS Reminders</h5>
-            <span style={{ fontSize: '10.5px', color: 'var(--muted-gray)' }}>Receive SMS reports for gate pass approvals</span>
+            <h5 style={{ margin: 0, fontSize: '0.9286rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>SMS Reminders</h5>
+            <span style={{ fontSize: '0.75rem', color: 'var(--muted-gray)' }}>Receive SMS reports for gate pass approvals</span>
           </div>
           <input
             type="checkbox"
@@ -458,8 +458,8 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           backgroundColor: 'var(--bg-primary)'
         }}>
           <div>
-            <h5 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Fingerprint Sign-in</h5>
-            <span style={{ fontSize: '10.5px', color: 'var(--muted-gray)' }}>Allow biometric pass check at starting view</span>
+            <h5 style={{ margin: 0, fontSize: '0.9286rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Fingerprint Sign-in</h5>
+            <span style={{ fontSize: '0.75rem', color: 'var(--muted-gray)' }}>Allow biometric pass check at starting view</span>
           </div>
           <input
             type="checkbox"
@@ -484,7 +484,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
             backgroundColor: 'var(--bg-secondary)',
             color: 'var(--dark-charcoal)',
             fontWeight: 800,
-            fontSize: '12.5px',
+            fontSize: '0.8929rem',
             cursor: 'pointer',
             width: '100%',
             marginTop: '4px'
@@ -642,7 +642,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '20px',
+              fontSize: '1.4286rem',
               fontWeight: 800,
             }}>
               {displayInitials}
@@ -651,7 +651,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
             <h3
               style={{
-                fontSize: '14.5px',
+                fontSize: '1.0357rem',
                 fontWeight: 800,
                 color: '#ffffff',
                 margin: 0,
@@ -662,9 +662,9 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
             >
               {displayName}
             </h3>
-            <span style={{ fontSize: '11px', color: '#CBD5E1', marginTop: '2px', fontWeight: 600 }}>ID: {displayId} &gt;</span>
+            <span style={{ fontSize: '0.7857rem', color: '#CBD5E1', marginTop: '2px', fontWeight: 600 }}>ID: {displayId} &gt;</span>
             <div style={{
-              fontSize: '10px',
+              fontSize: '0.7143rem',
               fontWeight: 800,
               color: '#F59E0B',
               letterSpacing: '0.08em',
@@ -705,7 +705,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
                   cursor: 'pointer',
                   width: '100%',
                   textAlign: 'left',
-                  fontSize: '13.5px',
+                  fontSize: '0.9643rem',
                   fontFamily: 'var(--font-family)',
                   transition: 'all 0.2s ease',
                   backgroundColor: isActive ? 'rgba(59, 130, 246, 0.28)' : 'transparent',
@@ -722,7 +722,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
                   <span style={{
                     backgroundColor: '#EF4444',
                     color: '#fff',
-                    fontSize: '9px',
+                    fontSize: '0.6429rem',
                     fontWeight: 800,
                     borderRadius: '50%',
                     width: '15px',
@@ -749,7 +749,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               borderRadius: '10px',
               padding: '10px 14px',
               color: '#ffffff',
-              fontSize: '12.5px',
+              fontSize: '0.8929rem',
               fontWeight: 700,
               cursor: 'pointer',
               width: '100%',
@@ -778,13 +778,13 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               borderRadius: '50%',
               border: '1.5px solid #fff',
               color: '#fff',
-              fontSize: '11px',
+              fontSize: '0.7857rem',
               fontWeight: 900,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>I</div>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: '#fff', letterSpacing: '0.05em' }}>INSPIRE GROUP</div>
+            <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: '#fff', letterSpacing: '0.05em' }}>INSPIRE GROUP</div>
           </div>
         </div>
       </aside>
@@ -853,7 +853,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '20px',
+    fontSize: '1.4286rem',
     fontWeight: 800,
   },
   drawerProfileInfo: {
@@ -862,19 +862,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: 'flex-start',
   },
   drawerProfileName: {
-    fontSize: '15px',
+    fontSize: '1.0714rem',
     fontWeight: 700,
     color: '#F8FAFC',
     margin: 0,
   },
   drawerProfileMeta: {
-    fontSize: '12px',
+    fontSize: '0.8571rem',
     color: '#94A3B8',
     marginTop: '2px',
     fontWeight: 500,
   },
   drawerBrandText: {
-    fontSize: '14px',
+    fontSize: '1rem',
     fontWeight: 900,
     color: '#3B82F6', // Blue highlight
     marginTop: '6px',
@@ -902,7 +902,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: 'pointer',
     width: '100%',
     textAlign: 'left',
-    fontSize: '14px',
+    fontSize: '1rem',
     fontFamily: 'var(--font-family)',
     transition: 'all 0.2s ease',
   },
@@ -929,7 +929,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: 'rgba(255,255,255,0.05)',
     color: '#CBD5E1',
     cursor: 'pointer',
-    fontSize: '13px',
+    fontSize: '0.9286rem',
     fontWeight: 600,
     fontFamily: 'var(--font-family)',
   },
@@ -949,11 +949,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '10px',
+    fontSize: '0.7143rem',
     fontWeight: 900,
   },
   brandingCrestText: {
-    fontSize: '9px',
+    fontSize: '0.6429rem',
     fontWeight: 800,
     color: '#fff',
     letterSpacing: '0.05em',
@@ -1012,7 +1012,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: 'pointer',
     width: '100%',
     textAlign: 'left',
-    fontSize: '14px',
+    fontSize: '1rem',
     fontFamily: 'var(--font-family)',
     position: 'relative',
     transition: 'all 0.2s ease',
@@ -1047,7 +1047,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '12px',
+    fontSize: '0.8571rem',
     fontWeight: 700,
     color: 'var(--dark-charcoal)',
     boxShadow: 'var(--shadow-sm)',
@@ -1057,12 +1057,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: 'column',
   },
   userName: {
-    fontSize: '13px',
+    fontSize: '0.9286rem',
     fontWeight: 600,
     color: 'var(--dark-charcoal)',
   },
   userRole: {
-    fontSize: '10px',
+    fontSize: '0.7143rem',
     color: 'var(--muted-gray)',
     fontWeight: 500,
   },

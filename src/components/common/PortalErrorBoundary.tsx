@@ -74,7 +74,7 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
           }}
         >
           {/* Icon */}
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+          <div style={{ fontSize: '3.4286rem', marginBottom: '16px' }}>⚠️</div>
 
           {/* Title */}
           <h2
@@ -89,7 +89,7 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
           </h2>
 
           {/* Subtitle */}
-          <p style={{ fontSize: '13px', color: '#64748B', margin: '0 0 20px 0' }}>
+          <p style={{ fontSize: '0.9286rem', color: '#64748B', margin: '0 0 20px 0' }}>
             This screen encountered an unexpected error. The rest of the portal
             is unaffected. You can retry or navigate to another section.
           </p>
@@ -101,7 +101,7 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
               border: '1px solid #FECACA',
               borderRadius: '10px',
               padding: '12px 14px',
-              fontSize: '11px',
+              fontSize: '0.7857rem',
               color: '#B91C1C',
               textAlign: 'left',
               whiteSpace: 'pre-wrap',
@@ -124,7 +124,7 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
               backgroundColor: '#0F172A',
               color: '#FFFFFF',
               fontWeight: 800,
-              fontSize: '13px',
+              fontSize: '0.9286rem',
               cursor: 'pointer',
               letterSpacing: '0.01em',
             }}

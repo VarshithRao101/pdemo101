@@ -8,25 +8,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <!--
-      Content Security Policy, delivered in the document rather than as a header.
+      The Content Security Policy is injected here at build time from
+      server/security/csp.cjs — the same file the server hands to helmet.
 
-      The server already sends a full CSP via helmet, but Hostinger's edge
-      replaces the Content-Security-Policy header on every proxied response
-      with just "upgrade-insecure-requests" before it reaches the browser.
-      A meta-delivered policy travels inside the HTML body, so the edge cannot
-      rewrite it, and the browser enforces it for this document.
+      It has to travel in the document rather than as a header because
+      Hostinger's edge rewrites Content-Security-Policy on every proxied
+      response down to "upgrade-insecure-requests", so the header never
+      reaches a browser. This meta copy does.
 
-      Keep this in sync with the helmet directives in server/app.cjs. Note that
-      frame-ancestors is not valid in a meta tag and is intentionally absent —
-      clickjacking is covered by the X-Frame-Options: SAMEORIGIN header, which
-      does survive the edge.
-
-      script-src is 'self' with NO 'unsafe-inline'. The built page loads one
-      module by src and has no inline script or handler anywhere, so nothing
-      needs it. If that ever changes, use a nonce or a hash for that one
-      script rather than reopening the directive.
+      Do not write the policy here by hand. Two hand-maintained copies drift,
+      and the one that drifts unnoticed is this one — the only one users are
+      actually protected by. Edit server/security/csp.cjs instead.
     -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
+    <!--CSP-->
 
     <!-- Primary Meta Tags -->
     <title>Inspire Educational Institutions | Administrative Portal Gateway</title>

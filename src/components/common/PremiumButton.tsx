@@ -56,11 +56,11 @@ export const PremiumButton: React.FC<PremiumButtonProps> = ({
   const getSizeStyles = () => {
     switch (size) {
       case 'sm':
-        return { padding: '8px 16px', fontSize: '13px', borderRadius: 'var(--radius-sm)' };
+        return { padding: '8px 16px', fontSize: '0.9286rem', borderRadius: 'var(--radius-sm)' };
       case 'md':
-        return { padding: '12px 24px', fontSize: '15px', borderRadius: 'var(--radius-md)' };
+        return { padding: '12px 24px', fontSize: '1.0714rem', borderRadius: 'var(--radius-md)' };
       case 'lg':
-        return { padding: '16px 32px', fontSize: '17px', borderRadius: 'var(--radius-lg)' };
+        return { padding: '16px 32px', fontSize: '1.2143rem', borderRadius: 'var(--radius-lg)' };
     }
   };
 

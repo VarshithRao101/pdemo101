@@ -12,6 +12,21 @@
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
+/*
+  The root size is a percentage, not a pixel value.
+
+  It used to be `font-size: 14px`, which silently overrides the reader's own
+  browser font-size preference — someone who has set their default to 20px
+  because they cannot comfortably read 14 still got 14. 87.5% of the default
+  16px is the same 14px, so nothing moves for a reader on default settings,
+  but the whole interface now scales with the preference instead of ignoring
+  it. Every rem in the app is measured against this, so it is the one
+  declaration that makes the rest of the type scale meaningful.
+*/
+html {
+  font-size: 87.5%;
+}
+
 html, body {
   background-color: #FAFAF9 !important;
   background-image: none !important;
@@ -21,7 +36,8 @@ html, body {
   width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  font-size: 14px;
+  /* No font-size here. This selector also matches html, so declaring one
+     would override the 87.5% root set above — body inherits it anyway. */
   line-height: 1.5;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -51,7 +67,7 @@ body.neo-2d, html.neo-2d, body.dark-theme, html.dark-theme {
 
 /* Restrained Typography Scale */
 h1, .page-title {
-  font-size: 22px;
+  font-size: 1.5714rem /* 22px */;
   font-weight: 600;
   line-height: 1.4;
   color: #1C1C1E;
@@ -59,7 +75,7 @@ h1, .page-title {
 }
 
 h2, h3, .section-heading {
-  font-size: 16px;
+  font-size: 1.1429rem /* 16px */;
   font-weight: 600;
   line-height: 1.4;
   color: #1C1C1E;
@@ -67,7 +83,7 @@ h2, h3, .section-heading {
 }
 
 h4, h5, h6 {
-  font-size: 14px;
+  font-size: 1rem /* 14px */;
   font-weight: 600;
   color: #1C1C1E;
 }
@@ -124,7 +140,7 @@ input, textarea, select {
   background-color: #FFFFFF !important;
   color: #0F172A !important;
   padding: 10px 14px;
-  font-size: 13.5px;
+  font-size: 0.9643rem /* 13.5px */;
   font-weight: 500;
   font-family: 'Inter', sans-serif;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -142,7 +158,7 @@ input::placeholder, textarea::placeholder {
 }
 
 label {
-  font-size: 11.5px;
+  font-size: 0.8214rem /* 11.5px */;
   color: #64748B;
   font-weight: 700;
   text-transform: uppercase;
@@ -155,7 +171,7 @@ label {
 button {
   border-radius: 10px;
   font-family: 'Inter', sans-serif;
-  font-size: 13.5px;
+  font-size: 0.9643rem /* 13.5px */;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -215,7 +231,7 @@ table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 13px;
+  font-size: 0.9286rem /* 13px */;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -223,7 +239,7 @@ table {
 th {
   color: #475569;
   font-weight: 800;
-  font-size: 11px;
+  font-size: 0.7857rem /* 11px */;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   text-align: left;

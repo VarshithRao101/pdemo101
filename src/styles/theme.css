@@ -65,15 +65,21 @@
   --r-lg: 14px;
   --r-full: 9999px;
 
-  /* --- Type scale -------------------------------------------------------- */
-  --t-micro: 10px;
-  --t-caption: 11px;
-  --t-small: 12px;
-  --t-body: 13px;
-  --t-lead: 15px;
-  --t-title: 19px;
-  --t-display: 28px;
-  --t-hero: 40px;
+  /* --- Type scale --------------------------------------------------------
+     In rem, against a root of 87.5% — 14px for a reader on browser defaults,
+     so these render at exactly the pixel sizes they replaced. Stated in rem
+     rather than px so that a reader who has raised their font-size preference
+     gets the whole scale raised with it, which a pixel value silently refuses
+     to do. Keep new entries in rem; dividing the intended pixel size by 14
+     gives the value. */
+  --t-micro: 0.7143rem;   /* 10px */
+  --t-caption: 0.7857rem; /* 11px */
+  --t-small: 0.8571rem;   /* 12px */
+  --t-body: 0.9286rem;    /* 13px */
+  --t-lead: 1.0714rem;    /* 15px */
+  --t-title: 1.3571rem;   /* 19px */
+  --t-display: 2rem;      /* 28px */
+  --t-hero: 2.8571rem;    /* 40px */
 
   /* --- Motion ------------------------------------------------------------
      Modest by intent. Two durations, one curve. Motion signals that something

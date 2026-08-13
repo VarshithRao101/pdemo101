@@ -1741,7 +1741,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 padding: '10px 20px',
                 borderRadius: '12px',
                 fontWeight: 850,
-                fontSize: '13.5px',
+                fontSize: '0.9643rem',
                 border: 'none',
                 cursor: 'pointer',
                 display: 'flex',
@@ -1763,10 +1763,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div style={{ ...styles.readOnlyBlock, zIndex: 1, marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div>
-                <h4 style={{ ...styles.sectionSubtitle, margin: 0, fontSize: '15px', fontWeight: 900, color: 'var(--ink)' }}>
+                <h4 style={{ ...styles.sectionSubtitle, margin: 0, fontSize: '1.0714rem', fontWeight: 900, color: 'var(--ink)' }}>
                   Register New Student Admission
                 </h4>
-                <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: 'var(--ink-secondary)' }}>
+                <p style={{ margin: '2px 0 0', fontSize: '0.8214rem', color: 'var(--ink-secondary)' }}>
                   Quick single-bar surface entry. Fill basic info and click submit to open detailed hover modal.
                 </p>
               </div>
@@ -1781,7 +1781,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   placeholder={`ADM2400${students.length + 1}`}
                   value={newStuAdmissionNumber}
                   onChange={(e) => { setNewStuAdmissionNumber(e.target.value); setRegStuError(''); }}
-                  style={{ ...styles.textInputBox, fontSize: '12.5px' }}
+                  style={{ ...styles.textInputBox, fontSize: '0.8929rem' }}
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -1791,7 +1791,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   placeholder="e.g. Rahul Sharma"
                   value={newStuName}
                   onChange={(e) => setNewStuName(e.target.value)}
-                  style={{ ...styles.textInputBox, fontSize: '12.5px' }}
+                  style={{ ...styles.textInputBox, fontSize: '0.8929rem' }}
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -1801,7 +1801,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   placeholder="e.g. 9900000000"
                   value={newStuMobile}
                   onChange={(e) => setNewStuMobile(e.target.value)}
-                  style={{ ...styles.textInputBox, fontSize: '12.5px' }}
+                  style={{ ...styles.textInputBox, fontSize: '0.8929rem' }}
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -1809,7 +1809,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <select
                   value={newStuBranch}
                   onChange={(e) => setNewStuBranch(e.target.value)}
-                  style={{ ...styles.selectInput, fontSize: '12.5px' }}
+                  style={{ ...styles.selectInput, fontSize: '0.8929rem' }}
                 >
                   <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
                   <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
@@ -1822,7 +1822,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <select
                   value={newStuCourse}
                   onChange={(e) => setNewStuCourse(e.target.value)}
-                  style={{ ...styles.selectInput, fontSize: '12.5px' }}
+                  style={{ ...styles.selectInput, fontSize: '0.8929rem' }}
                 >
                   <option value="MPC">MPC</option>
                   <option value="BiPC">BiPC</option>
@@ -1836,7 +1836,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <select
                   value={newStuYear}
                   onChange={(e) => setNewStuYear(e.target.value as any)}
-                  style={{ ...styles.selectInput, fontSize: '12.5px' }}
+                  style={{ ...styles.selectInput, fontSize: '0.8929rem' }}
                 >
                   <option value="1st Year">1st Year</option>
                   <option value="2nd Year">2nd Year</option>
@@ -1860,7 +1860,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     padding: '8px 16px',
                     backgroundColor: 'var(--good)',
                     color: 'var(--surface)',
-                    fontSize: '12.5px',
+                    fontSize: '0.8929rem',
                     fontWeight: 800,
                     display: 'flex',
                     alignItems: 'center',
@@ -1918,10 +1918,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   zIndex: 10
                 }}>
                   <div>
-                    <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                       INSPIRE JUNIOR COLLEGE • STUDENT ADMISSION REGISTRATION
                     </span>
-                    <h3 style={{ margin: '2px 0 0', fontSize: '17px', fontWeight: 900, color: 'var(--ink)' }}>
+                    <h3 style={{ margin: '2px 0 0', fontSize: '1.2143rem', fontWeight: 900, color: 'var(--ink)' }}>
                       {newStuFormPage === 1 ? 'Screen 1 of 3: Basic Academic Information' : newStuFormPage === 2 ? 'Screen 2 of 3: Personal & Family Information' : 'Screen 3 of 3: Fee Structure & Bill Format'}
                     </h3>
                   </div>
@@ -1930,7 +1930,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <span style={{
                         padding: '4px 10px',
                         borderRadius: '20px',
-                        fontSize: '11px',
+                        fontSize: '0.7857rem',
                         fontWeight: 800,
                         backgroundColor: newStuFormPage === 1 ? 'var(--ink)' : 'var(--line)',
                         color: newStuFormPage === 1 ? 'var(--surface)' : 'var(--ink-secondary)'
@@ -1940,7 +1940,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <span style={{
                         padding: '4px 10px',
                         borderRadius: '20px',
-                        fontSize: '11px',
+                        fontSize: '0.7857rem',
                         fontWeight: 800,
                         backgroundColor: newStuFormPage === 2 ? 'var(--ink)' : 'var(--line)',
                         color: newStuFormPage === 2 ? 'var(--surface)' : 'var(--ink-secondary)'
@@ -1950,7 +1950,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <span style={{
                         padding: '4px 10px',
                         borderRadius: '20px',
-                        fontSize: '11px',
+                        fontSize: '0.7857rem',
                         fontWeight: 800,
                         backgroundColor: newStuFormPage === 3 ? 'var(--ink)' : 'var(--line)',
                         color: newStuFormPage === 3 ? 'var(--surface)' : 'var(--ink-secondary)'
@@ -1986,7 +1986,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div>
                       {/* Screen 1: Basic Information */}
                       <div style={{ marginBottom: '18px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
+                        <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
                           1. Basic Academic Information
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
@@ -2057,7 +2057,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div>
                       {/* Screen 2: Personal & Family Information */}
                       <div style={{ marginBottom: '18px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
+                        <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
                           2. Personal & Family Information
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
@@ -2130,26 +2130,26 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid var(--line)', paddingBottom: '8px', marginBottom: '4px' }}>
                           <div>
-                            <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                            <span style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                               INSPIRE JUNIOR COLLEGE
                             </span>
-                            <h4 style={{ margin: '1px 0 0', fontSize: '14px', fontWeight: 900, color: 'var(--ink)' }}>
+                            <h4 style={{ margin: '1px 0 0', fontSize: '1rem', fontWeight: 900, color: 'var(--ink)' }}>
                               Fee Structure & Bill Format Breakdown
                             </h4>
                           </div>
                           <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--ink-secondary)' }}>Live Accumulated Total:</span>
-                            <span style={{ fontSize: '14px', fontWeight: 900, color: 'var(--good)', marginLeft: '6px' }}>
+                            <span style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>Live Accumulated Total:</span>
+                            <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--good)', marginLeft: '6px' }}>
                               Rs.{newStuFeeSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0).toLocaleString('en-IN')}
                             </span>
                           </div>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 32px', gap: '8px', paddingBottom: '4px', borderBottom: '1px solid var(--line-strong)' }}>
-                          <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>
+                          <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>
                             Fee Section Description
                           </span>
-                          <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', textAlign: 'right' }}>
+                          <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', textAlign: 'right' }}>
                             Amount (Rs)
                           </span>
                           <span></span>
@@ -2157,16 +2157,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '320px', overflowY: 'auto' }}>
                           {newStuFeeSlots.length === 0 ? (
-                            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--ink-secondary)', fontSize: '12px', fontStyle: 'italic' }}>
+                            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--ink-secondary)', fontSize: '0.8571rem', fontStyle: 'italic' }}>
                               All fee slots removed. Click "+ Add Fee Section Slot" below to add slots.
                             </div>
                           ) : (
                             newStuFeeSlots.map((slot) => (
                               <div key={slot.id} style={{ display: 'grid', gridTemplateColumns: '1fr 160px 32px', gap: '8px', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink)' }}>{slot.name}</label>
+                                  <label style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink)' }}>{slot.name}</label>
                                   {slot.isCustom && (
-                                    <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--royal-gold)', backgroundColor: 'var(--surface-sunken)', padding: '1px 4px', borderRadius: '4px' }}>Custom</span>
+                                    <span style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--royal-gold)', backgroundColor: 'var(--surface-sunken)', padding: '1px 4px', borderRadius: '4px' }}>Custom</span>
                                   )}
                                 </div>
                                 <input min={0} max={999999999}
@@ -2177,12 +2177,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                                     const val = e.target.value;
                                     setNewStuFeeSlots(prev => prev.map(s => s.id === slot.id ? { ...s, amount: val } : s));
                                   }}
-                                  style={{ ...styles.textInputBox, textAlign: 'right', fontWeight: 700, padding: '4px 8px', fontSize: '12px' }}
+                                  style={{ ...styles.textInputBox, textAlign: 'right', fontWeight: 700, padding: '4px 8px', fontSize: '0.8571rem' }}
                                 />
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveNewStuFeeSlot(slot.id)}
-                                  style={{ backgroundColor: 'var(--critical-wash)', color: 'var(--critical)', border: '1px solid var(--critical-wash)', borderRadius: '4px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 800, fontSize: '11px' }}
+                                  style={{ backgroundColor: 'var(--critical-wash)', color: 'var(--critical)', border: '1px solid var(--critical-wash)', borderRadius: '4px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 800, fontSize: '0.7857rem' }}
                                   title="Delete Fee Slot"
                                 >
                                   ✕
@@ -2199,26 +2199,26 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                               placeholder="Fee Section Description"
                               value={newStuSlotName}
                               onChange={(e) => setNewStuSlotName(e.target.value)}
-                              style={{ ...styles.textInputBox, flex: 2, fontSize: '12px' }}
+                              style={{ ...styles.textInputBox, flex: 2, fontSize: '0.8571rem' }}
                             />
                             <input min={0} max={999999999}
                               type="number"
                               placeholder="Amount (Rs)"
                               value={newStuSlotAmount}
                               onChange={(e) => setNewStuSlotAmount(e.target.value)}
-                              style={{ ...styles.textInputBox, flex: 1, textAlign: 'right', fontSize: '12px' }}
+                              style={{ ...styles.textInputBox, flex: 1, textAlign: 'right', fontSize: '0.8571rem' }}
                             />
                             <button
                               type="button"
                               onClick={handleAddNewStuCustomSlot}
-                              style={{ ...styles.actionItemBtn, backgroundColor: 'var(--good)', color: '#fff', border: 'none', padding: '4px 12px', fontSize: '12px', fontWeight: 800 }}
+                              style={{ ...styles.actionItemBtn, backgroundColor: 'var(--good)', color: '#fff', border: 'none', padding: '4px 12px', fontSize: '0.8571rem', fontWeight: 800 }}
                             >
                               Add
                             </button>
                             <button
                               type="button"
                               onClick={() => { setNewStuIsAddingSlot(false); setNewStuSlotName(''); setNewStuSlotAmount(''); }}
-                              style={{ ...styles.actionItemBtn, backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none', padding: '4px 8px', fontSize: '12px' }}
+                              style={{ ...styles.actionItemBtn, backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none', padding: '4px 8px', fontSize: '0.8571rem' }}
                             >
                               Cancel
                             </button>
@@ -2235,7 +2235,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                               border: '1px dashed var(--royal-gold)',
                               backgroundColor: 'var(--surface-sunken)',
                               color: 'var(--warning)',
-                              fontSize: '11px',
+                              fontSize: '0.7857rem',
                               fontWeight: 800,
                               cursor: 'pointer'
                             }}
@@ -2246,10 +2246,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         )}
 
                         <div style={{ borderTop: '2px solid var(--ink)', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '13px', fontWeight: 900, color: 'var(--ink)' }}>
+                          <span style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)' }}>
                             GROSS BASE FEES TOTAL:
                           </span>
-                          <span style={{ fontSize: '16px', fontWeight: 900, color: 'var(--good)', backgroundColor: 'var(--good-wash)', padding: '4px 14px', borderRadius: '8px', border: '1px solid var(--good-wash)' }}>
+                          <span style={{ fontSize: '1.1429rem', fontWeight: 900, color: 'var(--good)', backgroundColor: 'var(--good-wash)', padding: '4px 14px', borderRadius: '8px', border: '1px solid var(--good-wash)' }}>
                             Rs. {newStuFeeSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0).toLocaleString('en-IN')}
                           </span>
                         </div>
@@ -2296,7 +2296,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1, marginTop: '4px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Student Cards</h4>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
+              <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--muted-gray)' }}>
                 Showing <strong>{registryPageStudents.length}</strong> of <strong>{filteredRegistryStudents.length}</strong>
               </span>
             </div>
@@ -2334,25 +2334,25 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '15px',
+                        fontSize: '1.0714rem',
                         fontWeight: 900,
                         flexShrink: 0
                       }}>
                         {(student.name || 'S').charAt(0).toUpperCase()}
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--dark-charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <strong style={{ display: 'block', fontSize: '1rem', color: 'var(--dark-charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {student.name}
                         </strong>
-                        <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
                           Adm: {student.admissionNumber}  |  Reg: {student.registrationNumber || student.studentId}
                         </div>
-                        <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
                           {student.branch} ({student.course})
                         </div>
                       </div>
                     </div>
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: student.status === 'Active' ? 'var(--good)' : 'var(--critical)' }}>
+                    <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: student.status === 'Active' ? 'var(--good)' : 'var(--critical)' }}>
                       {student.status}
                     </span>
                   </div>
@@ -2371,7 +2371,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         backgroundColor: 'var(--surface-sunken)',
                         borderRadius: '10px',
                         fontWeight: 800,
-                        fontSize: '11px',
+                        fontSize: '0.7857rem',
                         cursor: 'pointer'
                       }}
                       className="press-interactive"
@@ -2395,7 +2395,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               >
                 Previous Page
               </button>
-              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
+              <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--muted-gray)' }}>
                 Page <strong>{registryCurrentPage}</strong> of <strong>{registryTotalPages}</strong>
               </div>
               <button
@@ -2419,13 +2419,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--line)', paddingBottom: '12px' }}>
                   <div>
                     <h3 style={styles.modalTitle}>Student Master Profile & Details Editor</h3>
-                    <p style={{ fontSize: '11px', color: 'var(--ink-secondary)', margin: 0 }}>
+                    <p style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', margin: 0 }}>
                       Modify student profile, family information, and campus itemized fee structure details below.
                     </p>
                   </div>
                   <button
                     onClick={() => { setSelectedStudent(null); setEditStudent(null); }}
-                    style={{ background: 'none', border: 'none', fontSize: '24px', fontWeight: 900, cursor: 'pointer', color: 'var(--muted-gray)' }}
+                    style={{ background: 'none', border: 'none', fontSize: '1.7143rem', fontWeight: 900, cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
                     ×
                   </button>
@@ -2435,19 +2435,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   {/* Top Student Banner */}
                   <div style={{ ...styles.readOnlyBlock, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface-sunken)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: 'var(--good)', color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 900 }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: 'var(--good)', color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4286rem', fontWeight: 900 }}>
                         {(editStudent.name || 'S').charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <strong style={{ fontSize: '16px', color: 'var(--dark-charcoal)', display: 'block' }}>{editStudent.name || 'Student Name'}</strong>
-                        <span style={{ fontSize: '12px', color: 'var(--muted-gray)', fontWeight: 600 }}>Admission No: {editStudent.admissionNumber || editStudent.studentId}</span>
+                        <strong style={{ fontSize: '1.1429rem', color: 'var(--dark-charcoal)', display: 'block' }}>{editStudent.name || 'Student Name'}</strong>
+                        <span style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)', fontWeight: 600 }}>Admission No: {editStudent.admissionNumber || editStudent.studentId}</span>
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 800, padding: '4px 10px', borderRadius: '6px', backgroundColor: '#E0E7FF', color: 'var(--accent)' }}>
+                      <span style={{ fontSize: '0.7857rem', fontWeight: 800, padding: '4px 10px', borderRadius: '6px', backgroundColor: '#E0E7FF', color: 'var(--accent)' }}>
                         {editStudent.branch || 'Campus'}
                       </span>
-                      <span style={{ fontSize: '11px', fontWeight: 800, padding: '4px 10px', borderRadius: '6px', backgroundColor: 'var(--good-wash)', color: 'var(--good)' }}>
+                      <span style={{ fontSize: '0.7857rem', fontWeight: 800, padding: '4px 10px', borderRadius: '6px', backgroundColor: 'var(--good-wash)', color: 'var(--good)' }}>
                         {editStudent.course || 'Course'}
                       </span>
                     </div>
@@ -2455,7 +2455,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                   {/* Section 1: Basic & Academic Details */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase' }}>
                       1. Basic & Academic Details
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
@@ -2497,7 +2497,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                   {/* Section 2: Personal & Family Profile */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase' }}>
                       2. Personal & Family Profile
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
@@ -2562,12 +2562,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <div style={{ ...styles.overlaySheet, maxWidth: '440px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                   <h3 style={{ ...styles.modalTitle, color: 'var(--royal-gold)', margin: 0 }}>Confirm Student Registration</h3>
-                  <button onClick={() => !isSubmittingStudent && setIsRegStuOtpModalOpen(false)} disabled={isSubmittingStudent} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: isSubmittingStudent ? 'not-allowed' : 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}>×</button>
+                  <button onClick={() => !isSubmittingStudent && setIsRegStuOtpModalOpen(false)} disabled={isSubmittingStudent} style={{ background: 'none', border: 'none', fontSize: '1.4286rem', cursor: isSubmittingStudent ? 'not-allowed' : 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}>×</button>
                 </div>
-                <p style={{ fontSize: '13px', color: 'var(--dark-charcoal)', marginBottom: '16px', lineHeight: 1.5, fontWeight: 600 }}>
+                <p style={{ fontSize: '0.9286rem', color: 'var(--dark-charcoal)', marginBottom: '16px', lineHeight: 1.5, fontWeight: 600 }}>
                   Are you sure you want to finalize student registration for <strong>{newStuName}</strong> (Adm No: <strong>{newStuAdmissionNumber || `ADM2400${students.length + 1}`}</strong>)?
                 </p>
-                {regStuError && <div style={{ marginBottom: '14px', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'var(--critical-wash)', border: '1px solid var(--critical-wash)', color: 'var(--critical)', fontSize: '12px', fontWeight: 700 }}>{regStuError}</div>}
+                {regStuError && <div style={{ marginBottom: '14px', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'var(--critical-wash)', border: '1px solid var(--critical-wash)', color: 'var(--critical)', fontSize: '0.8571rem', fontWeight: 700 }}>{regStuError}</div>}
 
                 {isSubmittingStudent ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 0' }}>
@@ -2591,7 +2591,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <GlassCard hoverable={false} style={styles.modalContentCard} className="anim-scale-in glass-gold-ring">
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                   <div style={{ ...styles.modalIconBadge, backgroundColor: 'rgba(239,68,68,0.1)', border: '2px solid rgba(239,68,68,0.4)' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 900, color: 'var(--critical)' }}>DELETE</span>
+                    <span style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--critical)' }}>DELETE</span>
                   </div>
                   <h3 style={{ ...styles.modalHeading, color: 'var(--critical)' }}>Confirm Student Deletion</h3>
                   <p style={styles.modalSubText}>
@@ -2754,7 +2754,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   padding: '10px 16px',
                   borderRadius: '10px',
                   fontWeight: 900,
-                  fontSize: '12px',
+                  fontSize: '0.8571rem',
                   backgroundColor: employeeTab === 'employees' ? 'var(--ink)' : 'transparent',
                   color: employeeTab === 'employees' ? 'var(--surface)' : 'var(--ink-secondary)',
                   border: 'none',
@@ -2772,7 +2772,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   padding: '10px 16px',
                   borderRadius: '10px',
                   fontWeight: 900,
-                  fontSize: '12px',
+                  fontSize: '0.8571rem',
                   backgroundColor: employeeTab === 'history' ? 'var(--ink)' : 'transparent',
                   color: employeeTab === 'history' ? 'var(--surface)' : 'var(--ink-secondary)',
                   border: 'none',
@@ -2789,30 +2789,30 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <GlassCard style={{ padding: '20px', borderRadius: '16px', border: '1.5px solid var(--card-border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                   <div>
-                    <div style={{ fontSize: '15px', fontWeight: 900, color: 'var(--dark-charcoal)' }}>
+                    <div style={{ fontSize: '1.0714rem', fontWeight: 900, color: 'var(--dark-charcoal)' }}>
                       Staff & Worker Payment History Log ({role === 'admin2' ? loggedInCampus : 'All Campuses'})
                     </div>
-                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                    <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
                       Read-only audit log of salary payments disbursed to employees
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={fetchWorkerPaymentsHistory} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '11px', backgroundColor: 'var(--ink)', color: '#fff' }} className="press-interactive">
+                    <button onClick={fetchWorkerPaymentsHistory} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '0.7857rem', backgroundColor: 'var(--ink)', color: '#fff' }} className="press-interactive">
                       Refresh Log
                     </button>
-                    <button onClick={handleDownloadDisbursementLogPDF} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '11px', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
+                    <button onClick={handleDownloadDisbursementLogPDF} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '0.7857rem', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
                       Download Record
                     </button>
                   </div>
                 </div>
 
                 {workerPaymentsHistory.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '36px', color: 'var(--muted-gray)', fontSize: '13px', fontWeight: 700 }}>
+                  <div style={{ textAlign: 'center', padding: '36px', color: 'var(--muted-gray)', fontSize: '0.9286rem', fontWeight: 700 }}>
                     No payment history records found for {role === 'admin2' ? loggedInCampus : 'selected campus'}.
                   </div>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8571rem' }}>
                       <thead>
                         <tr style={{ backgroundColor: 'var(--surface-sunken)', borderBottom: '2px solid var(--line)', textAlign: 'left' }}>
                           <th style={{ padding: '10px', fontWeight: 900 }}>Disbursement Date</th>
@@ -2834,7 +2834,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                             <td style={{ padding: '10px' }}>{item.monthPeriod}</td>
                             <td style={{ padding: '10px' }}>{item.branch}</td>
                             <td style={{ padding: '10px' }}>
-                              <span style={{ backgroundColor: 'var(--good-wash)', color: 'var(--good)', padding: '3px 8px', borderRadius: '6px', fontWeight: 900, fontSize: '10px' }}>
+                              <span style={{ backgroundColor: 'var(--good-wash)', color: 'var(--good)', padding: '3px 8px', borderRadius: '6px', fontWeight: 900, fontSize: '0.7143rem' }}>
                                 DISBURSED
                               </span>
                             </td>
@@ -2850,28 +2850,28 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 {/* Top Metrics Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
                   <GlassCard style={{ padding: '16px', borderRadius: '16px', border: '1.5px solid var(--card-border)' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Filtered Staff Members</div>
-                    <div style={{ fontSize: '22px', fontWeight: 900, color: 'var(--dark-charcoal)', marginTop: '4px' }}>{filteredStaff.length} Employees</div>
-                    <div style={{ fontSize: '10px', color: 'var(--royal-gold)', fontWeight: 700, marginTop: '2px' }}>Active Staff & Faculty Roster</div>
+                    <div style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Filtered Staff Members</div>
+                    <div style={{ fontSize: '1.5714rem', fontWeight: 900, color: 'var(--dark-charcoal)', marginTop: '4px' }}>{filteredStaff.length} Employees</div>
+                    <div style={{ fontSize: '0.7143rem', color: 'var(--royal-gold)', fontWeight: 700, marginTop: '2px' }}>Active Staff & Faculty Roster</div>
                   </GlassCard>
 
                   <GlassCard style={{ padding: '16px', borderRadius: '16px', border: '1.5px solid var(--good)', backgroundColor: 'rgba(236, 253, 245, 0.6)' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--good)', textTransform: 'uppercase' }}>Salary Given This Month ({currentMonth})</div>
-                    <div style={{ fontSize: '22px', fontWeight: 900, color: 'var(--good)', marginTop: '4px' }}>₹{thisMonthTotalPaid.toLocaleString('en-IN')}</div>
-                    <div style={{ fontSize: '10px', color: 'var(--good)', fontWeight: 700, marginTop: '2px' }}>Disbursed in Current Month</div>
+                    <div style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--good)', textTransform: 'uppercase' }}>Salary Given This Month ({currentMonth})</div>
+                    <div style={{ fontSize: '1.5714rem', fontWeight: 900, color: 'var(--good)', marginTop: '4px' }}>₹{thisMonthTotalPaid.toLocaleString('en-IN')}</div>
+                    <div style={{ fontSize: '0.7143rem', color: 'var(--good)', fontWeight: 700, marginTop: '2px' }}>Disbursed in Current Month</div>
                   </GlassCard>
 
                   <GlassCard style={{ padding: '16px', borderRadius: '16px', border: '1.5px solid var(--accent)', backgroundColor: 'rgba(255, 253, 244, 0.7)' }}>
-                    <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--warning)', textTransform: 'uppercase' }}>Total Salary Given (All 12 Months)</div>
-                    <div style={{ fontSize: '22px', fontWeight: 900, color: '#855E00', marginTop: '4px' }}>₹{overallTotalPaid.toLocaleString('en-IN')}</div>
-                    <div style={{ fontSize: '10px', color: 'var(--warning)', fontWeight: 700, marginTop: '2px' }}>Cumulative Annual Disbursement</div>
+                    <div style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--warning)', textTransform: 'uppercase' }}>Total Salary Given (All 12 Months)</div>
+                    <div style={{ fontSize: '1.5714rem', fontWeight: 900, color: '#855E00', marginTop: '4px' }}>₹{overallTotalPaid.toLocaleString('en-IN')}</div>
+                    <div style={{ fontSize: '0.7143rem', color: 'var(--warning)', fontWeight: 700, marginTop: '2px' }}>Cumulative Annual Disbursement</div>
                   </GlassCard>
                 </div>
 
                 {/* Admin 1 Campus Selector Bar */}
                 {role !== 'admin2' && (
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.6)', padding: '10px 14px', borderRadius: '16px', border: '1.5px solid var(--card-border)' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 900, color: 'var(--dark-charcoal)', marginRight: '6px' }}>Campus:</span>
+                    <span style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--dark-charcoal)', marginRight: '6px' }}>Campus:</span>
                     {['All', 'Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(cName => (
                       <button
                         key={cName}
@@ -2879,7 +2879,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         style={{
                           padding: '6px 14px',
                           borderRadius: '999px',
-                          fontSize: '11px',
+                          fontSize: '0.7857rem',
                           fontWeight: 800,
                           border: filterFacCampus === cName ? '1.5px solid var(--ink)' : '1px solid rgba(0,0,0,0.1)',
                           backgroundColor: filterFacCampus === cName ? 'var(--ink)' : '#fff',
@@ -2973,13 +2973,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '8px' }}>
                           <div>
-                            <div style={{ fontSize: '15px', fontWeight: 900, color: 'var(--dark-charcoal)' }}>{t.name}</div>
-                            <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
+                            <div style={{ fontSize: '1.0714rem', fontWeight: 900, color: 'var(--dark-charcoal)' }}>{t.name}</div>
+                            <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
                               {t.role || t.subject || 'Staff Member'}
                             </div>
                           </div>
                           <span style={{
-                            fontSize: '9px',
+                            fontSize: '0.6429rem',
                             fontWeight: 900,
                             padding: '3px 8px',
                             borderRadius: '999px',
@@ -2991,7 +2991,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           </span>
                         </div>
 
-                        <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'var(--surface-sunken)', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px' }}>
+                        <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'var(--surface-sunken)', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.7857rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span style={{ color: 'var(--muted-gray)', fontWeight: 700 }}>Emp ID:</span>
                             <span style={{ fontWeight: 800, color: 'var(--dark-charcoal)' }}>{t.id || t._id}</span>
@@ -3012,9 +3012,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                         <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted-gray)' }}>{currentMonth}:</span>
+                            <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)' }}>{currentMonth}:</span>
                             <span style={{
-                              fontSize: '10px',
+                              fontSize: '0.7143rem',
                               fontWeight: 900,
                               padding: '2px 8px',
                               borderRadius: '6px',
@@ -3031,7 +3031,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                               setEditTeacher({ ...t });
                               setSelectedStaffMonthForEdit(null);
                             }}
-                            style={{ ...styles.actionItemBtn, padding: '5px 12px', fontSize: '10px', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }}
+                            style={{ ...styles.actionItemBtn, padding: '5px 12px', fontSize: '0.7143rem', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }}
                             className="press-interactive"
                           >
                             Open 12-Month Ledger
@@ -3042,7 +3042,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   })}
 
                   {filteredStaff.length === 0 && (
-                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '30px', color: 'var(--muted-gray)', fontSize: '13px' }}>
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '30px', color: 'var(--muted-gray)', fontSize: '0.9286rem' }}>
                       No staff or faculty records match your criteria.
                     </div>
                   )}
@@ -3058,7 +3058,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   >
                     Previous Page
                   </button>
-                  <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
+                  <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--muted-gray)' }}>
                     Page <strong>{facultyCurrentPage}</strong> of <strong>{facultyTotalPages}</strong>
                   </div>
                   <button
@@ -3081,11 +3081,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1.5px solid var(--card-border)', paddingBottom: '12px' }}>
                   <div>
                     <h3 style={{ ...styles.modalTitle, margin: 0 }}>Staff Profile & 12-Month Salary Ledger</h3>
-                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--muted-gray)' }}>{editTeacher.name} ({editTeacher.id || editTeacher._id}) &middot; {editTeacher.branch || loggedInCampus}</p>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.7857rem', color: 'var(--muted-gray)' }}>{editTeacher.name} ({editTeacher.id || editTeacher._id}) &middot; {editTeacher.branch || loggedInCampus}</p>
                   </div>
                   <button
                     onClick={() => { setSelectedTeacher(null); setEditTeacher(null); setSelectedStaffMonthForEdit(null); }}
-                    style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
+                    style={{ background: 'none', border: 'none', fontSize: '1.5714rem', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
                   >
                     ×
                   </button>
@@ -3093,7 +3093,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 {/* Top Details Section */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--surface-sunken)', padding: '16px', borderRadius: '14px', border: '1.5px solid var(--line)', marginBottom: '18px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 900, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>Employee Profile & Salary Info</div>
+                  <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>Employee Profile & Salary Info</div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
                     <div>
@@ -3173,7 +3173,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '6px' }}>
                       <button
                         onClick={() => handleTeacherSave(editTeacher)}
-                        style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '8px 18px', fontSize: '11px' }}
+                        style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '8px 18px', fontSize: '0.7857rem' }}
                         className="press-interactive"
                       >
                         Save Profile Changes
@@ -3185,16 +3185,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 {/* 12-MONTH SALARY GRID */}
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 900, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
                       12-Month Academic Year Salary Disbursement Ledger
                     </div>
 
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Academic Year:</span>
+                      <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Academic Year:</span>
                       <select
                         value={selectedAcademicYear}
                         onChange={(e) => setSelectedAcademicYear(e.target.value)}
-                        style={{ ...styles.selectInput, width: 'auto', padding: '4px 10px', fontSize: '11px', fontWeight: 800 }}
+                        style={{ ...styles.selectInput, width: 'auto', padding: '4px 10px', fontSize: '0.7857rem', fontWeight: 800 }}
                       >
                         {ACADEMIC_YEARS.map((yr, i) => {
                           const state = academicYearState(editTeacher, i);
@@ -3216,7 +3216,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         const done = paid >= 12;
                         return (
                           <span style={{
-                            fontSize: '10px', fontWeight: 800, padding: '4px 8px', borderRadius: '6px',
+                            fontSize: '0.7143rem', fontWeight: 800, padding: '4px 8px', borderRadius: '6px',
                             border: `1.5px solid ${done ? 'var(--good)' : 'var(--warning)'}`,
                             backgroundColor: done ? '#ECFDF5' : '#FFF8DB',
                             color: done ? 'var(--good)' : 'var(--warning)',
@@ -3230,7 +3230,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       })()}
                     </div>
 
-                    <div style={{ fontSize: '10px', color: 'var(--muted-gray)', fontWeight: 700 }}>Click any month to view/update payment details</div>
+                    <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', fontWeight: 700 }}>Click any month to view/update payment details</div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px' }}>
@@ -3264,9 +3264,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           className="press-interactive"
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 900, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>{mName}</span>
+                            <span style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>{mName}</span>
                             <span style={{
-                              fontSize: '9px',
+                              fontSize: '0.6429rem',
                               fontWeight: 900,
                               padding: '2px 6px',
                               borderRadius: '4px',
@@ -3277,17 +3277,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                             </span>
                           </div>
 
-                          <div style={{ fontSize: '14px', fontWeight: 900, color: isPaid ? 'var(--good)' : 'var(--critical)', marginTop: '6px' }}>
+                          <div style={{ fontSize: '1rem', fontWeight: 900, color: isPaid ? 'var(--good)' : 'var(--critical)', marginTop: '6px' }}>
                             ₹{amtPaid.toLocaleString('en-IN')}
                           </div>
 
-                          <div style={{ fontSize: '9px', color: 'var(--muted-gray)', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <span>Date: {mRec.paymentDate || '—'}</span>
                             <span>Mode: {mRec.paymentMode || '—'}</span>
                           </div>
 
                           {canEditFaculty && (
-                            <div style={{ marginTop: '8px', fontSize: '9.5px', color: 'var(--royal-gold)', fontWeight: 800, textAlign: 'right' }}>
+                            <div style={{ marginTop: '8px', fontSize: '0.6786rem', color: 'var(--royal-gold)', fontWeight: 800, textAlign: 'right' }}>
                               {isSelectedForEdit ? '▼ Active Editor' : 'Click to Edit ›'}
                             </div>
                           )}
@@ -3301,10 +3301,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 {selectedStaffMonthForEdit && canEditFaculty && (
                   <div style={{ backgroundColor: 'var(--surface-sunken)', border: '2px solid var(--royal-gold)', borderRadius: '14px', padding: '16px', marginBottom: '18px' }} className="anim-slide-up">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 900, color: '#855E00' }}>
+                      <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: '#855E00' }}>
                         Edit Salary Disbursement for {selectedStaffMonthForEdit} 2026
                       </div>
-                      <button onClick={() => setSelectedStaffMonthForEdit(null)} style={{ background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', fontWeight: 900 }}>×</button>
+                      <button onClick={() => setSelectedStaffMonthForEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.1429rem', cursor: 'pointer', fontWeight: 900 }}>×</button>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
@@ -3387,7 +3387,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <button
                       onClick={() => handleDownloadStaffPayslip(editTeacher, currentMonth)}
-                      style={{ ...styles.actionItemBtn, padding: '10px 16px', fontSize: '11px', fontWeight: 900, backgroundColor: 'var(--ink)', color: '#fff' }}
+                      style={{ ...styles.actionItemBtn, padding: '10px 16px', fontSize: '0.7857rem', fontWeight: 900, backgroundColor: 'var(--ink)', color: '#fff' }}
                       className="press-interactive"
                     >
                       Download Payslip ({currentMonth})
@@ -3395,7 +3395,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                     <button
                       onClick={() => handleDownloadStaffAnnualStatement(editTeacher)}
-                      style={{ ...styles.actionItemBtn, padding: '10px 16px', fontSize: '11px', fontWeight: 900, backgroundColor: 'var(--royal-gold)', color: '#000' }}
+                      style={{ ...styles.actionItemBtn, padding: '10px 16px', fontSize: '0.7857rem', fontWeight: 900, backgroundColor: 'var(--royal-gold)', color: '#000' }}
                       className="press-interactive"
                     >
                       Download 12-Month Annual Statement
@@ -3410,7 +3410,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         setFacOtpInput('');
                         setIsFacOtpModalOpen(true);
                       }}
-                      style={{ ...styles.actionItemBtn, padding: '10px 16px', fontSize: '11px', fontWeight: 900, backgroundColor: 'var(--critical)', color: '#fff' }}
+                      style={{ ...styles.actionItemBtn, padding: '10px 16px', fontSize: '0.7857rem', fontWeight: 900, backgroundColor: 'var(--critical)', color: '#fff' }}
                       className="press-interactive"
                     >
                       Delete Staff Record
@@ -3430,7 +3430,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <h3 style={styles.modalTitle}>Register New Staff Member</h3>
                   <button
                     onClick={() => setIsAddTeacherModalOpen(false)}
-                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
+                    style={{ background: 'none', border: 'none', fontSize: '1.4286rem', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
                   >
                     ×
                   </button>
@@ -3572,8 +3572,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             <div style={{ ...styles.overlayOverlay, zIndex: 1100 }}>
               <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '400px', padding: '28px', borderRadius: '16px', border: '1px solid var(--card-border)' }} className="anim-slide-up glass-gold-ring">
                 <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-                  <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Confirm Faculty Action</h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 600 }}>
+                  <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '1.0714rem', color: 'var(--dark-charcoal)' }}>Confirm Faculty Action</h3>
+                  <p style={{ margin: 0, fontSize: '0.8571rem', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 600 }}>
                     {facActionType === 'add' ? `Are you sure you want to register faculty member "${newFacName}"?` :
                      facActionType === 'edit' ? `Are you sure you want to save credentials for faculty member "${editTeacher?.name}"?` :
                      facActionType === 'delete' ? `Are you sure you want to delete faculty record for "${editTeacher?.name || selectedTeacher?.name}"?` :
@@ -3665,7 +3665,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       textAlign: 'center',
                       cursor: 'pointer',
                       fontWeight: 700,
-                      fontSize: '10px',
+                      fontSize: '0.7143rem',
                       color: isActive ? 'var(--surface)' : 'var(--dark-charcoal)'
                     }}
                     className="press-interactive"
@@ -3680,7 +3680,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Rector Baseline: {selectedFeeBranch}</h4>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: locked ? 'var(--critical)' : 'var(--royal-gold)', backgroundColor: locked ? 'rgba(239,68,68,0.06)' : 'rgba(212,175,55,0.06)', border: `1.5px solid ${locked ? 'var(--critical)' : 'var(--royal-gold)'}`, padding: '4px 8px', borderRadius: '8px' }}>
+              <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: locked ? 'var(--critical)' : 'var(--royal-gold)', backgroundColor: locked ? 'rgba(239,68,68,0.06)' : 'rgba(212,175,55,0.06)', border: `1.5px solid ${locked ? 'var(--critical)' : 'var(--royal-gold)'}`, padding: '4px 8px', borderRadius: '8px' }}>
                 {locked ? 'Locked  Rates Finalized' : 'Edit Mode Active'}
               </span>
             </div>
@@ -3689,13 +3689,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
               {feeBarItems.map((fee, idx) => (
                 <div key={fee.key} style={{ display: 'flex', alignItems: 'center', padding: '14px 4px', borderBottom: idx < feeBarItems.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none', gap: '12px' }}>
-                  <span style={{ fontSize: '20px', width: '32px', textAlign: 'center', flexShrink: 0 }}>{fee.icon}</span>
+                  <span style={{ fontSize: '1.4286rem', width: '32px', textAlign: 'center', flexShrink: 0 }}>{fee.icon}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--dark-charcoal)' }}>{fee.label}</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.9286rem', color: 'var(--dark-charcoal)' }}>{fee.label}</span>
                   </div>
                   <div style={{ width: '140px', flexShrink: 0 }}>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                      <span style={{ position: 'absolute', left: '10px', fontSize: '13px', fontWeight: 900, color: locked ? 'var(--muted-gray)' : 'var(--royal-gold)' }}>Rs.</span>
+                      <span style={{ position: 'absolute', left: '10px', fontSize: '0.9286rem', fontWeight: 900, color: locked ? 'var(--muted-gray)' : 'var(--royal-gold)' }}>Rs.</span>
                       <input max={999999999}
                         type="number"
                         min="0"
@@ -3705,7 +3705,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           const val = e.target.value;
                           fee.setter(val === '' ? '' as any : parseFloat(val));
                         }}
-                        style={{ ...styles.textInputBox, width: '100%', paddingLeft: '24px', textAlign: 'right', fontWeight: 800, fontSize: '14px', opacity: locked ? 0.65 : 1, borderColor: locked ? 'rgba(0,0,0,0.1)' : 'rgba(212,175,55,0.4)' }}
+                        style={{ ...styles.textInputBox, width: '100%', paddingLeft: '24px', textAlign: 'right', fontWeight: 800, fontSize: '1rem', opacity: locked ? 0.65 : 1, borderColor: locked ? 'rgba(0,0,0,0.1)' : 'rgba(212,175,55,0.4)' }}
                       />
                     </div>
                   </div>
@@ -3715,8 +3715,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
             {/* Total row */}
             <div style={{ borderTop: '2px solid var(--royal-gold)', marginTop: '10px', paddingTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 900, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Total Annual Fee</span>
-              <strong style={{ fontSize: '20px', fontWeight: 900, color: 'var(--royal-gold)' }}>Rs.{grandTotal.toLocaleString('en-IN')}</strong>
+              <span style={{ fontWeight: 900, fontSize: '1.0714rem', color: 'var(--dark-charcoal)' }}>Total Annual Fee</span>
+              <strong style={{ fontSize: '1.4286rem', fontWeight: 900, color: 'var(--royal-gold)' }}>Rs.{grandTotal.toLocaleString('en-IN')}</strong>
             </div>
 
             {/* Action buttons */}
@@ -3910,18 +3910,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                     <div>
-                      <span style={{ fontSize: '10px', fontWeight: 900, color: 'var(--royal-gold)', letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: '0.7143rem', fontWeight: 900, color: 'var(--royal-gold)', letterSpacing: '0.05em' }}>
                         REF: {enq.referenceCode}
                       </span>
-                      <h3 style={{ fontSize: '16px', fontWeight: 900, color: 'var(--dark-charcoal)', margin: '2px 0 0' }}>
+                      <h3 style={{ fontSize: '1.1429rem', fontWeight: 900, color: 'var(--dark-charcoal)', margin: '2px 0 0' }}>
                         {enq.studentName}
                       </h3>
-                      <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--muted-gray)', fontWeight: 700 }}>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.7857rem', color: 'var(--muted-gray)', fontWeight: 700 }}>
                         Parent: {enq.parentName || 'N/A'}
                       </p>
                     </div>
                     <span style={{
-                      fontSize: '10px',
+                      fontSize: '0.7143rem',
                       fontWeight: 900,
                       padding: '3px 10px',
                       borderRadius: '999px',
@@ -3933,7 +3933,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     </span>
                   </div>
 
-                  <div style={{ padding: '10px', backgroundColor: 'var(--surface-sunken)', borderRadius: '10px', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ padding: '10px', backgroundColor: 'var(--surface-sunken)', borderRadius: '10px', fontSize: '0.7857rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--muted-gray)', fontWeight: 700 }}>Preferred Campus:</span>
                       <span style={{ fontWeight: 800, color: 'var(--ink)' }}>{enq.preferredCampus}</span>
@@ -3959,22 +3959,22 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   </div>
 
                   {enq.notes && (
-                    <div style={{ fontSize: '11px', color: 'var(--ink-secondary)', fontStyle: 'italic', backgroundColor: 'var(--surface-sunken)', padding: '8px 10px', borderRadius: '8px', border: '1px solid #FEF08A' }}>
+                    <div style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', fontStyle: 'italic', backgroundColor: 'var(--surface-sunken)', padding: '8px 10px', borderRadius: '8px', border: '1px solid #FEF08A' }}>
                       "{enq.notes}"
                     </div>
                   )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', paddingTop: '8px', borderTop: '1px solid var(--line)' }}>
-                    <span style={{ fontSize: '9.5px', color: 'var(--muted-gray)', fontWeight: 700 }}>
+                    <span style={{ fontSize: '0.6786rem', color: 'var(--muted-gray)', fontWeight: 700 }}>
                       Received: {new Date(enq.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </span>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted-gray)' }}>Status:</span>
+                      <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)' }}>Status:</span>
                       <select
                         value={enq.status}
                         onChange={(e) => handleUpdateStatus(enq._id || enq.id || enq.referenceCode, e.target.value)}
-                        style={{ ...styles.selectInput, padding: '3px 8px', fontSize: '10px', width: 'auto' }}
+                        style={{ ...styles.selectInput, padding: '3px 8px', fontSize: '0.7143rem', width: 'auto' }}
                       >
                         <option value="Pending">Pending</option>
                         <option value="Contacted">Contacted</option>
@@ -3988,7 +3988,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             })}
 
             {filteredEnquiries.length === 0 && (
-              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--muted-gray)', fontSize: '13px' }}>
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--muted-gray)', fontSize: '0.9286rem' }}>
                 No admission enquiries found matching your criteria.
               </div>
             )}
@@ -4132,7 +4132,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1, marginTop: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Student Grid</h4>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
+              <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--muted-gray)' }}>
                 Showing <strong>{feeEditorPageStudents.length}</strong> of <strong>{filteredFeeStudents.length}</strong>
               </span>
             </div>
@@ -4167,25 +4167,25 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '15px',
+                        fontSize: '1.0714rem',
                         fontWeight: 900,
                         flexShrink: 0
                       }}>
                         {(student.name || 'S').charAt(0).toUpperCase()}
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <strong style={{ display: 'block', fontSize: '14px', color: 'var(--dark-charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <strong style={{ display: 'block', fontSize: '1rem', color: 'var(--dark-charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {student.name}
                         </strong>
-                        <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
                           Adm: {student.admissionNumber}  |  Roll: {student.rollNumber || 'N/A'}
                         </div>
-                        <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
                           {student.branch} ({student.course})
                         </div>
                       </div>
                     </div>
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: Number(student.remainingBalance || 0) > 0 ? 'var(--critical)' : 'var(--good)', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: Number(student.remainingBalance || 0) > 0 ? 'var(--critical)' : 'var(--good)', whiteSpace: 'nowrap' }}>
                       {Number(student.remainingBalance || 0) > 0 ? `Due: Rs.${Number(student.remainingBalance || 0).toLocaleString('en-IN')}` : 'Settled'}
                     </span>
                   </div>
@@ -4203,7 +4203,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         backgroundColor: 'var(--surface-sunken)',
                         borderRadius: '10px',
                         fontWeight: 800,
-                        fontSize: '11px',
+                        fontSize: '0.7857rem',
                         cursor: 'pointer'
                       }}
                       className="press-interactive"
@@ -4227,7 +4227,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               >
                 Previous Page
               </button>
-              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
+              <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--muted-gray)' }}>
                 Page <strong>{feeEditorCurrentPage}</strong> of <strong>{feeEditorTotalPages}</strong>
               </div>
               <button
@@ -4250,18 +4250,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <div style={{ ...styles.overlaySheet, maxWidth: '820px', maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
                 <button
                   onClick={() => { setSelectedFeeStudent(null); setFeeBreakdownData(null); setFeeOtpInput(''); setIsFeeOtpOpen(false); }}
-                  style={{ position: 'absolute', top: '14px', right: '14px', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
+                  style={{ position: 'absolute', top: '14px', right: '14px', background: 'none', border: 'none', fontSize: '1.4286rem', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
                 >
                   ×
                 </button>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
-                  <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.1)', border: '2px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 900, color: 'var(--royal-gold)' }}>
+                  <div style={{ width: '52px', height: '52px', borderRadius: '50%', backgroundColor: 'rgba(212,175,55,0.1)', border: '2px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4286rem', fontWeight: 900, color: 'var(--royal-gold)' }}>
                     {selectedFeeStudent.name.charAt(0)}
                   </div>
                   <div>
                     <div style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--dark-charcoal)' }}>{selectedFeeStudent.name}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                    <div style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
                       <strong>ID:</strong> {selectedFeeStudent.admissionNumber} &nbsp;|&nbsp; <strong>Course:</strong> {selectedFeeStudent.course} &nbsp;|&nbsp; <strong>Branch:</strong> {selectedFeeStudent.branch}
                     </div>
                   </div>
@@ -4288,15 +4288,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         paddingBottom: '10px'
                       }}>
                         <div>
-                          <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                          <span style={{ fontSize: '0.6786rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                             INSPIRE JUNIOR COLLEGE
                           </span>
-                          <h4 style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 900, color: 'var(--ink)' }}>
+                          <h4 style={{ margin: '2px 0 0', fontSize: '1rem', fontWeight: 900, color: 'var(--ink)' }}>
                             Fee Structure & Bill Format
                           </h4>
                         </div>
                         <span style={{
-                          fontSize: '10.5px',
+                          fontSize: '0.75rem',
                           fontWeight: 800,
                           padding: '3px 8px',
                           borderRadius: '20px',
@@ -4310,7 +4310,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                       {/* Left: Description, Right: Amount Slots */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', borderBottom: '1px solid var(--surface-sunken)', paddingBottom: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', borderBottom: '1px solid var(--surface-sunken)', paddingBottom: '4px' }}>
                           <span>Fee Section Description</span>
                           <span>Amount (Rs)</span>
                         </div>
@@ -4320,7 +4320,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           const waiverAmt = Number(editSlotWaivers[slotKey]) || 0;
                           const netSlotAmt = Math.max(0, slot.amount - waiverAmt);
                           return (
-                            <div key={slot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px', padding: '4px 0', borderBottom: '1px dashed var(--surface-sunken)' }}>
+                            <div key={slot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8929rem', padding: '4px 0', borderBottom: '1px dashed var(--surface-sunken)' }}>
                               <span style={{ color: 'var(--ink-secondary)', fontWeight: 600 }}>
                                 {slot.name}
                               </span>
@@ -4329,7 +4329,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                                   Rs.{netSlotAmt.toLocaleString('en-IN')}
                                 </strong>
                                 {waiverAmt > 0 && (
-                                  <span style={{ fontSize: '9.5px', color: 'var(--good)', fontWeight: 700 }}>
+                                  <span style={{ fontSize: '0.6786rem', color: 'var(--good)', fontWeight: 700 }}>
                                     (Waiver: -Rs.{waiverAmt.toLocaleString('en-IN')})
                                   </span>
                                 )}
@@ -4353,7 +4353,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                         return (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8571rem' }}>
                               <span style={{ color: 'var(--ink-secondary)', fontWeight: 700 }}>Total Base Fee</span>
                               <strong style={{ color: 'var(--ink)', fontWeight: 800 }}>
                                 Rs.{baseFee.toLocaleString('en-IN')}
@@ -4361,13 +4361,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                             </div>
 
                             {totalDeduction > 0 && (
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--good)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8571rem', color: 'var(--good)' }}>
                                 <span>Fee Waivers / Deductions</span>
                                 <strong style={{ fontWeight: 800 }}>- Rs.{totalDeduction.toLocaleString('en-IN')}</strong>
                               </div>
                             )}
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--good)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8571rem', color: 'var(--good)' }}>
                               <span>Total Paid by Student</span>
                               <strong style={{ fontWeight: 800 }}>- Rs.{paid.toLocaleString('en-IN')}</strong>
                             </div>
@@ -4385,10 +4385,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                               backgroundColor: netRemaining > 0 ? 'var(--warning-wash)' : 'var(--good-wash)',
                               border: netRemaining > 0 ? '1.5px solid #FCD34D' : '1.5px solid var(--good-wash)'
                             }}>
-                              <span style={{ fontSize: '11px', fontWeight: 800, color: netRemaining > 0 ? 'var(--warning)' : 'var(--good)', textTransform: 'uppercase' }}>
+                              <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: netRemaining > 0 ? 'var(--warning)' : 'var(--good)', textTransform: 'uppercase' }}>
                                 Remaining Balance
                               </span>
-                              <strong style={{ fontSize: '16px', fontWeight: 900, color: netRemaining > 0 ? 'var(--warning)' : 'var(--good)' }}>
+                              <strong style={{ fontSize: '1.1429rem', fontWeight: 900, color: netRemaining > 0 ? 'var(--warning)' : 'var(--good)' }}>
                                 Rs.{netRemaining.toLocaleString('en-IN')}
                               </strong>
                             </div>
@@ -4401,13 +4401,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '8px', marginBottom: '14px' }}>
                         <div>
                           <h4 style={{ ...styles.sectionSubtitle, margin: 0, borderBottom: 'none', paddingBottom: 0 }}>Modify Fee Waivers & Custom Overrides</h4>
-                          <p style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: 0 }}>
+                          <p style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: 0 }}>
                             Enter waiver/deduction amount for each finalized fee slot below.
                           </p>
                         </div>
                         <button
                           onClick={() => handleDownloadStudentHistoryPDF(selectedFeeStudent)}
-                          style={{ ...styles.actionItemBtn, padding: '8px 16px', fontSize: '11px', fontWeight: 900, backgroundColor: 'var(--ink)', color: '#FFF' }}
+                          style={{ ...styles.actionItemBtn, padding: '8px 16px', fontSize: '0.7857rem', fontWeight: 900, backgroundColor: 'var(--ink)', color: '#FFF' }}
                           className="press-interactive"
                         >
                           Download History
@@ -4434,7 +4434,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                                 }}
                                 style={styles.textInputBox}
                               />
-                              <div style={{ fontSize: '10px', color: 'var(--ink-secondary)', fontWeight: 600 }}>
+                              <div style={{ fontSize: '0.7143rem', color: 'var(--ink-secondary)', fontWeight: 600 }}>
                                 Slot Base: Rs.{slot.amount.toLocaleString('en-IN')}
                               </div>
                             </div>
@@ -4448,7 +4448,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     </div>
                   </div>
                 ) : (
-                  <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '12px' }}>Loading fee breakdown</div>
+                  <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '0.8571rem' }}>Loading fee breakdown</div>
                 )}
               </div>
             </div>
@@ -4671,8 +4671,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 const isActive = selectedExpBranch === b;
                 return (
                   <div key={b} onClick={() => setSelectedExpBranch(b as any)} style={{ padding: '12px 10px', borderRadius: '12px', border: isActive ? '2px solid var(--ink)' : '1px solid rgba(255,255,255,0.1)', background: isActive ? 'var(--ink)' : 'rgba(255,255,255,0.03)', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }} className="press-interactive">
-                    <div style={{ fontSize: '10px', color: isActive ? 'var(--surface)' : 'var(--muted-gray)', fontWeight: 800 }}>{b}</div>
-                    <strong style={{ fontSize: '14px', color: isActive ? '#38BDF8' : 'var(--critical)', display: 'block', marginTop: '4px' }}>Rs.{total.toLocaleString('en-IN')}</strong>
+                    <div style={{ fontSize: '0.7143rem', color: isActive ? 'var(--surface)' : 'var(--muted-gray)', fontWeight: 800 }}>{b}</div>
+                    <strong style={{ fontSize: '1rem', color: isActive ? '#38BDF8' : 'var(--critical)', display: 'block', marginTop: '4px' }}>Rs.{total.toLocaleString('en-IN')}</strong>
                   </div>
                 );
               })}
@@ -4737,7 +4737,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   backgroundColor: 'rgba(13,148,136,0.08)',
                   color: '#0D9488',
                   fontWeight: 800,
-                  fontSize: '11px',
+                  fontSize: '0.7857rem',
                   cursor: 'pointer',
                   fontFamily: 'var(--font-family)'
                 }}
@@ -4748,18 +4748,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
               {filteredExpenditures.length === 0 ? (
-                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '12px' }}>No expenditure entries logged for this branch.</div>
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '0.8571rem' }}>No expenditure entries logged for this branch.</div>
               ) : (
                 filteredExpenditures.map((exp, i) => (
                   <div key={exp._id || i} style={{ padding: '12px 16px', borderRadius: '12px', border: '1.5px solid var(--card-border)', backgroundColor: 'rgba(255,255,255,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--dark-charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exp.category}  {exp.description}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>{typeof exp.date === 'string' ? exp.date.split('T')[0] : exp.date}</div>
+                      <div style={{ fontSize: '0.8929rem', fontWeight: 800, color: 'var(--dark-charcoal)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{exp.category}  {exp.description}</div>
+                      <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>{typeof exp.date === 'string' ? exp.date.split('T')[0] : exp.date}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                      <strong style={{ fontSize: '14px', color: 'var(--critical)' }}>Rs.{exp.amount.toLocaleString('en-IN')}</strong>
-                      <button onClick={() => handleDownloadBill(exp)} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(212,175,55,0.4)', backgroundColor: 'rgba(212,175,55,0.06)', color: 'var(--royal-gold)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }} title="Download Bill">Bill</button>
-                      <button onClick={() => { setPendingExpDelete(exp); setIsExpDeleteOtpOpen(true); }} style={{ fontSize: '10px', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: 'var(--critical)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
+                      <strong style={{ fontSize: '1rem', color: 'var(--critical)' }}>Rs.{exp.amount.toLocaleString('en-IN')}</strong>
+                      <button onClick={() => handleDownloadBill(exp)} style={{ fontSize: '0.7143rem', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(212,175,55,0.4)', backgroundColor: 'rgba(212,175,55,0.06)', color: 'var(--royal-gold)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }} title="Download Bill">Bill</button>
+                      <button onClick={() => { setPendingExpDelete(exp); setIsExpDeleteOtpOpen(true); }} style={{ fontSize: '0.7143rem', padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.06)', color: 'var(--critical)', cursor: 'pointer', fontFamily: 'var(--font-family)', fontWeight: 700 }}>Delete</button>
                     </div>
                   </div>
                 ))
@@ -4774,14 +4774,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px', marginBottom: '16px' }}>
                   <div>
                     <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.1rem', color: 'var(--critical)' }}>Confirm Expenditure Deletion</h3>
-                    <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--muted-gray)' }}>Are you sure you want to delete this expenditure record?</p>
+                    <p style={{ margin: '6px 0 0', fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>Are you sure you want to delete this expenditure record?</p>
                   </div>
-                  <button onClick={() => { setIsExpDeleteOtpOpen(false); setPendingExpDelete(null); setExpDeleteOtpInput(''); }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}>×</button>
+                  <button onClick={() => { setIsExpDeleteOtpOpen(false); setPendingExpDelete(null); setExpDeleteOtpInput(''); }} style={{ background: 'none', border: 'none', fontSize: '1.4286rem', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}>×</button>
                 </div>
                 <div style={{ padding: '12px', borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.6)', marginBottom: '14px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{pendingExpDelete.category}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '3px' }}>{pendingExpDelete.description}</div>
-                  <div style={{ fontSize: '14px', fontWeight: 900, color: 'var(--critical)', marginTop: '4px' }}>Rs.{pendingExpDelete.amount.toLocaleString('en-IN')}</div>
+                  <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{pendingExpDelete.category}</div>
+                  <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '3px' }}>{pendingExpDelete.description}</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--critical)', marginTop: '4px' }}>Rs.{pendingExpDelete.amount.toLocaleString('en-IN')}</div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button
@@ -4810,9 +4810,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                   <h3 style={{ margin: '0 0 4px', fontWeight: 900, fontSize: '1.15rem', color: 'var(--dark-charcoal)' }}>Confirm Expenditure Entry</h3>
                   <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Are you sure you want to log this expenditure entry?</p>
-                  <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '10px', fontSize: '12px', textAlign: 'left' }}>
+                  <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '10px', fontSize: '0.8571rem', textAlign: 'left' }}>
                     <div style={{ fontWeight: 700 }}>{newExpCat} • {newExpDesc}</div>
-                    <div style={{ color: 'var(--critical)', fontWeight: 900, fontSize: '16px', marginTop: '4px' }}>Rs.{Number(newExpAmt).toLocaleString('en-IN')}</div>
+                    <div style={{ color: 'var(--critical)', fontWeight: 900, fontSize: '1.1429rem', marginTop: '4px' }}>Rs.{Number(newExpAmt).toLocaleString('en-IN')}</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -4881,11 +4881,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px', marginBottom: '12px', zIndex: 1, width: '100%' }}>
             <GlassCard hoverable={false} style={{ padding: '16px', border: '1px solid rgba(16,185,129,0.18)' }}>
               <div style={styles.metricLabel}>Total Paid Amount</div>
-              <strong style={{ ...styles.metricValue, color: 'var(--good)', fontSize: '22px' }}>₹{totalPaidAmount.toLocaleString('en-IN')}</strong>
+              <strong style={{ ...styles.metricValue, color: 'var(--good)', fontSize: '1.5714rem' }}>₹{totalPaidAmount.toLocaleString('en-IN')}</strong>
             </GlassCard>
             <GlassCard hoverable={false} style={{ padding: '16px', border: '1px solid rgba(239,68,68,0.18)' }}>
               <div style={styles.metricLabel}>Total Unpaid Amount</div>
-              <strong style={{ ...styles.metricValue, color: 'var(--critical)', fontSize: '22px' }}>₹{totalUnpaidAmount.toLocaleString('en-IN')}</strong>
+              <strong style={{ ...styles.metricValue, color: 'var(--critical)', fontSize: '1.5714rem' }}>₹{totalUnpaidAmount.toLocaleString('en-IN')}</strong>
             </GlassCard>
           </div>
 
@@ -4905,7 +4905,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           <GlassCard hoverable={false} style={{ padding: '20px', zIndex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Faculty Roster  {teacherList.length} Members</h4>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--good)', backgroundColor: 'rgba(16,185,129,0.08)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)' }}>
+              <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--good)', backgroundColor: 'rgba(16,185,129,0.08)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)' }}>
                 Total: ₹{teacherList.reduce((s, t) => s + (t.salary || 0), 0).toLocaleString('en-IN')} / mo
               </span>
             </div>
@@ -4914,14 +4914,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <div key={t.id || i} style={{ padding: '14px', borderRadius: '16px', border: `1.5px solid ${t.salaryStatus === 'paid' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, backgroundColor: t.salaryStatus === 'paid' ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)', boxShadow: '0 8px 24px rgba(15,23,42,0.05)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'start' }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: '14px', fontWeight: 900, color: 'var(--dark-charcoal)', lineHeight: 1.25 }}>{t.name}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '4px' }}>{t.subject || 'Role'}</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--dark-charcoal)', lineHeight: 1.25 }}>{t.name}</div>
+                      <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '4px' }}>{t.subject || 'Role'}</div>
                     </div>
-                    <span style={{ fontSize: '10px', fontWeight: 800, color: t.salaryStatus === 'paid' ? 'var(--good)' : 'var(--critical)', backgroundColor: 'rgba(255,255,255,0.75)', padding: '4px 8px', borderRadius: '999px' }}>
+                    <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: t.salaryStatus === 'paid' ? 'var(--good)' : 'var(--critical)', backgroundColor: 'rgba(255,255,255,0.75)', padding: '4px 8px', borderRadius: '999px' }}>
                       {t.salaryStatus === 'paid' ? 'Paid' : 'Pending'}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px', fontSize: '11px', color: 'var(--muted-gray)', lineHeight: 1.5 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '12px', fontSize: '0.7857rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>
                     <span>Campus: {t.branch || loggedInCampus}</span>
                     <span>Salary: ₹{Number(t.salary || 0).toLocaleString('en-IN')}</span>
                     <span>Paid: ₹{Number(t.salaryPaidAmount || 0).toLocaleString('en-IN')}</span>
@@ -4930,14 +4930,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                     <button
                       onClick={() => openSalaryAction(t, 'paid')}
-                      style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800, fontSize: '0.7857rem', cursor: 'pointer' }}
                       className="press-interactive"
                     >
                       Mark Given
                     </button>
                     <button
                       onClick={() => openSalaryAction(t, 'pending')}
-                      style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)', backgroundColor: 'rgba(239,68,68,0.06)', color: 'var(--critical)', fontWeight: 800, fontSize: '11px', cursor: 'pointer' }}
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)', backgroundColor: 'rgba(239,68,68,0.06)', color: 'var(--critical)', fontWeight: 800, fontSize: '0.7857rem', cursor: 'pointer' }}
                       className="press-interactive"
                     >
                       Unmark
@@ -4955,7 +4955,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               >
                 Previous Page
               </button>
-              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--muted-gray)' }}>
+              <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--muted-gray)' }}>
                 Page <strong>{salaryCurrentPage}</strong> of <strong>{salaryTotalPages}</strong>
               </div>
               <button
@@ -4977,13 +4977,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.1rem', color: 'var(--dark-charcoal)' }}>
                       {salaryActionType === 'paid' ? 'Mark Salary as Paid' : 'Mark Salary as Unpaid'}
                     </h3>
-                    <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--muted-gray)' }}>
+                    <p style={{ margin: '6px 0 0', fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>
                       {selectedSalaryTeacher.name} • {selectedSalaryTeacher.subject || 'Role'}
                     </p>
                   </div>
                   <button
                     onClick={() => { setIsSalaryActionOpen(false); setSelectedSalaryTeacher(null); setSalaryAmountInput(''); }}
-                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
+                    style={{ background: 'none', border: 'none', fontSize: '1.4286rem', cursor: 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}
                   >
                     ×
                   </button>
@@ -4991,8 +4991,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ padding: '12px', borderRadius: '12px', backgroundColor: 'rgba(255,255,255,0.6)' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--muted-gray)' }}>Salary Due</div>
-                    <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--dark-charcoal)' }}>₹{Number(selectedSalaryTeacher.salary || 0).toLocaleString('en-IN')}</div>
+                    <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)' }}>Salary Due</div>
+                    <div style={{ fontSize: '1.1429rem', fontWeight: 900, color: 'var(--dark-charcoal)' }}>₹{Number(selectedSalaryTeacher.salary || 0).toLocaleString('en-IN')}</div>
                   </div>
                   {salaryActionType === 'paid' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -5095,7 +5095,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 color: '#000',
                 border: 'none',
                 fontWeight: 900,
-                fontSize: '12px',
+                fontSize: '0.8571rem',
                 padding: '10px 18px',
                 borderRadius: '10px',
                 boxShadow: '0 4px 12px rgba(251, 191, 36, 0.25)',
@@ -5119,18 +5119,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 placeholder="Search Worker by Name, Role, Month Period, ID..."
                 value={workerSearch}
                 onChange={(e) => { setWorkerSearch(e.target.value); setWorkerPage(1); }}
-                style={{ ...styles.textInputBox, fontSize: '13px', padding: '12px 14px' }}
+                style={{ ...styles.textInputBox, fontSize: '0.9286rem', padding: '12px 14px' }}
               />
             </div>
             {workerSearch && (
               <button
                 onClick={() => { setWorkerSearch(''); setWorkerPage(1); }}
-                style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--critical)', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase' }}
+                style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--critical)', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontSize: '0.7857rem', fontWeight: 800, textTransform: 'uppercase' }}
               >
                 Clear Search
               </button>
             )}
-            <div style={{ fontSize: '12px', color: 'var(--muted-gray)', fontWeight: 700, padding: '0 8px' }}>
+            <div style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)', fontWeight: 700, padding: '0 8px' }}>
               Showing <strong>{filteredWorkers.length}</strong> Workers
             </div>
           </div>
@@ -5138,17 +5138,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           {/* Top Pagination Controls */}
           {workerTotalPages > 1 && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>
+              <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
                 Showing {((workerCurrentPage - 1) * WORKER_PER_PAGE) + 1}-{Math.min(workerCurrentPage * WORKER_PER_PAGE, filteredWorkers.length)} of {filteredWorkers.length}
               </span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => setWorkerPage(p => Math.max(1, p - 1))} disabled={workerCurrentPage === 1}
-                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: workerCurrentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: workerCurrentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === 1 ? 'default' : 'pointer' }}>
+                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: workerCurrentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: workerCurrentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: workerCurrentPage === 1 ? 'default' : 'pointer' }}>
                   â† Prev
                 </button>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)', display: 'flex', alignItems: 'center' }}>Page {workerCurrentPage} / {workerTotalPages}</span>
+                <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)', display: 'flex', alignItems: 'center' }}>Page {workerCurrentPage} / {workerTotalPages}</span>
                 <button onClick={() => setWorkerPage(p => Math.min(workerTotalPages, p + 1))} disabled={workerCurrentPage === workerTotalPages}
-                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: workerCurrentPage === workerTotalPages ? 'var(--surface-sunken)' : '#fff', color: workerCurrentPage === workerTotalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === workerTotalPages ? 'default' : 'pointer' }}>
+                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: workerCurrentPage === workerTotalPages ? 'var(--surface-sunken)' : '#fff', color: workerCurrentPage === workerTotalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: workerCurrentPage === workerTotalPages ? 'default' : 'pointer' }}>
                   Next
                 </button>
               </div>
@@ -5196,7 +5196,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '15px',
+                      fontSize: '1.0714rem',
                       fontWeight: 900,
                       flexShrink: 0
                     }}>
@@ -5204,11 +5204,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <strong style={{ fontSize: '15px', color: 'var(--dark-charcoal)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <strong style={{ fontSize: '1.0714rem', color: 'var(--dark-charcoal)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {wName}
                         </strong>
                         <span style={{
-                          fontSize: '10px',
+                          fontSize: '0.7143rem',
                           fontWeight: 900,
                           padding: '3px 8px',
                           borderRadius: '999px',
@@ -5220,14 +5220,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           {w.paid ? 'PAID' : 'UNPAID'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--ink-secondary)', marginTop: '2px', fontWeight: 600 }}>
+                      <div style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginTop: '2px', fontWeight: 600 }}>
                         Role: <span style={{ color: 'var(--ink)', fontWeight: 800 }}>{w.role || 'Staff'}</span> Â· Period: <span style={{ color: 'var(--ink)', fontWeight: 800 }}>{w.monthPeriod || 'July 2026'}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Financial Details Row */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--surface-sunken)', padding: '10px 12px', borderRadius: '10px', fontSize: '11.5px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--surface-sunken)', padding: '10px 12px', borderRadius: '10px', fontSize: '0.8214rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink-secondary)' }}>
                       <span>Monthly Wage:</span>
                       <strong>Rs.{wWage.toLocaleString('en-IN')}</strong>
@@ -5259,7 +5259,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           backgroundColor: 'var(--royal-gold)',
                           borderRadius: '8px',
                           fontWeight: 900,
-                          fontSize: '11.5px',
+                          fontSize: '0.8214rem',
                           cursor: 'pointer',
                           boxShadow: '0 2px 8px rgba(251, 191, 36, 0.25)'
                         }}
@@ -5278,7 +5278,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           backgroundColor: 'rgba(254, 242, 242, 0.8)',
                           borderRadius: '8px',
                           fontWeight: 800,
-                          fontSize: '11.5px',
+                          fontSize: '0.8214rem',
                           cursor: 'pointer'
                         }}
                         className="press-interactive"
@@ -5296,7 +5296,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         backgroundColor: 'var(--surface-sunken)',
                         borderRadius: '8px',
                         fontWeight: 800,
-                        fontSize: '11px',
+                        fontSize: '0.7857rem',
                         cursor: 'pointer'
                       }}
                       className="press-interactive"
@@ -5309,7 +5309,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             })}
 
             {workerPaginatedList.length === 0 && (
-              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px 20px', color: 'var(--muted-gray)', fontSize: '13px', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: '16px' }}>
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px 20px', color: 'var(--muted-gray)', fontSize: '0.9286rem', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: '16px' }}>
                 No worker payroll records found matching your search.
               </div>
             )}
@@ -5319,12 +5319,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           {workerTotalPages > 1 && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center', zIndex: 1, marginTop: '8px' }}>
               <button onClick={() => setWorkerPage(p => Math.max(1, p - 1))} disabled={workerCurrentPage === 1}
-                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid var(--line)', background: workerCurrentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: workerCurrentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === 1 ? 'default' : 'pointer' }}>
+                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid var(--line)', background: workerCurrentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: workerCurrentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: workerCurrentPage === 1 ? 'default' : 'pointer' }}>
                 â† Previous
               </button>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-secondary)' }}>Page {workerCurrentPage} of {workerTotalPages}</span>
+              <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>Page {workerCurrentPage} of {workerTotalPages}</span>
               <button onClick={() => setWorkerPage(p => Math.min(workerTotalPages, p + 1))} disabled={workerCurrentPage === workerTotalPages}
-                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid var(--line)', background: workerCurrentPage === workerTotalPages ? 'var(--surface-sunken)' : '#fff', color: workerCurrentPage === workerTotalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '12px', cursor: workerCurrentPage === workerTotalPages ? 'default' : 'pointer' }}>
+                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid var(--line)', background: workerCurrentPage === workerTotalPages ? 'var(--surface-sunken)' : '#fff', color: workerCurrentPage === workerTotalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: workerCurrentPage === workerTotalPages ? 'default' : 'pointer' }}>
                 Next
               </button>
             </div>
@@ -5336,9 +5336,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--royal-gold)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h3 style={{ ...styles.modalTitle, color: 'var(--warning)' }}>Record Worker Payment</h3>
-                  <button onClick={() => { setIsPaymentAmountModalOpen(false); setSelectedWorkerForPayment(null); }} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}>×</button>
+                  <button onClick={() => { setIsPaymentAmountModalOpen(false); setSelectedWorkerForPayment(null); }} style={{ background: 'none', border: 'none', fontSize: '1.2857rem', cursor: 'pointer', color: 'var(--muted-gray)' }}>×</button>
                 </div>
-                <p style={{ fontSize: '12px', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '14px' }}>
+                <p style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)', lineHeight: 1.5, marginBottom: '14px' }}>
                   Worker: <strong>{selectedWorkerForPayment.workerName || selectedWorkerForPayment.name}</strong> ({selectedWorkerForPayment.role})<br />
                   Monthly Wage: <strong>Rs.{(selectedWorkerForPayment.amount || selectedWorkerForPayment.salary || 0).toLocaleString('en-IN')}</strong>
                 </p>
@@ -5351,7 +5351,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     placeholder="Enter paid amount"
                     value={paymentAmountInput}
                     onChange={(e) => setPaymentAmountInput(e.target.value)}
-                    style={{ ...styles.textInputBox, fontSize: '16px', fontWeight: 800, color: 'var(--good)' }}
+                    style={{ ...styles.textInputBox, fontSize: '1.1429rem', fontWeight: 800, color: 'var(--good)' }}
                     autoFocus
                   />
                 </div>
@@ -5389,8 +5389,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             <div style={{ ...styles.overlayOverlay, zIndex: 1400 }} className="anim-fade-in">
               <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '400px', padding: '28px', borderRadius: '16px', border: '1px solid var(--card-border)' }} className="anim-slide-up glass-gold-ring">
                 <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-                  <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)' }}>Confirm Worker Payment</h3>
-                  <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 600 }}>
+                  <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '1.0714rem', color: 'var(--dark-charcoal)' }}>Confirm Worker Payment</h3>
+                  <p style={{ margin: 0, fontSize: '0.8929rem', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 600 }}>
                     Are you sure you want to record worker payment of <strong>Rs. {(Number(workerPendingAction?.data?.amountPaid || workerPendingAction?.data?.amount || 0)).toLocaleString('en-IN')}</strong> for <strong>{workerPendingAction?.data?.workerName || workerPendingAction?.data?.name}</strong>?
                   </p>
                 </div>
@@ -5452,13 +5452,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   return (
                     <div key={s.studentId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{s.name}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--muted-gray)', marginTop: '2px' }}>ID: {s.studentId}</div>
+                        <div style={{ fontSize: '0.9286rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{s.name}</div>
+                        <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>ID: {s.studentId}</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--dark-charcoal)' }}>Midterm: <span style={{ color: 'var(--royal-gold)' }}>{subMark.midterm}</span></div>
-                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--dark-charcoal)' }}>Final Exam: <span style={{ color: 'var(--good)' }}>{subMark.final}</span></div>
+                          <div style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--dark-charcoal)' }}>Midterm: <span style={{ color: 'var(--royal-gold)' }}>{subMark.midterm}</span></div>
+                          <div style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--dark-charcoal)' }}>Final Exam: <span style={{ color: 'var(--good)' }}>{subMark.final}</span></div>
                         </div>
                         <button
                           onClick={() => {
@@ -5466,7 +5466,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                             setMarkMidterm(String(subMark.midterm));
                             setMarkFinal(String(subMark.final));
                           }}
-                          style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--card-border)', background: 'rgba(255,255,255,0.8)', cursor: 'pointer', fontSize: '11px', fontWeight: 700 }}
+                          style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--card-border)', background: 'rgba(255,255,255,0.8)', cursor: 'pointer', fontSize: '0.7857rem', fontWeight: 700 }}
                           className="press-interactive"
                         >
                           Edit
@@ -5476,7 +5476,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   );
                 })}
                 {list.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted-gray)', fontSize: '12px' }}>
+                  <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted-gray)', fontSize: '0.8571rem' }}>
                     No student records found.
                   </div>
                 )}
@@ -5492,7 +5492,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <h3 style={styles.modalTitle}>Edit Student Grades</h3>
                   <button
                     onClick={() => setEditingMark(null)}
-                    style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                    style={{ background: 'none', border: 'none', fontSize: '1.2857rem', cursor: 'pointer', color: 'var(--muted-gray)' }}
                   >
                     -
                   </button>
@@ -5500,12 +5500,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>Student</div>
-                    <strong style={{ fontSize: '14px', color: 'var(--dark-charcoal)' }}>{editingMark.name} ({editingMark.studentId})</strong>
+                    <div style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>Student</div>
+                    <strong style={{ fontSize: '1rem', color: 'var(--dark-charcoal)' }}>{editingMark.name} ({editingMark.studentId})</strong>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ fontSize: '12px', color: 'var(--muted-gray)' }}>Subject</div>
-                    <strong style={{ fontSize: '14px', color: 'var(--royal-gold)' }}>{markSubject}</strong>
+                    <div style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>Subject</div>
+                    <strong style={{ fontSize: '1rem', color: 'var(--royal-gold)' }}>{markSubject}</strong>
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
@@ -5670,7 +5670,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 padding: '12px 20px',
                 borderRadius: '12px',
                 fontWeight: 900,
-                fontSize: '14px',
+                fontSize: '1rem',
                 border: 'none',
                 backgroundColor: admin1Tab === 'dashboard' ? 'var(--accent)' : 'var(--ink)',
                 color: 'var(--surface)',
@@ -5695,7 +5695,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 padding: '12px 20px',
                 borderRadius: '12px',
                 fontWeight: 900,
-                fontSize: '14px',
+                fontSize: '1rem',
                 border: 'none',
                 backgroundColor: admin1Tab === 'overview' ? 'var(--accent)' : 'var(--ink)',
                 color: 'var(--surface)',
@@ -5938,7 +5938,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         {/* Footer */}
         <footer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 28px 12px', gap: '8px', opacity: 0.85 }}>
           <InspireLogo size="sm" inPortal={true} />
-          <span style={{ fontSize: '9px', color: 'var(--muted-gray)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
+          <span style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
             Inspire ERP General Portal v2.6.4 • Powered by TRNT BEE Technologies
           </span>
         </footer>
@@ -5957,8 +5957,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       {isOtpModalOpen && editStudent && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
           <div style={{ width: '100%', maxWidth: '360px', padding: '28px', borderRadius: '16px', margin: '0 16px', backgroundColor: 'rgba(255,255,255,0.96)', border: '1px solid var(--card-border)', boxShadow: '0 20px 50px rgba(15,23,42,0.15)' }} className="anim-slide-up">
-            <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '15px', color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' }}>Confirm Profile & Fee Changes</h3>
-            <p style={{ margin: '0 0 16px', fontSize: '12.5px', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 600 }}>Are you sure you want to save updated profile details and fee structure for <strong>{editStudent.name}</strong>?</p>
+            <h3 style={{ margin: '0 0 6px', fontWeight: 800, fontSize: '1.0714rem', color: 'var(--dark-charcoal)', letterSpacing: '-0.015em' }}>Confirm Profile & Fee Changes</h3>
+            <p style={{ margin: '0 0 16px', fontSize: '0.8929rem', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 600 }}>Are you sure you want to save updated profile details and fee structure for <strong>{editStudent.name}</strong>?</p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => { setIsOtpModalOpen(false); setOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
               <button onClick={() => handleStudentSave(editStudent, undefined)} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3 }} className="press-interactive">Yes, Save Changes</button>
@@ -5972,12 +5972,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.65)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' }}>
           <div style={{ width: '100%', maxWidth: '380px', padding: '28px', borderRadius: '20px', margin: '0 16px', backgroundColor: 'rgba(255,255,255,0.98)', border: '2px solid var(--critical)', boxShadow: '0 25px 60px rgba(239,68,68,0.25)' }} className="anim-slide-up">
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.1)', color: 'var(--critical)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', fontSize: '20px', fontWeight: 900 }}>!</div>
-              <h3 style={{ margin: '0 0 6px', fontWeight: 900, fontSize: '16px', color: 'var(--critical)' }}>Confirm Permanent Student Deletion</h3>
-              <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--dark-charcoal)', lineHeight: 1.5, fontWeight: 600 }}>
+              <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.1)', color: 'var(--critical)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', fontSize: '1.4286rem', fontWeight: 900 }}>!</div>
+              <h3 style={{ margin: '0 0 6px', fontWeight: 900, fontSize: '1.1429rem', color: 'var(--critical)' }}>Confirm Permanent Student Deletion</h3>
+              <p style={{ margin: 0, fontSize: '0.8929rem', color: 'var(--dark-charcoal)', lineHeight: 1.5, fontWeight: 600 }}>
                 Are you sure you want to <strong>PERMANENTLY DELETE</strong> student record for <strong style={{ color: 'var(--critical)' }}>{selectedStudent.name}</strong> ({selectedStudent.admissionNumber}) from MongoDB and all portal databases?
               </p>
-              <div style={{ marginTop: '8px', padding: '6px 10px', backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: '8px', fontSize: '10.5px', color: 'var(--critical)', fontWeight: 700 }}>
+              <div style={{ marginTop: '8px', padding: '6px 10px', backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: '8px', fontSize: '0.75rem', color: 'var(--critical)', fontWeight: 700 }}>
                 THIS ACTION CANNOT BE UNDONE.
               </div>
             </div>
@@ -6011,10 +6011,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             animation: 'spin 0.8s linear infinite',
             marginBottom: '20px'
           }} />
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 900, color: 'var(--warning)', letterSpacing: '0.04em' }}>
+          <h3 style={{ margin: 0, fontSize: '1.2857rem', fontWeight: 900, color: 'var(--warning)', letterSpacing: '0.04em' }}>
             Processing & Uploading...
           </h3>
-          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--ink-muted)', fontWeight: 600 }}>
+          <p style={{ margin: '6px 0 0', fontSize: '0.8571rem', color: 'var(--ink-muted)', fontWeight: 600 }}>
             Please wait while your request is being saved to the database.
           </p>
         </div>
@@ -6050,14 +6050,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     backdropFilter: 'blur(20px)',
   },
   title: {
-    fontSize: '18px',
+    fontSize: '1.2857rem',
     fontWeight: 800,
     color: 'var(--dark-charcoal)',
     letterSpacing: '-0.025em',
     lineHeight: 1.2,
   },
   subtitle: {
-    fontSize: '11.5px',
+    fontSize: '0.8214rem',
     color: 'var(--muted-gray)',
     fontWeight: 500,
     marginTop: '3px',
@@ -6082,7 +6082,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '13px',
+    fontSize: '0.9286rem',
     fontWeight: 900,
     color: 'var(--royal-gold)',
     border: '1px solid rgba(212,175,55,0.25)',
@@ -6090,13 +6090,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexShrink: 0,
   },
   parentWelcomeTitle: {
-    fontSize: '16px',
+    fontSize: '1.1429rem',
     fontWeight: 800,
     color: 'var(--dark-charcoal)',
     letterSpacing: '-0.02em',
   },
   greetingText: {
-    fontSize: '10px',
+    fontSize: '0.7143rem',
     color: 'var(--muted-gray)',
     fontWeight: 600,
     textTransform: 'uppercase',
@@ -6105,7 +6105,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: '3px',
   },
   childMetaText: {
-    fontSize: '11px',
+    fontSize: '0.7857rem',
     color: 'var(--muted-gray)',
     fontWeight: 500,
     marginTop: '1px',
@@ -6126,14 +6126,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     boxShadow: '0 1px 3px rgba(15,23,42,0.05)',
   },
   metricLabel: {
-    fontSize: '9.5px',
+    fontSize: '0.6786rem',
     fontWeight: 700,
     color: 'var(--muted-gray)',
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
   },
   metricValue: {
-    fontSize: '22px',
+    fontSize: '1.5714rem',
     fontWeight: 900,
     color: 'var(--dark-charcoal)',
     letterSpacing: '-0.03em',
@@ -6141,7 +6141,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginTop: '4px',
   },
   metricSub: {
-    fontSize: '9.5px',
+    fontSize: '0.6786rem',
     color: 'var(--muted-gray)',
     fontWeight: 500,
     marginTop: '2px',
@@ -6152,7 +6152,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '10px',
   },
   sectionTitle: {
-    fontSize: '11px',
+    fontSize: '0.7857rem',
     fontWeight: 700,
     color: 'var(--muted-gray)',
     textTransform: 'uppercase',
@@ -6179,13 +6179,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'center',
   },
   moduleTitle: {
-    fontSize: '13px',
+    fontSize: '0.9286rem',
     fontWeight: 800,
     color: 'var(--dark-charcoal)',
     letterSpacing: '-0.01em',
   },
   moduleDesc: {
-    fontSize: '11px',
+    fontSize: '0.7857rem',
     color: 'var(--muted-gray)',
     lineHeight: 1.5,
     fontWeight: 400,
@@ -6195,7 +6195,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '11px 14px',
     borderRadius: '10px',
     border: '1px solid var(--card-border)',
-    fontSize: '13px',
+    fontSize: '0.9286rem',
     outline: 'none',
     backgroundColor: 'rgba(255,255,255,0.7)',
     color: 'var(--dark-charcoal)',
@@ -6208,7 +6208,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: 'var(--dark-charcoal)',
     color: 'var(--surface)',
     fontFamily: 'var(--font-family)',
-    fontSize: '12.5px',
+    fontSize: '0.8929rem',
     fontWeight: 700,
     border: 'none',
     cursor: 'pointer',
@@ -6217,7 +6217,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     letterSpacing: '0.01em',
   },
   sectionSubtitle: {
-    fontSize: '11px',
+    fontSize: '0.7857rem',
     fontWeight: 700,
     color: 'var(--muted-gray)',
     textTransform: 'uppercase',
@@ -6238,11 +6238,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    fontSize: '12.5px',
+    fontSize: '0.8929rem',
     padding: '5px 0',
   },
   formLabel: {
-    fontSize: '9.5px',
+    fontSize: '0.6786rem',
     fontWeight: 700,
     color: 'var(--muted-gray)',
     textTransform: 'uppercase',
@@ -6256,7 +6256,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '10px',
     border: '1px solid var(--card-border)',
     backgroundColor: 'rgba(255,255,255,0.7)',
-    fontSize: '13px',
+    fontSize: '0.9286rem',
     fontWeight: 600,
     color: 'var(--dark-charcoal)',
     outline: 'none',
@@ -6276,7 +6276,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '8px',
     border: '1px solid var(--card-border)',
     backgroundColor: 'rgba(255,255,255,0.9)',
-    fontSize: '11px',
+    fontSize: '0.7857rem',
     fontWeight: 700,
     color: 'var(--dark-charcoal)',
     cursor: 'pointer',
@@ -6287,7 +6287,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '8px',
     border: 'none',
     fontFamily: 'var(--font-family)',
-    fontSize: '12px',
+    fontSize: '0.8571rem',
     fontWeight: 700,
     cursor: 'pointer',
   },
@@ -6314,7 +6314,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: 'center',
     padding: '3px 9px',
     borderRadius: '999px',
-    fontSize: '9.5px',
+    fontSize: '0.6786rem',
     fontWeight: 700,
     letterSpacing: '0.04em',
     border: '1px solid var(--card-border)',
@@ -6334,7 +6334,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: 'rgba(255,255,255,0.5)',
   },
   toastText: {
-    fontSize: '12px',
+    fontSize: '0.8571rem',
     fontWeight: 700,
     color: 'var(--surface)',
   },
@@ -6346,20 +6346,20 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '16px',
+    fontSize: '1.1429rem',
     fontWeight: 900,
     color: 'var(--royal-gold)',
     border: '1px solid rgba(212,175,55,0.2)',
     letterSpacing: '0.04em',
   },
   studentName: {
-    fontSize: '16px',
+    fontSize: '1.1429rem',
     fontWeight: 800,
     color: 'var(--dark-charcoal)',
     letterSpacing: '-0.015em',
   },
   studentID: {
-    fontSize: '11.5px',
+    fontSize: '0.8214rem',
     color: 'var(--muted-gray)',
     fontWeight: 500,
     display: 'block',
@@ -6384,7 +6384,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: '1px solid rgba(211,47,47,0.25)',
     color: '#D32F2F',
     fontFamily: 'var(--font-family)',
-    fontSize: '13px',
+    fontSize: '0.9286rem',
     fontWeight: 700,
     cursor: 'pointer',
     textAlign: 'center',
@@ -6394,7 +6394,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '4px 0',
   },
   quickFillPill: {
-    fontSize: '10px',
+    fontSize: '0.7143rem',
     fontWeight: 700,
     color: 'var(--royal-gold)',
     backgroundColor: 'rgba(212,175,55,0.06)',
@@ -6409,7 +6409,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: 'none',
     color: 'var(--muted-gray)',
     fontFamily: 'var(--font-family)',
-    fontSize: '12px',
+    fontSize: '0.8571rem',
     fontWeight: 700,
     cursor: 'pointer',
     display: 'flex',
@@ -6494,7 +6494,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '10px',
     backgroundColor: 'rgba(212, 175, 55, 0.08)',
     border: '1px dashed rgba(212, 175, 55, 0.3)',
-    fontSize: '11px',
+    fontSize: '0.7857rem',
     color: '#854D0E',
     textAlign: 'center'
   },
@@ -6520,7 +6520,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: 'var(--gold-gradient)',
     color: '#fff',
     fontWeight: 800,
-    fontSize: '13px',
+    fontSize: '0.9286rem',
     cursor: 'pointer',
     boxShadow: '0 4px 14px rgba(212, 175, 55, 0.35)'
   },
@@ -6531,7 +6531,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: 'rgba(255,255,255,0.6)',
     color: 'var(--dark-charcoal)',
     fontWeight: 700,
-    fontSize: '13px',
+    fontSize: '0.9286rem',
     cursor: 'pointer'
   }
 };
