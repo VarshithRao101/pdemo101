@@ -391,11 +391,23 @@ export const openPrintDocument = ({
 </head>
 <body>
 <div class="page">
-<button class="pdf-print-btn" onclick="window.print()">${escapeHtml(buttonLabel)}</button>
+<button class="pdf-print-btn" type="button">${escapeHtml(buttonLabel)}</button>
 ${framed ? `<div class="pdf-frame">${body}</div>` : body}
 </div>
 </body>
 </html>`);
   win.document.close();
+
+  // The button's handler is attached from here rather than written into the
+  // markup as onclick="window.print()".
+  //
+  // A window opened on about:blank inherits the OPENER's Content Security
+  // Policy, and that policy no longer allows inline script — an inline
+  // handler would be blocked and the button would look normal while doing
+  // nothing at all. Attaching the listener from this side is ordinary bundled
+  // code, so it runs under 'self' and the policy stays strict.
+  win.document.querySelector('.pdf-print-btn')
+    ?.addEventListener('click', () => win.print());
+
   return true;
 };

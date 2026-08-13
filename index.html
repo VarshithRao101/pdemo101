@@ -20,8 +20,13 @@
       frame-ancestors is not valid in a meta tag and is intentionally absent —
       clickjacking is covered by the X-Frame-Options: SAMEORIGIN header, which
       does survive the edge.
+
+      script-src is 'self' with NO 'unsafe-inline'. The built page loads one
+      module by src and has no inline script or handler anywhere, so nothing
+      needs it. If that ever changes, use a nonce or a hash for that one
+      script rather than reopening the directive.
     -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
 
     <!-- Primary Meta Tags -->
     <title>Inspire Educational Institutions | Administrative Portal Gateway</title>
