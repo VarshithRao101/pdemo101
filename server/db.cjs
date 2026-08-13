@@ -30,6 +30,42 @@ mongoose.set('strictQuery', true);
 // scripts/rotateCredentials.cjs (and any future migration script).
 mongoose.set('autoIndex', false);
 
+/**
+ * The few indexes the application's CORRECTNESS depends on, as opposed to its
+ * speed. With autoIndex off nothing is built automatically, and an index that
+ * was only ever declared in a schema is not an index — `loginattempts` was
+ * declared with a unique key and a TTL and shipped with neither, so the row
+ * enforcing the five-attempt lockout had no uniqueness behind it and expired
+ * counters were never swept.
+ *
+ * Kept to small, ephemeral collections on purpose. Building an index over a
+ * large collection at boot is exactly the stall autoIndex was turned off to
+ * avoid; anything on students or payments still belongs in a migration run
+ * deliberately.
+ */
+const CRITICAL_INDEXES = [
+  ['loginattempts', { key: 1 }, { unique: true, name: 'key_1', background: true }],
+  ['loginattempts', { expiresAt: 1 }, { expireAfterSeconds: 0, name: 'expiresAt_1', background: true }]
+];
+
+let indexesEnsured = false;
+
+async function ensureCriticalIndexes(connection) {
+  if (indexesEnsured) return;
+  indexesEnsured = true;
+  for (const [collection, spec, options] of CRITICAL_INDEXES) {
+    try {
+      await connection.collection(collection).createIndex(spec, options);
+    } catch (err) {
+      // Never fatal. A duplicate-key failure here means real rows conflict and
+      // needs a human; a mismatched existing definition means someone changed
+      // it deliberately. Either way the app must still start, and the failure
+      // must be visible rather than swallowed.
+      console.error(`[Database]: Could not create index on ${collection}:`, err.message);
+    }
+  }
+}
+
 let connectionPromise = null;
 
 mongoose.connection.on('connected', () => {
@@ -74,6 +110,10 @@ async function connectToDatabase() {
     })
     .then((m) => {
       connectionPromise = null;
+      // Deliberately not awaited: the first request must not wait on an index
+      // build, and a failure here is logged rather than allowed to fail the
+      // connection every caller is holding.
+      ensureCriticalIndexes(m.connection).catch(() => {});
       return m.connection;
     })
     .catch((err) => {
