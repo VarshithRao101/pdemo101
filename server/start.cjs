@@ -90,6 +90,46 @@ let server = null;
 let shuttingDown = false;
 
 /** Exits after giving the log a chance to flush. */
+/**
+ * Leaves a permanent record of why this process stopped.
+ *
+ * The runtime log is the obvious place for this, and it is where the detail
+ * lives — but it is also a scrollback that has to be caught in the act, and
+ * the platform rotates it. Twice now the cause of an outage has been reasoned
+ * about from symptoms rather than read off a log, and twice the reasoning was
+ * wrong: first a zombie process, then memory exhaustion, which the dashboard
+ * later showed at 8% of the limit.
+ *
+ * So the exit reason goes into the database, where it survives the process
+ * and can be read hours later. A `lifecycle` document per boot and per death,
+ * queryable afterwards, answers three things the log makes you catch live:
+ * how long the process lived, why it stopped, and whether anything restarted
+ * it — because a boot record with no death record before it means something
+ * killed the process without warning it, which is a different fault entirely.
+ *
+ * Strictly best effort. It runs on the way out of a process that is already
+ * failing, so it never throws, never blocks the exit for more than a moment,
+ * and a database that is itself the problem simply produces no record.
+ */
+async function recordLifecycle(event, detail = {}) {
+  try {
+    if (mongoose.connection.readyState !== 1) return;
+    await mongoose.connection.collection('lifecycle').insertOne({
+      event,
+      instance: INSTANCE,
+      pid: process.pid,
+      at: new Date(),
+      uptimeSeconds: Number(process.uptime().toFixed(1)),
+      rssMb: Number((process.memoryUsage().rss / 1048576).toFixed(1)),
+      node: process.version,
+      ...detail
+    });
+  } catch {
+    // A process on its way out must not fail harder because it could not
+    // write down why it was leaving.
+  }
+}
+
 function die(code, reason) {
   // How long this process actually lived is the single most useful number for
   // telling the failure modes apart, and it was not being recorded. Dying
@@ -113,7 +153,14 @@ function die(code, reason) {
     '💀 [Server]: If no "Listening on port" banner follows this line, nothing restarted ' +
     'the process and the site is down until it is started by hand.'
   );
-  setTimeout(() => process.exit(code), 250).unref();
+  // Give the record a moment to land, but never more than a moment — the
+  // point is to exit, and a database that is itself the fault must not turn
+  // a crash into a hang.
+  const budgetMs = 1500;
+  Promise.race([
+    recordLifecycle('exit', { reason, code, lived }),
+    new Promise(r => setTimeout(r, budgetMs))
+  ]).finally(() => process.exit(code));
 }
 
 // --- Nightly backup ------------------------------------------------------
@@ -193,6 +240,11 @@ async function startServer() {
       `at ${new Date().toISOString()}`
     );
     reportMemoryCeiling();
+    // A boot record with no matching exit record before it means the previous
+    // process was killed outright — SIGKILL, or the platform stopping it —
+    // rather than exiting on a fault it noticed. Those need opposite fixes,
+    // and without both records they are indistinguishable.
+    recordLifecycle('boot', { port: PORT });
   });
 
   // The handler whose absence caused the outages.
@@ -241,13 +293,23 @@ process.on('uncaughtException', (err) => {
 function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log(`[Server]: ${signal} received, shutting down.`);
+  const up = process.uptime();
+  console.log(
+    `[Server]: ${signal} received after ${up < 90 ? up.toFixed(1) + 's' : (up / 60).toFixed(1) + ' min'} ` +
+    `of uptime, shutting down.`
+  );
 
   // Release the port promptly. A redeploy that leaves the old process holding
   // it is what produces the EADDRINUSE collision in the first place.
   const done = () => {
     mongoose.connection.close(false).catch(() => {}).finally(() => process.exit(0));
   };
+
+  // Recorded so a platform-initiated stop — a redeploy, a plan-level idle
+  // sleep, an operator restart — is distinguishable afterwards from the
+  // process falling over on its own. They look identical from outside and
+  // this is the only signal that separates them.
+  recordLifecycle('signal', { signal }).catch(() => {});
 
   if (server) {
     server.close(done);
