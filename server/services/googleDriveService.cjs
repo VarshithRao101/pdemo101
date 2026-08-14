@@ -1,4 +1,21 @@
-const { google } = require('googleapis');
+/**
+ * The Drive-only client, not the googleapis umbrella package.
+ *
+ * `require('googleapis')` loads generated clients for every Google API there
+ * is, and measured on this codebase that cost 93.3MB of resident memory —
+ * more than express, mongoose, helmet, cors, morgan, jsonwebtoken, bcryptjs
+ * and node-cron put together. This app uses exactly one of those APIs.
+ *
+ * That mattered because the host runs two instances of this process, so the
+ * waste was paid twice, and a Node process that crosses its memory limit is
+ * killed rather than slowed — which looks from the outside like the site
+ * going down for no reason.
+ *
+ * @googleapis/drive is the same code from the same publisher, carrying only
+ * Drive: 16.6MB against 93.3MB, saving roughly 77MB per instance. The API
+ * surface used here — auth.OAuth2 and drive({ version: 'v3' }) — is identical.
+ */
+const { drive: driveApi, auth: driveAuth } = require('@googleapis/drive');
 const stream = require('stream');
 
 /**
@@ -26,12 +43,12 @@ async function getGoogleDriveClient() {
     throw new Error('Google Drive OAuth2 credentials missing. Ensure GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, and GOOGLE_OAUTH_REFRESH_TOKEN are set.');
   }
 
-  const oauth2Client = new google.auth.OAuth2(
+  const oauth2Client = new driveAuth.OAuth2(
     clientId.trim(),
     clientSecret.trim()
   );
   oauth2Client.setCredentials({ refresh_token: refreshToken.trim() });
-  return google.drive({ version: 'v3', auth: oauth2Client });
+  return driveApi({ version: 'v3', auth: oauth2Client });
 }
 
 function getFolderId() {

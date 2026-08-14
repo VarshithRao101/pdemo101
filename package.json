@@ -14,11 +14,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@googleapis/drive": "^21.0.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.19.2",
-    "googleapis": "^174.0.1",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.3.1",
