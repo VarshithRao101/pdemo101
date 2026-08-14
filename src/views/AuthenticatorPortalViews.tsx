@@ -1285,10 +1285,13 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       key={camp.name}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => {
-                        // Restoring from a locally-uploaded file is not supported:
-                        // backups are encrypted and restored from Google Drive.
+                        // Both handlers stay even though uploading is not offered.
+                        // Without them the browser treats a dropped .enc file as a
+                        // navigation and leaves the page — losing a half-finished
+                        // restore, at the exact moment someone is trying to recover
+                        // data. Preventing that is worth two lines.
                         e.preventDefault();
-                        triggerToast('Restore from a local file is not supported. Pick a backup from the Google Drive list below.');
+                        triggerToast('Restores run from the Google Drive snapshots listed here. Pick one below.');
                       }}
                       style={{
                         padding: '18px',
@@ -1342,38 +1345,37 @@ export const AuthenticatorDashboardView: React.FC = () => {
                         </div>
                       ) : (
                         <div style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink-muted)', fontStyle: 'italic', padding: '8px' }}>
-                          No active Drive backup snapshots found for {camp.name} yet. Trigger a backup or upload a file below.
+                          No Drive backup snapshots found for {camp.name} yet. Run a backup for this campus to create one.
                         </div>
                       )}
 
-                      {/* File Upload / Drag Zone */}
-                      <label style={{
-                        padding: '16px 12px',
-                        border: '2px dashed var(--ink-muted)',
-                        borderRadius: '12px',
+                      {/*
+                        A drag-and-drop zone sat here offering "Drag & Drop or
+                        Click to Select Backup (.json / .xlsx)", with a working
+                        file input, that did nothing but raise a toast saying the
+                        feature was unsupported — there has never been a backend
+                        for it, and the restore handler above says so.
+
+                        A dead control is worse than a missing one in this panel
+                        specifically: it would be found by someone mid-recovery,
+                        dragging in the file they had just downloaded, at the
+                        worst possible moment to discover a button is a decoy.
+                        It now states what actually works.
+                      */}
+                      <div style={{
+                        padding: '10px 12px',
+                        borderRadius: '10px',
                         backgroundColor: 'var(--surface)',
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '4px'
+                        border: '1px solid var(--ink-muted)',
+                        fontSize: '0.7143rem',
+                        fontWeight: 700,
+                        color: 'var(--ink-secondary)',
+                        textAlign: 'center'
                       }}>
-                        <span style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--accent)' }}>
-                          Drag & Drop or Click to Select Backup (.json / .xlsx)
-                        </span>
-                        <span style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
-                          Restores {(BACKUP_CATEGORIES.find(c => c.key === activeRestoreCategory)?.label || activeRestoreCategory)} records for {camp.name} only
-                        </span>
-                        <input
-                          type="file"
-                          accept=".json,.xlsx,.csv"
-                          style={{ display: 'none' }}
-                          onChange={() => {
-                            triggerToast('Restore from a local file is not supported. Pick a backup from the Google Drive list below.');
-                          }}
-                        />
-                      </label>
+                        Restores read from the encrypted Drive snapshots above, and cover{' '}
+                        {(BACKUP_CATEGORIES.find(c => c.key === activeRestoreCategory)?.label || activeRestoreCategory)}
+                        {' '}records for {camp.name} only.
+                      </div>
                     </div>
                   );
                 })}
