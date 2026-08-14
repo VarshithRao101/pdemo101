@@ -1108,7 +1108,7 @@ export const AccountantDashboardView: React.FC = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Summary Stats Header Bar */}
-              <div style={{ ...styles.readOnlyBlock, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+              <div style={{ ...styles.readOnlyBlock, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 130px), 1fr))', gap: '10px' }}>
                 <div><span style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Student Name</span><strong style={{ fontSize: '0.9286rem', color: 'var(--dark-charcoal)' }}>{selectedStudent.name || 'N/A'}</strong></div>
                 <div><span style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Adm Number</span><strong style={{ fontSize: '0.9286rem', color: 'var(--dark-charcoal)' }}>{selectedStudent.admissionNumber || 'N/A'}</strong></div>
                 <div><span style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Campus</span><strong style={{ fontSize: '0.9286rem', color: 'var(--good)' }}>{loggedInCampus}</strong></div>
@@ -1122,7 +1122,7 @@ export const AccountantDashboardView: React.FC = () => {
                 <h4 style={{ margin: '0 0 12px 0', fontSize: '0.8571rem', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                    Profile & Personal Details
                 </h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '10px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Student Name</label>
                     <input maxLength={LIMITS.personName} type="text" value={editStudent.name || ''} onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })} style={styles.textInputBox} />
@@ -1252,7 +1252,7 @@ export const AccountantDashboardView: React.FC = () => {
                     <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
                       1. Basic Academic Information
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '14px' }}>
                       <div>
                         <label style={styles.formLabel}>Admission Number *</label>
                         <input maxLength={LIMITS.admissionNumber}
@@ -1353,7 +1353,7 @@ export const AccountantDashboardView: React.FC = () => {
                     <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
                       2. Personal & Family Information
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '14px' }}>
                       <div>
                         <label style={styles.formLabel}>Father's Name</label>
                         <input maxLength={LIMITS.personName} type="text" placeholder="e.g. Ramesh Sharma" value={newStudentData.fatherName} onChange={(e) => setNewStudentData({ ...newStudentData, fatherName: e.target.value })} style={styles.textInputBox} />
@@ -1441,7 +1441,7 @@ export const AccountantDashboardView: React.FC = () => {
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '10px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         <label style={styles.formLabel}>Tuition Fee (Rs)</label>
                         <input min={0} max={999999999} type="number" value={newStudentData.tuitionFee} onChange={(e) => setNewStudentData({ ...newStudentData, tuitionFee: Number(e.target.value) })} style={styles.textInputBox} />
@@ -1726,7 +1726,7 @@ export const AccountantDashboardView: React.FC = () => {
               )}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))',
               gap: '16px',
               marginTop: '8px'
             }}>
@@ -2025,7 +2025,7 @@ export const AccountantDashboardView: React.FC = () => {
               </GlassCard>
 
               {/* Double Column Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '16px' }}>
                 {/* Column 1: Cool Bill Format Statement Card */}
                 <div style={{
                   background: 'var(--surface)',
@@ -2267,7 +2267,7 @@ export const AccountantDashboardView: React.FC = () => {
                         </div>
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '8px', marginTop: '10px' }}>
                         <button
                           onClick={() => { setPendingPayType('partial'); setPayOtpInput(''); setIsPayOtpModalOpen(true); }}
                           style={{ ...styles.sheetBtn, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }}
@@ -2508,7 +2508,7 @@ export const AccountantDashboardView: React.FC = () => {
                 visible in the history below.
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '10px' }}>
                 {[
                   ['tuitionFee', 'Tuition Fee'],
                   ['hostelFee', 'Hostel Fee'],
@@ -2681,7 +2681,7 @@ export const AccountantDashboardView: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '10px', marginTop: '16px' }}>
                 <button onClick={() => handleDownloadPDF(selectedReceipt, selectedStudent)} style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)', fontWeight: 800 }} className="press-interactive">Download PDF / Print</button>
                 <button onClick={() => triggerToast('Receipt shared to registered parent mobile!')} style={{ ...styles.sheetBtn, backgroundColor: 'var(--line)', color: 'var(--dark-charcoal)' }} className="press-interactive">Share Receipt</button>
               </div>
@@ -3047,7 +3047,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '3px',
   },
   childMetaText: { fontSize: '0.7857rem', color: 'var(--muted-gray)', fontWeight: 500, marginTop: '1px' },
-  metricsGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' },
+  metricsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px' },
   metricCard: {
     padding: '18px 20px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '4px',
     backgroundColor: 'rgba(255,255,255,0.7)', border: '2px solid var(--card-border)',

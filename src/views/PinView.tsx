@@ -412,7 +412,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
         {/* Portal Gateway Switcher Bar */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
           gap: '6px',
           backgroundColor: 'var(--surface-sunken)',
           padding: '4px',
@@ -494,7 +494,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             <label style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '8px' }}>
               Select Administrative Role
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))', gap: '8px', marginBottom: '10px' }}>
               {roleCards.map(rc => {
                 const isSelected = 
                   (rc.id === 'admin1' && (userId === 'admin1' || userId === 'admin')) ||
@@ -558,7 +558,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             {userId.includes('admin2') && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: 'var(--surface-sunken)', padding: '10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
                 <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--good)', textTransform: 'uppercase' }}>Select Admin 2 Campus:</span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '6px' }}>
                   {[
                     { id: 'admin2_erragattugutta_c1', label: 'Erragattugutta C1' },
                     { id: 'admin2_erragattugutta_c2', label: 'Erragattugutta C2' },
@@ -590,7 +590,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             {userId.includes('accountant') && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: 'var(--surface-sunken)', padding: '10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
                 <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase' }}>Select Accountant Campus:</span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '6px' }}>
                   {[
                     { id: 'accountant_erragattugutta_c1_1', label: 'Erragattugutta C1' },
                     { id: 'accountant_erragattugutta_c2_1', label: 'Erragattugutta C2' },

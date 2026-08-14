@@ -520,7 +520,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
         {activeTab === 'dashboard' && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* EXACTLY 4 METRIC CARDS */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: '16px' }}>
               <GlassCard hoverable={false} style={{ ...styles.metricCard, borderTop: '5px solid var(--accent)' }}>
                 <span style={styles.metricLabel}>Active Portal Sessions</span>
                 <strong style={{ ...styles.metricValue, color: 'var(--accent)' }}>
@@ -559,7 +559,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
             </div>
 
             {/* Active Sessions & Live Transaction Widget */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '20px' }}>
               {/* Active Sessions Panel */}
               <GlassCard hoverable={false} style={{ padding: '20px', backgroundColor: 'var(--surface)', border: '2.5px solid var(--ink)', boxShadow: '4px 4px 0px var(--ink)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '2px solid var(--line-strong)', paddingBottom: '10px' }}>
@@ -676,7 +676,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 <p style={{ margin: '0 0 16px 0', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--warning)' }}>
                   Copy and distribute these now. They cannot be retrieved again; the only way to recover an account is to issue another PIN.
                 </p>
-                <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+                <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '16px' }}>
                   {Object.entries(issuedPins).map(([username, pin]) => (
                     <GlassCard key={username} hoverable={false} style={styles.keyCard}>
                       <span style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>{username}</span>
@@ -704,7 +704,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <h4 style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
                 Portal Accounts
               </h4>
-              <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+              <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '16px' }}>
                 {(keysData.accounts || []).map((acc: any) => (
                   <GlassCard key={acc.username} hoverable={false} style={styles.keyCard}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
@@ -834,7 +834,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     {/* Credentials Display & Copy Box */}
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
                       gap: '12px',
                       padding: '12px',
                       backgroundColor: 'var(--surface-sunken)',
@@ -1240,7 +1240,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               {/* Category selector tabs, one per backup type.
                   Driven by BACKUP_CATEGORIES so a new data type appears here
                   automatically instead of needing a fourth copy of this block. */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))', gap: '12px', marginBottom: '24px' }}>
                 {BACKUP_CATEGORIES.map(cat => {
                   const active = activeRestoreCategory === cat.key;
                   return (
@@ -1271,7 +1271,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
               </div>
 
               {/* 4 Campus Drop Zones for Selected Category */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '18px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '18px' }}>
                 {[
                   { name: 'Erragattugutta C1' },
                   { name: 'Erragattugutta C2' },
@@ -1427,7 +1427,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px' }}>
                 <div style={styles.formGroup}>
                   <label style={styles.inputLabel}>Username / ID</label>
                   <input maxLength={LIMITS.username}
@@ -1479,7 +1479,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px' }}>
                 <div style={styles.formGroup}>
                   <label style={styles.inputLabel}>Role (Locked)</label>
                   <select
@@ -1702,7 +1702,7 @@ const styles = {
   },
   keysGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
     gap: '16px'
   },
   keyCard: {

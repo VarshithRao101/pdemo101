@@ -1773,7 +1773,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             </div>
 
             {/* Single Horizontal Surface Bar */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', alignItems: 'flex-end' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: '10px', alignItems: 'flex-end' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 <label style={styles.formLabel}>Admission Number *</label>
                 <input maxLength={LIMITS.admissionNumber}
@@ -1989,7 +1989,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
                           1. Basic Academic Information
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '14px' }}>
                           <div>
                             <label style={styles.formLabel}>Admission Number *</label>
                             <input maxLength={LIMITS.admissionNumber} type="text" placeholder="e.g. 2400101" value={newStuAdmissionNumber} onChange={(e) => setNewStuAdmissionNumber(e.target.value)} style={styles.textInputBox} />
@@ -2060,7 +2060,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
                           2. Personal & Family Information
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '14px' }}>
                           <div>
                             <label style={styles.formLabel}>Father's Name</label>
                             <input maxLength={LIMITS.personName} type="text" placeholder="e.g. Ramesh Sharma" value={newStuFatherName} onChange={(e) => setNewStuFatherName(e.target.value)} style={styles.textInputBox} />
@@ -2145,7 +2145,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 32px', gap: '8px', paddingBottom: '4px', borderBottom: '1px solid var(--line-strong)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 160px) 32px', gap: '8px', paddingBottom: '4px', borderBottom: '1px solid var(--line-strong)' }}>
                           <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>
                             Fee Section Description
                           </span>
@@ -2162,7 +2162,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                             </div>
                           ) : (
                             newStuFeeSlots.map((slot) => (
-                              <div key={slot.id} style={{ display: 'grid', gridTemplateColumns: '1fr 160px 32px', gap: '8px', alignItems: 'center' }}>
+                              <div key={slot.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 160px) 32px', gap: '8px', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                   <label style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink)' }}>{slot.name}</label>
                                   {slot.isCustom && (
@@ -2303,7 +2303,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
               gap: '12px'
             }}>
               {registryPageStudents.map((student) => (
@@ -2458,7 +2458,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase' }}>
                       1. Basic & Academic Details
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '10px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Full Student Name</label>
                         <input maxLength={LIMITS.personName} type="text" value={editStudent.name || ''} onChange={(e) => setEditStudent({ ...editStudent, name: e.target.value })} style={styles.textInputBox} />
@@ -2500,7 +2500,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase' }}>
                       2. Personal & Family Profile
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '10px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Father Name</label>
                         <input maxLength={LIMITS.personName} type="text" value={editStudent.fatherName || ''} onChange={(e) => setEditStudent({ ...editStudent, fatherName: e.target.value })} style={styles.textInputBox} />
@@ -2848,7 +2848,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             ) : (
               <>
                 {/* Top Metrics Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px' }}>
                   <GlassCard style={{ padding: '16px', borderRadius: '16px', border: '1.5px solid var(--card-border)' }}>
                     <div style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Filtered Staff Members</div>
                     <div style={{ fontSize: '1.5714rem', fontWeight: 900, color: 'var(--dark-charcoal)', marginTop: '4px' }}>{filteredStaff.length} Employees</div>
@@ -2946,7 +2946,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
 
                 {/* Staff Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px', marginTop: '4px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '12px', marginTop: '4px' }}>
                   {facultyPageItems.map(t => {
                     const baseSal = Number(t.salary || 0);
                     const curMonthRec = (t.monthlySalaries as any)?.[currentMonth] || { status: 'Unpaid' };
@@ -3095,7 +3095,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--surface-sunken)', padding: '16px', borderRadius: '14px', border: '1.5px solid var(--line)', marginBottom: '18px' }}>
                   <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>Employee Profile & Salary Info</div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '10px' }}>
                     <div>
                       <label style={styles.formLabel}>Employee Name</label>
                       <input maxLength={LIMITS.personName}
@@ -3233,7 +3233,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', fontWeight: 700 }}>Click any month to view/update payment details</div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))', gap: '10px' }}>
                     {monthsList.map(mName => {
                       const ledgerObj = editTeacher.salaryLedger?.[selectedAcademicYear] || {};
                       const mRec: MonthlySalaryRecord = ledgerObj[mName] || editTeacher.monthlySalaries?.[mName] || { status: 'Unpaid', amountPaid: 0, paymentDate: '—', paymentMode: '—' };
@@ -3307,7 +3307,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <button onClick={() => setSelectedStaffMonthForEdit(null)} style={{ background: 'none', border: 'none', fontSize: '1.1429rem', cursor: 'pointer', fontWeight: 900 }}>×</button>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '10px' }}>
                       <div>
                         <label style={styles.formLabel}>Disbursement Status</label>
                         <select
@@ -3650,7 +3650,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
         <main style={styles.content}>
           {role === 'admin1' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', zIndex: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: '10px', zIndex: 1 }}>
               {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(b => {
                 const isActive = selectedFeeBranch === b;
                 return (
@@ -3880,7 +3880,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           </div>
 
           {/* Enquiries Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px', zIndex: 1 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '14px', zIndex: 1 }}>
             {filteredEnquiries.map(enq => {
               const statusColorMap: Record<string, { bg: string; text: string; border: string }> = {
                 Pending: { bg: 'var(--warning-wash)', text: 'var(--warning)', border: 'var(--warning)' },
@@ -4139,7 +4139,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
               gap: '12px'
             }}>
               {feeEditorPageStudents.map((student) => (
@@ -4268,7 +4268,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
 
                 {feeBreakdownData ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '14px' }}>
                     {/* Bill Format Statement Card */}
                     <div style={{
                       background: 'var(--surface)',
@@ -4414,7 +4414,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         </button>
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '12px' }}>
                         {getAdminActiveFeeSlots(selectedFeeStudent, feeBreakdownData).map((slot: any) => {
                           const slotKey = slot.id || slot.name;
                           return (
@@ -4665,7 +4665,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         <main style={styles.content}>
           {/* Admin 1 Branch Overview Cards */}
           {role === 'admin1' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px', zIndex: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: '10px', marginBottom: '16px', zIndex: 1 }}>
               {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(b => {
                 const total = getBranchTotal(b);
                 const isActive = selectedExpBranch === b;
@@ -4684,7 +4684,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             <h4 style={styles.sectionSubtitle}>
               Log New Expenditure {role === 'admin1' ? `(For ${selectedExpBranch})` : `(Campus: ${loggedInCampus})`}
             </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))', gap: '10px', marginTop: '10px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={styles.formLabel}>Reporting Date</label>
                 <input type="date" value={newExpDate} onChange={(e) => setNewExpDate(e.target.value)} style={styles.textInputBox} />
@@ -4909,7 +4909,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 Total: ₹{teacherList.reduce((s, t) => s + (t.salary || 0), 0).toLocaleString('en-IN')} / mo
               </span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '10px' }}>
               {salaryPageItems.map((t, i) => (
                 <div key={t.id || i} style={{ padding: '14px', borderRadius: '16px', border: `1.5px solid ${t.salaryStatus === 'paid' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, backgroundColor: t.salaryStatus === 'paid' ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)', boxShadow: '0 8px 24px rgba(15,23,42,0.05)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'start' }}>
@@ -5158,7 +5158,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           {/* WORKERS GRID */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))',
             gap: '16px',
             marginTop: '4px',
             zIndex: 1
@@ -6112,7 +6112,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   metricsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
     gap: '12px',
   },
   metricCard: {

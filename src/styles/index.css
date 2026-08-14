@@ -277,3 +277,61 @@ tbody tr:last-child td {
   color: #0F172A;
 }
 
+/* --- Phones ---------------------------------------------------------------
+
+   Keyed on `pointer: coarse` rather than a width, because the thing that
+   matters is how the screen is being touched, not how wide it is. A fingertip
+   contact patch is around 9mm; a mouse pointer is one pixel. A 26px-tall
+   control is comfortable with a cursor and a coin-flip with a thumb, and a
+   tablet needs the larger target just as much as a phone does.
+
+   Applied only to controls, and only as a minimum, so nothing that is already
+   large enough moves at all.
+*/
+@media (pointer: coarse) {
+  /* !important, which is not a habit worth forming, but is correct here: these
+     components set their sizes as inline React styles, and an inline style
+     beats a stylesheet rule no matter how specific. Without it the floor is
+     silently ignored by exactly the small controls it exists to catch — two
+     of them measured 42x44 and 43x40 with the rule in place and doing nothing.
+     A minimum tap size is a floor under the whole interface, not a suggestion
+     any one component gets to opt out of by styling itself inline. */
+  button,
+  select,
+  [role="button"],
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+
+  /* Inline text actions — "View All →" and similar — sit inside a line of
+     prose, where a 44px min-height would punch a hole in the paragraph. They
+     get their target from horizontal padding and a vertical tap area instead,
+     which grows the touchable region without moving the layout. */
+  a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Typing targets are held slightly larger too: a mistyped tap into the
+     wrong fee field is a data-entry error, not just an annoyance. iOS also
+     zooms the whole page when a focused input is under 16px, which strands
+     the user in a magnified layout — so the floor is set above that. */
+  input,
+  textarea {
+    min-height: 44px;
+    font-size: max(1rem, 16px);
+  }
+}
+
+/* Narrow screens: reclaim the horizontal padding that a desktop layout can
+   afford and a 375px screen cannot. On a phone every wasted pixel of gutter
+   comes out of the content. */
+@media (max-width: 480px) {
+  .grid-container {
+    gap: 12px;
+  }
+}
+

@@ -1694,7 +1694,7 @@ export const PortfolioView: React.FC = () => {
                 </div>
 
                 {/* 2-Column Video Grid (Uncropped Vertical & Landscape Video player container) */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 24 }}>
                   {CAMPUS_VIDEOS.slice(videoIndex, videoIndex + 2).map((vid) => (
                     <div
                       key={vid.id}
@@ -1774,7 +1774,7 @@ export const PortfolioView: React.FC = () => {
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <section id="about" className="bg-grid-animated" style={{ padding: '64px 16px', position: 'relative' }}>
           <div ref={aboutRef.ref} className="ic">
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 40, alignItems: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%, 300px), 1fr))', gap: 40, alignItems: 'center' }}>
 
               {/* Left text */}
               <div className={`reveal-left ${aboutRef.visible ? 'visible' : ''}`}>
@@ -1837,7 +1837,7 @@ export const PortfolioView: React.FC = () => {
                     Proven track record of academic excellence in Board exams and national entrance tests.
                   </p>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, position: 'relative' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 10, position: 'relative' }}>
                     {[
                       { val: '100%', sub: 'Doubt Assistance', c: ACCENT_GOLD },
                       { val: 'Top AIR', sub: 'Competitive Ranks', c: '#38BDF8' },
@@ -1903,7 +1903,7 @@ export const PortfolioView: React.FC = () => {
               </div>
             </div>
 
-            <div className="campuses-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(270px,1fr))', gap: 20 }}>
+            <div className="campuses-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%, 270px), 1fr))', gap: 20 }}>
               {CAMPUSES_LIST.map((c, i) => (
                 <div key={i} className={`ch reveal d${(i+1)*150} ${campusesRef.visible ? 'visible' : ''}`}
                   style={{ background: '#0F172A', borderRadius: 20, border: `1.5px solid ${c.col}50`, boxShadow: '0 8px 24px rgba(15,23,42,0.18)', overflow: 'hidden' }}>
@@ -1991,7 +1991,7 @@ export const PortfolioView: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleEnquirySubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 22 }}>
+                <form onSubmit={handleEnquirySubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%, 260px), 1fr))', gap: 22 }}>
                   {enquiryError && (
                     <div style={{ gridColumn: '1/-1', padding: '14px 18px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: 10, color: '#DC2626', fontSize: '0.9643rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
@@ -2125,7 +2125,7 @@ export const PortfolioView: React.FC = () => {
             {/* Top gold separator line */}
             <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(245,158,11,0.5),transparent)', marginBottom: 52 }} />
 
-            <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 44, marginBottom: 52 }}>
+            <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%, 240px), 1fr))', gap: 44, marginBottom: 52 }}>
 
               {/* Brand column */}
               <div>

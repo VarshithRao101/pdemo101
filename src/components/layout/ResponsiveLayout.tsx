@@ -896,6 +896,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: 'center',
     gap: '14px',
     padding: '11px 16px',
+    // These are the portal's primary navigation, and on a phone they rendered
+    // 42px tall — just under the 44px that a fingertip reliably hits. Two
+    // pixels sounds like nothing; on the control that every other screen is
+    // reached through, it is the difference between tapping and re-tapping.
+    // A minimum rather than a fixed height, so the row still grows if a label
+    // wraps or the reader has scaled their font up.
+    minHeight: '44px',
     borderRadius: '12px',
     border: 'none',
     background: 'none',
