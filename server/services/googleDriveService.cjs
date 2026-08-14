@@ -15,8 +15,25 @@
  * Drive: 16.6MB against 93.3MB, saving roughly 77MB per instance. The API
  * surface used here — auth.OAuth2 and drive({ version: 'v3' }) — is identical.
  */
-const { drive: driveApi, auth: driveAuth } = require('@googleapis/drive');
 const stream = require('stream');
+
+/**
+ * Loaded on first use, not at startup.
+ *
+ * Even the Drive-only client costs 16.6MB resident, and this process spends
+ * almost all of its life not talking to Drive: backups run once a night and
+ * when someone presses the button. Paying for it on every boot, in every
+ * instance, for the whole day, buys nothing.
+ *
+ * Deferring it means an idle web process never loads it at all. The first
+ * backup pays the cost, and Node's module cache keeps it for the rest of that
+ * process's life, so nothing pays twice.
+ */
+let driveModule = null;
+function loadDrive() {
+  if (!driveModule) driveModule = require('@googleapis/drive');
+  return driveModule;
+}
 
 /**
  * Ceilings on how long a Drive call may take.
@@ -42,6 +59,8 @@ async function getGoogleDriveClient() {
   if (!clientId || !clientSecret || !refreshToken) {
     throw new Error('Google Drive OAuth2 credentials missing. Ensure GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, and GOOGLE_OAUTH_REFRESH_TOKEN are set.');
   }
+
+  const { drive: driveApi, auth: driveAuth } = loadDrive();
 
   const oauth2Client = new driveAuth.OAuth2(
     clientId.trim(),

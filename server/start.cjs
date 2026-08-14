@@ -28,6 +28,46 @@
 require('dotenv').config();
 const cron = require('node-cron');
 const mongoose = require('mongoose');
+const v8 = require('v8');
+
+/**
+ * Says, in the platform's own log, how much heap V8 thinks it may use.
+ *
+ * V8 sizes its heap from the machine's TOTAL memory, not from the limit the
+ * hosting plan actually enforces. On a box with plenty of physical RAM it will
+ * happily decide it has multiple gigabytes available, feel no pressure, and
+ * let garbage accumulate — while the platform kills the process for crossing a
+ * much smaller ceiling. The process never gets to log anything, because a
+ * SIGKILL is not catchable: from the outside the site simply goes down and
+ * later comes back, with nothing in the application log to explain it.
+ *
+ * Setting --max-old-space-size below the plan's limit makes V8 collect before
+ * the platform intervenes. A JS heap error is recoverable — it is logged, the
+ * process exits, and the supervisor restarts it. Being killed is not.
+ *
+ * This prints the two numbers side by side so the mismatch is visible in the
+ * runtime log rather than having to be guessed at.
+ */
+function reportMemoryCeiling() {
+  const mb = (bytes) => Math.round(bytes / 1048576);
+  const limit = mb(v8.getHeapStatistics().heap_size_limit);
+  const rss = mb(process.memoryUsage().rss);
+  const configured = process.execArgv.some(a => a.includes('max-old-space-size'))
+    || String(process.env.NODE_OPTIONS || '').includes('max-old-space-size');
+
+  console.log(`🧠 [Memory]: rss ${rss}MB at boot, V8 heap ceiling ${limit}MB`);
+
+  if (!configured) {
+    console.warn(
+      `⚠️ [Memory]: No --max-old-space-size is set, so V8 sized its heap from total machine ` +
+      `memory and believes it may grow to ${limit}MB. If this plan enforces less than that, ` +
+      `the platform will kill this process before V8 collects, and the crash cannot be logged. ` +
+      `Set NODE_OPTIONS="--max-old-space-size=N", where the resulting ceiling is roughly ` +
+      `N + 192MB — the young generation sits on top of the old-space figure, so N=192 yields ` +
+      `a 384MB ceiling, not 192MB. Pick N so that N + 192 stays clearly below the plan limit.`
+    );
+  }
+}
 const app = require('./app.cjs');
 const { connectToDatabase } = require('./db.cjs');
 const campusBackup = require('./services/campusBackupService.cjs');
@@ -113,6 +153,7 @@ async function startServer() {
 
   server.on('listening', () => {
     console.log(`🚀 [Server]: Listening on port ${PORT} (PID ${process.pid}, Node ${process.version})`);
+    reportMemoryCeiling();
   });
 
   // The handler whose absence caused the outages.
