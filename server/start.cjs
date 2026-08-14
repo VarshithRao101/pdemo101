@@ -45,6 +45,17 @@ const v8 = require('v8');
  * the platform intervenes. A JS heap error is recoverable — it is logged, the
  * process exits, and the supervisor restarts it. Being killed is not.
  *
+ * SIZED FOR THIS PLAN, WHICH IS 3072MB.
+ *
+ * The dashboard shows a 3072MB limit against roughly 247MB of actual use, so
+ * memory pressure is NOT what has been taking this site down — an earlier
+ * version of this comment assumed a much smaller plan and said otherwise.
+ * V8's untold default of 4288MB still exceeds the real 3072MB cap, so a
+ * ceiling is still worth setting; it just belongs well above normal usage
+ * rather than close to it. 1536 yields a 1728MB ceiling: comfortably under
+ * the plan, and roughly seven times the observed footprint, so it constrains
+ * a runaway without ever constraining ordinary work.
+ *
  * This prints the two numbers side by side so the mismatch is visible in the
  * runtime log rather than having to be guessed at.
  */
@@ -80,7 +91,28 @@ let shuttingDown = false;
 
 /** Exits after giving the log a chance to flush. */
 function die(code, reason) {
-  console.error(`💀 [Server]: Exiting (${reason}). The platform should restart this process.`);
+  // How long this process actually lived is the single most useful number for
+  // telling the failure modes apart, and it was not being recorded. Dying
+  // seconds after boot is a startup fault looping; dying hours in is something
+  // that accumulates; dying at midnight is the backup job.
+  const up = process.uptime();
+  const lived = up < 90 ? `${up.toFixed(1)}s` : `${(up / 60).toFixed(1)} min`;
+
+  console.error(
+    `💀 [Server]: Exiting (${reason}) after ${lived} of uptime, PID ${process.pid}, at ` +
+    `${new Date().toISOString()}.`
+  );
+  // Deliberately not "the platform will restart this" — whether anything
+  // supervises this process has never been confirmed, and the difference
+  // matters enormously. If the runtime log shows this line and then no further
+  // boot banner, nothing is restarting it, and exiting on a recoverable fault
+  // is the wrong trade: the site stays down until someone restarts it by hand.
+  // If a boot banner follows within seconds, a supervisor exists and exiting
+  // is correct. The log now answers that question either way.
+  console.error(
+    '💀 [Server]: If no "Listening on port" banner follows this line, nothing restarted ' +
+    'the process and the site is down until it is started by hand.'
+  );
   setTimeout(() => process.exit(code), 250).unref();
 }
 
@@ -152,7 +184,14 @@ async function startServer() {
   server = app.listen(PORT);
 
   server.on('listening', () => {
-    console.log(`🚀 [Server]: Listening on port ${PORT} (PID ${process.pid}, Node ${process.version})`);
+    // Timestamped so consecutive boots are countable in the runtime log. A
+    // burst of these is a crash loop; one followed by silence and 502s is a
+    // process that died with nothing to restart it. Both look identical from
+    // outside the log, and they need opposite fixes.
+    console.log(
+      `🚀 [Server]: Listening on port ${PORT} (PID ${process.pid}, Node ${process.version}) ` +
+      `at ${new Date().toISOString()}`
+    );
     reportMemoryCeiling();
   });
 
