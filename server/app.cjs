@@ -248,6 +248,59 @@ if (!JWT_SECRET || JWT_SECRET.length < 32) {
   throw new Error('JWT_SECRET is not configured (or is shorter than 32 characters). Refusing to start.');
 }
 
+/**
+ * --- THE OPERATIONS PASSWORD -------------------------------------------
+ *
+ * One password authorises every destructive action: wiping the database,
+ * purging student and faculty records, running and restoring backups. It
+ * replaces the per-account password those routes each checked separately,
+ * which is what the college asked for — one thing to remember, held by the
+ * person who is allowed to do these.
+ *
+ * It lives in the environment as a BCRYPT HASH, never as text, and never in
+ * this file. That is not caution for its own sake: this repository is public,
+ * and a literal here would be a working credential for wiping the database,
+ * readable by anyone, permanently in git history even after deletion. This
+ * codebase has shipped in-source passwords more than once already.
+ *
+ * To set or change it:
+ *
+ *   node -e "console.log(require('bcryptjs').hashSync(process.env.P, 12))"
+ *
+ * with the password passed as P in the environment — not typed on the command
+ * line, where it lands in shell history. Put the printed hash in .env as
+ * OPS_PASSWORD_HASH and restart. docs/CREDENTIALS.md has the full procedure.
+ *
+ * Absent, every destructive route refuses rather than falling open. A missing
+ * secret must never mean "no check required".
+ */
+const OPS_PASSWORD_HASH = process.env.OPS_PASSWORD_HASH || '';
+
+function verifyOpsPassword(req, res) {
+  const supplied = String((req.body && req.body.password) || '').trim();
+
+  if (!OPS_PASSWORD_HASH) {
+    console.error('[Ops]: OPS_PASSWORD_HASH is not configured — refusing a destructive action.');
+    res.status(503).json({
+      status: 'error',
+      message: 'The operations password is not configured on this server. This action is unavailable until it is set.'
+    });
+    return false;
+  }
+  if (!supplied) {
+    res.status(401).json({ status: 'error', message: 'The operations password is required for this action.' });
+    return false;
+  }
+  if (!safeBcryptCompare(supplied, OPS_PASSWORD_HASH)) {
+    // Logged with the caller, because a wrong password on a wipe attempt is
+    // worth noticing whether it was a typo or not.
+    console.warn(`[Ops]: WRONG operations password from [${req.user && req.user.username}] for ${req.method} ${req.path}`);
+    res.status(401).json({ status: 'error', message: 'Incorrect operations password.' });
+    return false;
+  }
+  return true;
+}
+
 // How long a session may sit idle before the server ends it. Three hours by
 // default, which suits a working day at a front desk; set
 // SESSION_IDLE_TIMEOUT_MINUTES to change it. Clamped to a sane range so a
@@ -3948,9 +4001,12 @@ app.post('/api/authenticator/reset-password', authenticateToken, requireRole('au
  */
 app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, requireRole('authenticator'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
-    // Erases every student, teacher and payment. It previously required
-    // nothing beyond the role, and silently reported success with zeros if the
-    // database happened to be unreachable.
+    // Erases every student, teacher and payment. Once the step-up PIN came
+    // off, this was the one destructive route left with no second factor at
+    // all — a live session and nothing else. It takes the operations password
+    // like the wipe and the restore do.
+    if (!verifyOpsPassword(req, res)) return;
+
     let students = 0, teachers = 0, payments = 0;
     {
       const sRes = await Student.deleteMany({});
@@ -3986,20 +4042,13 @@ app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, r
 app.post('/api/authenticator/wipe-database', authenticateToken, requireRole('authenticator'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
-    const { password } = req.body || {};
-
-    if (!password || typeof password !== 'string' || !password.trim()) {
-      return res.status(401).json({ status: 'error', message: 'Authenticator password required for database wipe.' });
-    }
+    // One operations password now, rather than this account's own — the same
+    // one that authorises purges, backups and restores.
+    if (!verifyOpsPassword(req, res)) return;
 
     const user = await User.findById(req.user.id);
     if (!user || user.role !== 'authenticator') {
       return res.status(403).json({ status: 'error', message: 'Only authenticator role can perform database wipe.' });
-    }
-
-    const isMatch = bcrypt.compareSync(password.trim(), user.password);
-    if (!isMatch) {
-      return res.status(401).json({ status: 'error', message: 'Invalid authenticator password provided.' });
     }
 
     console.log(`âš ï¸ [PRE-WIPE AUTO BACKUP]: Generating mandatory Google Drive backup prior to wipe for [${user.username}]...`);
@@ -4926,14 +4975,10 @@ app.post('/api/backup/restore', authenticateToken, requireRole('authenticator', 
 
     // Restore overwrites live records, so it takes the account password on top
     // of the security PIN — two different secrets, both verified server-side.
-    if (!password || typeof password !== 'string' || !password.trim()) {
-      return res.status(401).json({ status: 'error', message: 'Your account password is required to restore a backup.' });
-    }
-    const actingUser = await User.findById(req.user.id).select('password');
-    if (!actingUser || !safeBcryptCompare(password, actingUser.password)) {
-      console.warn(`[Restore]: Wrong password from [${req.user.username}] for ${campus}`);
-      return res.status(401).json({ status: 'error', message: 'Incorrect account password.' });
-    }
+    // The operations password, not this account's own — the same one that
+    // authorises a wipe or a purge. Restore overwrites live records across a
+    // whole campus, which puts it in that group.
+    if (!verifyOpsPassword(req, res)) return;
 
     const result = await campusBackup.restoreCampusType(fileId, {
       actor: req.user.username, expectedCampus: campus, expectedType: backupType,
