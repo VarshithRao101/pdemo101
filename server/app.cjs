@@ -2081,7 +2081,7 @@ app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin
 
 // --- FEE WAIVER ROUTE ---
 
-app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students/:studentId/fee-override', '/api/admin/students/:studentId/fee-override'], authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, async (req, res) => {
+app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students/:studentId/fee-override', '/api/admin/students/:studentId/fee-override'], authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, async (req, res) => {
   try {
     await connectToDatabase();
     const { studentId } = req.params;
@@ -2373,7 +2373,7 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
 });
 
 // DELETE Teacher (Requires Security OTP; Campus Isolation for Admin2)
-app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2406,7 +2406,7 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
 });
 
 // 12-MONTH SALARY LEDGER & YEAR-LOCK PAYMENTS ROUTE
-app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, async (req, res) => {
+app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2547,7 +2547,7 @@ app.get('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'ad
   }
 });
 
-app.patch('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+app.patch('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { branch, tuition, hostel, transport, misc, isLocked } = req.body;
@@ -2769,7 +2769,7 @@ app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 
   }
 });
 
-app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { workerName, role, amount, monthPeriod, paid = true, branch } = req.body || {};
@@ -2811,7 +2811,7 @@ app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1',
   }
 });
 
-app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, async (req, res) => {
+app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2851,7 +2851,7 @@ app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('adm
   }
 });
 
-app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -3314,8 +3314,7 @@ app.get('/api/accountant/students/:studentId/upgrade-eligibility',
 });
 
 app.post('/api/accountant/students/:studentId/upgrade',
-  authenticateToken, requireRole('accountant', 'admin1', 'admin2'),
-  verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+  authenticateToken, requireRole('accountant', 'admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const { studentId } = req.params;
     const isObjId = isValidObjectId(studentId);
@@ -3617,7 +3616,7 @@ app.get('/api/authenticator/keys', authenticateToken, requireRole('authenticator
  * Accepts an optional `usernames` array to rotate a subset; omitting it
  * rotates every managed portal account.
  */
-app.post('/api/authenticator/regenerate-keys', authenticateToken, requireRole('authenticator', 'admin1'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/authenticator/regenerate-keys', authenticateToken, requireRole('authenticator', 'admin1'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const requested = Array.isArray(req.body && req.body.usernames) ? req.body.usernames.map(u => String(u).trim().toLowerCase()) : null;
 
@@ -3902,7 +3901,7 @@ app.post('/api/authenticator/backup', authenticateToken, requireRole('authentica
 // and stored nowhere, so they authenticated nothing. The reset flow below
 // requires the caller's own security PIN instead, which is a real check.
 
-app.post('/api/authenticator/reset-password', authenticateToken, requireRole('authenticator', 'admin1'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/authenticator/reset-password', authenticateToken, requireRole('authenticator', 'admin1'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const { username, password } = req.body || {};
 
@@ -3947,7 +3946,7 @@ app.post('/api/authenticator/reset-password', authenticateToken, requireRole('au
 /**
  * DELETE /api/authenticator/purge-student-faculty-data & POST /api/system/purge-drive
  */
-app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, requireRole('authenticator'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, requireRole('authenticator'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     // Erases every student, teacher and payment. It previously required
     // nothing beyond the role, and silently reported success with zeros if the
@@ -3974,14 +3973,17 @@ app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, r
  * Role authenticator ONLY. Requires real password check via bcrypt.
  * Automatically triggers a fresh encrypted backup to Google Drive FIRST before wiping.
  */
-// Two secrets, not one. This is the most destructive endpoint in the system —
-// it empties every data collection — and it previously turned on the account
-// password alone, while the far narrower per-campus restore already required
-// the password AND the security PIN. verifySecurityOtp closes that gap; the
-// client handles the resulting `requiresSecurityPin` challenge centrally, so
-// the operator is prompted for the PIN without any change to the panel.
-app.post('/api/authenticator/wipe-database', authenticateToken, requireRole('authenticator'),
-  verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+// The most destructive endpoint in the system — it empties every data
+// collection across all four campuses.
+//
+// It briefly required two secrets, the account password AND the step-up
+// security PIN. The PIN prompts were removed from every action in the app on
+// the operator's explicit instruction, this one included, after the risk was
+// put to them directly. What remains is the password check below, which is
+// deliberate and is the last thing standing between a mis-click and an empty
+// database: it is re-verified against bcrypt on every call, so an open session
+// alone is not enough. Do not remove it as well.
+app.post('/api/authenticator/wipe-database', authenticateToken, requireRole('authenticator'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { password } = req.body || {};
@@ -4318,7 +4320,7 @@ app.get('/api/admin2/staff-salaries', authenticateToken, requireRole('admin1', '
   }
 });
 
-app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, async (req, res) => {
+app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
   try {
     const { teacherId } = req.params;
     const isObjId = isValidObjectId(teacherId);
@@ -4842,8 +4844,7 @@ app.get('/api/backup/tree', authenticateToken, requireRole('authenticator', 'adm
 });
 
 // POST /api/backup/run — back up one type for one campus.
-app.post('/api/backup/run', authenticateToken, requireRole('authenticator', 'admin1', 'admin2'),
-  verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/backup/run', authenticateToken, requireRole('authenticator', 'admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const campus = resolveBackupCampus(req, res);
     if (!campus) return;
@@ -4874,8 +4875,7 @@ app.post('/api/backup/run', authenticateToken, requireRole('authenticator', 'adm
 });
 
 // POST /api/backup/run-all — every type, every campus the caller may touch.
-app.post('/api/backup/run-all', authenticateToken, requireRole('authenticator', 'admin1'),
-  verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/backup/run-all', authenticateToken, requireRole('authenticator', 'admin1'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const result = await campusBackup.backupAllCampuses(req.user.username);
     // A partial run is a failure, not a success with a shorter list.
@@ -4916,8 +4916,7 @@ app.post('/api/backup/restore/preview', authenticateToken, requireRole('authenti
 });
 
 // POST /api/backup/restore — apply it. Password AND security PIN required.
-app.post('/api/backup/restore', authenticateToken, requireRole('authenticator', 'admin1'),
-  verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/backup/restore', authenticateToken, requireRole('authenticator', 'admin1'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const campus = resolveBackupCampus(req, res);
     if (!campus) return;
