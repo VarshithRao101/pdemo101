@@ -2157,6 +2157,38 @@ app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students
       }
     }
 
+    /**
+     * A waiver may not exceed the fee it discounts.
+     *
+     * Nothing stopped a 99,99,999 waiver against a 10,000 tuition fee. The
+     * balance never went negative — computeStudentFees floors it at zero — so
+     * the screen looked correct while the stored discount was nonsense, and
+     * every total that sums waivers (campus reports, the analytics recovery
+     * figures) silently inherited it. A discount larger than the charge is not
+     * a smaller balance, it is bad data that reads as a real concession.
+     *
+     * Checked per head rather than against the total, because a 50,000 waiver
+     * on a 10,000 tuition fee is wrong even when the student's other heads add
+     * up to more than 50,000.
+     */
+    const waiverChecks = [
+      ['Tuition', tuitionWaiver, student.tuitionFee],
+      ['Hostel', hostelWaiver, student.hostelFee],
+      ['Transport', transportWaiver, student.transportFee],
+      ['Miscellaneous', miscWaiver, student.miscellaneousFee]
+    ];
+    for (const [label, waiver, fee] of waiverChecks) {
+      const w = Number(waiver) || 0;
+      const f = Number(fee) || 0;
+      if (w > f) {
+        return res.status(400).json({
+          status: 'error',
+          message: `The ${label.toLowerCase()} waiver of Rs. ${w.toLocaleString('en-IN')} is more than the `
+            + `${label.toLowerCase()} fee of Rs. ${f.toLocaleString('en-IN')}. A discount cannot exceed the fee it applies to.`
+        });
+      }
+    }
+
     student.tuitionWaiver = Number(tuitionWaiver);
     student.hostelWaiver = Number(hostelWaiver);
     student.transportWaiver = Number(transportWaiver);
@@ -2533,6 +2565,33 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
     if (!teacher.salaryLedger[academicYear]) teacher.salaryLedger[academicYear] = {};
 
     const amt = Number(amountPaid) || Number(teacher.salary) || 0;
+
+    /**
+     * A month's salary payment may not exceed the agreed monthly salary.
+     *
+     * Paying less is normal and stays allowed — a part payment, an advance
+     * already drawn, a month someone joined midway. Paying MORE is not a
+     * generous month, it is a typo: an extra digit turns 45,000 into 450,000,
+     * and nothing here questioned it. The figure then flows into the campus
+     * expenditure totals and the ledger, where it looks like a real payment
+     * that someone has to reconcile against a bank statement.
+     *
+     * The ceiling is the teacher's own salary, so a raise recorded on the
+     * teacher record raises the ceiling with it.
+     */
+    const agreed = Number(teacher.salary) || 0;
+    if (!Number.isFinite(amt) || amt < 0) {
+      return res.status(400).json({ status: 'error', message: 'The amount paid must be a number of zero or more.' });
+    }
+    if (agreed > 0 && amt > agreed) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Rs. ${amt.toLocaleString('en-IN')} is more than ${teacher.name}'s monthly salary of `
+          + `Rs. ${agreed.toLocaleString('en-IN')}. Record the agreed amount or less — to pay more, `
+          + `update the salary on the teacher record first.`
+      });
+    }
+
     const pDate = new Date().toISOString().split('T')[0];
 
     const monthRecord = {
