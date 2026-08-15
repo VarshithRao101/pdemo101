@@ -300,3 +300,12 @@
   .anim-rise, .viz-skeleton::after { animation: none; }
   .viz-bar-fill { transition: none; }
 }
+
+/* Campus selector: five buttons of full campus names do not fit one row on a
+   phone, and abbreviating them to initials ("B C2") makes the reader decode
+   which campus they are looking at. It wraps instead, and each button keeps
+   its whole name. */
+.seg-campus {
+  flex-wrap: wrap;
+  gap: 4px;
+}

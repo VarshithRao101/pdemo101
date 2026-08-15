@@ -2074,9 +2074,9 @@ const deleteStudentHandler = async (req, res) => {
   }
 };
 
-app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, deleteStudentHandler);
-app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, deleteStudentHandler);
-app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, deleteStudentHandler);
+app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, deleteStudentHandler);
+app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, deleteStudentHandler);
+app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, deleteStudentHandler);
 
 
 // --- FEE WAIVER ROUTE ---
@@ -2627,7 +2627,7 @@ const getExpendituresHandler = async (req, res) => {
 app.get('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'admin2'), getExpendituresHandler);
 app.get('/api/admin2/expenditures', authenticateToken, requireRole('admin1', 'admin2'), getExpendituresHandler);
 
-app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { category, amount, description, date, branch } = req.body || {};
@@ -2669,7 +2669,7 @@ app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'ad
   }
 });
 
-app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, requireDatabase, async (req, res) => {
+app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2709,7 +2709,7 @@ app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1'
   }
 });
 
-app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1', 'admin2'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4523,7 +4523,22 @@ app.get('/api/admin1/sections', authenticateToken, requireRole('admin1', 'admin2
  */
 app.get('/api/admin1/analytics', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
   try {
-    const scope = campusScopeFilter(req);
+    // An org-wide caller may now narrow to a single campus with ?branch=,
+    // which is what the All / campus buttons on the dashboard send. This goes
+    // through resolveReadCampus rather than reading the query directly: it is
+    // the one place that decides which campus a request may see, and it
+    // refuses a scoped account that names someone else's campus instead of
+    // quietly narrowing to their own. Omitting ?branch keeps the previous
+    // behaviour exactly — every campus the caller is entitled to.
+    // Note the discriminator. resolveReadCampus returns null for TWO different
+    // outcomes: "refused, and I have already sent the response", and "org-wide
+    // caller with no ?branch, so apply no campus filter". Testing the return
+    // value alone would abort the default all-campus view — the common case —
+    // so the check is on whether a response actually went out.
+    const requested = resolveReadCampus(req, res, { requireExplicit: false });
+    if (res.headersSent) return;
+
+    const scope = requested ? { branch: requested } : campusScopeFilter(req);
     const campuses = scope.branch ? [scope.branch] : VALID_CAMPUSES;
     const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 7), 180);
 

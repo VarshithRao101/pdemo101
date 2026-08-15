@@ -5726,11 +5726,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               <AnalyticsDashboard />
             ) : null
           ) : role === 'admin2' ? (
-            // The same dashboard. The endpoint scopes to the caller's campus
-            // server-side, so an admin2 sees only their own campus without
-            // this component needing to know who is looking at it — and
-            // without the browser re-deriving the totals from a filtered list.
-            <AnalyticsDashboard />
+            // Deliberately nothing. A dean's job here is faculty and the
+            // expenditure ledger; the analytics dashboard was noise on top of
+            // those two and is now Rector-only. The endpoint still scopes by
+            // campus server-side, so this is a presentation decision, not a
+            // permission one — removing the panel takes nothing away that an
+            // admin2 is entitled to see elsewhere.
+            null
           ) : role === '__unreachable_legacy_admin2__' ? (
             (() => {
               const localStudents = students.filter(s => s.branch === loggedInCampus);
@@ -5822,7 +5824,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
             {role === 'admin1' ? (
               <div className="grid-container">
-                <div onClick={() => setActivePage('students')} style={styles.moduleCardNew} className="module-card press-interactive">
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('students'); } }} onClick={() => setActivePage('students')} style={styles.moduleCardNew} className="module-card press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2"><circle cx="12" cy="7" r="4" /><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg>
                   </div>
@@ -5838,7 +5840,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <p style={styles.moduleDesc}>Register new student profile, campus allocation, and fee structure.</p>
                 </div>
 
-                <div onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('teachers'); } }} onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
                   </div>
@@ -5846,7 +5848,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <p style={styles.moduleDesc}>Configure lecturers, allocate subjects, check base salaries.</p>
                 </div>
 
-                <div onClick={() => setActivePage('fee_editor')} style={styles.moduleCardNew} className="press-interactive">
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('fee_editor'); } }} onClick={() => setActivePage('fee_editor')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                   </div>
@@ -5854,7 +5856,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <p style={styles.moduleDesc}>Configure individual scholarship category fee waivers.</p>
                 </div>
 
-                <div onClick={() => setActivePage('expenditure')} style={styles.moduleCardNew} className="press-interactive">
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('expenditure'); } }} onClick={() => setActivePage('expenditure')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.18)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                   </div>
@@ -5862,7 +5864,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <p style={styles.moduleDesc}>Compare totals and log expenses across all 4 campuses.</p>
                 </div>
 
-                <div onClick={() => setActivePage('enquiries')} style={styles.moduleCardNew} className="press-interactive">
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('enquiries'); } }} onClick={() => setActivePage('enquiries')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.22)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
                   </div>
@@ -5870,7 +5872,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <p style={styles.moduleDesc}>View and manage prospective student enquiries from portfolio.</p>
                 </div>
 
-                <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('profile'); } }} onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-secondary)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                   </div>
@@ -5881,7 +5883,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
             ) : role === 'admin2' ? (
               <div className="grid-container">
-                <div onClick={() => setActivePage('expenditure')} style={styles.moduleCardNew} className="module-card press-interactive">
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('expenditure'); } }} onClick={() => setActivePage('expenditure')} style={styles.moduleCardNew} className="module-card press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.18)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                   </div>
@@ -5889,7 +5891,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <p style={styles.moduleDesc}>Log and track local expenditures of {loggedInCampus}.</p>
                 </div>
 
-                <div onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('teachers'); } }} onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
                   </div>
@@ -5897,7 +5899,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <p style={styles.moduleDesc}>Manage campus teachers & 12-month salary ledgers for {loggedInCampus}.</p>
                 </div>
 
-                <div onClick={() => setActivePage('enquiries')} style={styles.moduleCardNew} className="press-interactive">
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('enquiries'); } }} onClick={() => setActivePage('enquiries')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.22)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
                   </div>
@@ -5907,7 +5909,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
 
 
-                <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('profile'); } }} onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-secondary)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                   </div>
@@ -5918,7 +5920,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
             ) : (
               <div className="grid-container">
-                <div onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('profile'); } }} onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-secondary)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                   </div>

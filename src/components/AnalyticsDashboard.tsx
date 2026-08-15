@@ -35,18 +35,34 @@ interface Analytics {
 
 const WINDOWS = [7, 30, 90];
 
+const CAMPUSES = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
+
 export const AnalyticsDashboard: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [data, setData] = useState<Analytics | null>(null);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTable, setShowTable] = useState(false);
+  // '' means every campus the account is entitled to. The server decides what
+  // that covers, so a campus-scoped account simply sees its own figures here
+  // and the buttons below are not offered to it.
+  const [campus, setCampus] = useState('');
+  // Whether this account can see more than one campus at all, learned from the
+  // FIRST response, which is always unfiltered. It cannot be re-derived from
+  // `data.scope` on every render: once a campus is selected the server reports
+  // that campus as the scope, so a condition reading it live would hide the
+  // buttons the moment one was pressed and strand the user with no way back
+  // to All.
+  const [orgWide, setOrgWide] = useState(false);
 
-  const load = useCallback(async (windowDays: number) => {
+  const load = useCallback(async (windowDays: number, branch: string) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get<{ status: string; data: Analytics }>(`/admin1/analytics?days=${windowDays}`);
+      const query = `/admin1/analytics?days=${windowDays}`
+        + (branch ? `&branch=${encodeURIComponent(branch)}` : '');
+      const res = await apiClient.get<{ status: string; data: Analytics }>(query);
+      if (!branch && /all/i.test(String(res.data?.scope || ''))) setOrgWide(true);
       setData(res.data);
     } catch (err: any) {
       setError(err?.message || 'Could not load analytics.');
@@ -55,7 +71,7 @@ export const AnalyticsDashboard: React.FC<{ onBack?: () => void }> = ({ onBack }
     }
   }, []);
 
-  useEffect(() => { load(days); }, [days, load]);
+  useEffect(() => { load(days, campus); }, [days, campus, load]);
 
   if (loading && !data) {
     return (
@@ -72,7 +88,7 @@ export const AnalyticsDashboard: React.FC<{ onBack?: () => void }> = ({ onBack }
       <div className="analytics">
         <div className="viz-error">
           <p>{error}</p>
-          <button className="btn" onClick={() => load(days)}>Try again</button>
+          <button className="btn" onClick={() => load(days, campus)}>Try again</button>
         </div>
       </div>
     );
@@ -90,6 +106,26 @@ export const AnalyticsDashboard: React.FC<{ onBack?: () => void }> = ({ onBack }
           <h2 className="analytics-title">Analytics</h2>
         </div>
         <div className="analytics-controls">
+          {/*
+            Campus selector. Offered only to an account that can actually see
+            more than one campus — for a campus-scoped account the server
+            returns their own figures regardless, so a row of buttons where
+            four of the five are refused would be a menu of dead ends.
+            `data.scope` is what the server says this response covers, so the
+            condition follows the data rather than second-guessing the role.
+          */}
+          {orgWide && (
+            <div className="seg seg-campus">
+              <button className={`seg-btn${campus === '' ? ' is-active' : ''}`}
+                      onClick={() => setCampus('')}>All</button>
+              {CAMPUSES.map(c => (
+                <button key={c}
+                        className={`seg-btn${campus === c ? ' is-active' : ''}`}
+                        onClick={() => setCampus(c)}
+                        title={c}>{c}</button>
+              ))}
+            </div>
+          )}
           <div className="seg">
             {WINDOWS.map(w => (
               <button key={w}
