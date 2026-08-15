@@ -47,3 +47,10 @@ DATABASE_ROOT_CAUSE_REPORT.md
 
 .vercel
 scratch/pdf-design-preview.html
+
+# Credential handouts written by scripts/rotateCredentials.cjs.
+# These hold the ONLY plaintext copy of the portal passwords and PINs, for
+# just long enough to distribute them. Ignored here as a backstop; the real
+# protection is deleting the file once the credentials are handed over.
+credentials/
+*.credentials.txt

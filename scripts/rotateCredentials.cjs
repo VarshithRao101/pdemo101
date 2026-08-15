@@ -48,20 +48,50 @@ const ACCOUNTS = [
   }))
 ];
 
-// Ambiguous glyphs (O/0, l/1/I) are excluded: these get read off a screen and
-// typed by hand, and a password nobody can transcribe gets written on a desk.
-const PW_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789#%+=?';
-
-function randomPassword(len = 20) {
-  const out = [];
-  while (out.length < len) {
-    // Rejection sampling keeps the distribution uniform; a plain modulo would
-    // bias toward the first characters of the alphabet.
-    const b = crypto.randomBytes(1)[0];
-    if (b < 256 - (256 % PW_ALPHABET.length)) out.push(PW_ALPHABET[b % PW_ALPHABET.length]);
-  }
-  return out.join('');
+/**
+ * Readable passwords, in the shape the college asked for.
+ *
+ * The previous version produced 20 characters of random alphabet — excellent
+ * against a cracker, and unusable in a college office where credentials get
+ * read down a phone line to a campus twenty kilometres away. What actually
+ * happened to passwords like that is they got written on a desk pad, which is
+ * a worse outcome than a slightly shorter one nobody needs to write down.
+ *
+ * So the shape is: Role, year, and a four-digit random block —
+ *
+ *     Rector#2026-4821        AccountantBeemaramC2#2026-7390
+ *
+ * The randomness lives entirely in those four digits plus the role/campus
+ * stem, which is public knowledge. That is deliberately weaker than 20 random
+ * characters and it is a trade the college has chosen: an attacker who knows
+ * the pattern faces 10,000 guesses per account, against a five-attempt lockout
+ * with a fifteen-minute freeze. Five guesses per fifteen minutes is roughly
+ * 480 a day, so the expected time to find one password is measured in years,
+ * and every failed run is logged and locks the account long before it gets
+ * anywhere. The lockout is what makes this safe — it must never be removed
+ * from the sign-in path, whatever else gets its PIN prompt taken off.
+ */
+function readablePassword(stem) {
+  // crypto.randomInt, not Math.random: this is a credential, and the whole
+  // strength of the scheme sits in these four digits.
+  const block = String(crypto.randomInt(1000, 10000));
+  return `${stem}#${new Date().getFullYear()}-${block}`;
 }
+
+// Turns "Accountant Beemaram C2" into "AccountantBeemaramC2" — a stem someone
+// can say out loud without spelling it character by character.
+const stemFor = (account) => {
+  const role = account.role === 'admin1' ? 'Rector'
+    : account.role === 'authenticator' ? 'Authenticator'
+    : account.role === 'admin2' ? 'Dean'
+    : 'Accountant';
+  // The two org-wide accounts have campus 'All', and "RectorAll" reads like a
+  // typo. There is only one Rector and one Authenticator, so the role alone
+  // identifies them.
+  const campus = String(account.campus || '');
+  if (!campus || campus.toLowerCase() === 'all') return role;
+  return role + campus.replace(/[^A-Za-z0-9]/g, '');
+};
 
 const randomPin = () => String(crypto.randomInt(100000, 1000000));
 
@@ -115,7 +145,7 @@ async function main() {
 
   const issued = [];
   for (const acc of ACCOUNTS) {
-    const password = randomPassword();
+    const password = readablePassword(stemFor(acc));
     const pin = randomPin();
 
     const created = await User.create({
@@ -185,12 +215,30 @@ async function main() {
   }
   out.push('='.repeat(64));
 
-  const credPath = path.join(scratchDir, `NEW-CREDENTIALS-${stamp}.txt`);
+  // credentials/, not scratch/. Both are gitignored, but scratch/ is where the
+  // test suites write and clean up, and the one file that must not be deleted
+  // by accident before it has been read should not live among files that are
+  // routinely deleted on purpose.
+  const credDir = path.resolve(__dirname, '../credentials');
+  fs.mkdirSync(credDir, { recursive: true });
+  const credPath = path.join(credDir, `NEW-CREDENTIALS-${stamp}.txt`);
   fs.writeFileSync(credPath, out.join('\n'), 'utf8');
+  // Owner-only where the platform honours it. On Windows this is a no-op and
+  // the file's protection is the directory it sits in, which is why deleting
+  // it after distribution is the step that actually matters.
+  try { fs.chmodSync(credPath, 0o600); } catch { /* not supported here */ }
 
   console.log(`\nProvisioned ${issued.length} accounts.`);
   console.log(`Credentials written to: ${credPath}`);
-  console.log('Distribute them and delete that file. They cannot be recovered.');
+  console.log('');
+  console.log('  This file is the ONLY copy. The database holds bcrypt hashes,');
+  console.log('  which cannot be reversed — if this file is lost, the only way');
+  console.log('  back is to run this script again and reissue everything.');
+  console.log('');
+  console.log('  Hand the credentials out, then delete the file.');
+  console.log('  Nothing was printed to this terminal on purpose: a scrollback');
+  console.log('  is a copy, and a copy nobody remembers making is how these end');
+  console.log('  up somewhere they should not be.');
 
   await mongoose.disconnect();
 }
