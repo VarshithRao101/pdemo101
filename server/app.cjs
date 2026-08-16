@@ -782,9 +782,62 @@ function rateLimitBudgetFor(path) {
   return AUTH_PATH_PATTERN.test(path) ? 10 : 120;
 }
 
+/**
+ * Counts one attempt against `key`, opening a new window if the last one ran
+ * out, and returns the resulting record.
+ *
+ * Single atomic operation. A read-then-write here would let two concurrent
+ * requests both observe the pre-increment count and slip past the limit
+ * together.
+ *
+ * The filter is the unique key ALONE. It used to also require
+ * `resetAt: { $gt: now }`, which looks like it is selecting the live window
+ * and is the bug: `key` is UNIQUE and `resetAt` carries a 900s TTL, so an
+ * expired document survives a further fifteen minutes. Through that gap the
+ * filter matched nothing, the upsert tried to INSERT over the live unique
+ * key, and the duplicate-key error was answered with next() — the request
+ * ran UNCOUNTED. On the auth paths, whose budget is 10, that was an
+ * effectively unlimited window every half hour, and it opened again every
+ * half hour after that.
+ *
+ * The pipeline decides increment-or-reset inside the write instead. Every
+ * expression in a $set stage is evaluated against the INPUT document, so
+ * `count` still reads the ORIGINAL resetAt even though the same stage is
+ * replacing it. On an upsert MongoDB seeds the new document from the filter's
+ * equality clause, so `key` is present and `resetAt` is missing — which
+ * compares as lower than $$NOW and correctly takes the "start a new window"
+ * branch.
+ */
+async function bumpRateLimitWindow(key) {
+  return RateLimit.findOneAndUpdate(
+    { key },
+    [{
+      $set: {
+        resetAt: {
+          $cond: [
+            { $gt: ['$resetAt', '$$NOW'] },
+            '$resetAt',
+            { $add: ['$$NOW', RATE_LIMIT_WINDOW_MS] }
+          ]
+        },
+        count: {
+          $cond: [
+            { $gt: ['$resetAt', '$$NOW'] },
+            { $add: [{ $ifNull: ['$count', 0] }, 1] },
+            1
+          ]
+        },
+        // Set by hand: Mongoose does not apply schema timestamps to a
+        // pipeline update.
+        updatedAt: '$$NOW'
+      }
+    }],
+    { upsert: true, new: true }
+  );
+}
+
 async function mongoRateLimiter(req, res, next) {
   const key = `ratelimit_${req.path}_${clientIp(req)}`;
-  const now = new Date();
   const maxAttempts = rateLimitBudgetFor(req.path);
 
   try {
@@ -793,14 +846,20 @@ async function mongoRateLimiter(req, res, next) {
       throw new Error('Rate limit store unreachable.');
     }
 
-    // Single atomic upsert+increment. A read-then-write here would let two
-    // concurrent requests both observe the pre-increment count and slip past
-    // the limit together.
-    const record = await RateLimit.findOneAndUpdate(
-      { key, resetAt: { $gt: now } },
-      { $inc: { count: 1 }, $setOnInsert: { key, resetAt: new Date(Date.now() + RATE_LIMIT_WINDOW_MS) } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    let record;
+    try {
+      record = await bumpRateLimitWindow(key);
+    } catch (err) {
+      if (err && err.code === 11000) {
+        // Two requests raced to create the very FIRST window for this key and
+        // both attempted the insert. The document exists now, so the same
+        // operation takes the increment branch. Retrying counts the attempt;
+        // the previous version called next() here and did not.
+        record = await bumpRateLimitWindow(key);
+      } else {
+        throw err;
+      }
+    }
 
     if (record.count > maxAttempts) {
       const retryAfterSec = Math.max(1, Math.ceil((new Date(record.resetAt).getTime() - Date.now()) / 1000));
@@ -813,11 +872,11 @@ async function mongoRateLimiter(req, res, next) {
 
     return next();
   } catch (err) {
-    // Duplicate-key means a concurrent request created the window document
-    // between our filter miss and our upsert. Count that as one attempt.
-    if (err && err.code === 11000) {
-      return next();
-    }
+    // No duplicate-key branch here any more. It used to answer next(), which
+    // meant the one error the limiter could actually provoke was also the one
+    // that let a request through uncounted. The single genuine race — two
+    // requests creating the first window at once — is retried above; anything
+    // still reaching here is a real store failure and must fail CLOSED.
     console.error('[RateLimit]: Failing closed, store unavailable:', err.message);
     return res.status(503).json({
       status: 'error',
