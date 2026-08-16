@@ -13,8 +13,8 @@ const AUTHENTICATOR_HASH = '#/sec-auth-sys-9i0j7k8l';
 import { HorizontalProgressBarLoader } from './components/common/HorizontalProgressBarLoader';
 import { PortalErrorBoundary } from './components/common/PortalErrorBoundary';
 
-const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
-  const { portalRole, checkSession, logout, isAuthenticated, isAuthLoading, setPortalRole } = useNavigation();
+const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
+  const { portalRole, checkSession, logout, isAuthenticated, isAuthLoading, setPortalRole, activeTab, selectedCampus } = useNavigation();
   const [flowStage, setFlowStage] = useState<'portfolio' | 'pin' | 'authenticated'>('portfolio');
   const [currentHash, setCurrentHash] = useState<string>(window.location.hash);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -190,6 +190,17 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
 
   const renderActiveView = () => {
     if (portalRole === 'admin1') {
+      // The Rector collects fees through the accountant's module too, told
+      // which campus to act on. Without a campus chosen this falls through to
+      // the cockpit rather than defaulting to one — taking a payment against
+      // a campus nobody selected is the wrong kind of convenient.
+      if (activeTab === 'fee_collection' && selectedCampus) {
+        return (
+          <PortalErrorBoundary portalLabel="Rector — Fee Collection">
+            <AccountantDashboardView restrictTo="fee_collection" campusOverride={selectedCampus} />
+          </PortalErrorBoundary>
+        );
+      }
       return (
         <PortalErrorBoundary portalLabel="Admin Portal (Admin 1)">
           <AdminDashboardView role="admin1" />
@@ -197,10 +208,21 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
       );
     }
 
-    if (portalRole === 'admin2') {
+    if (portalRole === 'clerk') {
+      // Fee collection is the accountant's module, reused rather than
+      // reimplemented — it is already scoped entirely from `user.campus`,
+      // which is exactly what a clerk needs. A second copy would be a second
+      // place for the receipt and balance arithmetic to drift.
+      if (activeTab === 'fee_collection') {
+        return (
+          <PortalErrorBoundary portalLabel="Clerk Portal — Fee Collection">
+            <AccountantDashboardView restrictTo="fee_collection" />
+          </PortalErrorBoundary>
+        );
+      }
       return (
-        <PortalErrorBoundary portalLabel="Admin Portal (Admin 2)">
-          <AdminDashboardView role="admin2" />
+        <PortalErrorBoundary portalLabel="Clerk Portal">
+          <AdminDashboardView role="clerk" />
         </PortalErrorBoundary>
       );
     }
@@ -243,7 +265,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'admin2' | 'accountant' | '
 };
 
 interface AppProps {
-  forcedRole?: 'admin1' | 'admin2' | 'accountant' | 'authenticator';
+  forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'authenticator';
 }
 
 function App({ forcedRole }: AppProps = {}) {

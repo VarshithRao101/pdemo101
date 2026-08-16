@@ -74,3 +74,23 @@ export function clampDigits(value: string, digits: number = LIMITS.amountDigits)
 export function digitsOnly(value: string, max: number = LIMITS.mobile): string {
   return String(value).replace(/\D/g, '').slice(0, max);
 }
+
+/**
+ * A mobile number must be exactly ten digits, or absent.
+ *
+ * Returns the message to show, or null when the value is acceptable.
+ *
+ * This mirrors the server rule in createStudentHandler (server/app.cjs), which
+ * strips spaces and dashes then requires /^\d{10}$/. It lives here because the
+ * admin portal had its own copy and the accountant portal had none at all — so
+ * the accountant form accepted a three-digit number, submitted it, and only
+ * then showed a server error. Empty stays allowed: these fields are optional
+ * on the record, and the forms that require one check for emptiness
+ * separately.
+ */
+export function validateMobile(value: string, label = 'Mobile number'): string | null {
+  if (!value || value.trim() === '') return null;
+  const digits = value.replace(/[\s-]/g, '');
+  if (!/^\d{10}$/.test(digits)) return `${label} must be exactly 10 digits.`;
+  return null;
+}

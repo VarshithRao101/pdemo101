@@ -1,5 +1,5 @@
 import React, { useState, type ReactNode } from 'react';
-import { useNavigation } from '../../context/NavigationContext';
+import { useNavigation, accountCan } from '../../context/NavigationContext';
 import { InspireLogo } from '../common/InspireLogo';
 
 // --- TRNT BEE FLOATING BRAND BADGE (REMOVED) ---
@@ -105,13 +105,28 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
         { label: 'Student Fee & Waivers', type: 'fee_editor', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('fee_editor'); } },
         { label: 'Multi-Branch Expenditure', type: 'expenditure', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('expenditure'); } },
         { label: 'Admission Enquiries', type: 'enquiries', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('enquiries'); } },
+        { label: 'Clerks', type: 'clerks', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('clerks'); } },
+        { label: 'Activity Log', type: 'logs', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('logs'); } },
+        { label: 'Credentials', type: 'credentials', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('credentials'); } },
       ]
-    : portalRole === 'admin2'
+    : portalRole === 'clerk'
     ? [
+        // Built from the clerk's granted permissions, so the drawer can never
+        // offer a screen the server would refuse. Filtered rather than
+        // conditionally spread so the entries stay readable.
         { label: 'Campus Cockpit', type: 'dashboard', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
-        { label: 'Campus Expenditures', type: 'expenditure', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('expenditure'); } },
-        { label: 'Faculty & Staff 12-Month Ledger', type: 'teachers', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('teachers'); } },
-        { label: 'Admission Enquiries', type: 'enquiries', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('enquiries'); } },
+        ...(accountCan(user, 'addStudent')
+          ? [{ label: '+ Add Student', type: 'add_student', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('add_student'); } }]
+          : []),
+        ...(accountCan(user, 'editStudent')
+          ? [{ label: 'Students Registry', type: 'students', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('students'); } }]
+          : []),
+        ...(accountCan(user, 'collectFees')
+          ? [{ label: 'Collect Student Fees', type: 'fee_collection', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('fee_collection'); } }]
+          : []),
+        ...(accountCan(user, 'logExpenditures')
+          ? [{ label: 'Campus Expenditures', type: 'expenditure', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('expenditure'); } }]
+          : []),
       ]
     : [
         { label: 'Accountant Cockpit', type: 'dashboard', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },

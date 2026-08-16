@@ -51,6 +51,23 @@ export const getStudentProfile = async (id: string): Promise<StudentProfile> => 
   return res.data;
 };
 
+/**
+ * Whether an admission number is still free, asked while the form is being
+ * filled in rather than after it has been submitted.
+ *
+ * The number is unique college-wide, so a conflict at another campus counts —
+ * the server reports that case without naming the student, since the caller
+ * may not read records outside their own campus.
+ */
+export const checkAdmissionAvailable = async (
+  admissionNumber: string
+): Promise<{ available: boolean; message?: string }> => {
+  const res = await apiClient.get<{ status: string; data: { available: boolean; message?: string } }>(
+    `/students/admission-available?admissionNumber=${encodeURIComponent(admissionNumber)}`
+  );
+  return res.data;
+};
+
 export const createStudent = async (studentData: Partial<StudentProfile>): Promise<StudentProfile> => {
   const res = await apiClient.post<{ status: string; data: StudentProfile }>('/accountant/students', studentData);
   return res.data;

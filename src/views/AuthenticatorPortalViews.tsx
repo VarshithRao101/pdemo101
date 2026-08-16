@@ -55,7 +55,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
   // Account creation/edit state
   const [accountUsername, setAccountUsername] = useState<string>('');
-  const [accountRole, setAccountRole] = useState<'admin1' | 'admin2' | 'accountant' | 'authenticator'>('accountant');
+  const [accountRole, setAccountRole] = useState<'admin1' | 'clerk' | 'accountant' | 'authenticator'>('accountant');
   const [accountPassword, setAccountPassword] = useState<string>('');
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [accountName, setAccountName] = useState<string>('');
@@ -751,8 +751,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   roleLabel = 'Rector (Admin 1)';
                   roleBadgeBg = 'var(--warning)';
                   roleCode = 'A1';
-                } else if (acc.role === 'admin2') {
-                  roleLabel = 'Campus Principal (Admin 2)';
+                } else if (acc.role === 'clerk') {
+                  roleLabel = 'Campus Clerk';
                   roleBadgeBg = 'var(--good)';
                   roleCode = 'A2';
                 } else if (acc.role === 'authenticator') {
@@ -1432,7 +1432,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   <label style={styles.inputLabel}>Username / ID</label>
                   <input maxLength={LIMITS.username}
                     type="text"
-                    placeholder="e.g. admin2_beemaram_c1"
+                    placeholder="e.g. clerk1_beemaram_c1"
                     value={accountUsername}
                     onChange={(e) => setAccountUsername(e.target.value)}
                     style={styles.formInput}
@@ -1494,7 +1494,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     }}
                   >
                     <option value="admin1">Admin 1 (Rector)</option>
-                    <option value="admin2">Admin 2 (Campus Principal)</option>
+                    <option value="clerk">Clerk (Campus Clerk)</option>
                     <option value="accountant">Accountant</option>
                     <option value="authenticator">Security Authenticator</option>
                   </select>

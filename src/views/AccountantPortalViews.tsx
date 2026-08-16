@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { LIMITS } from '../constants/fieldLimits';
+import React, { useState, useEffect, useRef } from 'react';
+import { LIMITS, validateMobile, digitsOnly } from '../constants/fieldLimits';
 import {
   openPrintDocument, pdfHeader, pdfFooter, pdfSection, pdfTable, pdfTiles,
   pdfDetailCard, money, dateStr, escapeHtml
@@ -297,14 +297,51 @@ const matchesStudentSearch = (student: Student, query: string) => {
   ].some((field) => String(field || '').toLowerCase().includes(normalizedQuery));
 };
 
-export const AccountantDashboardView: React.FC = () => {
-  const { user, activeTab: globalActiveTab } = useNavigation();
-  const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
+/**
+ * `restrictTo` pins this view to a single module and is set when a CLERK is
+ * borrowing it.
+ *
+ * A clerk granted "collect fees" gets this exact screen rather than a copy of
+ * it — one implementation of the receipt and balance arithmetic. But a clerk
+ * is not an accountant: they must not land on the accountant cockpit, and
+ * "Back to Cockpit" has to return them to their own. Without this the clerk
+ * entered fee collection and had no way back, because changing the hash does
+ * not move `activeTab` and the exit button only reset this view's local page.
+ */
+export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; campusOverride?: string }> = ({ restrictTo, campusOverride }) => {
+  const { user, activeTab: globalActiveTab, setActiveTab } = useNavigation();
+  // An org-wide account (the Rector) has campus "All", which is not a campus
+  // this module can act on — it collects fees for exactly one. campusOverride
+  // is the campus they picked; everyone else is pinned by their own account.
+  // The old fallback silently used Erragattugutta C1 for any org-wide caller,
+  // which would have taken payments against the wrong campus.
+  const loggedInCampus = campusOverride
+    || (user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
-  const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'reports' | 'profile'>('menu');
+  const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'reports' | 'profile'>(
+    restrictTo || 'menu'
+  );
+
+  /**
+   * Leaving this view.
+   *
+   * A borrowing clerk goes back to their OWN cockpit, which means moving the
+   * global tab — this component is only mounted for them while that tab says
+   * fee_collection. An accountant just returns to their menu as before.
+   */
+  const exitToCockpit = () => {
+    setSelectedStudent(null);
+    setEditStudent(null);
+    setFeeCollectAdm('');
+    if (restrictTo) {
+      setActiveTab('dashboard');
+      return;
+    }
+    setActiveSubPage('menu');
+  };
   const [students, setStudents] = useState<Student[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [livePulseKey, setLivePulseKey] = useState<'students' | 'fees' | 'settings' | null>(null);
@@ -312,6 +349,13 @@ export const AccountantDashboardView: React.FC = () => {
 
   // Sync globalActiveTab from sidebar/navigation drawer into local activeSubPage
   useEffect(() => {
+    // A restricted mount is pinned to its one module and must never follow the
+    // tab elsewhere — a clerk borrowing fee collection has no business landing
+    // on the accountant's reports or profile.
+    if (restrictTo) {
+      setActiveSubPage(restrictTo);
+      return;
+    }
     if (globalActiveTab) {
       if (globalActiveTab === 'dashboard' || globalActiveTab === 'home') {
         setActiveSubPage('menu');
@@ -321,7 +365,7 @@ export const AccountantDashboardView: React.FC = () => {
         setActiveSubPage(globalActiveTab as any);
       }
     }
-  }, [globalActiveTab]);
+  }, [globalActiveTab, restrictTo]);
 
   // New Student & Delete Student Modals
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
@@ -358,6 +402,57 @@ export const AccountantDashboardView: React.FC = () => {
   };
   const [newStudentData, setNewStudentData] = useState(initialNewStudent);
   const [newStudentAdmissionError, setNewStudentAdmissionError] = useState('');
+  const [newStudentMobileError, setNewStudentMobileError] = useState('');
+  const [newStudentParentMobileError, setNewStudentParentMobileError] = useState('');
+  const [isCheckingAdmission, setIsCheckingAdmission] = useState(false);
+
+  // Admission numbers are unique college-wide and the server refuses a
+  // duplicate with a 409 — but that only used to be reached after all three
+  // screens and the confirmation, so a clash surfaced at the very end of the
+  // form. Ask while the field is still on screen.
+  //
+  // Debounced, and guarded against a stale answer overwriting a newer one:
+  // typing "24001" then "240012" fires twice, and without the generation check
+  // the slower first reply could land last and mark a free number as taken.
+  // One reset for the whole add-student form. Three call sites each cleared a
+  // different subset, so an error from a previous attempt could still be on
+  // screen when the form was reopened.
+  const resetNewStudentForm = () => {
+    setNewStudentData({ ...initialNewStudent, branch: loggedInCampus });
+    setNewStudentAdmissionError('');
+    setNewStudentMobileError('');
+    setNewStudentParentMobileError('');
+    setNewStuCustomSlots([]);
+    setNewStuFormPage(1);
+  };
+
+  const admissionCheckRef = useRef(0);
+  useEffect(() => {
+    const value = newStudentData.admissionNumber.trim();
+    if (!isAddStudentModalOpen || !value) {
+      setIsCheckingAdmission(false);
+      return;
+    }
+    const generation = ++admissionCheckRef.current;
+    setIsCheckingAdmission(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const result = await accountantService.checkAdmissionAvailable(value);
+        if (generation !== admissionCheckRef.current) return;
+        setNewStudentAdmissionError(result.available ? '' : (result.message || 'That admission number is already in use.'));
+      } catch {
+        // A failed availability check is not a validation failure — the create
+        // route re-checks and is the real guard. Staying silent here avoids
+        // blocking the form when the network hiccups.
+        if (generation === admissionCheckRef.current) setNewStudentAdmissionError('');
+      } finally {
+        if (generation === admissionCheckRef.current) setIsCheckingAdmission(false);
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [newStudentData.admissionNumber, isAddStudentModalOpen]);
 
   // Custom Fee Section Slots for Accountant Registration
   const [newStuCustomSlots, setNewStuCustomSlots] = useState<Array<{ id: string; name: string; amount: number }>>([]);
@@ -594,9 +689,10 @@ export const AccountantDashboardView: React.FC = () => {
       }
       const f = info.currentFees;
       setUpgradeFees({
+        // No waiver keys: this screen cannot set them, and sending them —
+        // even as zeros — would imply it could.
         tuitionFee: f.tuitionFee, hostelFee: f.hostelFee,
         transportFee: f.transportFee, miscellaneousFee: f.miscellaneousFee,
-        tuitionWaiver: 0, hostelWaiver: 0, transportWaiver: 0, miscWaiver: 0,
         customFeeSlots: (f.customFeeSlots || []).map(s => ({ name: s.name, amount: s.amount }))
       });
       setActiveOverlay('upgrade_year');
@@ -607,23 +703,18 @@ export const AccountantDashboardView: React.FC = () => {
     }
   };
 
+  // Gross IS payable here. Waivers are the Rector's and are applied after the
+  // upgrade, so this screen has nothing that reduces the total.
   const upgradeTotals = React.useMemo(() => {
-    if (!upgradeFees) return { gross: 0, waivers: 0, payable: 0 };
+    if (!upgradeFees) return { gross: 0, payable: 0 };
     const slots = (upgradeFees.customFeeSlots || []).reduce((a: number, s: any) => a + (Number(s.amount) || 0), 0);
     const gross = Number(upgradeFees.tuitionFee || 0) + Number(upgradeFees.hostelFee || 0)
       + Number(upgradeFees.transportFee || 0) + Number(upgradeFees.miscellaneousFee || 0) + slots;
-    const waivers = Number(upgradeFees.tuitionWaiver || 0) + Number(upgradeFees.hostelWaiver || 0)
-      + Number(upgradeFees.transportWaiver || 0) + Number(upgradeFees.miscWaiver || 0);
-    return { gross, waivers, payable: Math.max(0, gross - waivers) };
+    return { gross, payable: gross };
   }, [upgradeFees]);
 
   const handleConfirmUpgrade = async () => {
     if (!selectedStudent || !upgradeFees) return;
-    if (upgradeTotals.waivers > upgradeTotals.gross) {
-      triggerToast('Total waivers cannot exceed the total fees.', 'error');
-      return;
-    }
-
     const confirmed = window.confirm(
       `Move ${selectedStudent.name} to Second Year?\n\n` +
       `New fees payable: Rs.${upgradeTotals.payable.toLocaleString('en-IN')}\n\n` +
@@ -677,8 +768,7 @@ export const AccountantDashboardView: React.FC = () => {
       });
       triggerToast(`Student ${created.name} (${created.admissionNumber}) registered successfully!`);
       setIsAddStudentModalOpen(false);
-      setNewStudentData({ ...initialNewStudent, branch: loggedInCampus });
-      setNewStuCustomSlots([]);
+      resetNewStudentForm();
       // Refetch from server immediately so local state matches true DB state
       await triggerFreshnessRefetch();
     } catch (err: any) {
@@ -1240,7 +1330,7 @@ export const AccountantDashboardView: React.FC = () => {
                   <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.7857rem', fontWeight: 800, backgroundColor: newStuFormPage === 2 ? 'var(--ink)' : 'var(--line)', color: newStuFormPage === 2 ? 'var(--surface)' : 'var(--ink-secondary)' }}>2. Personal & Family</span>
                   <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.7857rem', fontWeight: 800, backgroundColor: newStuFormPage === 3 ? 'var(--ink)' : 'var(--line)', color: newStuFormPage === 3 ? 'var(--surface)' : 'var(--ink-secondary)' }}>3. Fee Structure</span>
                 </div>
-                <button onClick={() => { setIsAddStudentModalOpen(false); setNewStudentAdmissionError(''); }} style={{ background: 'none', border: 'none', fontSize: '1.4286rem', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
+                <button onClick={() => { setIsAddStudentModalOpen(false); resetNewStudentForm(); }} style={{ background: 'none', border: 'none', fontSize: '1.4286rem', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
               </div>
             </div>
 
@@ -1278,11 +1368,17 @@ export const AccountantDashboardView: React.FC = () => {
                         <label style={styles.formLabel}>Student Mobile Number *</label>
                         <input maxLength={LIMITS.mobile}
                           type="text"
+                          inputMode="numeric"
                           placeholder="10-digit mobile"
                           value={newStudentData.mobile}
-                          onChange={(e) => setNewStudentData({ ...newStudentData, mobile: e.target.value })}
-                          style={styles.textInputBox}
+                          onChange={(e) => {
+                            const digits = digitsOnly(e.target.value);
+                            setNewStudentData({ ...newStudentData, mobile: digits });
+                            setNewStudentMobileError(validateMobile(digits, 'Student mobile number') || '');
+                          }}
+                          style={{ ...styles.textInputBox, borderColor: newStudentMobileError ? 'var(--critical)' : undefined }}
                         />
+                        {newStudentMobileError && <span style={{ color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 700 }}>{newStudentMobileError}</span>}
                       </div>
                       <div>
                         <label style={styles.formLabel}>Campus / Branch (Locked)</label>
@@ -1331,18 +1427,35 @@ export const AccountantDashboardView: React.FC = () => {
                     </button>
                     <button
                       type="button"
+                      disabled={isCheckingAdmission || !!newStudentAdmissionError}
                       onClick={() => {
                         if (!newStudentData.name.trim() || !newStudentData.admissionNumber.trim() || !newStudentData.mobile.trim()) {
                           setNewStudentAdmissionError('Admission Number, Name, and Mobile are required.');
                           triggerToast('Please fill in Admission Number, Student Name, and Mobile Number.');
                           return;
                         }
+                        // Both of these used to be left to the server, which
+                        // only saw them after screen 3 — so a wrong mobile or a
+                        // taken admission number failed at the end of the form
+                        // with the answers already typed.
+                        const mobileError = validateMobile(newStudentData.mobile, 'Student mobile number');
+                        if (mobileError) {
+                          setNewStudentMobileError(mobileError);
+                          triggerToast(mobileError, 'error');
+                          return;
+                        }
+                        setNewStudentMobileError('');
                         setNewStuFormPage(2);
                       }}
-                      style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: 'var(--ink)', color: 'var(--surface)', fontWeight: 800 }}
+                      style={{
+                        ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px',
+                        backgroundColor: 'var(--ink)', color: 'var(--surface)', fontWeight: 800,
+                        opacity: (isCheckingAdmission || newStudentAdmissionError) ? 0.5 : 1,
+                        cursor: (isCheckingAdmission || newStudentAdmissionError) ? 'not-allowed' : 'pointer'
+                      }}
                       className="press-interactive"
                     >
-                      Next: Personal & Family Info (Screen 2 of 3) →
+                      {isCheckingAdmission ? 'Checking admission number…' : 'Next: Personal & Family Info (Screen 2 of 3) →'}
                     </button>
                   </div>
                 </div>
@@ -1368,7 +1481,19 @@ export const AccountantDashboardView: React.FC = () => {
                       </div>
                       <div>
                         <label style={styles.formLabel}>Parent Contact Mobile</label>
-                        <input maxLength={LIMITS.mobile} type="text" placeholder="e.g. 9876543210" value={newStudentData.parentMobile} onChange={(e) => setNewStudentData({ ...newStudentData, parentMobile: e.target.value })} style={styles.textInputBox} />
+                        <input maxLength={LIMITS.mobile}
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="e.g. 9876543210"
+                          value={newStudentData.parentMobile}
+                          onChange={(e) => {
+                            const digits = digitsOnly(e.target.value);
+                            setNewStudentData({ ...newStudentData, parentMobile: digits });
+                            setNewStudentParentMobileError(validateMobile(digits, 'Parent mobile number') || '');
+                          }}
+                          style={{ ...styles.textInputBox, borderColor: newStudentParentMobileError ? 'var(--critical)' : undefined }}
+                        />
+                        {newStudentParentMobileError && <span style={{ color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 700 }}>{newStudentParentMobileError}</span>}
                       </div>
                       <div>
                         <label style={styles.formLabel}>Previous School</label>
@@ -1401,7 +1526,16 @@ export const AccountantDashboardView: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setNewStuFormPage(3)}
+                      onClick={() => {
+                        const parentError = validateMobile(newStudentData.parentMobile, 'Parent mobile number');
+                        if (parentError) {
+                          setNewStudentParentMobileError(parentError);
+                          triggerToast(parentError, 'error');
+                          return;
+                        }
+                        setNewStudentParentMobileError('');
+                        setNewStuFormPage(3);
+                      }}
                       style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: 'var(--ink)', color: 'var(--surface)', fontWeight: 800 }}
                       className="press-interactive"
                     >
@@ -1558,6 +1692,17 @@ export const AccountantDashboardView: React.FC = () => {
                         if (!newStudentData.admissionNumber || !newStudentData.name || !newStudentData.mobile) {
                           setNewStudentAdmissionError('Admission Number, Student Name, and Mobile are required.');
                           triggerToast('Please fill in Admission Number, Student Name, and Mobile.');
+                          setNewStuFormPage(1);
+                          return;
+                        }
+                        // Last line of defence in the form: someone can reach
+                        // screen 3 and then go back and edit an earlier field.
+                        const blocker = newStudentAdmissionError
+                          || validateMobile(newStudentData.mobile, 'Student mobile number')
+                          || validateMobile(newStudentData.parentMobile, 'Parent mobile number');
+                        if (blocker) {
+                          triggerToast(blocker, 'error');
+                          setNewStuFormPage(1);
                           return;
                         }
                         setIsAddStudentModalOpen(false);
@@ -1642,9 +1787,7 @@ export const AccountantDashboardView: React.FC = () => {
             </div>
             <button
               onClick={() => {
-                setNewStudentData({ ...initialNewStudent, branch: loggedInCampus });
-                setNewStudentAdmissionError('');
-                setNewStuFormPage(1);
+                resetNewStudentForm();
                 setIsAddStudentModalOpen(true);
               }}
               style={{
@@ -1892,11 +2035,26 @@ export const AccountantDashboardView: React.FC = () => {
       <div style={styles.container} className="view-container anim-slide-up">
         {renderBackgroundDesign('gold')}
         <header style={styles.header}>
-          <button onClick={() => { setActiveSubPage('menu'); setSelectedStudent(null); setEditStudent(null); setFeeCollectAdm(''); }} style={styles.backArrowBtn} className="press-interactive">
+          <button onClick={exitToCockpit} style={styles.backArrowBtn} className="press-interactive">
              Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Fee Collection Desk</h1>
           <p style={styles.subtitle}>Directly search student record lists and collect term fees</p>
+          {/* An account pinned to one campus knows which campus it is. The
+              Rector does not — they chose it a screen ago and every other
+              screen they use spans all four, so the campus is stated here
+              rather than left to memory. Taking a payment against the wrong
+              campus is the mistake this prevents. */}
+          {campusOverride && (
+            <div style={{
+              display: 'inline-block', marginTop: '8px', padding: '4px 12px',
+              borderRadius: '20px', fontSize: '0.7857rem', fontWeight: 900,
+              backgroundColor: 'var(--good-wash)', color: 'var(--good)',
+              border: '1.5px solid var(--good)'
+            }}>
+              Collecting for {campusOverride}
+            </div>
+          )}
         </header>
 
         <main style={styles.content}>
@@ -2516,15 +2674,17 @@ export const AccountantDashboardView: React.FC = () => {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '10px' }}>
+                {/* Fees only. The four waiver fields that used to sit here
+                    were a way to write off next year's charges from this
+                    screen, bypassing the Rector-only waiver route — the server
+                    now refuses them, so showing the inputs would only produce
+                    a guaranteed error. Waivers are applied by the Rector after
+                    the upgrade. */}
                 {[
                   ['tuitionFee', 'Tuition Fee'],
                   ['hostelFee', 'Hostel Fee'],
                   ['transportFee', 'Transport Fee'],
-                  ['miscellaneousFee', 'Miscellaneous Fee'],
-                  ['tuitionWaiver', 'Tuition Waiver'],
-                  ['hostelWaiver', 'Hostel Waiver'],
-                  ['transportWaiver', 'Transport Waiver'],
-                  ['miscWaiver', 'Misc Waiver']
+                  ['miscellaneousFee', 'Miscellaneous Fee']
                 ].map(([key, label]) => (
                   <div key={key}>
                     <label style={{ display: 'block', fontSize: '0.7143rem', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', marginBottom: '4px' }}>
@@ -2604,17 +2764,12 @@ export const AccountantDashboardView: React.FC = () => {
                   <span>Total fees</span><span>Rs.{upgradeTotals.gross.toLocaleString('en-IN')}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--good)', marginTop: '3px' }}>
-                  <span>Less waivers</span><span>- Rs.{upgradeTotals.waivers.toLocaleString('en-IN')}</span>
+                  <span>Waivers</span><span>Set by the Rector after upgrading</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.0714rem', fontWeight: 900, color: 'var(--ink)', marginTop: '8px', paddingTop: '8px', borderTop: '1.5px solid var(--line-strong)' }}>
                   <span>Payable in Second Year</span>
                   <span>Rs.{upgradeTotals.payable.toLocaleString('en-IN')}</span>
                 </div>
-                {upgradeTotals.waivers > upgradeTotals.gross && (
-                  <div style={{ marginTop: '8px', fontSize: '0.7857rem', fontWeight: 800, color: 'var(--critical)' }}>
-                    Waivers cannot exceed the total fees.
-                  </div>
-                )}
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
@@ -2628,12 +2783,12 @@ export const AccountantDashboardView: React.FC = () => {
                 </button>
                 <button
                   onClick={handleConfirmUpgrade}
-                  disabled={isUpgrading || upgradeTotals.waivers > upgradeTotals.gross}
+                  disabled={isUpgrading}
                   style={{
                     ...styles.actionItemBtn, flex: 2,
                     border: '1.5px solid var(--good)', backgroundColor: 'var(--good)', color: '#fff',
                     fontWeight: 900,
-                    opacity: (isUpgrading || upgradeTotals.waivers > upgradeTotals.gross) ? 0.6 : 1,
+                    opacity: isUpgrading ? 0.6 : 1,
                     cursor: isUpgrading ? 'wait' : 'pointer'
                   }}
                   className="press-interactive"
@@ -2985,7 +3140,7 @@ export const AccountantDashboardView: React.FC = () => {
 
         {/* Terminate Session */}
         <button onClick={handleLogout} style={{ ...styles.logoutBtn, marginTop: '8px' }} className="press-interactive">
-          Terminate Bursar Session
+          Sign Out
         </button>
 
         {/* Footer */}

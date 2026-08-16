@@ -52,18 +52,11 @@ export const clearGlobalSecurityKey = () => {
   activeSecurityKey = '';
 };
 
-/**
- * Asks the user for their security PIN.
- *
- * Overridable so the app can supply a proper modal; falls back to a prompt so
- * the flow always works rather than silently failing a destructive action.
- */
-let securityPinPrompt: (reason: string) => Promise<string | null> = async (reason) =>
-  window.prompt(reason);
-
-export const setSecurityPinPrompt = (fn: (reason: string) => Promise<string | null>) => {
-  securityPinPrompt = fn;
-};
+// REMOVED: `securityPinPrompt` / `setSecurityPinPrompt`, the overridable
+// PIN-asking hook used by the mid-request interceptor below. Its default was
+// `window.prompt`, so an unconfigured screen interrupted a financial action
+// with a raw browser dialog. Nothing asks for a PIN mid-request any more —
+// the one screen that needs one collects it up front.
 
 // NOTE: a client-side PIN generator lived here. It derived every account's
 // "security PIN" and per-section OTPs from a hardcoded string baked into the
@@ -172,26 +165,21 @@ export const apiClient = {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        // The server is asking for secondary confirmation on a destructive or
-        // financial action. Collect the real PIN and retry once. Handling this
-        // centrally means every such route is covered without each call site
-        // having to know about it.
-        if ((response.status === 403 || response.status === 401) && data?.requiresSecurityPin && !options.__pinRetried) {
-          const pin = await securityPinPrompt(
-            data.message === 'Incorrect security PIN.'
-              ? 'Incorrect PIN. Enter your security PIN to confirm this action:'
-              : 'Enter your security PIN to confirm this action:'
-          );
-          if (pin && pin.trim()) {
-            setGlobalSecurityKey(pin.trim());
-            return this.request<T>(endpoint, { ...options, __pinRetried: true } as RequestInit);
-          }
-          const cancelled: ApiError = new Error('Action cancelled: security PIN not provided.');
-          // 403, not 401 — cancelling a confirmation prompt must never be
-          // mistaken for an authentication failure by any caller.
-          cancelled.status = 403;
-          throw cancelled;
-        }
+        // REMOVED: an interceptor that caught `requiresSecurityPin`, popped a
+        // PIN prompt mid-request and replayed the call.
+        //
+        // It was the main source of the "clumsy" feel — an ordinary action
+        // would stop halfway and demand a six-digit PIN, and cancelling threw
+        // a confusing "Action cancelled" from deep inside the request layer.
+        // It also swallowed the server's real message: a screen that collected
+        // the PIN itself and sent it explicitly got its 403 hijacked and
+        // re-prompted instead of being told the PIN was wrong.
+        //
+        // Exactly one route now requires a PIN — saving clerk permissions —
+        // and that screen collects it in its own dialog and passes it as a
+        // header. Every other action confirms with a plain yes/no. So a 403
+        // now falls through to the normal error path below and reaches the
+        // caller with the server's own wording.
 
         // An expired access token: refresh once, through the shared
         // coordinator so simultaneous 401s cannot each rotate the refresh

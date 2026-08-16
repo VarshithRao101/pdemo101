@@ -28,6 +28,7 @@ const Expenditure = require('./models/Expenditure.cjs');
 const WorkerPayment = require('./models/WorkerPayment.cjs');
 const Payment = require('./models/Payment.cjs');
 const Enquiry = require('./models/Enquiry.cjs');
+const AuditLog = require('./models/AuditLog.cjs');
 
 const {
   generateAndUploadBackup,
@@ -584,18 +585,29 @@ function computeStudentFees(source, { totalPaid } = {}) {
 // --- MANAGED PORTAL SLOTS ---
 //
 // The fixed set of accounts this system is allowed to have: one Rector, one
-// security authenticator, one Dean per campus, one accountant per campus.
-// Usernames, roles and campuses only — never credentials. Provisioning and
-// rotation happen in scripts/rotateCredentials.cjs.
+// security authenticator, seven clerk slots per campus, one accountant per
+// campus. Usernames, roles and campuses only — never credentials.
+//
+// The clerk slots are DECLARED here but not all occupied: only slot 1 of each
+// campus exists today, carried over from the single admin2 account each
+// campus used to have. Slots 2 to 7 are provisioned by the Rector.
+const CLERK_SLOTS_PER_CAMPUS = 7;
+
+const clerkUsername = (campus, slot) =>
+  `clerk${slot}_${campus.toLowerCase().replace(/\s+/g, '_')}`;
+
 const defaultUsers = [
   { username: 'admin1', role: 'admin1', campus: 'All', name: 'Rector' },
   { username: '9059068384', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
-  ...VALID_CAMPUSES.map(c => ({
-    username: `admin2_${c.toLowerCase().replace(/\s+/g, '_')}`,
-    role: 'admin2',
-    campus: c,
-    name: `Dean ${c}`
-  })),
+  ...VALID_CAMPUSES.flatMap(c =>
+    Array.from({ length: CLERK_SLOTS_PER_CAMPUS }, (_, i) => ({
+      username: clerkUsername(c, i + 1),
+      role: 'clerk',
+      campus: c,
+      slotIndex: i + 1,
+      name: `Clerk ${i + 1} ${c}`
+    }))
+  ),
   ...VALID_CAMPUSES.map(c => ({
     username: `accountant_${c.toLowerCase().replace(/\s+/g, '_')}`,
     role: 'accountant',
@@ -604,32 +616,93 @@ const defaultUsers = [
   }))
 ];
 
-function safeBcryptCompare(input, hash) {
-  if (!input || typeof input !== 'string' || !hash || typeof hash !== 'string') {
+/**
+ * --- CREDENTIAL STORAGE ------------------------------------------------
+ *
+ * Passwords and PINs are stored in PLAINTEXT in MongoDB, so that the Rector
+ * can read as well as set every account's credentials from the admin portal.
+ *
+ * This is a deliberate instruction from the operator, given after the
+ * tradeoff was set out: bcrypt does not prevent an administrator from
+ * CHANGING a credential, only from reading an existing one, and the operator
+ * wants to read them. The cost is that anyone who obtains the database
+ * obtains every live credential at once, with no work factor in the way.
+ *
+ * Two boundaries were NOT conceded and still hold:
+ *   1. No credential is ever a literal in this repository. The repo is
+ *      public; the database is not. A password in source is exposed the
+ *      moment it is pushed.
+ *   2. No credential is ever written to the audit trail, a log line, or any
+ *      response that is not the Rector's own credential screen.
+ */
+
+/**
+ * Compare a supplied credential against what is stored, in EITHER format.
+ *
+ * Existing accounts hold bcrypt hashes, and a hash cannot be reversed — so
+ * there is no migration that turns them into plaintext. Accepting both
+ * formats is what makes this change deployable without locking everyone out:
+ * an account keeps working on its old hashed credential until the Rector next
+ * sets it, at which point it is stored as plaintext.
+ *
+ * A stored value beginning with `$2` is a bcrypt hash; anything else is
+ * plaintext. That prefix is the standard bcrypt identifier, and no generated
+ * credential here can begin with it — `generateClerkCredentials` draws from
+ * an alphabet with no `$`.
+ */
+function credentialMatches(supplied, stored) {
+  if (!supplied || typeof supplied !== 'string' || !stored || typeof stored !== 'string') {
     return false;
   }
+  const value = supplied.trim();
+  const expected = stored.trim();
+
+  if (expected.startsWith('$2')) {
+    try {
+      return bcrypt.compareSync(value, expected);
+    } catch (err) {
+      console.warn('⚠️ [Auth]: Bcrypt comparison notice:', err.message);
+      return false;
+    }
+  }
+
+  // Constant-time for the plaintext path. bcrypt.compareSync is already
+  // constant-time; a bare `===` here would not be, and the difference is
+  // measurable over a network for a short credential like a six-digit PIN.
+  const a = Buffer.from(value, 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  if (a.length !== b.length) return false;
   try {
-    return bcrypt.compareSync(input.trim(), hash.trim());
-  } catch (err) {
-    console.warn('⚠️ [Auth]: Bcrypt comparison notice:', err.message);
+    return crypto.timingSafeEqual(a, b);
+  } catch {
     return false;
   }
 }
 
+/** Kept as the old name so existing call sites read the same. */
+const safeBcryptCompare = credentialMatches;
+
+/** True when a stored credential is still in the old hashed form. */
+function isHashedCredential(stored) {
+  return typeof stored === 'string' && stored.trim().startsWith('$2');
+}
+
 
 // NOTE: there is deliberately no in-source credential list here.
-// Passwords and PINs exist only as bcrypt hashes in MongoDB. A previous
-// revision kept a `defaultSeedUsers` array of plaintext passwords/PINs that
-// `validateUserLoginCredentials` fell back to whenever the database lookup
-// returned nothing — including when the database was merely unreachable —
-// which made every account loggable-into with a credential committed to a
-// public repository. Do not reintroduce a literal credential in this file
-// for any reason, including seeding or local development.
+// A previous revision kept a `defaultSeedUsers` array of plaintext
+// passwords/PINs that `validateUserLoginCredentials` fell back to whenever
+// the database lookup returned nothing — including when the database was
+// merely unreachable — which made every account loggable-into with a
+// credential committed to a public repository. Credentials living in the
+// DATABASE as plaintext is the operator's decision; a credential living in
+// THIS FILE is the defect described above, and remains forbidden.
 
 // Username of the security authenticator slot. This is an identifier, not a
 // secret: it marks the one account the management panel refuses to edit.
 const FIXED_AUTHENTICATOR_USERNAME = '9059068384';
-const MANAGED_PORTAL_ROLES = new Set(['admin1', 'admin2', 'accountant', 'authenticator']);
+// 'admin2' stays accepted here until the migration has run everywhere; it is
+// collapsed to 'clerk' by normalizeRole before any decision is made.
+const MANAGED_PORTAL_ROLES = new Set(['admin1', 'admin2', 'clerk', 'accountant', 'authenticator']);
 const MANAGED_PORTAL_USERNAMES = new Set(defaultUsers.map(u => u.username));
 
 function sanitizeManagedAccount(userDoc) {
@@ -654,9 +727,13 @@ async function getManagedPortalAccounts() {
       .map(doc => ({
         _id: doc._id,
         username: doc.username,
-        role: doc.role,
+        // Normalised on the way out, so a client never has to know that
+        // `admin2` and `clerk` are the same thing.
+        role: normalizeRole(doc.role),
         name: doc.name,
         campus: doc.campus,
+        slotIndex: doc.slotIndex ?? null,
+        permissions: normalizePermissions(doc.permissions),
         email: doc.email || '',
         mobile: doc.mobile || '',
         department: doc.department || '',
@@ -671,9 +748,21 @@ async function getManagedPortalAccounts() {
         credentialsUpdatedAt: doc.updatedAt || null
       }))
       .sort((a, b) => {
-        const roleOrder = { admin1: 0, authenticator: 1, admin2: 2, accountant: 3 };
-        const roleDiff = (roleOrder[a.role] ?? 99) - (roleOrder[b.role] ?? 99);
+        // Keyed on the NORMALISED role. Before the rename this map held
+        // `admin2`, so once the role became `clerk` every clerk fell to the
+        // ?? 99 fallback and sorted below the accountants instead of above
+        // them — and un-migrated `admin2` documents would have sorted
+        // somewhere else again.
+        const roleOrder = { admin1: 0, authenticator: 1, clerk: 2, accountant: 3 };
+        const rank = r => roleOrder[normalizeRole(r)] ?? 99;
+        const roleDiff = rank(a.role) - rank(b.role);
         if (roleDiff !== 0) return roleDiff;
+
+        // Within clerks, slot 1 before slot 2 — a plain string compare puts
+        // clerk10 before clerk2, which would matter once slots go past nine.
+        if (a.slotIndex != null && b.slotIndex != null && a.slotIndex !== b.slotIndex) {
+          return a.slotIndex - b.slotIndex;
+        }
         return String(a.username).localeCompare(String(b.username));
       });
 }
@@ -926,14 +1015,21 @@ async function authenticateToken(req, res, next) {
     });
   }
 
+  // NOTE: `permissions` and `slotIndex` MUST stay in both selects below.
+  // They were missing when the clerk permission model was added, and the
+  // effect was silent and total: every clerk loaded with an absent
+  // permissions object, normalizePermissions turned that into all-false, and
+  // a clerk granted every power was refused every gated route. Nothing threw
+  // — the account simply had no abilities. A field added to the User schema
+  // and read from req.user has to be added here as well.
   let dbUser = null;
   try {
     if (mongoose.Types.ObjectId.isValid(decoded.id)) {
-      dbUser = await User.findById(decoded.id).select('activeSessionId status username role campus name lastSeenAt');
+      dbUser = await User.findById(decoded.id).select('activeSessionId status username role campus name lastSeenAt permissions slotIndex');
     }
     if (!dbUser && decoded.username) {
       dbUser = await User.findOne({ username: resolveUsername(decoded.username) })
-        .select('activeSessionId status username role campus name lastSeenAt');
+        .select('activeSessionId status username role campus name lastSeenAt permissions slotIndex');
     }
   } catch (dbErr) {
     console.error('[Auth]: Session lookup failed:', dbErr.message);
@@ -995,13 +1091,69 @@ async function authenticateToken(req, res, next) {
   req.user = {
     id: String(dbUser._id),
     username: dbUser.username,
-    role: dbUser.role,
+    // Normalised, so every downstream comparison sees one spelling regardless
+    // of what is stored on the document.
+    role: normalizeRole(dbUser.role),
     campus: dbUser.campus,
     name: dbUser.name,
+    slotIndex: dbUser.slotIndex ?? null,
+    // Read from the database on every request rather than carried in the
+    // token. Revoking a clerk's power has to take effect on their next
+    // request, not whenever their token happens to expire.
+    permissions: normalizePermissions(dbUser.permissions),
     sessionId: decoded.sessionId
   };
 
   return next();
+}
+
+// --- ROLES & PERMISSIONS ---
+
+/**
+ * The five powers the Rector can grant a clerk, in display order.
+ *
+ * This list is the single source of truth: the model's `permissions` fields,
+ * the clerk manager UI and requirePermission all key off these names.
+ */
+const CLERK_PERMISSIONS = ['addStudent', 'editStudent', 'editFees', 'collectFees', 'logExpenditures'];
+
+/**
+ * One spelling for the clerk role.
+ *
+ * The role was called `admin2` and is now `clerk`. Rather than rename the
+ * stored value and every guard in one irreversible step, both spellings are
+ * accepted and collapse to `clerk` here — so a document written before the
+ * migration and a guard written after it agree with each other. Remove once
+ * no `admin2` documents remain anywhere.
+ */
+function normalizeRole(role) {
+  return String(role || '') === 'admin2' ? 'clerk' : String(role || '');
+}
+
+/** Every permission present and boolean, whatever the document holds. */
+function normalizePermissions(permissions) {
+  const source = permissions || {};
+  const result = {};
+  for (const name of CLERK_PERMISSIONS) {
+    result[name] = source[name] === true;
+  }
+  return result;
+}
+
+/**
+ * Whether this caller may perform `permission`.
+ *
+ * admin1 is org-wide and holds every power implicitly — it is the account
+ * that GRANTS these, so gating it on its own grant would be circular.
+ * Accountants keep the fixed abilities their own routes already define.
+ * Only a clerk is actually consulted against the stored grants.
+ */
+function callerHasPermission(req, permission) {
+  const role = normalizeRole(req.user && req.user.role);
+  if (role === 'admin1') return true;
+  if (role === 'clerk') return !!(req.user.permissions && req.user.permissions[permission]);
+  if (role === 'accountant') return true;
+  return false;
 }
 
 // Role Authorization Middleware
@@ -1014,7 +1166,10 @@ function requireRole(...allowedRoles) {
       });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    // Both sides normalised: a guard may name either spelling and a stored
+    // role may be either, without the two having to be changed together.
+    const callerRole = normalizeRole(req.user.role);
+    if (!allowedRoles.map(normalizeRole).includes(callerRole)) {
       return res.status(403).json({
         status: 'error',
         message: 'Access forbidden. Insufficient permissions for this role.'
@@ -1023,6 +1178,103 @@ function requireRole(...allowedRoles) {
 
     next();
   };
+}
+
+/**
+ * Gate a route on one of the Rector-granted clerk powers.
+ *
+ * Sits AFTER requireRole in the chain: requireRole decides who may reach the
+ * route at all, this decides whether this particular clerk has been given
+ * that power. The refusal names the power so the message is actionable rather
+ * than a bare "forbidden", and it is recorded in the audit trail — a clerk
+ * repeatedly attempting something they have not been granted is worth seeing.
+ */
+function requirePermission(permission) {
+  return (req, res, next) => {
+    if (callerHasPermission(req, permission)) return next();
+
+    const readable = permission.replace(/([A-Z])/g, ' $1').toLowerCase();
+    recordAudit(req, {
+      action: `permission.denied`,
+      entityType: 'permission',
+      entityId: permission,
+      outcome: 'denied',
+      summary: `Refused: ${req.user.username} attempted to ${readable} without that power.`,
+      details: { permission }
+    });
+
+    return res.status(403).json({
+      status: 'error',
+      message: `Your account has not been given permission to ${readable}. Ask the Rector to enable it.`
+    });
+  };
+}
+
+// --- AUDIT TRAIL ---
+
+/**
+ * Record one action in the audit trail.
+ *
+ * Deliberately fire-and-forget: it is awaited nowhere and it swallows its own
+ * errors. An audit write must never turn a successful fee collection into a
+ * failed request — the payment is the thing the user came to do, and losing a
+ * log line is a smaller harm than losing the payment. Failures are logged to
+ * the console so a broken trail is still visible to whoever is watching the
+ * process.
+ *
+ * Call it AFTER the write it describes has succeeded, so the trail cannot
+ * claim something happened that then did not. For a refusal, pass
+ * `outcome: 'denied'` and call it at the point of refusal.
+ *
+ * Never pass a password, PIN or token in `summary` or `details`.
+ */
+function recordAudit(req, {
+  action,
+  entityType = '',
+  entityId = '',
+  entityLabel = '',
+  summary,
+  amount = null,
+  campus = '',
+  outcome = 'success',
+  details = {}
+}) {
+  try {
+    const actor = (req && req.user) || {};
+    AuditLog.create({
+      actorUsername: actor.username || 'unknown',
+      actorRole: actor.role || '',
+      actorName: actor.name || '',
+      actorCampus: actor.campus || '',
+      action,
+      entityType,
+      entityId: entityId ? String(entityId) : '',
+      entityLabel,
+      summary,
+      amount: (amount === null || amount === undefined || !Number.isFinite(Number(amount)))
+        ? null
+        : Number(amount),
+      // Falls back to the actor's own campus, which is right for every
+      // campus-scoped role. admin1 is org-wide, so its entries carry the
+      // campus of the record that was touched and the call site passes it.
+      campus: campus || actor.campus || '',
+      outcome,
+      details: details && typeof details === 'object' ? details : {},
+      ip: (req && (req.headers['x-forwarded-for'] || req.ip)) || '',
+      userAgent: (req && req.headers['user-agent']) || ''
+    }).catch(err => {
+      console.error('[Audit]: could not record entry:', action, err.message);
+    });
+  } catch (err) {
+    console.error('[Audit]: could not record entry:', action, err.message);
+  }
+}
+
+/** "Priya Menon (2400101)" — a label that survives the record being deleted. */
+function studentLabel(student) {
+  if (!student) return '';
+  const id = student.admissionNumber || student.studentId || '';
+  return id ? `${student.name} (${id})` : String(student.name || '');
 }
 
 // --- CAMPUS SCOPING HELPERS ---
@@ -1306,16 +1558,34 @@ async function validateUserLoginCredentials(inputUser, password, pin) {
 // authenticateToken has already loaded and validated the real user record, so
 // this simply reports it back. No reconstruction from token claims or from a
 // seed list.
+/**
+ * The account fields the browser is allowed to see.
+ *
+ * Login and /auth/me built this inline and had drifted apart already; adding
+ * permissions to one and not the other would have meant a clerk's portal
+ * looked right after signing in and lost half its modules on the next reload.
+ *
+ * `permissions` is included because the clerk portal decides which modules to
+ * render from it. That is presentation only — every route re-checks the same
+ * grants server-side through requirePermission, because hiding a button is
+ * not a control.
+ */
+function publicUserPayload(user) {
+  return {
+    id: user._id ? String(user._id) : user.id,
+    username: user.username,
+    role: normalizeRole(user.role),
+    campus: user.campus,
+    name: user.name,
+    slotIndex: user.slotIndex ?? null,
+    permissions: normalizePermissions(user.permissions)
+  };
+}
+
 app.get(['/api/auth/me', '/auth/me', '/api/me'], authenticateToken, async (req, res) => {
   return res.json({
     status: 'success',
-    user: {
-      id: req.user.id,
-      username: req.user.username,
-      role: req.user.role,
-      campus: req.user.campus,
-      name: req.user.name
-    }
+    user: publicUserPayload(req.user)
   });
 });
 
@@ -1445,13 +1715,7 @@ async function issueSession(user, res, req = null) {
     status: 'success',
     token,
     refreshToken: refreshTokenRaw,
-    user: {
-      id: user._id,
-      username: user.username,
-      role: user.role,
-      campus: user.campus,
-      name: user.name
-    }
+    user: publicUserPayload(user)
   });
 }
 
@@ -1834,7 +2098,7 @@ app.post(['/api/auth/logout', '/auth/logout', '/api/logout'], requireDatabase, a
 
 // --- STUDENT ROUTES ---
 
-app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
+app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
   try {
     await connectToDatabase();
     const { branch } = req.query;
@@ -1845,7 +2109,7 @@ app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'admin2
       }
       filter.branch = String(branch).trim();
     }
-    if ((req.user.role === 'admin2' || req.user.role === 'accountant') && req.user.campus && req.user.campus.toLowerCase() !== 'all') {
+    if ((req.user.role === 'clerk' || req.user.role === 'accountant') && req.user.campus && req.user.campus.toLowerCase() !== 'all') {
       filter.branch = req.user.campus;
     }
     const students = await Student.find(filter).sort({ createdAt: -1 });
@@ -1854,6 +2118,22 @@ app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'admin2
     return failRequest(req, res, err);
   }
 });
+
+/**
+ * The student already holding an admission number, or null.
+ *
+ * Case- and spacing-insensitive, so "ADM-101" and "adm-101 " collide rather
+ * than producing two records for one student. Deliberately unscoped by campus:
+ * admission numbers are unique across the whole college, and a check that
+ * only looked at one campus would let the unique index reject a create that
+ * the form had already called fine.
+ */
+async function findStudentByAdmissionNumber(admissionNumber) {
+  const clean = String(admissionNumber || '').trim();
+  if (!clean) return null;
+  const pattern = new RegExp(`^\\s*${escapeRegex(clean)}\\s*$`, 'i');
+  return Student.findOne({ admissionNumber: pattern }).lean();
+}
 
 const createStudentHandler = async (req, res) => {
   try {
@@ -1873,7 +2153,8 @@ const createStudentHandler = async (req, res) => {
       admissionNumber: { required: true, max: FIELD_LIMITS.admissionNumber },
       fatherName: { max: FIELD_LIMITS.personName }, motherName: { max: FIELD_LIMITS.personName },
       course: { max: FIELD_LIMITS.course }, section: { max: FIELD_LIMITS.section },
-      rollNumber: { max: FIELD_LIMITS.rollNumber }, email: { max: FIELD_LIMITS.email },
+      rollNumber: { max: FIELD_LIMITS.rollNumber }, studentId: { max: FIELD_LIMITS.studentId },
+      email: { max: FIELD_LIMITS.email },
       dob: { max: 20 }, address: { max: FIELD_LIMITS.address },
       previousSchool: { max: FIELD_LIMITS.previousSchool }, previousBoard: { max: FIELD_LIMITS.previousBoard },
       mobile: { max: FIELD_LIMITS.mobile }, parentMobile: { max: FIELD_LIMITS.mobile }
@@ -1921,7 +2202,7 @@ const createStudentHandler = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Fee amounts must be valid non-negative numbers.' });
     }
 
-    if (req.user.role === 'accountant' || req.user.role === 'admin2') {
+    if (req.user.role === 'accountant' || req.user.role === 'clerk') {
       if (req.user.campus !== 'All' && targetBranch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({
           status: 'error',
@@ -1930,13 +2211,7 @@ const createStudentHandler = async (req, res) => {
       }
     }
 
-    // Case- and spacing-insensitive, so "ADM-101" and "adm-101 " collide
-    // rather than producing two records for one student.
-    const cleanAdmission = String(admissionNumber).trim();
-    const admissionPattern = new RegExp(
-      `^\\s*${cleanAdmission.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'
-    );
-    const existing = await Student.findOne({ admissionNumber: admissionPattern }).lean();
+    const existing = await findStudentByAdmissionNumber(admissionNumber);
     if (existing) {
       return res.status(409).json({
         status: 'error',
@@ -1966,11 +2241,39 @@ const createStudentHandler = async (req, res) => {
 
     const remainingBalance = Math.max(0, grossFees);
 
-    const randomPin = String(Math.floor(100000 + Math.random() * 900000));
-    const studentId = `STU-${Date.now().toString().slice(-6)}`;
-
     // Use the validated, length-capped values rather than the raw body.
     const t = text.values;
+
+    /**
+     * The student ID is the admission number unless one is supplied.
+     *
+     * This used to be `STU-${Date.now().toString().slice(-6)}`, which was
+     * wrong twice over. Both portals send `studentId: admissionNumber` and the
+     * server discarded it, so a student registered as "2400101" was stored
+     * under a different ID than the one on screen — the record saved, but
+     * every later lookup by the number that was typed missed it.
+     *
+     * And the last six digits of a millisecond timestamp repeat about every
+     * 16 minutes 40 seconds. `studentId` carries a unique index, so two
+     * students registered a little over a quarter of an hour apart collided
+     * and the second was refused with "That student ID was just taken."
+     *
+     * The admission number is already unique college-wide and already checked
+     * just above, so it is the natural key. An explicit studentId is still
+     * honoured, and checked for a clash of its own.
+     */
+    const studentId = (t.studentId && t.studentId.trim()) || t.admissionNumber.trim();
+    const studentIdClash = await Student.findOne({ studentId }).lean();
+    if (studentIdClash) {
+      return res.status(409).json({
+        status: 'error',
+        message: `Student ID [${studentId}] is already in use by ${
+          callerOwnsCampus(req, studentIdClash.branch)
+            ? `${studentIdClash.name} (${studentIdClash.branch})`
+            : 'a student at another campus'
+        }.`
+      });
+    }
     const newStudent = await Student.create({
       studentId,
       admissionNumber: t.admissionNumber,
@@ -2006,13 +2309,26 @@ const createStudentHandler = async (req, res) => {
       academicYear
     });
 
+    recordAudit(req, {
+      action: 'student.create',
+      entityType: 'student',
+      entityId: newStudent.studentId,
+      entityLabel: studentLabel(newStudent),
+      campus: targetBranch,
+      amount: remainingBalance,
+      summary: `Registered ${studentLabel(newStudent)} at ${targetBranch} with fees of Rs. ${remainingBalance.toLocaleString('en-IN')}.`,
+      details: { course: newStudent.course, section: newStudent.section, grossFees }
+    });
+
+    // NOTE: this used to also return `credential: { username, pin }` with a
+    // freshly generated six-digit PIN. No student login was ever created to go
+    // with it — students are not one of this system's roles — and nothing
+    // rendered the value, so it was a credential-shaped number that meant
+    // nothing. Returning it invited someone to write it down and hand it to a
+    // student as a password for an account that does not exist.
     return res.status(201).json({
       status: 'success',
-      data: newStudent,
-      credential: {
-        username: studentId,
-        pin: randomPin
-      }
+      data: newStudent
     });
   } catch (err) {
     // The findOne guard above cannot be race-safe on its own: two simultaneous
@@ -2036,11 +2352,81 @@ const createStudentHandler = async (req, res) => {
   }
 };
 
-app.post('/api/admin1/students', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), mongoRateLimiter, createStudentHandler);
-app.post('/api/admin/students', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), mongoRateLimiter, createStudentHandler);
-app.post('/api/accountant/students', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), mongoRateLimiter, createStudentHandler);
+/**
+ * Is this admission number free?
+ *
+ * The create route has always refused a duplicate with a 409, but the add
+ * student form only reached that route after three screens of input, so the
+ * conflict surfaced at the very end — which read as "no warning at all". This
+ * lets the form ask on the first screen, while the number is still being
+ * typed.
+ *
+ * A conflict at ANOTHER campus is reported without the student's name or
+ * campus. The caller is entitled to know the number is taken, because that
+ * governs what they may enter; they are not entitled to read a record outside
+ * their own campus.
+ */
+app.get(['/api/students/admission-available', '/api/accountant/students/admission-available'],
+  authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const admissionNumber = String(req.query.admissionNumber || '').trim();
+    if (!admissionNumber) {
+      return res.status(400).json({ status: 'error', message: 'An admission number is required.' });
+    }
+    if (admissionNumber.length > FIELD_LIMITS.admissionNumber) {
+      return res.status(400).json({ status: 'error', message: `Admission number cannot exceed ${FIELD_LIMITS.admissionNumber} characters.` });
+    }
 
-app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
+    const existing = await findStudentByAdmissionNumber(admissionNumber);
+    if (!existing) {
+      return res.json({ status: 'success', data: { available: true } });
+    }
+
+    const visible = callerOwnsCampus(req, existing.branch);
+    return res.json({
+      status: 'success',
+      data: {
+        available: false,
+        message: visible
+          ? `Admission number [${existing.admissionNumber}] already belongs to ${existing.name} (${existing.branch}).`
+          : `Admission number [${existing.admissionNumber}] is already in use at another campus.`
+      }
+    });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+app.post('/api/admin1/students', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('addStudent'), mongoRateLimiter, createStudentHandler);
+app.post('/api/admin/students', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('addStudent'), mongoRateLimiter, createStudentHandler);
+app.post('/api/accountant/students', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('addStudent'), mongoRateLimiter, createStudentHandler);
+
+/**
+ * Fee fields carried by the student edit route.
+ *
+ * This one route accepts profile details AND money, so a single permission
+ * cannot describe it: a clerk granted "edit student details" must be able to
+ * fix a misspelt name without also being able to change what that student
+ * owes. The fields are named here and checked against `editFees` separately.
+ */
+const STUDENT_FEE_FIELDS = [
+  'tuitionFee', 'hostelFee', 'transportFee', 'miscellaneousFee',
+  'previousPending', 'customFeeSlots'
+];
+
+/**
+ * Waivers are the Rector's alone.
+ *
+ * A waiver is money written off rather than money recorded, so it is the one
+ * fee operation that no campus-level account may perform — not a clerk with
+ * every permission granted, and not an accountant. The dedicated fee-override
+ * route is admin1-only for the same reason; this list stops the same change
+ * being smuggled through the ordinary edit route instead.
+ */
+const STUDENT_WAIVER_FIELDS = ['tuitionWaiver', 'hostelWaiver', 'transportWaiver', 'miscWaiver'];
+
+app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('editStudent'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2051,7 +2437,41 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
       return res.status(404).json({ status: 'error', message: 'Student not found.' });
     }
 
-    if ((req.user.role === 'accountant' || req.user.role === 'admin2') && req.user.campus !== 'All') {
+    const body = req.body || {};
+
+    // Waivers: Rector only, whatever else the caller has been granted.
+    if (req.user.role !== 'admin1') {
+      const attempted = STUDENT_WAIVER_FIELDS.filter(f => body[f] !== undefined);
+      if (attempted.length > 0) {
+        recordAudit(req, {
+          action: 'student.fee_waiver',
+          entityType: 'student',
+          entityId: student.studentId,
+          entityLabel: studentLabel(student),
+          campus: student.branch,
+          outcome: 'denied',
+          summary: `Refused: ${req.user.username} tried to change fee waivers on ${studentLabel(student)}.`,
+          details: { fields: attempted }
+        });
+        return res.status(403).json({
+          status: 'error',
+          message: 'Fee waivers can only be set by the Rector.'
+        });
+      }
+    }
+
+    // Fee amounts need the separate `editFees` grant.
+    if (!callerHasPermission(req, 'editFees')) {
+      const attempted = STUDENT_FEE_FIELDS.filter(f => body[f] !== undefined);
+      if (attempted.length > 0) {
+        return res.status(403).json({
+          status: 'error',
+          message: 'Your account has not been given permission to edit fees. Ask the Rector to enable it.'
+        });
+      }
+    }
+
+    if ((req.user.role === 'accountant' || req.user.role === 'clerk') && req.user.campus !== 'All') {
       const sNorm = normalizeCampus(student.branch);
       const uNorm = normalizeCampus(req.user.campus);
       if (sNorm !== uNorm && student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
@@ -2119,6 +2539,20 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
 
     await student.save();
 
+    // `result.applied` is the list of fields applyAllowedFields actually
+    // wrote, so the log names what was edited rather than saying "profile
+    // updated" — and it excludes anything the caller sent that was ignored.
+    const changedFields = result.applied || [];
+    recordAudit(req, {
+      action: 'student.update',
+      entityType: 'student',
+      entityId: student.studentId,
+      entityLabel: studentLabel(student),
+      campus: student.branch,
+      summary: `Edited ${studentLabel(student)}${changedFields.length ? ` — changed ${changedFields.join(', ')}` : ''}.`,
+      details: { fields: changedFields, remainingBalance: student.remainingBalance }
+    });
+
     return res.json({ status: 'success', data: student });
   } catch (err) {
     return failRequest(req, res, err);
@@ -2135,11 +2569,24 @@ const deleteStudentHandler = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Student record not found.' });
     }
 
+    const label = `${student.name} (${student.admissionNumber || student.studentId})`;
+
     if (!callerOwnsCampus(req, student.branch)) {
+      // A refused attempt to delete another campus's student is exactly what a
+      // Rector needs to see. Recorded at the point of refusal, so the trail
+      // shows the attempt as well as the block.
+      recordAudit(req, {
+        action: 'student.delete',
+        entityType: 'student',
+        entityId: student.studentId,
+        entityLabel: label,
+        campus: student.branch,
+        outcome: 'denied',
+        summary: `Refused: ${req.user.username} tried to delete ${label}, who belongs to ${student.branch}.`,
+        details: { reason: 'campus isolation', callerCampus: req.user.campus }
+      });
       return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
     }
-
-    const label = `${student.name} (${student.admissionNumber || student.studentId})`;
 
     // Remove the payment history first.
     //
@@ -2175,6 +2622,18 @@ const deleteStudentHandler = async (req, res) => {
     }
 
     console.log(`[Students]: ${label} and ${paymentResult.deletedCount} payment record(s) deleted by [${req.user.username}].`);
+    // Written after the delete is verified, and it is the ONLY surviving
+    // record that this student ever existed — the row and its receipts are
+    // gone, so the label and campus frozen here are all that remain.
+    recordAudit(req, {
+      action: 'student.delete',
+      entityType: 'student',
+      entityId: student.studentId,
+      entityLabel: label,
+      campus: student.branch,
+      summary: `Deleted ${label} from ${student.branch}, along with ${paymentResult.deletedCount} payment record(s).`,
+      details: { deletedPayments: paymentResult.deletedCount, course: student.course }
+    });
     return res.json({
       status: 'success',
       message: `Student ${label} permanently deleted, along with ${paymentResult.deletedCount} payment record(s).`,
@@ -2186,14 +2645,16 @@ const deleteStudentHandler = async (req, res) => {
   }
 };
 
-app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, deleteStudentHandler);
-app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, deleteStudentHandler);
-app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, deleteStudentHandler);
+app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, deleteStudentHandler);
+app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, deleteStudentHandler);
+app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, deleteStudentHandler);
 
 
 // --- FEE WAIVER ROUTE ---
 
-app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students/:studentId/fee-override', '/api/admin/students/:studentId/fee-override'], authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, async (req, res) => {
+// Waivers are Rector-only. A clerk previously reached this route through the
+// old admin2 role, which meant a campus account could write off fees.
+app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students/:studentId/fee-override', '/api/admin/students/:studentId/fee-override'], authenticateToken, requireRole('admin1'), mongoRateLimiter, async (req, res) => {
   try {
     await connectToDatabase();
     const { studentId } = req.params;
@@ -2210,7 +2671,7 @@ app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students
       return res.status(404).json({ status: 'error', message: 'Student record not found.' });
     }
 
-    if (req.user.role === 'admin2' && req.user.campus !== 'All') {
+    if (req.user.role === 'clerk' && req.user.campus !== 'All') {
       if (student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
       }
@@ -2279,6 +2740,25 @@ app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students
     student.remainingBalance = totals.balance;
     await student.save();
 
+    // A waiver is money given away, so it is logged with its value in the
+    // `amount` column alongside collections and expenditures.
+    recordAudit(req, {
+      action: 'student.fee_waiver',
+      entityType: 'student',
+      entityId: student.studentId,
+      entityLabel: studentLabel(student),
+      campus: student.branch,
+      amount: totals.waivers,
+      summary: `Applied waivers totalling Rs. ${Number(totals.waivers || 0).toLocaleString('en-IN')} to ${studentLabel(student)}; balance now Rs. ${Number(student.remainingBalance || 0).toLocaleString('en-IN')}.`,
+      details: {
+        tuitionWaiver: student.tuitionWaiver,
+        hostelWaiver: student.hostelWaiver,
+        transportWaiver: student.transportWaiver,
+        miscWaiver: student.miscWaiver,
+        remainingBalance: student.remainingBalance
+      }
+    });
+
     return res.json({
       status: 'success',
       message: 'Fee waiver updated successfully',
@@ -2301,11 +2781,11 @@ app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students
 // --- FACULTY / TEACHER ROUTES ---
 
 // GET Teachers list (Admin1 sees all or filtered by branch; Admin2 sees only their assigned campus)
-app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
     let filter = {};
-    if (req.user.role === 'admin2') {
+    if (req.user.role === 'clerk') {
       filter.branch = req.user.campus;
     } else {
       const { branch } = req.query;
@@ -2324,12 +2804,12 @@ app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'],
 });
 
 // CREATE Teacher (Admin1 or Admin2; Requires Security OTP for Admin2 or optional; Admin2 campus locked)
-app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'clerk'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     let { id, name, subject, salary = 0, mobile, email, branch, classification = 'Teaching', role = 'Senior Lecturer' } = req.body || {};
 
-    if (req.user.role === 'admin2' && req.user.campus && req.user.campus !== 'All') {
+    if (req.user.role === 'clerk' && req.user.campus && req.user.campus !== 'All') {
       branch = req.user.campus; // Lock campus to admin2's assigned campus
     }
 
@@ -2440,6 +2920,17 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
       throw createErr;
     }
 
+    recordAudit(req, {
+      action: 'teacher.create',
+      entityType: 'teacher',
+      entityId: teacher.id,
+      entityLabel: `${teacher.name} (${teacher.id})`,
+      campus: teacher.branch,
+      amount: teacher.salary,
+      summary: `Added staff member ${teacher.name} (${teacher.id}) at ${teacher.branch} on Rs. ${Number(teacher.salary || 0).toLocaleString('en-IN')} per month.`,
+      details: { subject: teacher.subject, classification: teacher.classification }
+    });
+
     return res.status(201).json({ status: 'success', data: teacher });
   } catch (err) {
     console.error('[Teachers]: Create failed:', err.message);
@@ -2448,7 +2939,7 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
 });
 
 // UPDATE Teacher
-app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
+app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2459,7 +2950,7 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
       return res.status(404).json({ status: 'error', message: 'Teacher record not found.' });
     }
 
-    if (req.user.role === 'admin2' && String(teacher.branch || '').toLowerCase().trim() !== String(req.user.campus || '').toLowerCase().trim()) {
+    if (req.user.role === 'clerk' && String(teacher.branch || '').toLowerCase().trim() !== String(req.user.campus || '').toLowerCase().trim()) {
       return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot modify staff at [${teacher.branch}].` });
     }
 
@@ -2495,6 +2986,10 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
       return res.status(403).json({ status: 'error', message: 'Only a Rector-level account can move staff between campuses.' });
     }
 
+    // Read before applyAllowedFields writes to the document — afterwards the
+    // field already holds the new value and the previous one is unrecoverable.
+    const salaryBefore = Number(teacher.salary || 0);
+
     const result = applyAllowedFields(teacher, updatePayload, {
       name: 'string', subject: 'string', mobile: 'string', email: 'string',
       role: 'string', classification: 'string', status: 'string',
@@ -2510,6 +3005,21 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
 
     await teacher.save();
 
+    recordAudit(req, {
+      action: 'teacher.update',
+      entityType: 'teacher',
+      entityId: teacher.id,
+      entityLabel: `${teacher.name} (${teacher.id})`,
+      campus: teacher.branch,
+      // A pay change is the one edit here that moves money, so it carries the
+      // amount and says so plainly.
+      amount: (result.applied || []).includes('salary') ? teacher.salary : null,
+      summary: (result.applied || []).includes('salary')
+        ? `Changed ${teacher.name}'s (${teacher.id}) monthly salary to Rs. ${Number(teacher.salary || 0).toLocaleString('en-IN')}.`
+        : `Edited staff member ${teacher.name} (${teacher.id})${(result.applied || []).length ? ` — changed ${result.applied.join(', ')}` : ''}.`,
+      details: { fields: result.applied || [], salaryBefore }
+    });
+
     return res.json({ status: 'success', data: teacher });
   } catch (err) {
     return failRequest(req, res, err);
@@ -2517,7 +3027,7 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
 });
 
 // DELETE Teacher (Requires Security OTP; Campus Isolation for Admin2)
-app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2529,7 +3039,7 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
       return res.status(404).json({ status: 'error', message: 'Teacher record not found.' });
     }
 
-    if (req.user.role === 'admin2' && String(teacher.branch || '').toLowerCase().trim() !== String(req.user.campus || '').toLowerCase().trim()) {
+    if (req.user.role === 'clerk' && String(teacher.branch || '').toLowerCase().trim() !== String(req.user.campus || '').toLowerCase().trim()) {
       return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot delete staff at [${teacher.branch}].` });
     }
 
@@ -2543,6 +3053,16 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
       return res.status(500).json({ status: 'error', message: 'Verification failed. Teacher record still exists in database.' });
     }
 
+    recordAudit(req, {
+      action: 'teacher.delete',
+      entityType: 'teacher',
+      entityId: teacher.id,
+      entityLabel: `${teacher.name} (${teacher.id})`,
+      campus: teacher.branch,
+      summary: `Deleted staff member ${teacher.name} (${teacher.id}) from ${teacher.branch}.`,
+      details: { subject: teacher.subject, salary: teacher.salary }
+    });
+
     return res.json({ status: 'success', message: `Teacher ${teacher.name} permanently deleted.` });
   } catch (err) {
     return failRequest(req, res, err);
@@ -2550,7 +3070,7 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
 });
 
 // 12-MONTH SALARY LEDGER & YEAR-LOCK PAYMENTS ROUTE
-app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
+app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2561,7 +3081,7 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
       return res.status(404).json({ status: 'error', message: 'Teacher not found.' });
     }
 
-    if (req.user.role === 'admin2' && String(teacher.branch || '').toLowerCase().trim() !== String(req.user.campus || '').toLowerCase().trim()) {
+    if (req.user.role === 'clerk' && String(teacher.branch || '').toLowerCase().trim() !== String(req.user.campus || '').toLowerCase().trim()) {
       return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot modify staff at [${teacher.branch}].` });
     }
 
@@ -2681,6 +3201,17 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
       branch: teacher.branch
     });
 
+    recordAudit(req, {
+      action: 'salary.pay',
+      entityType: 'teacher',
+      entityId: teacher.id,
+      entityLabel: `${teacher.name} (${teacher.id})`,
+      campus: teacher.branch,
+      amount: amt,
+      summary: `Paid Rs. ${amt.toLocaleString('en-IN')} salary to ${teacher.name} (${teacher.id}) for ${month} ${academicYear} via ${paymentMode}.`,
+      details: { month, academicYear, paymentMode, agreedSalary: agreed }
+    });
+
     return res.json({ status: 'success', message: `Salary payment recorded for ${teacher.name} - ${month} (${academicYear})`, data: teacher });
   } catch (err) {
     return failRequest(req, res, err);
@@ -2690,7 +3221,7 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
 
 // --- FEE STRUCTURE ROUTES ---
 
-app.get('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
+app.get('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
   try {
     await connectToDatabase();
 
@@ -2718,7 +3249,7 @@ app.get('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'ad
   }
 });
 
-app.patch('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.patch('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editFees'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { branch, tuition, hostel, transport, misc, isLocked } = req.body;
@@ -2728,7 +3259,7 @@ app.patch('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', '
       return res.status(400).json({ status: 'error', message: `Invalid campus branch [${targetBranch}]. Must be one of: ${VALID_CAMPUSES.join(', ')}` });
     }
 
-    if (req.user.role === 'admin2' && req.user.campus !== 'All') {
+    if (req.user.role === 'clerk' && req.user.campus !== 'All') {
       if (targetBranch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Admin2 can only edit fee settings for campus [${req.user.campus}].` });
       }
@@ -2759,6 +3290,16 @@ app.patch('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', '
       { upsert: true, new: true }
     );
 
+    recordAudit(req, {
+      action: 'fee_settings.update',
+      entityType: 'fee_settings',
+      entityId: targetBranch,
+      entityLabel: `Fee structure — ${targetBranch}`,
+      campus: targetBranch,
+      summary: `Updated the ${targetBranch} fee structure (${Object.keys(updateFields).join(', ') || 'no fields'}).`,
+      details: updateFields
+    });
+
     return res.json({ status: 'success', data: updated });
   } catch (err) {
     return failRequest(req, res, err);
@@ -2773,7 +3314,7 @@ const getExpendituresHandler = async (req, res) => {
     await connectToDatabase();
     const branch = req.query.branch || req.user.campus;
 
-    if (req.user.role === 'admin2' && req.user.campus !== 'All') {
+    if (req.user.role === 'clerk' && req.user.campus !== 'All') {
       if (branch && branch.toLowerCase() !== 'all' && branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Admin2 can only view expenditures for campus [${req.user.campus}].` });
       }
@@ -2795,10 +3336,10 @@ const getExpendituresHandler = async (req, res) => {
   }
 };
 
-app.get('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'admin2'), getExpendituresHandler);
-app.get('/api/admin2/expenditures', authenticateToken, requireRole('admin1', 'admin2'), getExpendituresHandler);
+app.get('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'clerk'), getExpendituresHandler);
+app.get('/api/admin2/expenditures', authenticateToken, requireRole('admin1', 'clerk'), getExpendituresHandler);
 
-app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('logExpenditures'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { category, amount, description, date, branch } = req.body || {};
@@ -2817,7 +3358,7 @@ app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'ad
       return res.status(400).json({ status: 'error', message: 'Amount must be a valid positive number.' });
     }
 
-    if (req.user.role === 'admin2' && req.user.campus !== 'All') {
+    if (req.user.role === 'clerk' && req.user.campus !== 'All') {
       if (targetBranch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Admin2 can only record expenditures for campus [${req.user.campus}].` });
       }
@@ -2833,6 +3374,17 @@ app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'ad
       branch: targetBranch
     });
 
+    recordAudit(req, {
+      action: 'expenditure.create',
+      entityType: 'expenditure',
+      entityId: expenditure.id,
+      entityLabel: `${expenditure.category} — ${expenditure.description || 'no description'}`,
+      campus: targetBranch,
+      amount: expenditure.amount,
+      summary: `Logged an expenditure of Rs. ${Number(expenditure.amount).toLocaleString('en-IN')} at ${targetBranch} under ${expenditure.category}.`,
+      details: { description: expenditure.description, date: expenditure.date }
+    });
+
     return res.status(201).json({ status: 'success', data: expenditure });
   } catch (err) {
     console.error('[Expenditures]: Create failed:', err.message);
@@ -2840,7 +3392,7 @@ app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'ad
   }
 });
 
-app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
+app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('logExpenditures'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2851,7 +3403,7 @@ app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1'
       return res.status(404).json({ status: 'error', message: 'Expenditure record not found.' });
     }
 
-    if (req.user.role === 'admin2' && req.user.campus !== 'All') {
+    if (req.user.role === 'clerk' && req.user.campus !== 'All') {
       if (exp.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Access forbidden. Record belongs to [${exp.branch}].` });
       }
@@ -2874,13 +3426,24 @@ app.patch('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1'
 
     await exp.save();
 
+    recordAudit(req, {
+      action: 'expenditure.update',
+      entityType: 'expenditure',
+      entityId: exp.id,
+      entityLabel: `${exp.category} — ${exp.description || 'no description'}`,
+      campus: exp.branch,
+      amount: exp.amount,
+      summary: `Edited an expenditure at ${exp.branch}${(result.applied || []).length ? ` — changed ${result.applied.join(', ')}` : ''}; now Rs. ${Number(exp.amount).toLocaleString('en-IN')}.`,
+      details: { fields: result.applied || [] }
+    });
+
     return res.json({ status: 'success', data: exp });
   } catch (err) {
     return failRequest(req, res, err);
   }
 });
 
-app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('logExpenditures'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2892,8 +3455,19 @@ app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1
       return res.status(404).json({ status: 'error', message: 'Expenditure record not found.' });
     }
 
-    if (req.user.role === 'admin2' && req.user.campus !== 'All') {
+    if (req.user.role === 'clerk' && req.user.campus !== 'All') {
       if (exp.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
+        recordAudit(req, {
+          action: 'expenditure.delete',
+          entityType: 'expenditure',
+          entityId: exp.id,
+          entityLabel: `${exp.category} — ${exp.description || 'no description'}`,
+          campus: exp.branch,
+          amount: exp.amount,
+          outcome: 'denied',
+          summary: `Refused: ${req.user.username} tried to delete an expenditure at ${exp.branch}, outside their campus.`,
+          details: { reason: 'campus isolation', callerCampus: req.user.campus }
+        });
         return res.status(403).json({ status: 'error', message: `Access forbidden. Record belongs to [${exp.branch}].` });
       }
     }
@@ -2904,6 +3478,19 @@ app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1
       return res.status(500).json({ status: 'error', message: 'Verification failed. Expenditure record still exists.' });
     }
 
+    // The expenditure row is gone, so this entry is the only remaining record
+    // of the amount that was removed from the campus books.
+    recordAudit(req, {
+      action: 'expenditure.delete',
+      entityType: 'expenditure',
+      entityId: exp.id,
+      entityLabel: `${exp.category} — ${exp.description || 'no description'}`,
+      campus: exp.branch,
+      amount: exp.amount,
+      summary: `Deleted an expenditure of Rs. ${Number(exp.amount).toLocaleString('en-IN')} at ${exp.branch} under ${exp.category}.`,
+      details: { description: exp.description, date: exp.date }
+    });
+
     return res.json({ status: 'success', message: 'Expenditure record permanently deleted.' });
   } catch (err) {
     return failRequest(req, res, err);
@@ -2913,12 +3500,12 @@ app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1
 
 // --- WORKER PAYMENT ROUTES ---
 
-app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'admin2'), async (req, res) => {
+app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
     const branch = req.query.branch || req.user.campus;
 
-    if (req.user.role === 'admin2' && req.user.campus !== 'All') {
+    if (req.user.role === 'clerk' && req.user.campus !== 'All') {
       if (branch && branch.toLowerCase() !== 'all' && branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Admin2 can only view worker payments for campus [${req.user.campus}].` });
       }
@@ -2940,7 +3527,7 @@ app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 
   }
 });
 
-app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'clerk'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { workerName, role, amount, monthPeriod, paid = true, branch } = req.body || {};
@@ -2958,7 +3545,7 @@ app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1',
       return res.status(400).json({ status: 'error', message: 'Amount must be a valid positive number.' });
     }
 
-    if (req.user.role === 'admin2' && req.user.campus !== 'All') {
+    if (req.user.role === 'clerk' && req.user.campus !== 'All') {
       if (targetBranch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Admin2 can only record worker payments for campus [${req.user.campus}].` });
       }
@@ -2975,6 +3562,17 @@ app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1',
       branch: targetBranch
     });
 
+    recordAudit(req, {
+      action: 'worker_payment.create',
+      entityType: 'worker_payment',
+      entityId: payment.id,
+      entityLabel: `${payment.workerName} (${payment.role})`,
+      campus: targetBranch,
+      amount: payment.amount,
+      summary: `Recorded a worker payment of Rs. ${Number(payment.amount).toLocaleString('en-IN')} to ${payment.workerName} (${payment.role}) at ${targetBranch} for ${payment.monthPeriod}.`,
+      details: { monthPeriod: payment.monthPeriod, paid: payment.paid }
+    });
+
     return res.status(201).json({ status: 'success', data: payment });
   } catch (err) {
     console.error('[WorkerPayments]: Create failed:', err.message);
@@ -2982,7 +3580,7 @@ app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1',
   }
 });
 
-app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
+app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -2993,7 +3591,7 @@ app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('adm
       return res.status(404).json({ status: 'error', message: 'Worker payment record not found.' });
     }
 
-    if (req.user.role === 'admin2' && req.user.campus !== 'All') {
+    if (req.user.role === 'clerk' && req.user.campus !== 'All') {
       if (wrk.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Access forbidden. Record belongs to [${wrk.branch}].` });
       }
@@ -3022,7 +3620,7 @@ app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('adm
   }
 });
 
-app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'clerk'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -3034,7 +3632,7 @@ app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('ad
       return res.status(404).json({ status: 'error', message: 'Worker payment record not found.' });
     }
 
-    if (req.user.role === 'admin2' && req.user.campus !== 'All') {
+    if (req.user.role === 'clerk' && req.user.campus !== 'All') {
       if (wrk.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Access forbidden. Record belongs to [${wrk.branch}].` });
       }
@@ -3046,6 +3644,17 @@ app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('ad
       return res.status(500).json({ status: 'error', message: 'Verification failed. Worker payment record still exists.' });
     }
 
+    recordAudit(req, {
+      action: 'worker_payment.delete',
+      entityType: 'worker_payment',
+      entityId: wrk.id,
+      entityLabel: `${wrk.workerName} (${wrk.role})`,
+      campus: wrk.branch,
+      amount: wrk.amount,
+      summary: `Deleted a worker payment of Rs. ${Number(wrk.amount).toLocaleString('en-IN')} to ${wrk.workerName} at ${wrk.branch} for ${wrk.monthPeriod}.`,
+      details: { monthPeriod: wrk.monthPeriod, paid: wrk.paid }
+    });
+
     return res.json({ status: 'success', message: 'Worker payment record permanently deleted.' });
   } catch (err) {
     return failRequest(req, res, err);
@@ -3055,7 +3664,7 @@ app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('ad
 
 // --- ACCOUNTANT STUDENT LOOKUP & BIO ROUTES ---
 
-app.get('/api/accountant/students', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
+app.get('/api/accountant/students', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
 
@@ -3099,7 +3708,7 @@ app.get('/api/accountant/students', authenticateToken, requireRole('accountant',
   }
 });
 
-app.get('/api/accountant/students/:id', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
+app.get('/api/accountant/students/:id', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -3110,7 +3719,7 @@ app.get('/api/accountant/students/:id', authenticateToken, requireRole('accounta
       return res.status(404).json({ status: 'error', message: 'Student not found.' });
     }
 
-    if ((req.user.role === 'accountant' || req.user.role === 'admin2') && req.user.campus !== 'All') {
+    if ((req.user.role === 'accountant' || req.user.role === 'clerk') && req.user.campus !== 'All') {
       if (student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
       }
@@ -3122,7 +3731,7 @@ app.get('/api/accountant/students/:id', authenticateToken, requireRole('accounta
   }
 });
 
-app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), requireDatabase, async (req, res) => {
+app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -3133,7 +3742,7 @@ app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('ac
       return res.status(404).json({ status: 'error', message: 'Student not found.' });
     }
 
-    if ((req.user.role === 'accountant' || req.user.role === 'admin2') && req.user.campus !== 'All') {
+    if ((req.user.role === 'accountant' || req.user.role === 'clerk') && req.user.campus !== 'All') {
       if (student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
       }
@@ -3172,7 +3781,7 @@ app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('ac
  *    duplicates straddling a bucket boundary and wrongly merged two genuine
  *    identical payments made within the same 10 seconds.
  */
-app.post('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requirePermission('collectFees'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const { studentId } = req.params;
     const {
@@ -3348,8 +3957,20 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
       });
     }
 
-    // Append the receipt summary for the UI's quick list.
+    // Append the receipt summary for the UI's quick list, and settle the
+    // fee-cleared flag in the same write.
+    //
+    // `yearFeeCleared` used to be set ONLY by the upgrade route, which
+    // computes it once from the new year's payable amount. Nothing set it
+    // when a payment actually cleared the balance — so a student who was
+    // upgraded owing money and then paid it off kept `yearFeeCleared: false`
+    // against a balance of zero, and the record disagreed with itself.
+    // Derived from the balance the ledger update just produced, so the flag
+    // cannot drift from the figure it describes.
+    const balanceAfter = Math.round(Number(updatedStudent.remainingBalance || 0) * 100) / 100;
+
     await Student.updateOne({ _id: student._id }, {
+      $set: { yearFeeCleared: balanceAfter <= 0 },
       $push: {
         receipts: {
           receiptNumber: newPayment.receiptNumber,
@@ -3365,6 +3986,30 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
     });
 
     const finalStudent = await Student.findById(student._id);
+
+    // The entry the Rector's Logs screen exists for: which till took which
+    // money from which student. Written only on the path where the receipt
+    // was created AND the balance actually moved — the rollback and anomaly
+    // branches above return before reaching here, so the trail never claims a
+    // collection that did not apply.
+    recordAudit(req, {
+      action: 'payment.collect',
+      entityType: 'payment',
+      entityId: newPayment.receiptNumber,
+      entityLabel: studentLabel(finalStudent || student),
+      campus: student.branch,
+      amount: newPayment.amount,
+      summary: `Collected Rs. ${Number(newPayment.amount).toLocaleString('en-IN')} from ${studentLabel(finalStudent || student)} `
+        + `via ${newPayment.paymentMode} (receipt ${newPayment.receiptNumber}); balance now `
+        + `Rs. ${Number(updatedStudent.remainingBalance || 0).toLocaleString('en-IN')}.`,
+      details: {
+        receiptNumber: newPayment.receiptNumber,
+        category: newPayment.category,
+        installment: newPayment.installment,
+        paymentMode: newPayment.paymentMode,
+        balanceAfter: updatedStudent.remainingBalance
+      }
+    });
 
     return res.status(201).json({
       status: 'success',
@@ -3445,7 +4090,7 @@ function evaluateUpgradeEligibility(student) {
 }
 
 app.get('/api/accountant/students/:studentId/upgrade-eligibility',
-  authenticateToken, requireRole('accountant', 'admin1', 'admin2'), requireDatabase, async (req, res) => {
+  authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const { studentId } = req.params;
     const isObjId = isValidObjectId(studentId);
@@ -3485,7 +4130,7 @@ app.get('/api/accountant/students/:studentId/upgrade-eligibility',
 });
 
 app.post('/api/accountant/students/:studentId/upgrade',
-  authenticateToken, requireRole('accountant', 'admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
+  authenticateToken, requireRole('accountant', 'admin1', 'clerk'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const { studentId } = req.params;
     const isObjId = isValidObjectId(studentId);
@@ -3511,6 +4156,31 @@ app.post('/api/accountant/students/:studentId/upgrade',
       if (!Number.isFinite(n) || n < 0) return null;
       return Math.round(n * 100) / 100;
     };
+
+    // The upgrade form sets next year's fees, and it accepted waivers too —
+    // which made it a way for a clerk or an accountant to write off fees
+    // without ever touching the Rector-only waiver route. Waivers are refused
+    // here for anyone but the Rector, rather than silently ignored, so nobody
+    // records a concession that was never applied.
+    if (req.user.role !== 'admin1') {
+      const attempted = STUDENT_WAIVER_FIELDS.filter(f => body[f] !== undefined && Number(body[f]) > 0);
+      if (attempted.length > 0) {
+        recordAudit(req, {
+          action: 'student.fee_waiver',
+          entityType: 'student',
+          entityId: student.studentId,
+          entityLabel: studentLabel(student),
+          campus: student.branch,
+          outcome: 'denied',
+          summary: `Refused: ${req.user.username} tried to apply fee waivers while upgrading ${studentLabel(student)}.`,
+          details: { fields: attempted }
+        });
+        return res.status(403).json({
+          status: 'error',
+          message: 'Fee waivers can only be set by the Rector. Enter the fees for the new year without a waiver.'
+        });
+      }
+    }
 
     // Next year's fees default to this year's, which is what the brief asks
     // for: the same structure, offered for editing.
@@ -3645,6 +4315,16 @@ app.post('/api/accountant/students/:studentId/upgrade',
     }
 
     console.log(`[Upgrade]: ${saved.admissionNumber} First Year -> Second Year by ${req.user.username} (payable ${payable})`);
+    recordAudit(req, {
+      action: 'student.upgrade',
+      entityType: 'student',
+      entityId: saved.studentId,
+      entityLabel: studentLabel(saved),
+      campus: saved.branch,
+      amount: payable,
+      summary: `Moved ${studentLabel(saved)} from First Year to Second Year; new year's fees Rs. ${payable.toLocaleString('en-IN')}.`,
+      details: { academicYear: saved.academicYear, payable }
+    });
     return res.json({
       status: 'success',
       message: `${saved.name} moved to Second Year. New balance ${payable.toLocaleString('en-IN')}.`,
@@ -3656,7 +4336,7 @@ app.post('/api/accountant/students/:studentId/upgrade',
   }
 });
 
-app.get('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), async (req, res) => {
+app.get('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
     const { studentId } = req.params;
@@ -3667,7 +4347,7 @@ app.get('/api/accountant/students/:studentId/payments', authenticateToken, requi
       return res.status(404).json({ status: 'error', message: 'Student record not found.' });
     }
 
-    if ((req.user.role === 'accountant' || req.user.role === 'admin2') && req.user.campus !== 'All') {
+    if ((req.user.role === 'accountant' || req.user.role === 'clerk') && req.user.campus !== 'All') {
       if (student.branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
         return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
       }
@@ -3810,7 +4490,7 @@ app.post('/api/authenticator/regenerate-keys', authenticateToken, requireRole('a
       const newPin = String(crypto.randomInt(100000, 1000000));
       const result = await User.updateOne(
         { username: u.username },
-        { $set: { pin: bcrypt.hashSync(newPin, 10) }, $unset: { pin_plaintext: '' } }
+        { $set: { pin: newPin }, $unset: { pin_plaintext: '' } }
       );
 
       // A write that matched nothing is a failure, not a success with a PIN
@@ -3969,7 +4649,7 @@ app.post('/api/authenticator/accounts', authenticateToken, requireRole('authenti
     }
 
     if (password && String(password).trim()) {
-      existing.password = bcrypt.hashSync(String(password).trim(), 10);
+      existing.password = String(password).trim();
     }
     if (name !== undefined) existing.name = String(name || '').trim() || existing.name;
     if (email !== undefined) existing.email = String(email || '').trim();
@@ -3981,6 +4661,25 @@ app.post('/api/authenticator/accounts', authenticateToken, requireRole('authenti
     }
 
     await existing.save();
+    // Records THAT a credential changed, never the value. `passwordChanged` is
+    // a boolean for exactly that reason — a log that carries the new password
+    // is a second copy of the credential in a place more people can read.
+    recordAudit(req, {
+      action: 'account.update',
+      entityType: 'account',
+      entityId: existing.username,
+      entityLabel: `${existing.name} (${existing.username})`,
+      campus: existing.campus,
+      summary: `Updated the portal account ${existing.username}`
+        + (password && String(password).trim() ? ', including its password' : '')
+        + '.',
+      details: {
+        passwordChanged: !!(password && String(password).trim()),
+        role: existing.role,
+        campus: existing.campus
+      }
+    });
+
     const updated = sanitizeManagedAccount(existing);
     return res.json({ status: 'success', data: updated });
   } catch (err) {
@@ -4014,7 +4713,7 @@ app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authe
     if (mobile !== undefined) updateFields.mobile = String(mobile || '').trim();
     if (department !== undefined) updateFields.department = String(department || '').trim();
     if (password && typeof password === 'string' && password.trim()) {
-      updateFields.password = bcrypt.hashSync(password.trim(), 10);
+      updateFields.password = password.trim();
     }
 
     let updated = { _id: id, ...updateFields };
@@ -4037,6 +4736,23 @@ app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authe
     }
 
     console.log(`✏️ [Accounts]: Updated account [${id}] by ${req.user.username}`);
+    recordAudit(req, {
+      action: 'account.update',
+      entityType: 'account',
+      entityId: updated.username || id,
+      entityLabel: `${updated.name || ''} (${updated.username || id})`.trim(),
+      campus: updated.campus || '',
+      summary: `Updated the portal account ${updated.username || id}`
+        + (Object.prototype.hasOwnProperty.call(updateFields, 'password') ? ', including its password' : '')
+        + (Object.prototype.hasOwnProperty.call(updateFields, 'username') ? ', including its portal ID' : '')
+        + '.',
+      details: {
+        // The field NAMES only. updateFields holds the new password hash, so
+        // it must never be spread into the log wholesale.
+        fields: Object.keys(updateFields),
+        passwordChanged: Object.prototype.hasOwnProperty.call(updateFields, 'password')
+      }
+    });
     return res.json({ status: 'success', data: updated });
   } catch (err) {
     return failRequest(req, res, err);
@@ -4095,7 +4811,7 @@ app.post('/api/authenticator/reset-password', authenticateToken, requireRole('au
     // account did not exist or the write threw.
     const result = await User.updateOne(
       { username: target },
-      { $set: { password: bcrypt.hashSync(newPassword, 10), activeSessionId: null } }
+      { $set: { password: newPassword, activeSessionId: null } }
     );
 
     if (result.matchedCount === 0) {
@@ -4268,7 +4984,7 @@ app.post('/api/enquiries', async (req, res) => {
 // The frontend has always called PATCH /api/enquiries/:id to move an enquiry
 // through its lifecycle, but no such route existed — every status change 404'd.
 // Enquiry is a real model, so this is implemented properly rather than stubbed.
-app.patch('/api/enquiries/:id', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
+app.patch('/api/enquiries/:id', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes } = req.body || {};
@@ -4308,7 +5024,7 @@ app.patch('/api/enquiries/:id', authenticateToken, requireRole('admin1', 'admin2
   }
 });
 
-app.get('/api/enquiries', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
+app.get('/api/enquiries', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
   try {
     await connectToDatabase();
     // Took ?branch straight from the query with no check against the caller,
@@ -4394,7 +5110,7 @@ app.get('/api/system/last-changed', authenticateToken, enforceCampusIsolation, a
 // ============================================================
 
 // --- TEACHER MONTHLY SALARY ---
-app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
+app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4416,7 +5132,7 @@ app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin
 });
 
 // --- FEE BREAKDOWN ---
-app.get(['/api/admin1/students/:studentId/fee-breakdown', '/api/admin2/students/:studentId/fee-breakdown', '/api/admin/students/:studentId/fee-breakdown'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), async (req, res) => {
+app.get(['/api/admin1/students/:studentId/fee-breakdown', '/api/admin2/students/:studentId/fee-breakdown', '/api/admin/students/:studentId/fee-breakdown'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
   try {
     await connectToDatabase();
     const { studentId } = req.params;
@@ -4477,7 +5193,7 @@ app.get(['/api/admin1/students/:studentId/fee-breakdown', '/api/admin2/students/
 
 // --- STAFF SALARIES ---
 // Was returning every teacher at every campus to any signed-in caller.
-app.get('/api/admin2/staff-salaries', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
+app.get('/api/admin2/staff-salaries', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
     const teachers = await Teacher.find(campusScopeFilter(req)).lean();
     return res.json({ status: 'success', data: teachers });
@@ -4487,7 +5203,7 @@ app.get('/api/admin2/staff-salaries', authenticateToken, requireRole('admin1', '
   }
 });
 
-app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
+app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const { teacherId } = req.params;
     const isObjId = isValidObjectId(teacherId);
@@ -4533,7 +5249,7 @@ app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRol
 // campus whenever the aggregate returned nothing — including when the database
 // was down or a campus genuinely had no students — which is indistinguishable
 // from real data on screen.
-app.get('/api/admin2/enrollment-stats', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
+app.get('/api/admin2/enrollment-stats', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
     const scope = campusScopeFilter(req);
     const pipeline = [
@@ -4570,7 +5286,7 @@ app.get('/api/admin2/enrollment-stats', authenticateToken, requireRole('admin1',
 // returned success without writing anything. Rather than keep a convincing
 // fake, this now reports only what the database really knows — which students
 // are marked Resident — and the allocation endpoint is explicitly disabled.
-app.get('/api/accountant/hostel', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), requireDatabase, async (req, res) => {
+app.get('/api/accountant/hostel', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const residents = await Student.find({ ...campusScopeFilter(req), hostelStatus: 'Resident' })
       .select('studentId admissionNumber name branch course section hostelStatus')
@@ -4592,7 +5308,7 @@ app.get('/api/accountant/hostel', authenticateToken, requireRole('accountant', '
   }
 });
 
-app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), requireDatabase, async (req, res) => {
+app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const { studentId } = req.params;
     const isObjId = isValidObjectId(studentId);
@@ -4617,7 +5333,7 @@ app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requi
 });
 
 // --- DASHBOARD SUMMARY FOR ACCOUNTANT ---
-app.get('/api/accountant/dashboard-summary', authenticateToken, requireRole('accountant', 'admin1', 'admin2'), requireDatabase, async (req, res) => {
+app.get('/api/accountant/dashboard-summary', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const scope = campusScopeFilter(req);
     const startOfDay = new Date();
@@ -4664,7 +5380,7 @@ app.get('/api/accountant/dashboard-summary', authenticateToken, requireRole('acc
 // streams. Allocation was never implemented and is not exposed.
 const ACADEMIC_SECTIONS = ['MPC-A', 'MPC-B', 'BiPC-A', 'BiPC-B', 'MEC-A', 'CEC-A'];
 
-app.get('/api/admin1/sections', authenticateToken, requireRole('admin1', 'admin2'), requireDatabase, async (req, res) => {
+app.get('/api/admin1/sections', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const teachers = await Teacher.find(campusScopeFilter(req)).lean();
     return res.json({ status: 'success', data: { sections: ACADEMIC_SECTIONS, teachers } });
@@ -4690,7 +5406,7 @@ app.get('/api/admin1/sections', authenticateToken, requireRole('admin1', 'admin2
  * Campus-scoped: admin1 sees the whole organisation, everyone else sees only
  * their own campus, enforced by the same campusScopeFilter used everywhere.
  */
-app.get('/api/admin1/analytics', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
+app.get('/api/admin1/analytics', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
     // An org-wide caller may now narrow to a single campus with ?branch=,
     // which is what the All / campus buttons on the dashboard send. This goes
@@ -4879,7 +5595,7 @@ app.get('/api/admin1/analytics', authenticateToken, requireRole('admin1', 'admin
 });
 
 
-app.get('/api/admin1/reports', authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
+app.get('/api/admin1/reports', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
     const scope = campusScopeFilter(req);
     const campuses = scope.branch ? [scope.branch] : VALID_CAMPUSES;
@@ -4926,7 +5642,593 @@ app.get('/api/admin1/reports', authenticateToken, requireRole('admin1', 'admin2'
 // check and no campus filter, so any signed-in accountant could read every
 // payment, expenditure and fee structure across all four campuses. They now
 // scope to the caller's campus unless the caller is org-wide (admin1).
-app.get(['/api/admin1/payments', '/api/accountant/payments'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
+// --- CLERK SLOT MANAGEMENT (Rector only) ---
+
+/**
+ * The seven clerk slots for one campus, provisioned or not.
+ *
+ * Always returns exactly seven entries. An empty slot is a real thing the
+ * Rector needs to see — it is what they click to create a clerk — so it is
+ * represented here rather than left for the client to invent by counting up
+ * to seven and filling gaps.
+ */
+async function readClerkSlots(campus) {
+  const existing = await User.find({
+    campus,
+    role: { $in: ['clerk', 'admin2'] }
+  }).lean();
+
+  const bySlot = new Map();
+  for (const doc of existing) {
+    // A pre-migration account has no slotIndex. Show it in slot 1, which is
+    // where the migration will put it, rather than dropping it from a screen
+    // that is supposed to show every clerk on the campus.
+    const slot = doc.slotIndex || 1;
+    if (!bySlot.has(slot)) bySlot.set(slot, doc);
+  }
+
+  return Array.from({ length: CLERK_SLOTS_PER_CAMPUS }, (_, i) => {
+    const slotIndex = i + 1;
+    const doc = bySlot.get(slotIndex);
+    if (!doc) {
+      return {
+        slotIndex,
+        exists: false,
+        username: clerkUsername(campus, slotIndex),
+        name: `Clerk ${slotIndex} ${campus}`,
+        status: 'inactive',
+        permissions: normalizePermissions(null)
+      };
+    }
+    return {
+      slotIndex,
+      exists: true,
+      username: doc.username,
+      name: doc.name || `Clerk ${slotIndex} ${campus}`,
+      status: doc.status === 'disabled' ? 'inactive' : 'active',
+      permissions: normalizePermissions(doc.permissions),
+      lastSeenAt: doc.lastSeenAt || null
+    };
+  });
+}
+
+app.get('/api/admin1/clerks', authenticateToken, requireRole('admin1'), requireDatabase, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const campus = normalizeCampus(String(req.query.campus || '').trim());
+    if (!isValidCampus(campus)) {
+      return res.status(400).json({ status: 'error', message: `Unknown campus [${req.query.campus}].` });
+    }
+
+    return res.json({
+      status: 'success',
+      data: {
+        campus,
+        slotsPerCampus: CLERK_SLOTS_PER_CAMPUS,
+        permissionNames: CLERK_PERMISSIONS,
+        slots: await readClerkSlots(campus)
+      }
+    });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+/**
+ * POST /api/admin1/clerks — save one campus's clerk configuration.
+ *
+ * The whole campus is saved in one call rather than a request per toggle:
+ * the screen has one Save button, and a per-toggle write would leave a
+ * half-applied configuration behind if the operator closed the tab midway.
+ *
+ * Gated by the Rector's own PIN through verifySecurityOtp, which brings the
+ * same five-guess lockout the login has. This is the one action in the app
+ * that still asks for a PIN — everything else now uses a plain confirmation —
+ * because it is what grants and revokes every other account's powers.
+ *
+ * Activating an empty slot provisions the account and returns its generated
+ * credentials ONCE, in this response. They are stored only as bcrypt hashes,
+ * so this is the only moment they can be read.
+ */
+app.post('/api/admin1/clerks', authenticateToken, requireRole('admin1'), mongoRateLimiter, requireDatabase, verifySecurityOtp, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const campus = normalizeCampus(String((req.body || {}).campus || '').trim());
+    if (!isValidCampus(campus)) {
+      return res.status(400).json({ status: 'error', message: `Unknown campus [${(req.body || {}).campus}].` });
+    }
+
+    const submitted = Array.isArray(req.body.slots) ? req.body.slots : [];
+    if (submitted.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'No clerk slots were submitted.' });
+    }
+
+    // Validate everything BEFORE writing anything. A save that fails halfway
+    // through would leave some slots changed and others not, with no
+    // indication of which.
+    const planned = [];
+    for (const raw of submitted) {
+      const slotIndex = Number(raw && raw.slotIndex);
+      if (!Number.isInteger(slotIndex) || slotIndex < 1 || slotIndex > CLERK_SLOTS_PER_CAMPUS) {
+        return res.status(400).json({
+          status: 'error',
+          message: `Slot ${raw && raw.slotIndex} is not between 1 and ${CLERK_SLOTS_PER_CAMPUS}.`
+        });
+      }
+      if (planned.some(p => p.slotIndex === slotIndex)) {
+        return res.status(400).json({ status: 'error', message: `Slot ${slotIndex} was submitted twice.` });
+      }
+
+      const permissions = {};
+      for (const name of CLERK_PERMISSIONS) {
+        permissions[name] = !!(raw.permissions && raw.permissions[name]);
+      }
+      planned.push({ slotIndex, active: raw.active === true, permissions });
+    }
+
+    const before = await readClerkSlots(campus);
+    const beforeBySlot = new Map(before.map(s => [s.slotIndex, s]));
+
+    const createdCredentials = [];
+    const changes = [];
+
+    for (const slot of planned) {
+      const previous = beforeBySlot.get(slot.slotIndex);
+      const username = previous.username;
+
+      if (!slot.active && !previous.exists) continue;          // nothing to do
+      if (!slot.active && previous.exists) {
+        // Disabling is enough: authenticateToken rejects a disabled account on
+        // every request, so an already-signed-in clerk is cut off immediately
+        // rather than at token expiry. The record is kept so their history in
+        // the audit trail still resolves to a real account.
+        await User.updateOne(
+          { username },
+          { $set: { status: 'disabled', activeSessionId: null, permissions: slot.permissions } }
+        );
+        changes.push({ slotIndex: slot.slotIndex, username, action: 'deactivated' });
+        continue;
+      }
+
+      if (slot.active && !previous.exists) {
+        // 18 random bytes in base64url — well past anything a person would
+        // choose, and never derived from the username or campus.
+        const password = crypto.randomBytes(18).toString('base64url');
+        const pin = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+
+        await User.create({
+          username,
+          password,
+          pin,
+          role: 'clerk',
+          campus,
+          slotIndex: slot.slotIndex,
+          name: `Clerk ${slot.slotIndex} ${campus}`,
+          status: 'active',
+          permissions: slot.permissions
+        });
+
+        createdCredentials.push({ slotIndex: slot.slotIndex, username, password, pin });
+        changes.push({ slotIndex: slot.slotIndex, username, action: 'created' });
+        continue;
+      }
+
+      // Existing and staying active: update status and permissions only.
+      const permissionsChanged = CLERK_PERMISSIONS.some(
+        name => previous.permissions[name] !== slot.permissions[name]
+      );
+      const reactivated = previous.status !== 'active';
+      if (permissionsChanged || reactivated) {
+        await User.updateOne(
+          { username },
+          { $set: { status: 'active', slotIndex: slot.slotIndex, permissions: slot.permissions } }
+        );
+        changes.push({
+          slotIndex: slot.slotIndex,
+          username,
+          action: reactivated ? 'reactivated' : 'permissions updated'
+        });
+      }
+    }
+
+    const after = await readClerkSlots(campus);
+
+    // One audit entry per slot actually changed, naming the powers granted —
+    // "who can now collect fees at this campus, and who decided that" is the
+    // question this has to answer later.
+    for (const change of changes) {
+      const slot = after.find(s => s.slotIndex === change.slotIndex);
+      const granted = CLERK_PERMISSIONS.filter(p => slot && slot.permissions[p]);
+      recordAudit(req, {
+        action: 'clerk.configure',
+        entityType: 'account',
+        entityId: change.username,
+        entityLabel: `Clerk ${change.slotIndex} — ${campus}`,
+        campus,
+        summary: `Clerk slot ${change.slotIndex} at ${campus} ${change.action}`
+          + (change.action === 'deactivated'
+            ? '.'
+            : ` with ${granted.length ? granted.join(', ') : 'no permissions'}.`),
+        details: { slotIndex: change.slotIndex, action: change.action, permissions: granted }
+      });
+    }
+
+    return res.json({
+      status: 'success',
+      message: changes.length
+        ? `Saved ${changes.length} change${changes.length === 1 ? '' : 's'} at ${campus}.`
+        : `No changes to save at ${campus}.`,
+      data: {
+        campus,
+        slots: after,
+        changes,
+        // Present only when a slot was newly activated. The client must show
+        // these immediately; they cannot be retrieved again.
+        createdCredentials
+      }
+    });
+  } catch (err) {
+    // The partial unique index on (campus, slotIndex) is what actually stops
+    // two clerks landing in one slot, so its error has to read as that rather
+    // than as a generic write failure.
+    if (err && err.code === 11000) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'That clerk slot was just filled by someone else. Reload the page and try again.'
+      });
+    }
+    return failRequest(req, res, err);
+  }
+});
+
+/**
+ * GET /api/admin1/logs — the audit trail.
+ *
+ * Rector only. The trail spans every campus and names which account did what,
+ * which is exactly the information a campus-scoped role must not have: an
+ * accountant reading it would see the other three campuses' takings, and a
+ * clerk would see their own supervisor's actions. Campus-scoped roles are
+ * refused outright rather than served a filtered view, so there is one rule
+ * here rather than two.
+ *
+ * Newest first, paginated, and capped — the trail is the fastest-growing
+ * collection in the system and an unbounded read of it would be a way to pull
+ * the whole thing into a browser tab.
+ */
+app.get(['/api/admin1/logs', '/api/admin1/audit-logs'], authenticateToken, requireRole('admin1'), requireDatabase, async (req, res) => {
+  try {
+    await connectToDatabase();
+
+    const filter = {};
+
+    // Campus. admin1 is org-wide, so this narrows rather than restricts.
+    const campus = String(req.query.campus || '').trim();
+    if (campus && campus.toLowerCase() !== 'all') {
+      if (!isValidCampus(campus)) {
+        return res.status(400).json({ status: 'error', message: `Unknown campus [${campus}].` });
+      }
+      filter.campus = normalizeCampus(campus);
+    }
+
+    // Which account. Exact match on the stored username, escaped so a
+    // metacharacter cannot change what the pattern matches.
+    const actor = String(req.query.actor || '').trim();
+    if (actor && actor.toLowerCase() !== 'all') {
+      filter.actorUsername = new RegExp(`^${escapeRegex(actor)}$`, 'i');
+    }
+
+    const action = String(req.query.action || '').trim();
+    if (action && action.toLowerCase() !== 'all') filter.action = action;
+
+    const entityType = String(req.query.entityType || '').trim();
+    if (entityType && entityType.toLowerCase() !== 'all') filter.entityType = entityType;
+
+    const outcome = String(req.query.outcome || '').trim();
+    if (outcome && outcome.toLowerCase() !== 'all') filter.outcome = outcome;
+
+    // Date range. `to` covers the whole of its day — a range of 1st to 1st
+    // that matched nothing after midnight would read as "no activity".
+    const from = req.query.from ? new Date(String(req.query.from)) : null;
+    const to = req.query.to ? new Date(String(req.query.to)) : null;
+    if ((from && isNaN(from.getTime())) || (to && isNaN(to.getTime()))) {
+      return res.status(400).json({ status: 'error', message: 'Dates must be valid, in YYYY-MM-DD form.' });
+    }
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = from;
+      if (to) {
+        to.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = to;
+      }
+    }
+
+    // Free-text search across the pre-formatted summary and the frozen entity
+    // label, which is what someone actually has to hand — a student's name or
+    // a receipt number.
+    const search = String(req.query.search || '').trim();
+    if (search) {
+      const pattern = new RegExp(escapeRegex(search), 'i');
+      filter.$or = [{ summary: pattern }, { entityLabel: pattern }, { entityId: pattern }];
+    }
+
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+
+    const [entries, total] = await Promise.all([
+      AuditLog.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      AuditLog.countDocuments(filter)
+    ]);
+
+    // Totals for the filtered set, so the screen can say "Rs. X collected
+    // across N entries" without the client re-adding a paginated slice.
+    const [totals] = await AuditLog.aggregate([
+      { $match: filter },
+      { $group: { _id: null, totalAmount: { $sum: { $ifNull: ['$amount', 0] } } } }
+    ]);
+
+    return res.json({
+      status: 'success',
+      data: {
+        entries,
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+        totalAmount: totals ? Math.round((totals.totalAmount || 0) * 100) / 100 : 0
+      }
+    });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+/**
+ * The distinct accounts and actions present in the trail, for the filter
+ * dropdowns. Derived from the data rather than hardcoded, so a filter never
+ * offers an option that matches nothing.
+ */
+// --- CREDENTIAL MANAGEMENT (Rector only) --------------------------------
+
+/**
+ * Every account, with its credentials, for the Rector's credential screen.
+ *
+ * This route returns live passwords and PINs in readable form. That is the
+ * point of it, and it is the operator's explicit decision — but it makes this
+ * the single most sensitive response the API produces, so it is fenced:
+ *
+ *   - admin1 only. No other role, at any campus, for any reason.
+ *   - The Rector's own PIN is re-supplied to reach it, through the same
+ *     verifySecurityOtp used elsewhere, with its five-guess lockout. A stolen
+ *     session alone does not open it.
+ *   - Never cached. An intermediary holding a copy of this body is a copy of
+ *     every credential in the system.
+ *   - The audit trail records that the screen was opened, by whom — but never
+ *     its contents.
+ *
+ * Accounts provisioned before the storage change hold a bcrypt hash, which
+ * cannot be reversed. Those report `readable: false` rather than showing a
+ * hash that someone might mistake for a password.
+ */
+app.post('/api/admin1/credentials', authenticateToken, requireRole('admin1'), verifySecurityOtp, requireDatabase, async (req, res) => {
+  try {
+    await connectToDatabase();
+
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+
+    const docs = await User.find({}).lean();
+
+    const accounts = docs
+      .map(doc => {
+        const passwordHashed = isHashedCredential(doc.password);
+        const pinHashed = isHashedCredential(doc.pin);
+        return {
+          id: String(doc._id),
+          username: doc.username,
+          role: normalizeRole(doc.role),
+          campus: doc.campus,
+          name: doc.name,
+          slotIndex: doc.slotIndex ?? null,
+          status: doc.status || 'active',
+          // Readable only once the credential has been set since the storage
+          // change. A hash is deliberately NOT returned — showing "$2b$10$..."
+          // in a password box invites someone to hand it to a colleague.
+          password: passwordHashed ? null : (doc.password || null),
+          pin: pinHashed ? null : (doc.pin || null),
+          passwordReadable: !passwordHashed && Boolean(doc.password),
+          pinReadable: !pinHashed && Boolean(doc.pin),
+          credentialsUpdatedAt: doc.updatedAt || null
+        };
+      })
+      .sort((a, b) => {
+        const order = { admin1: 0, authenticator: 1, clerk: 2, accountant: 3 };
+        const diff = (order[a.role] ?? 99) - (order[b.role] ?? 99);
+        if (diff !== 0) return diff;
+        if (a.campus !== b.campus) return String(a.campus).localeCompare(String(b.campus));
+        if (a.slotIndex != null && b.slotIndex != null) return a.slotIndex - b.slotIndex;
+        return String(a.username).localeCompare(String(b.username));
+      });
+
+    recordAudit(req, {
+      action: 'credentials.view',
+      entityType: 'account',
+      summary: `${req.user.username} opened the credentials screen (${accounts.length} accounts).`,
+      details: {
+        accountCount: accounts.length,
+        stillHashed: accounts.filter(a => !a.passwordReadable).length
+      }
+    });
+
+    return res.json({
+      status: 'success',
+      data: {
+        accounts,
+        // Surfaced so the screen can explain why some rows are unreadable.
+        legacyHashedCount: accounts.filter(a => !a.passwordReadable || !a.pinReadable).length
+      }
+    });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+/**
+ * Set one account's portal ID, password and/or PIN.
+ *
+ * Anything omitted is left alone, so changing only a PIN does not require
+ * re-sending the password.
+ *
+ * The authenticator slot is refused here exactly as it is in the accounts
+ * panel: it is the account that can wipe the database, and it is deliberately
+ * not administrable from a portal that the Rector's own session can reach.
+ */
+app.put('/api/admin1/credentials/:id', authenticateToken, requireRole('admin1'), verifySecurityOtp, mongoRateLimiter, requireDatabase, async (req, res) => {
+  try {
+    await connectToDatabase();
+
+    const { id } = req.params;
+    const body = req.body || {};
+
+    const isObjId = isValidObjectId(id);
+    const target = await User.findOne({ $or: [{ _id: isObjId ? id : null }, { username: String(id).toLowerCase().trim() }] });
+    if (!target) {
+      return res.status(404).json({ status: 'error', message: 'That account was not found.' });
+    }
+
+    if (target.username === FIXED_AUTHENTICATOR_USERNAME) {
+      recordAudit(req, {
+        action: 'credentials.update',
+        entityType: 'account',
+        entityId: target.username,
+        outcome: 'denied',
+        summary: `Refused: ${req.user.username} tried to change the security authenticator's credentials.`,
+        details: {}
+      });
+      return res.status(403).json({
+        status: 'error',
+        message: 'The security authenticator\'s credentials cannot be changed from this portal.'
+      });
+    }
+
+    const changed = [];
+
+    // --- Portal ID ---
+    if (body.username !== undefined) {
+      const nextUsername = String(body.username).toLowerCase().trim();
+      if (!nextUsername) {
+        return res.status(400).json({ status: 'error', message: 'A portal ID cannot be blank.' });
+      }
+      if (nextUsername.length > FIELD_LIMITS.username) {
+        return res.status(400).json({ status: 'error', message: `A portal ID cannot exceed ${FIELD_LIMITS.username} characters.` });
+      }
+      if (nextUsername !== target.username) {
+        const clash = await User.findOne({ username: nextUsername, _id: { $ne: target._id } }).lean();
+        if (clash) {
+          return res.status(409).json({ status: 'error', message: `The portal ID ${nextUsername} is already in use.` });
+        }
+        target.username = nextUsername;
+        changed.push('portal ID');
+      }
+    }
+
+    // --- Password ---
+    if (body.password !== undefined) {
+      const nextPassword = String(body.password).trim();
+      if (!nextPassword) {
+        return res.status(400).json({ status: 'error', message: 'A password cannot be blank.' });
+      }
+      if (nextPassword.length < 8) {
+        return res.status(400).json({ status: 'error', message: 'A password must be at least 8 characters.' });
+      }
+      if (nextPassword.length > FIELD_LIMITS.password) {
+        return res.status(400).json({ status: 'error', message: `A password cannot exceed ${FIELD_LIMITS.password} characters.` });
+      }
+      // A stored value starting with $2 would be read back as a legacy hash
+      // and reported unreadable, which would be confusing rather than wrong.
+      if (nextPassword.startsWith('$2')) {
+        return res.status(400).json({ status: 'error', message: 'A password cannot begin with "$2".' });
+      }
+      target.password = nextPassword;
+      changed.push('password');
+    }
+
+    // --- PIN ---
+    if (body.pin !== undefined) {
+      const nextPin = String(body.pin).trim();
+      if (!/^\d{6}$/.test(nextPin)) {
+        return res.status(400).json({ status: 'error', message: 'A PIN must be exactly 6 digits.' });
+      }
+      target.pin = nextPin;
+      changed.push('PIN');
+    }
+
+    if (changed.length === 0) {
+      return res.status(400).json({ status: 'error', message: 'Nothing to change.' });
+    }
+
+    // Changing a credential ends that account's session. Otherwise whoever is
+    // signed in with the OLD password keeps working until their token expires,
+    // which defeats the usual reason for changing it.
+    target.activeSessionId = null;
+    await target.save();
+    // Keyed on the id, NOT the username — the username may have just been
+    // changed above, and deleting by the new one would leave every refresh
+    // token issued under the old name alive.
+    await RefreshToken.deleteMany({ userId: target._id }).catch(() => {});
+
+    // WHAT changed, never the values.
+    recordAudit(req, {
+      action: 'credentials.update',
+      entityType: 'account',
+      entityId: target.username,
+      entityLabel: `${target.name} (${target.username})`,
+      campus: target.campus,
+      summary: `Changed the ${changed.join(' and ')} for ${target.username}; their session was ended.`,
+      details: { fields: changed, role: normalizeRole(target.role) }
+    });
+
+    return res.json({
+      status: 'success',
+      message: `Updated the ${changed.join(' and ')} for ${target.username}.`,
+      data: {
+        id: String(target._id),
+        username: target.username,
+        password: isHashedCredential(target.password) ? null : target.password,
+        pin: isHashedCredential(target.pin) ? null : target.pin,
+        passwordReadable: !isHashedCredential(target.password),
+        pinReadable: !isHashedCredential(target.pin)
+      }
+    });
+  } catch (err) {
+    if (err && err.code === 11000) {
+      return res.status(409).json({ status: 'error', message: 'That portal ID was just taken. Choose another.' });
+    }
+    return failRequest(req, res, err);
+  }
+});
+
+
+app.get('/api/admin1/logs/filters', authenticateToken, requireRole('admin1'), requireDatabase, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const [actors, actions] = await Promise.all([
+      AuditLog.distinct('actorUsername'),
+      AuditLog.distinct('action')
+    ]);
+    return res.json({
+      status: 'success',
+      data: {
+        actors: actors.filter(Boolean).sort(),
+        actions: actions.filter(Boolean).sort(),
+        campuses: VALID_CAMPUSES
+      }
+    });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+app.get(['/api/admin1/payments', '/api/accountant/payments'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
     const payments = await Payment.find(campusScopeFilter(req)).sort({ createdAt: -1 }).lean();
     return res.json({ status: 'success', data: payments });
@@ -4936,7 +6238,7 @@ app.get(['/api/admin1/payments', '/api/accountant/payments'], authenticateToken,
   }
 });
 
-app.get(['/api/admin1/expenditures', '/api/accountant/expenditures'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
+app.get(['/api/admin1/expenditures', '/api/accountant/expenditures'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
     const expenditures = await Expenditure.find(campusScopeFilter(req)).sort({ createdAt: -1 }).lean();
     return res.json({ status: 'success', data: expenditures });
@@ -4946,7 +6248,7 @@ app.get(['/api/admin1/expenditures', '/api/accountant/expenditures'], authentica
   }
 });
 
-app.get(['/api/admin1/fee-settings', '/api/accountant/fee-settings'], authenticateToken, requireRole('admin1', 'admin2', 'accountant'), requireDatabase, async (req, res) => {
+app.get(['/api/admin1/fee-settings', '/api/accountant/fee-settings'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
     const feeSettings = await FeeSettings.find(campusScopeFilter(req)).lean();
     return res.json({ status: 'success', data: feeSettings });
@@ -4998,7 +6300,7 @@ function resolveBackupCampus(req, res) {
 }
 
 // GET /api/backup/tree — what exists in Drive, scoped to the caller's campus.
-app.get('/api/backup/tree', authenticateToken, requireRole('authenticator', 'admin1', 'admin2'), async (req, res) => {
+app.get('/api/backup/tree', authenticateToken, requireRole('authenticator', 'admin1', 'clerk'), async (req, res) => {
   try {
     const own = String(req.user.campus || '');
     const filter = own.toLowerCase() === 'all' ? null : own;
@@ -5011,7 +6313,7 @@ app.get('/api/backup/tree', authenticateToken, requireRole('authenticator', 'adm
 });
 
 // POST /api/backup/run — back up one type for one campus.
-app.post('/api/backup/run', authenticateToken, requireRole('authenticator', 'admin1', 'admin2'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/backup/run', authenticateToken, requireRole('authenticator', 'admin1', 'clerk'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const campus = resolveBackupCampus(req, res);
     if (!campus) return;

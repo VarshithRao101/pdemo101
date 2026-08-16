@@ -65,9 +65,30 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
 
+  /**
+   * The four campuses, keyed by the form used inside a clerk's portal ID.
+   *
+   * Must match `clerkUsername` in server/app.cjs, which builds the same key
+   * from the campus name.
+   */
+  const CLERK_CAMPUSES = [
+    { key: 'erragattugutta_c1', label: 'Erragattugutta C1' },
+    { key: 'erragattugutta_c2', label: 'Erragattugutta C2' },
+    { key: 'beemaram_c1', label: 'Beemaram C1' },
+    { key: 'beemaram_c2', label: 'Beemaram C2' }
+  ];
+
+  // Read back out of the typed ID rather than held as separate state, so the
+  // pills stay correct when the ID is edited by hand.
+  const clerkMatch = /^clerk(\d+)_(.+)$/.exec(userId.trim());
+  const clerkSlot = clerkMatch ? Math.min(7, Math.max(1, parseInt(clerkMatch[1], 10))) : 1;
+  const clerkCampusKey = clerkMatch && CLERK_CAMPUSES.some(c => c.key === clerkMatch[2])
+    ? clerkMatch[2]
+    : CLERK_CAMPUSES[0].key;
+
   const handleSelectRoleCard = (roleId: string) => {
-    if (roleId === 'admin2') {
-      setUserId('admin2_erragattugutta_c1');
+    if (roleId === 'clerk') {
+      setUserId('clerk1_erragattugutta_c1');
     } else if (roleId === 'accountant') {
       setUserId('accountant_erragattugutta_c1_1');
     } else {
@@ -336,10 +357,10 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       )
     },
     {
-      id: 'admin2',
-      title: 'Admin 2',
-      subtitle: 'Campus Principal',
-      badge: 'Principal',
+      id: 'clerk',
+      title: 'Clerk',
+      subtitle: 'Campus Clerk',
+      badge: 'Clerk',
       colorBg: 'var(--good)',
       colorAccent: 'var(--good)',
       borderColor: 'var(--good)',
@@ -488,7 +509,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           </div>
         </div>
 
-        {/* Role Quick Selector Grid (Admin 1, Admin 2, Accountant) */}
+        {/* Role Quick Selector Grid (Admin 1, Clerk, Accountant) */}
         {currentMode === 'universal' && (
           <div style={{ marginBottom: '18px' }}>
             <label style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '8px' }}>
@@ -498,7 +519,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
               {roleCards.map(rc => {
                 const isSelected = 
                   (rc.id === 'admin1' && (userId === 'admin1' || userId === 'admin')) ||
-                  (rc.id === 'admin2' && userId.includes('admin2')) ||
+                  (rc.id === 'clerk' && userId.includes('clerk')) ||
                   (rc.id === 'accountant' && userId.includes('accountant'));
                 return (
                   <button
@@ -554,35 +575,68 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
               })}
             </div>
 
-            {/* Campus selector pills when Admin 2 or Accountant is active */}
-            {userId.includes('admin2') && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: 'var(--surface-sunken)', padding: '10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
-                <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--good)', textTransform: 'uppercase' }}>Select Admin 2 Campus:</span>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '6px' }}>
-                  {[
-                    { id: 'admin2_erragattugutta_c1', label: 'Erragattugutta C1' },
-                    { id: 'admin2_erragattugutta_c2', label: 'Erragattugutta C2' },
-                    { id: 'admin2_beemaram_c1', label: 'Beemaram C1' },
-                    { id: 'admin2_beemaram_c2', label: 'Beemaram C2' }
-                  ].map(c => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => { setUserId(c.id); setPasswordInput(''); }}
-                      style={{
-                        padding: '6px 8px',
-                        borderRadius: '8px',
-                        fontSize: '0.7857rem',
-                        fontWeight: 800,
-                        border: userId === c.id ? '1.5px solid var(--good)' : '1px solid var(--line-strong)',
-                        backgroundColor: userId === c.id ? 'var(--good)' : 'var(--surface)',
-                        color: userId === c.id ? 'var(--surface)' : 'var(--ink-secondary)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
+            {/* Campus, then clerk slot. Each campus has seven slots and the
+                portal ID is campus + slot, so both have to be chosen — the
+                pills used to offer campus alone and always resolved to slot
+                1, which left the other six reachable only by typing the ID
+                out by hand. */}
+            {userId.includes('clerk') && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: 'var(--surface-sunken)', padding: '10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--good)', textTransform: 'uppercase' }}>Select Clerk Campus:</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '6px' }}>
+                    {CLERK_CAMPUSES.map(c => {
+                      const selected = clerkCampusKey === c.key;
+                      return (
+                        <button
+                          key={c.key}
+                          type="button"
+                          onClick={() => { setUserId(`clerk${clerkSlot}_${c.key}`); setPasswordInput(''); }}
+                          style={{
+                            padding: '6px 8px', borderRadius: '8px', fontSize: '0.7857rem', fontWeight: 800,
+                            border: selected ? '1.5px solid var(--good)' : '1px solid var(--line-strong)',
+                            backgroundColor: selected ? 'var(--good)' : 'var(--surface)',
+                            color: selected ? 'var(--surface)' : 'var(--ink-secondary)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {c.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--good)', textTransform: 'uppercase' }}>
+                    Select Clerk Number:
+                  </span>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {[1, 2, 3, 4, 5, 6, 7].map(n => {
+                      const selected = clerkSlot === n;
+                      return (
+                        <button
+                          key={n}
+                          type="button"
+                          aria-label={`Clerk ${n}`}
+                          onClick={() => { setUserId(`clerk${n}_${clerkCampusKey}`); setPasswordInput(''); }}
+                          style={{
+                            minWidth: '42px', padding: '6px 10px', borderRadius: '8px',
+                            fontSize: '0.8571rem', fontWeight: 900,
+                            border: selected ? '1.5px solid var(--good)' : '1px solid var(--line-strong)',
+                            backgroundColor: selected ? 'var(--good)' : 'var(--surface)',
+                            color: selected ? 'var(--surface)' : 'var(--ink-secondary)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {n}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <span style={{ fontSize: '0.6429rem', color: 'var(--ink-secondary)', fontWeight: 700 }}>
+                    Signing in as <strong>{userId || '—'}</strong>
+                  </span>
                 </div>
               </div>
             )}
@@ -637,7 +691,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
               </div>
               <input maxLength={LIMITS.username}
                 type="text"
-                placeholder={currentMode === 'authenticator' ? '9059068384' : 'admin1 / admin2 / accountant'}
+                placeholder={currentMode === 'authenticator' ? '9059068384' : 'admin1 / clerk / accountant'}
                 value={currentMode === 'authenticator' ? '9059068384' : userId}
                 onChange={(e) => {
                   const val = e.target.value;

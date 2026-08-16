@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { LIMITS } from '../constants/fieldLimits';
-import { useNavigation } from '../context/NavigationContext';
+import { useNavigation, accountCan, type ClerkPermissionKey } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { InspireLogo } from '../components/common/InspireLogo';
 import { apiClient, setGlobalSecurityKey } from '../services/apiClient';
-import { admin1Service } from '../services/admin1Service';
+import {
+  admin1Service, CLERK_PERMISSION_LABELS,
+  type AuditLogEntry, type ClerkSlot, type ClerkPermissionName, type PortalAccount
+} from '../services/admin1Service';
 import { admin2Service } from '../services/admin2Service';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import { AnalyticsDashboard } from '../components/AnalyticsDashboard';
@@ -219,18 +222,73 @@ interface Teacher {
  */
 export const ACADEMIC_YEARS = ['2026-2027', '2027-2028', '2028-2029', '2029-2030'];
 
+/**
+ * The four campuses, in the order they are shown everywhere.
+ *
+ * Must match VALID_CAMPUSES in server/app.cjs, which rejects anything else.
+ * This literal was written out separately in five places in this file; a
+ * campus added to one of them and missed in another is the kind of drift that
+ * shows as a filter silently returning nothing.
+ */
+export const CAMPUS_LIST = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
+
 const LEDGER_MONTHS = [
   'June', 'July', 'August', 'September', 'October', 'November',
   'December', 'January', 'February', 'March', 'April', 'May'
 ];
 
+/**
+ * One month's salary record, read for a specific academic year.
+ *
+ * Every reader of the ledger must go through this. The server writes each
+ * payment to BOTH `salaryLedger[year][month]` and the legacy flat
+ * `monthlySalaries[month]` map (server/app.cjs, the salary-month route). That
+ * flat map carries no year, so it is overwritten every time the same month is
+ * paid in a later year.
+ *
+ * Falling back to it unconditionally is what made a newly unlocked year look
+ * fully paid: 2027-2028 has no ledger entries, so all twelve months fell
+ * through to 2026-2027's payments and the grid rendered them as settled.
+ *
+ * The map is still consulted for the FIRST academic year only, where it is
+ * unambiguous — those are records written before the per-year ledger existed.
+ * For any later year, an absent entry means unpaid, which is the truth.
+ */
+export function monthRecordFor(
+  teacher: Teacher | null,
+  year: string,
+  month: string
+): MonthlySalaryRecord | null {
+  const fromLedger = teacher?.salaryLedger?.[year]?.[month];
+  if (fromLedger) return fromLedger;
+  if (year === ACADEMIC_YEARS[0]) {
+    return teacher?.monthlySalaries?.[month] || null;
+  }
+  return null;
+}
+
+/** Whether a month's record counts as settled. */
+export function isMonthPaid(rec: MonthlySalaryRecord | null | undefined): boolean {
+  return !!rec && (rec.status === 'Paid' || rec.paid === true);
+}
+
 /** How many of the twelve months are settled in one year of a teacher's ledger. */
 export function monthsPaidIn(teacher: Teacher | null, year: string): number {
-  const ledger = teacher?.salaryLedger?.[year] || {};
-  return LEDGER_MONTHS.filter(m => {
-    const rec: any = (ledger as any)[m];
-    return rec && (rec.status === 'Paid' || rec.paid === true);
-  }).length;
+  return LEDGER_MONTHS.filter(m => isMonthPaid(monthRecordFor(teacher, year, m))).length;
+}
+
+/**
+ * The newest academic year this teacher has opened — the one a summary figure
+ * should describe. Used by the faculty list, which has no year selector of its
+ * own and previously read the year-less legacy map.
+ */
+export function currentLedgerYear(teacher: Teacher | null): string {
+  let current = ACADEMIC_YEARS[0];
+  for (let i = 1; i < ACADEMIC_YEARS.length; i++) {
+    if (monthsPaidIn(teacher, ACADEMIC_YEARS[i - 1]) < 12) break;
+    current = ACADEMIC_YEARS[i];
+  }
+  return current;
 }
 
 /**
@@ -288,9 +346,22 @@ const validateMobile = (val: string): string | null => {
 };
 const MAX_STUDENT_FEE = 1_000_000; // Rs. 10,00,000
 
-export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ role = 'admin1' }) => {
-  const { user, activeTab: globalActiveTab } = useNavigation();
+/** A PIN is six digits and nothing else — strip anything that is not one. */
+const digitsOnlyPin = (value: string) => String(value).replace(/\D/g, '').slice(0, 6);
+
+export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ role = 'admin1' }) => {
+  const { user, activeTab: globalActiveTab, setActiveTab, setSelectedCampus } = useNavigation();
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
+
+  /**
+   * Whether this account may do something.
+   *
+   * Only ever restricts a clerk — accountHas returns true for the Rector,
+   * who is the account that grants these in the first place. Used to decide
+   * what to render; the server re-checks every one of them, so a module that
+   * slipped through would refuse rather than act.
+   */
+  const clerkCan = (permission: ClerkPermissionKey) => accountCan(user, permission);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
@@ -424,6 +495,42 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     }
     setSelectedAcademicYear(fallback);
   }, [editTeacher, selectedAcademicYear]);
+  // --- Clerk slot manager (Rector only) ---------------------------------
+  //
+  // `clerkDraft` is the on-screen state and `clerkSaved` is what the server
+  // last confirmed. Keeping both is what lets the screen show unsaved changes
+  // and refuse to lose them silently — a single array would make an edit
+  // indistinguishable from a saved value.
+  const [clerkCampus, setClerkCampus] = useState<string>(CAMPUS_LIST[0]);
+  const [clerkDraft, setClerkDraft] = useState<ClerkSlot[]>([]);
+  const [clerkSaved, setClerkSaved] = useState<ClerkSlot[]>([]);
+  const [isSavingClerks, setIsSavingClerks] = useState(false);
+  const [clerkPinPrompt, setClerkPinPrompt] = useState(false);
+  const [clerkPinInput, setClerkPinInput] = useState('');
+  // Shown inside the PIN dialog rather than as a toast. A wrong PIN is a
+  // message about the thing the user is currently looking at, and the server
+  // counts down remaining attempts before a lockout — that must not scroll
+  // past in a notification that disappears on its own.
+  const [clerkPinError, setClerkPinError] = useState('');
+  const [clerkNewCredentials, setClerkNewCredentials] = useState<
+    Array<{ slotIndex: number; username: string; password: string; pin: string }>
+  >([]);
+
+  // --- Audit trail (Rector only) ----------------------------------------
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditTotalPages, setAuditTotalPages] = useState(1);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditTotalAmount, setAuditTotalAmount] = useState(0);
+  const [auditOptions, setAuditOptions] = useState<{ actors: string[]; actions: string[]; campuses: string[] }>({ actors: [], actions: [], campuses: [] });
+  const [auditFilterCampus, setAuditFilterCampus] = useState('All');
+  const [auditFilterActor, setAuditFilterActor] = useState('All');
+  const [auditFilterAction, setAuditFilterAction] = useState('All');
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditFrom, setAuditFrom] = useState('');
+  const [auditTo, setAuditTo] = useState('');
+  const [auditExpandedId, setAuditExpandedId] = useState<string | null>(null);
+
   const [workerPaymentsHistory, setWorkerPaymentsHistory] = useState<any[]>([]);
   const [pendingDeleteTeacherId, setPendingDeleteTeacherId] = useState<string | null>(null);
 
@@ -447,6 +554,194 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [filterEnquiryCampus, setFilterEnquiryCampus] = useState('All');
   const [filterEnquiryStatus, setFilterEnquiryStatus] = useState('All');
   const [, setIsLoadingEnquiries] = useState(false);
+
+  // --- Credentials screen (Rector only) ---------------------------------
+  // Nothing is fetched until the Rector supplies their PIN: the response is
+  // every live credential in the system, so it is not loaded just because
+  // someone navigated here.
+  const [credAccounts, setCredAccounts] = useState<PortalAccount[]>([]);
+  const [credUnlocked, setCredUnlocked] = useState(false);
+  const [credPinInput, setCredPinInput] = useState('');
+  const [credPinError, setCredPinError] = useState('');
+  const [credRectorPin, setCredRectorPin] = useState('');
+  // Derived, never stored. Held as its own state it went stale the moment a
+  // credential was set — the banner kept claiming two accounts were
+  // unreadable after one of them had just been made readable.
+  const credLegacyCount = credAccounts.filter(a => !a.passwordReadable || !a.pinReadable).length;
+  const [credRevealed, setCredRevealed] = useState<Record<string, boolean>>({});
+  const [credEditing, setCredEditing] = useState<string | null>(null);
+  const [credDraft, setCredDraft] = useState<{ username: string; password: string; pin: string }>({ username: '', password: '', pin: '' });
+  const [credSaving, setCredSaving] = useState(false);
+
+  const unlockCredentials = async () => {
+    const pin = credPinInput.trim();
+    if (pin.length !== 6) { setCredPinError('Enter your six-digit PIN.'); return; }
+    try {
+      const result = await admin1Service.getCredentials(pin);
+      setCredAccounts(result.accounts);
+      // Held for the duration of the screen so each save does not re-prompt.
+      // Cleared on leaving, below.
+      setCredRectorPin(pin);
+      setCredUnlocked(true);
+      setCredPinInput('');
+      setCredPinError('');
+    } catch (err: any) {
+      setCredPinError(err?.message || 'Could not open the credentials screen.');
+      setCredPinInput('');
+    }
+  };
+
+  /** Wipe every credential out of component state when leaving the screen. */
+  const lockCredentials = () => {
+    setCredAccounts([]);
+    setCredUnlocked(false);
+    setCredRectorPin('');
+    setCredRevealed({});
+    setCredEditing(null);
+    setCredDraft({ username: '', password: '', pin: '' });
+    setCredPinInput('');
+    setCredPinError('');
+  };
+
+  const saveCredential = async (account: PortalAccount) => {
+    const changes: { username?: string; password?: string; pin?: string } = {};
+    if (credDraft.username.trim() && credDraft.username.trim() !== account.username) changes.username = credDraft.username.trim();
+    if (credDraft.password.trim()) changes.password = credDraft.password.trim();
+    if (credDraft.pin.trim()) changes.pin = credDraft.pin.trim();
+
+    if (Object.keys(changes).length === 0) {
+      triggerToast('Nothing to change for this account.', 'error');
+      return;
+    }
+
+    setCredSaving(true);
+    try {
+      const result = await admin1Service.setCredentials(account.id, changes, credRectorPin);
+      setCredAccounts(prev => prev.map(a => a.id === account.id ? {
+        ...a,
+        username: result.username,
+        password: result.password,
+        pin: result.pin,
+        passwordReadable: result.password !== null,
+        pinReadable: result.pin !== null
+      } : a));
+      setCredEditing(null);
+      setCredDraft({ username: '', password: '', pin: '' });
+      triggerToast(result.message, 'success');
+    } catch (err: any) {
+      triggerToast(err?.message || 'Could not update those credentials.', 'error');
+    } finally {
+      setCredSaving(false);
+    }
+  };
+
+  const fetchClerks = async (campus = clerkCampus) => {
+    try {
+      const result = await admin1Service.getClerks(campus);
+      setClerkDraft(result.slots);
+      // A separate copy, not a shared reference — mutating the draft must not
+      // silently change what we believe the server holds.
+      setClerkSaved(result.slots.map(s => ({ ...s, permissions: { ...s.permissions } })));
+    } catch (err: any) {
+      console.warn('Failed to fetch clerk slots:', err);
+      triggerToast(err?.message || 'Could not load the clerk slots.', 'error');
+    }
+  };
+
+  /** Whether the draft differs from what the server last confirmed. */
+  const clerkHasChanges = () => {
+    if (clerkDraft.length !== clerkSaved.length) return true;
+    return clerkDraft.some((slot, i) => {
+      const saved = clerkSaved[i];
+      if (!saved) return true;
+      if ((slot.status === 'active') !== (saved.status === 'active')) return true;
+      return CLERK_PERMISSION_LABELS.some(p => slot.permissions[p.name] !== saved.permissions[p.name]);
+    });
+  };
+
+  const saveClerksWithPin = async () => {
+    const pin = clerkPinInput.trim();
+    if (pin.length !== 6) {
+      setClerkPinError('Enter your six-digit PIN to save.');
+      return;
+    }
+
+    setClerkPinError('');
+    setIsSavingClerks(true);
+    try {
+      const result = await admin1Service.saveClerks(
+        clerkCampus,
+        clerkDraft.map(s => ({
+          slotIndex: s.slotIndex,
+          active: s.status === 'active',
+          permissions: s.permissions
+        })),
+        pin
+      );
+
+      setClerkDraft(result.slots);
+      setClerkSaved(result.slots.map(s => ({ ...s, permissions: { ...s.permissions } })));
+      // Shown once and never retrievable again — the server stores only the
+      // hashes, so closing this panel without noting them means the slot has
+      // to be deactivated and created again.
+      setClerkNewCredentials(result.createdCredentials || []);
+      setClerkPinPrompt(false);
+      setClerkPinInput('');
+      setClerkPinError('');
+      triggerToast(
+        result.changes.length
+          ? `Saved ${result.changes.length} change${result.changes.length === 1 ? '' : 's'} at ${clerkCampus}.`
+          : 'No changes to save.',
+        'success'
+      );
+    } catch (err: any) {
+      // The dialog stays open and keeps the draft, so a mistyped PIN costs a
+      // retype rather than the whole configuration.
+      setClerkPinError(err?.message || 'Could not save the clerk settings.');
+      setClerkPinInput('');
+    } finally {
+      setIsSavingClerks(false);
+    }
+  };
+
+  /**
+   * Load one page of the audit trail.
+   *
+   * The filters are applied on the SERVER, not by narrowing an already-loaded
+   * array. The trail is the fastest-growing collection here, so a client-side
+   * filter would mean pulling the whole thing down to show twenty rows.
+   */
+  const fetchAuditLogs = async (page = auditPage) => {
+    try {
+      const result = await admin1Service.getLogs({
+        campus: auditFilterCampus,
+        actor: auditFilterActor,
+        action: auditFilterAction,
+        search: auditSearch,
+        from: auditFrom,
+        to: auditTo,
+        page,
+        limit: 50
+      });
+      setAuditLogs(result.entries || []);
+      setAuditPage(result.page || 1);
+      setAuditTotalPages(result.totalPages || 1);
+      setAuditTotal(result.total || 0);
+      setAuditTotalAmount(result.totalAmount || 0);
+    } catch (err: any) {
+      console.warn('Failed to fetch audit logs:', err);
+      triggerToast(err?.message || 'Could not load the activity log.', 'error');
+    }
+  };
+
+  const fetchAuditFilterOptions = async () => {
+    try {
+      setAuditOptions(await admin1Service.getLogFilters());
+    } catch (err) {
+      // The dropdowns fall back to "All" only; the log itself still loads.
+      console.warn('Failed to fetch audit filter options:', err);
+    }
+  };
 
   const fetchEnquiries = async () => {
     setIsLoadingEnquiries(true);
@@ -935,14 +1230,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   };
 
   const handleDownloadStaffPayslip = (t: Teacher, monthName: string) => {
-    // Prefer the per-academic-year ledger, which is what the salary screen
-    // actually writes to. monthlySalaries is the older flat map and is only a
-    // fallback for records created before the ledger existed.
-    const ledgerRec = (t.salaryLedger?.[selectedAcademicYear] as any)?.[monthName];
-    const rec = ledgerRec || (t.monthlySalaries as any)?.[monthName] || {};
+    // Read for the selected year only. monthRecordFor consults the legacy flat
+    // map for the first academic year alone — printing a payslip for a later
+    // year previously reproduced the earlier year's payment.
+    const rec: any = monthRecordFor(t, selectedAcademicYear, monthName) || {};
 
     const baseSal = Number(t.salary || 0);
-    const isPaid = rec.status === 'Paid' || rec.paid === true;
+    const isPaid = isMonthPaid(rec);
     const paidAmt = Number(rec.amountPaid || (isPaid ? baseSal : 0));
     const dueAmt = Math.max(0, baseSal - paidAmt);
 
@@ -1004,13 +1298,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       'December', 'January', 'February', 'March', 'April', 'May'
     ];
     const baseSal = Number(t.salary || 0);
-    const ledger = (t.salaryLedger?.[selectedAcademicYear] || {}) as any;
 
     let totalDisbursed = 0;
     let settledCount = 0;
     const rows = months.map(m => {
-      const rec = ledger[m] || (t.monthlySalaries as any)?.[m] || {};
-      const isPaid = rec.status === 'Paid' || rec.paid === true;
+      const rec: any = monthRecordFor(t, selectedAcademicYear, m) || {};
+      const isPaid = isMonthPaid(rec);
       if (isPaid) settledCount++;
       const amt = Number(rec.amountPaid || (isPaid ? baseSal : 0));
       totalDisbursed += amt;
@@ -1154,7 +1447,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const fetchStudents = async (query = '', suppressToast = false) => {
     try {
-      const branchParam = role === 'admin2' ? loggedInCampus : '';
+      const branchParam = role === 'clerk' ? loggedInCampus : '';
       const data = await admin1Service.getStudents(query, branchParam);
       setStudents(Array.isArray(data) ? data : []);
     } catch (err: any) {
@@ -1162,7 +1455,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       if (err?.status === 404 || err?.status === 503) {
         try {
           await new Promise(r => setTimeout(r, 1500));
-          const branchParam = role === 'admin2' ? loggedInCampus : '';
+          const branchParam = role === 'clerk' ? loggedInCampus : '';
           const data = await admin1Service.getStudents(query, branchParam);
           setStudents(Array.isArray(data) ? data : []);
           return;
@@ -1176,7 +1469,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   const fetchTeachers = async () => {
     try {
-      const branchParam = role === 'admin2' ? loggedInCampus : undefined;
+      const branchParam = role === 'clerk' ? loggedInCampus : undefined;
       const data = await admin1Service.getTeachers(branchParam);
       if (Array.isArray(data)) {
         const uniqueMap = new Map();
@@ -1204,7 +1497,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     try {
       const data = await admin2Service.getWorkerPayments();
       if (Array.isArray(data)) {
-        const filtered = data.filter((item: any) => role === 'admin2' ? item.branch === loggedInCampus : true);
+        const filtered = data.filter((item: any) => role === 'clerk' ? item.branch === loggedInCampus : true);
         setWorkerPaymentsHistory(filtered);
       }
     } catch (err: any) {
@@ -1257,13 +1550,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        const branchParam = role === 'admin2' ? loggedInCampus : undefined;
+        const branchParam = role === 'clerk' ? loggedInCampus : undefined;
         const tasks: Promise<any>[] = [
           fetchStudents('', true), // suppressToast=true: cold-start 404s silently retry
           fetchFeeSettings(branchParam, true),
           fetchExpenditures()
         ];
-        if (role === 'admin2') {
+        if (role === 'clerk') {
           tasks.push(fetchWorkerPayments(), fetchStaffSalaries());
         }
         await Promise.all(tasks);
@@ -1328,6 +1621,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           await fetchStudentMarks();
         } else if (activePage === 'enquiries') {
           await fetchEnquiries();
+        } else if (activePage === 'logs') {
+          await Promise.all([fetchAuditLogs(1), fetchAuditFilterOptions()]);
+        } else if (activePage === 'clerks') {
+          await fetchClerks(clerkCampus);
         }
       } catch (err) {
         console.error('Page data load error for', activePage, err);
@@ -1558,11 +1855,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     try {
       const response = await apiClient.post('/admin1/students', newStu);
       if (response && (response.status === 'success' || response.data)) {
-        const pin = response.credential?.pin || '';
-        newStu.tempPassword = pin;
-        setStudents(prev => [...prev, newStu]);
-        setSelectedStudent(newStu);
-        setEditStudent({ ...newStu });
+        // Take the SERVER's record, not the object we just built. The saved
+        // document is the one that carries _id and the normalised fields, and
+        // every later action on this student is keyed on them. Adding the
+        // local copy instead left a row on screen with no _id that no
+        // subsequent edit, payment or delete could find.
+        const saved = response.data || newStu;
+        setStudents(prev => [...prev, saved]);
+        setSelectedStudent(saved);
+        setEditStudent({ ...saved });
         setNewStuName('');
         setNewStuAdmissionNumber('');
         setNewStuMobile('');
@@ -1579,7 +1880,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         setIsStudentHoverModalOpen(false);
         setNewStuBranch(loggedInCampus);
         setRegistryPage(1);
-        triggerToast(`Student ${newStu.name} registered successfully! ID: ${newAdm}`);
+        triggerToast(`Student ${saved.name} registered successfully! ID: ${saved.studentId || newAdm}`);
         await triggerFreshnessRefetch();
       } else {
         triggerToast(response?.message || 'Failed to register student.');
@@ -1603,7 +1904,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           email: newFacEmail,
           salary: parseFloat(newFacSal) || 50000,
           mobile: newFacMobile,
-          branch: role === 'admin2' ? loggedInCampus : newFacBranch
+          branch: role === 'clerk' ? loggedInCampus : newFacBranch
         };
         await admin1Service.createTeacher(teacherPayload as any);
         setNewFacName('');
@@ -1755,6 +2056,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   //  SUBPAGE 1: STUDENT REGISTRY
   if (activePage === 'students') {
+    // Reachable by a clerk granted either student power — the registry is
+    // both where a record is edited and where a new one is registered from.
+    if (!clerkCan('editStudent') && !clerkCan('addStudent')) { setActivePage('menu'); return null; }
+
     const filteredRegistryStudents = students.filter((student) => matchesStudentQuery(student, searchAdm));
     const registryPageSize = 20;
     const registryTotalPages = Math.max(1, Math.ceil(filteredRegistryStudents.length / registryPageSize));
@@ -2677,7 +2982,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     >
                       Submit & Save Complete Profile
                     </button>
-                    {(role === 'admin1' || role === 'admin2' || role === 'accountant') && (
+                    {(role === 'admin1' || role === 'clerk' || role === 'accountant') && (
                       <button
                         onClick={() => { setDeleteStuOtpInput(''); setIsDeleteStuOtpOpen(true); }}
                         style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'var(--critical)', color: '#fff', border: 'none' }}
@@ -2754,12 +3059,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   // SUBPAGE 2: STAFF & FACULTY REGISTRY (WITH 12-MONTH SALARY LEDGER)
   if (activePage === 'teachers' || activePage === 'salary_status' || activePage === 'worker_payments') {
+    // Staff and salaries are not among the five clerk powers, so these pages
+    // are the Rector's. A clerk who still has the old URL is sent back.
+    if (role !== 'admin1') { setActivePage('menu'); return null; }
+
     const monthsList = ["June", "July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May"];
     const currentMonth = "July";
 
     const filteredStaff = teachers.filter(t => {
       // Role & campus isolation
-      if (role === 'admin2' && t.branch !== loggedInCampus) return false;
+      // Campus filtering is gone with the clerk: only the Rector reaches this
       if (filterFacCampus !== 'All' && t.branch !== filterFacCampus) return false;
       if (filterStaffClassification !== 'All' && (t.classification || 'Teaching') !== filterStaffClassification) return false;
       if (filterFacSubject !== 'All') {
@@ -2788,20 +3097,23 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     let thisMonthTotalPaid = 0;
     let overallTotalPaid = 0;
 
+    // Both figures previously came from the year-less monthlySalaries map, so
+    // "this month" could report a payment made in a different academic year,
+    // and "overall" could never exceed twelve months no matter how many years
+    // had been disbursed. Read the ledger by year instead.
     filteredStaff.forEach(t => {
       const baseSal = Number(t.salary || 0);
-      const mSal = t.monthlySalaries || {};
+      const amountOf = (rec: MonthlySalaryRecord | null) =>
+        Number(rec?.amountPaid || (isMonthPaid(rec) ? baseSal : 0));
 
-      // Current Month Paid
-      const curRec = mSal[currentMonth] || { status: 'Unpaid', amountPaid: 0 };
-      const curPaid = Number(curRec.amountPaid || (curRec.status === 'Paid' ? baseSal : 0));
-      thisMonthTotalPaid += curPaid;
+      // Current month, in the year this teacher is actually working through.
+      thisMonthTotalPaid += amountOf(monthRecordFor(t, currentLedgerYear(t), currentMonth));
 
-      // Overall Paid across 12 months
-      monthsList.forEach(m => {
-        const rec = mSal[m] || { status: 'Unpaid', amountPaid: 0 };
-        const amt = Number(rec.amountPaid || (rec.status === 'Paid' ? baseSal : 0));
-        overallTotalPaid += amt;
+      // Everything disbursed, across every year of the ledger.
+      ACADEMIC_YEARS.forEach(yr => {
+        monthsList.forEach(m => {
+          overallTotalPaid += amountOf(monthRecordFor(t, yr, m));
+        });
       });
     });
 
@@ -2828,8 +3140,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       const salaryVal = parseFloat(newFacSal) || 35000;
       const empId = `STF${Math.floor(100000 + Math.random() * 900000)}`;
 
-      const validCampusesList = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
-      let targetBranch = role === 'admin2' ? loggedInCampus : (newFacBranch || 'Erragattugutta C1');
+      const validCampusesList = CAMPUS_LIST;
+      let targetBranch = newFacBranch || CAMPUS_LIST[0];
       if (!validCampusesList.includes(targetBranch)) {
         targetBranch = 'Erragattugutta C1';
       }
@@ -2917,7 +3229,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 }}
                 className="press-interactive"
               >
-                Disbursement Payment History Log ({role === 'admin2' ? loggedInCampus : 'All Campuses'})
+                Disbursement Payment History Log (All Campuses)
               </button>
             </div>
 
@@ -2926,7 +3238,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                   <div>
                     <div style={{ fontSize: '1.0714rem', fontWeight: 900, color: 'var(--dark-charcoal)' }}>
-                      Staff & Worker Payment History Log ({role === 'admin2' ? loggedInCampus : 'All Campuses'})
+                      Staff & Worker Payment History Log (All Campuses)
                     </div>
                     <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
                       Read-only audit log of salary payments disbursed to employees
@@ -2944,7 +3256,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                 {workerPaymentsHistory.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '36px', color: 'var(--muted-gray)', fontSize: '0.9286rem', fontWeight: 700 }}>
-                    No payment history records found for {role === 'admin2' ? loggedInCampus : 'selected campus'}.
+                    No payment history records found for selected campus.
                   </div>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
@@ -3005,10 +3317,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
 
                 {/* Admin 1 Campus Selector Bar */}
-                {role !== 'admin2' && (
+                {(
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.6)', padding: '10px 14px', borderRadius: '16px', border: '1.5px solid var(--card-border)' }}>
                     <span style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--dark-charcoal)', marginRight: '6px' }}>Campus:</span>
-                    {['All', 'Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(cName => (
+                    {['All', ...CAMPUS_LIST].map(cName => (
                       <button
                         key={cName}
                         onClick={() => { setFilterFacCampus(cName); setFacultyPage(1); }}
@@ -3085,8 +3397,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '12px', marginTop: '4px' }}>
                   {facultyPageItems.map(t => {
                     const baseSal = Number(t.salary || 0);
-                    const curMonthRec = (t.monthlySalaries as any)?.[currentMonth] || { status: 'Unpaid' };
-                    const isCurPaid = curMonthRec.status === 'Paid';
+                    const isCurPaid = isMonthPaid(monthRecordFor(t, currentLedgerYear(t), currentMonth));
 
                     return (
                       <div
@@ -3371,9 +3682,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))', gap: '10px' }}>
                     {monthsList.map(mName => {
-                      const ledgerObj = editTeacher.salaryLedger?.[selectedAcademicYear] || {};
-                      const mRec: MonthlySalaryRecord = ledgerObj[mName] || editTeacher.monthlySalaries?.[mName] || { status: 'Unpaid', amountPaid: 0, paymentDate: '—', paymentMode: '—' };
-                      const isPaid = mRec.status === 'Paid' || mRec.paid === true;
+                      const mRec: MonthlySalaryRecord = monthRecordFor(editTeacher, selectedAcademicYear, mName)
+                        || { status: 'Unpaid', amountPaid: 0, paymentDate: '—', paymentMode: '—' };
+                      const isPaid = isMonthPaid(mRec);
                       const amtPaid = Number(mRec.amountPaid || (isPaid ? editTeacher.salary || 0 : 0));
                       const isSelectedForEdit = selectedStaffMonthForEdit === mName;
 
@@ -3538,7 +3849,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     </button>
                   </div>
 
-                  {(role === 'admin1' || role === 'admin2') && (
+                  {(role === 'admin1' || role === 'clerk') && (
                     <button
                       onClick={() => {
                         setFacActionType('delete' as any);
@@ -3580,7 +3891,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       <label style={styles.formLabel}>Campus Branch</label>
                       <select
                         value={newFacBranch}
-                        disabled={(role as string) === 'admin2'}
+                        disabled={(role as string) === 'clerk'}
                         onChange={(e) => setNewFacBranch(e.target.value)}
                         style={styles.selectInput}
                       >
@@ -3738,7 +4049,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   //  SUBPAGE 7: ACADEMIC FEES
   if (activePage === 'academic_fees') {
-    if (role !== 'admin1' && role !== 'admin2') { setActivePage('menu'); return null; }
+    if (role !== 'admin1' && role !== 'clerk') { setActivePage('menu'); return null; }
 
     const locked = feeRates.isLocked && !isEditingFees;
     const feeBarItems = [
@@ -3787,7 +4098,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         <main style={styles.content}>
           {role === 'admin1' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: '10px', zIndex: 1 }}>
-              {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(b => {
+              {CAMPUS_LIST.map(b => {
                 const isActive = selectedFeeBranch === b;
                 return (
                   <div
@@ -3933,8 +4244,856 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     );
   }
 
+  // SUBPAGE: CLERK MANAGER (Rector only)
+  //
+  // Four campus boxes at the top, the seven slots for the chosen campus
+  // beneath — slot on the left, its switches on the right — and one Save at
+  // the bottom behind the Rector's PIN.
+  // SUBPAGE: FEE COLLECTION CAMPUS PICKER (Rector only)
+  //
+  // Fee collection acts on exactly one campus, and the Rector belongs to all
+  // four — so the campus is chosen here rather than assumed. Picking one
+  // hands off to the accountant's own fee collection module, which is the
+  // same screen the accountant and a permitted clerk use.
+  if (activePage === 'collect_fees') {
+    if (role !== 'admin1') { setActivePage('menu'); return null; }
+
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('emerald')}
+        <header style={styles.header}>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
+            Back to Cockpit
+          </button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Collect Fees</h1>
+          <p style={styles.subtitle}>Choose the campus whose fees you are collecting.</p>
+        </header>
+
+        <main style={{ ...styles.content, gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '12px', zIndex: 1 }}>
+            {CAMPUS_LIST.map(campus => (
+              <div
+                key={campus}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCampus(campus); setActiveTab('fee_collection'); } }}
+                onClick={() => { setSelectedCampus(campus); setActiveTab('fee_collection'); }}
+                className="press-interactive"
+                style={{
+                  padding: '18px', borderRadius: '14px', cursor: 'pointer',
+                  border: '2px solid var(--line)', backgroundColor: 'var(--surface)'
+                }}
+              >
+                <div style={{ fontSize: '0.6429rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted-gray)' }}>
+                  Campus
+                </div>
+                <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--ink)', marginTop: '4px' }}>
+                  {campus}
+                </div>
+                <div style={{ fontSize: '0.7143rem', color: 'var(--ink-secondary)', marginTop: '6px' }}>
+                  Search students and take payments here
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // SUBPAGE: CREDENTIALS (Rector only)
+  //
+  // Shows every account's live portal ID, password and PIN, and lets the
+  // Rector change any of them. Locked behind the Rector's own PIN even though
+  // they are already signed in: this one screen is worth more than the rest of
+  // the portal combined, and a session left open on a desk should not expose
+  // it.
+  if (activePage === 'credentials') {
+    if (role !== 'admin1') { setActivePage('menu'); return null; }
+
+    const roleLabel = (r: string) =>
+      r === 'admin1' ? 'Rector'
+        : r === 'authenticator' ? 'Authenticator'
+        : r === 'clerk' ? 'Clerk'
+        : r === 'accountant' ? 'Accountant'
+        : r;
+
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('ruby')}
+        <header style={styles.header}>
+          <button
+            onClick={() => { lockCredentials(); setActivePage('menu'); }}
+            style={styles.backArrowBtn}
+            className="press-interactive"
+          >
+            Back to Cockpit
+          </button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Credentials</h1>
+          <p style={styles.subtitle}>
+            Portal IDs, passwords and PINs for every account. Changing one signs that account out.
+          </p>
+        </header>
+
+        <main style={{ ...styles.content, gap: '16px' }}>
+          {!credUnlocked ? (
+            <GlassCard hoverable={false} style={{ padding: '28px', maxWidth: '460px', zIndex: 1 }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '6px' }}>
+                Confirm it is you
+              </h3>
+              <p style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginBottom: '14px', lineHeight: 1.5 }}>
+                This screen shows every live password and PIN in the system.
+                Enter your own six-digit PIN to open it.
+              </p>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                autoFocus
+                placeholder="Your 6-digit PIN"
+                value={credPinInput}
+                onChange={(e) => { setCredPinInput(digitsOnlyPin(e.target.value)); setCredPinError(''); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') unlockCredentials(); }}
+                style={{ ...styles.textInputBox, borderColor: credPinError ? 'var(--critical)' : undefined, letterSpacing: '0.3em', textAlign: 'center', fontSize: '1.1rem' }}
+              />
+              {credPinError && (
+                <div style={{ color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 700, marginTop: '8px' }}>
+                  {credPinError}
+                </div>
+              )}
+              <button
+                onClick={unlockCredentials}
+                style={{ ...styles.saveSubmitBtn, marginTop: '14px', width: '100%', backgroundColor: 'var(--ink)', color: 'var(--surface)', fontWeight: 900 }}
+                className="press-interactive"
+              >
+                Open credentials
+              </button>
+            </GlassCard>
+          ) : (
+            <>
+              {credLegacyCount > 0 && (
+                <GlassCard hoverable={false} style={{ padding: '14px 16px', borderLeft: '4px solid var(--warning)', zIndex: 1 }}>
+                  <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)' }}>
+                    {credLegacyCount} account{credLegacyCount === 1 ? '' : 's'} cannot be read yet
+                  </div>
+                  <div style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginTop: '4px', lineHeight: 1.5 }}>
+                    Their credentials were stored in the old one-way form, which cannot be reversed.
+                    They still work for signing in — set a new password or PIN below and it becomes readable from then on.
+                  </div>
+                </GlassCard>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
+                {credAccounts.map(account => {
+                  const editing = credEditing === account.id;
+                  const revealed = credRevealed[account.id];
+                  const isAuthenticator = account.role === 'authenticator';
+
+                  return (
+                    <GlassCard key={account.id} hoverable={false} style={{ padding: '14px' }}>
+                      <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                        <div style={{ flex: '1 1 240px', minWidth: '210px' }}>
+                          <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)', wordBreak: 'break-all' }}>
+                            {account.username}
+                          </div>
+                          <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '2px' }}>
+                            {roleLabel(account.role)}
+                            {account.slotIndex ? ` · slot ${account.slotIndex}` : ''}
+                            {account.campus && account.campus !== 'All' ? ` · ${account.campus}` : ''}
+                            {account.status === 'disabled' ? ' · inactive' : ''}
+                          </div>
+                        </div>
+
+                        <div style={{ flex: '2 1 340px', minWidth: '270px' }}>
+                          {!editing ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: '10px' }}>
+                              <div>
+                                <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Password</div>
+                                <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: account.passwordReadable ? 'var(--ink)' : 'var(--muted-gray)', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                  {!account.passwordReadable ? 'Not readable' : revealed ? account.password : '••••••••'}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>PIN</div>
+                                <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: account.pinReadable ? 'var(--ink)' : 'var(--muted-gray)', fontFamily: 'monospace' }}>
+                                  {!account.pinReadable ? 'Not readable' : revealed ? account.pin : '••••••'}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '10px' }}>
+                              <div>
+                                <label style={styles.formLabel}>Portal ID</label>
+                                <input maxLength={LIMITS.username} type="text" value={credDraft.username}
+                                  onChange={(e) => setCredDraft({ ...credDraft, username: e.target.value })}
+                                  style={styles.textInputBox} />
+                              </div>
+                              <div>
+                                <label style={styles.formLabel}>New password</label>
+                                <input maxLength={LIMITS.password} type="text" placeholder="leave blank to keep"
+                                  value={credDraft.password}
+                                  onChange={(e) => setCredDraft({ ...credDraft, password: e.target.value })}
+                                  style={styles.textInputBox} />
+                              </div>
+                              <div>
+                                <label style={styles.formLabel}>New PIN</label>
+                                <input maxLength={6} inputMode="numeric" type="text" placeholder="6 digits"
+                                  value={credDraft.pin}
+                                  onChange={(e) => setCredDraft({ ...credDraft, pin: digitsOnlyPin(e.target.value) })}
+                                  style={styles.textInputBox} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          {!editing ? (
+                            <>
+                              {(account.passwordReadable || account.pinReadable) && (
+                                <button
+                                  onClick={() => setCredRevealed(prev => ({ ...prev, [account.id]: !prev[account.id] }))}
+                                  style={{ ...styles.actionItemBtn, padding: '8px 14px', backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none' }}
+                                  className="press-interactive"
+                                >
+                                  {revealed ? 'Hide' : 'Show'}
+                                </button>
+                              )}
+                              {!isAuthenticator && (
+                                <button
+                                  onClick={() => {
+                                    setCredEditing(account.id);
+                                    setCredDraft({ username: account.username, password: '', pin: '' });
+                                  }}
+                                  style={{ ...styles.actionItemBtn, padding: '8px 14px', backgroundColor: 'var(--ink)', color: 'var(--surface)', border: 'none', fontWeight: 800 }}
+                                  className="press-interactive"
+                                >
+                                  Change
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => { setCredEditing(null); setCredDraft({ username: '', password: '', pin: '' }); }}
+                                style={{ ...styles.actionItemBtn, padding: '8px 14px', backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none' }}
+                                className="press-interactive"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                disabled={credSaving}
+                                onClick={() => saveCredential(account)}
+                                style={{ ...styles.actionItemBtn, padding: '8px 14px', backgroundColor: 'var(--good)', color: '#FFFFFF', border: 'none', fontWeight: 900, opacity: credSaving ? 0.6 : 1 }}
+                                className="press-interactive"
+                              >
+                                {credSaving ? 'Saving…' : 'Save'}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {isAuthenticator && (
+                        <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)', marginTop: '8px', fontWeight: 700 }}>
+                          The security authenticator cannot be changed from this portal.
+                        </div>
+                      )}
+                    </GlassCard>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </main>
+      </div>
+    );
+  }
+
+  if (activePage === 'clerks') {
+    const setSlot = (slotIndex: number, patch: Partial<ClerkSlot>) => {
+      setClerkDraft(prev => prev.map(s => (s.slotIndex === slotIndex ? { ...s, ...patch } : s)));
+    };
+
+    const togglePermission = (slotIndex: number, name: ClerkPermissionName) => {
+      setClerkDraft(prev => prev.map(s => {
+        if (s.slotIndex !== slotIndex) return s;
+        return { ...s, permissions: { ...s.permissions, [name]: !s.permissions[name] } };
+      }));
+    };
+
+    const switchCampus = (campus: string) => {
+      // Changing campus discards unsaved edits, so say so rather than losing
+      // them quietly.
+      if (clerkHasChanges() && !window.confirm(
+        `You have unsaved changes for ${clerkCampus}. Switch to ${campus} and discard them?`
+      )) return;
+      setClerkCampus(campus);
+      setClerkNewCredentials([]);
+      fetchClerks(campus);
+    };
+
+    const activeCount = clerkDraft.filter(s => s.status === 'active').length;
+    const dirty = clerkHasChanges();
+
+    /** A single on/off switch. */
+    const Toggle: React.FC<{ on: boolean; onClick: () => void; disabled?: boolean; label: string }> =
+      ({ on, onClick, disabled, label }) => (
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-label={label}
+          disabled={disabled}
+          onClick={onClick}
+          className="press-interactive"
+          style={{
+            width: '44px', height: '24px', borderRadius: '20px', position: 'relative',
+            border: `1.5px solid ${on ? 'var(--good)' : 'var(--line)'}`,
+            backgroundColor: on ? 'var(--good)' : 'var(--surface-sunken)',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            opacity: disabled ? 0.4 : 1,
+            transition: 'background-color 0.15s ease, border-color 0.15s ease',
+            flexShrink: 0
+          }}
+        >
+          <span style={{
+            position: 'absolute', top: '2px', left: on ? '22px' : '2px',
+            width: '17px', height: '17px', borderRadius: '50%',
+            backgroundColor: 'var(--surface)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+            transition: 'left 0.15s ease'
+          }} />
+        </button>
+      );
+
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('teal')}
+        <header style={styles.header}>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
+            Back to Cockpit
+          </button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Clerks</h1>
+          <p style={styles.subtitle}>
+            Seven clerk accounts per campus. Choose a campus, switch the accounts you need on,
+            and give each one only the powers it should have.
+          </p>
+        </header>
+
+        <main style={{ ...styles.content, gap: '16px' }}>
+          {/* Campus boxes */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px', zIndex: 1 }}>
+            {CAMPUS_LIST.map(campus => {
+              const selected = campus === clerkCampus;
+              return (
+                <div
+                  key={campus}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); switchCampus(campus); } }}
+                  onClick={() => switchCampus(campus)}
+                  className="press-interactive"
+                  style={{
+                    padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                    border: `2px solid ${selected ? 'var(--good)' : 'var(--line)'}`,
+                    backgroundColor: selected ? 'var(--good-wash)' : 'var(--surface)',
+                    transition: 'border-color 0.15s ease, background-color 0.15s ease'
+                  }}
+                >
+                  <div style={{
+                    fontSize: '0.6429rem', fontWeight: 900, textTransform: 'uppercase',
+                    letterSpacing: '0.05em', color: selected ? 'var(--good)' : 'var(--muted-gray)'
+                  }}>
+                    {selected ? 'Selected campus' : 'Campus'}
+                  </div>
+                  <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)', marginTop: '2px' }}>
+                    {campus}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Newly created credentials — shown once, never retrievable */}
+          {clerkNewCredentials.length > 0 && (
+            <GlassCard style={{ padding: '16px', border: '2px solid var(--warning)', backgroundColor: 'var(--warning-wash)' }}>
+              <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--warning)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                Write these down now
+              </div>
+              <div style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginBottom: '12px' }}>
+                These are the sign-in details for the clerk accounts you just switched on.
+                They are shown only this once and cannot be looked up again.
+              </div>
+              {clerkNewCredentials.map(cred => (
+                <div key={cred.username} style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
+                  gap: '8px', padding: '10px 0', borderTop: '1px solid var(--line)'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Slot {cred.slotIndex} — User ID</div>
+                    <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', wordBreak: 'break-all' }}>{cred.username}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Password</div>
+                    <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', fontFamily: 'monospace', wordBreak: 'break-all' }}>{cred.password}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>6-digit PIN</div>
+                    <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', fontFamily: 'monospace' }}>{cred.pin}</div>
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => setClerkNewCredentials([])}
+                style={{ ...styles.actionItemBtn, marginTop: '12px', padding: '8px 16px', backgroundColor: 'var(--ink)', color: 'var(--surface)', border: 'none' }}
+                className="press-interactive"
+              >
+                I have noted these down
+              </button>
+            </GlassCard>
+          )}
+
+          {/* Summary */}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', zIndex: 1 }}>
+            <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)' }}>
+              {activeCount} of {clerkDraft.length || 7} accounts active at {clerkCampus}
+            </span>
+            {dirty && (
+              <span style={{
+                fontSize: '0.6429rem', fontWeight: 900, padding: '3px 10px', borderRadius: '20px',
+                backgroundColor: 'var(--warning-wash)', color: 'var(--warning)',
+                border: '1px solid var(--warning)', textTransform: 'uppercase'
+              }}>
+                Unsaved changes
+              </span>
+            )}
+          </div>
+
+          {/* Slots */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1 }}>
+            {clerkDraft.map(slot => {
+              const isActive = slot.status === 'active';
+              return (
+                <GlassCard key={slot.slotIndex} style={{
+                  padding: '14px',
+                  borderLeft: `4px solid ${isActive ? 'var(--good)' : 'var(--line)'}`,
+                  opacity: isActive ? 1 : 0.72
+                }}>
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    {/* Left: which slot this is */}
+                    <div style={{ flex: '1 1 220px', minWidth: '200px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Toggle
+                          on={isActive}
+                          label={`Clerk ${slot.slotIndex} active`}
+                          onClick={() => setSlot(slot.slotIndex, { status: isActive ? 'inactive' : 'active' })}
+                        />
+                        <div>
+                          <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)' }}>
+                            Clerk {slot.slotIndex}
+                          </div>
+                          <div style={{ fontSize: '0.6429rem', fontWeight: 700, color: 'var(--muted-gray)', wordBreak: 'break-all' }}>
+                            {slot.exists ? slot.username : 'Not created yet'}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{
+                        marginTop: '8px', fontSize: '0.6429rem', fontWeight: 900,
+                        textTransform: 'uppercase', letterSpacing: '0.04em',
+                        color: isActive ? 'var(--good)' : 'var(--muted-gray)'
+                      }}>
+                        {isActive ? 'Active' : slot.exists ? 'Switched off' : 'Empty slot'}
+                      </div>
+                    </div>
+
+                    {/* Right: the five powers */}
+                    <div style={{ flex: '2 1 380px', minWidth: '280px' }}>
+                      {CLERK_PERMISSION_LABELS.map(perm => (
+                        <div key={perm.name} style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          gap: '12px', padding: '6px 0'
+                        }}>
+                          <div>
+                            <div style={{
+                              fontSize: '0.7857rem', fontWeight: 800,
+                              color: isActive ? 'var(--ink)' : 'var(--muted-gray)'
+                            }}>
+                              {perm.label}
+                            </div>
+                            <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)' }}>{perm.help}</div>
+                          </div>
+                          <Toggle
+                            on={slot.permissions[perm.name]}
+                            // A switched-off account cannot be given powers:
+                            // it is the account itself that is disabled, so a
+                            // granted permission would be meaningless and
+                            // would read as access that does not exist.
+                            disabled={!isActive}
+                            label={`${perm.label} for clerk ${slot.slotIndex}`}
+                            onClick={() => togglePermission(slot.slotIndex, perm.name)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </GlassCard>
+              );
+            })}
+          </div>
+
+          {/* Save */}
+          <div style={{
+            display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'flex-end',
+            flexWrap: 'wrap', paddingBottom: '16px', zIndex: 1
+          }}>
+            {dirty && (
+              <button
+                onClick={() => fetchClerks(clerkCampus)}
+                style={{ ...styles.actionItemBtn, padding: '10px 20px', backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none' }}
+                className="press-interactive"
+              >
+                Discard changes
+              </button>
+            )}
+            <button
+              disabled={!dirty || isSavingClerks}
+              onClick={() => { setClerkPinInput(''); setClerkPinError(''); setClerkPinPrompt(true); }}
+              style={{
+                ...styles.actionItemBtn, padding: '12px 32px', fontWeight: 900,
+                backgroundColor: dirty ? 'var(--good)' : 'var(--line)',
+                color: dirty ? '#FFFFFF' : 'var(--muted-gray)',
+                border: 'none', cursor: dirty ? 'pointer' : 'not-allowed'
+              }}
+              className="press-interactive"
+            >
+              {isSavingClerks ? 'Saving…' : 'Save Clerk Settings'}
+            </button>
+          </div>
+        </main>
+
+        {/* PIN confirmation — the one action in the app that still asks for it,
+            because it is what grants and revokes every other account's powers. */}
+        {clerkPinPrompt && (
+          <div style={styles.modalOverlay} onClick={() => { if (!isSavingClerks) setClerkPinPrompt(false); }}>
+            <GlassCard style={{ ...styles.modalContentCard, maxWidth: '420px' }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+              <h3 style={{ fontSize: '1.0714rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '6px' }}>
+                Confirm with your PIN
+              </h3>
+              <p style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginBottom: '14px', lineHeight: 1.5 }}>
+                You are changing who can do what at <strong>{clerkCampus}</strong>.
+                Enter your own six-digit PIN to save.
+              </p>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={LIMITS.pin}
+                autoFocus
+                value={clerkPinInput}
+                onChange={(e) => { setClerkPinInput(e.target.value.replace(/\D/g, '')); setClerkPinError(''); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && clerkPinInput.length === 6) saveClerksWithPin(); }}
+                placeholder="••••••"
+                style={{
+                  ...styles.textInputBox, textAlign: 'center', letterSpacing: '0.4em',
+                  fontSize: '1.2857rem', fontWeight: 900,
+                  borderColor: clerkPinError ? 'var(--critical)' : undefined
+                }}
+              />
+              {clerkPinError && (
+                <div role="alert" style={{
+                  marginTop: '8px', padding: '8px 10px', borderRadius: '8px',
+                  backgroundColor: 'var(--critical-wash)', border: '1px solid var(--critical)',
+                  color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 800
+                }}>
+                  {clerkPinError}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px' }}>
+                <button
+                  onClick={() => setClerkPinPrompt(false)}
+                  disabled={isSavingClerks}
+                  style={{ ...styles.actionItemBtn, padding: '10px 20px', backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none' }}
+                  className="press-interactive"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveClerksWithPin}
+                  disabled={isSavingClerks || clerkPinInput.length !== 6}
+                  style={{
+                    ...styles.actionItemBtn, padding: '10px 24px', fontWeight: 900, border: 'none',
+                    backgroundColor: clerkPinInput.length === 6 ? 'var(--good)' : 'var(--line)',
+                    color: clerkPinInput.length === 6 ? '#FFFFFF' : 'var(--muted-gray)',
+                    cursor: clerkPinInput.length === 6 ? 'pointer' : 'not-allowed'
+                  }}
+                  className="press-interactive"
+                >
+                  {isSavingClerks ? 'Saving…' : 'Confirm & Save'}
+                </button>
+              </div>
+            </GlassCard>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // SUBPAGE: ACTIVITY LOG (Rector only)
+  //
+  // Answers "which account made this transaction". Every row is one entry
+  // from the server-side audit trail; nothing here is derived or inferred, so
+  // what is shown is exactly what was recorded at the time of the action.
+  if (activePage === 'logs') {
+    // Colour by what the entry DID, not by which module it came from — a
+    // refusal and a deletion should read differently at a glance even though
+    // both concern the same record.
+    const toneFor = (entry: AuditLogEntry) => {
+      if (entry.outcome === 'denied') return { bg: 'var(--critical-wash)', text: 'var(--critical)', border: 'var(--critical)' };
+      if (entry.outcome === 'failed') return { bg: 'var(--warning-wash)', text: 'var(--warning)', border: 'var(--warning)' };
+      if (entry.action.endsWith('.delete')) return { bg: 'var(--critical-wash)', text: 'var(--critical)', border: 'var(--critical)' };
+      if (entry.action.startsWith('payment.') || entry.action.startsWith('salary.') || entry.action.startsWith('worker_payment.')) {
+        return { bg: 'var(--good-wash)', text: 'var(--good)', border: 'var(--good)' };
+      }
+      if (entry.action.startsWith('account.') || entry.action.startsWith('credential.')) {
+        return { bg: 'var(--accent-wash)', text: 'var(--accent)', border: 'var(--accent)' };
+      }
+      return { bg: 'var(--surface-sunken)', text: 'var(--ink-secondary)', border: 'var(--line)' };
+    };
+
+    const prettyAction = (action: string) =>
+      action.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+    const applyFilters = () => { setAuditPage(1); fetchAuditLogs(1); };
+
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('navy')}
+        <header style={styles.header}>
+          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
+            Back to Cockpit
+          </button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Activity Log</h1>
+          <p style={styles.subtitle}>
+            Every transaction and record change across all 4 campuses, and the account that made it.
+          </p>
+        </header>
+
+        <main style={{ ...styles.content, gap: '16px' }}>
+          {/* Filters */}
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', zIndex: 1 }}>
+            <input maxLength={100}
+              type="text"
+              placeholder="Search student, receipt, staff name..."
+              value={auditSearch}
+              onChange={(e) => setAuditSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') applyFilters(); }}
+              style={{ ...styles.textInputBox, flex: 2, minWidth: '220px' }}
+            />
+
+            <select value={auditFilterCampus} onChange={(e) => setAuditFilterCampus(e.target.value)}
+              style={{ ...styles.selectInput, flex: 1, minWidth: '170px' }}>
+              <option value="All">All Campuses</option>
+              {auditOptions.campuses.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+
+            <select value={auditFilterActor} onChange={(e) => setAuditFilterActor(e.target.value)}
+              style={{ ...styles.selectInput, flex: 1, minWidth: '170px' }}>
+              <option value="All">All Accounts</option>
+              {auditOptions.actors.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+
+            <select value={auditFilterAction} onChange={(e) => setAuditFilterAction(e.target.value)}
+              style={{ ...styles.selectInput, flex: 1, minWidth: '170px' }}>
+              <option value="All">All Activity</option>
+              {auditOptions.actions.map(a => <option key={a} value={a}>{prettyAction(a)}</option>)}
+            </select>
+
+            <input type="date" value={auditFrom} onChange={(e) => setAuditFrom(e.target.value)}
+              style={{ ...styles.textInputBox, flex: 1, minWidth: '140px' }} title="From date" />
+            <input type="date" value={auditTo} onChange={(e) => setAuditTo(e.target.value)}
+              style={{ ...styles.textInputBox, flex: 1, minWidth: '140px' }} title="To date" />
+
+            <button onClick={applyFilters}
+              style={{ ...styles.actionItemBtn, padding: '10px 18px', backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 900 }}
+              className="press-interactive">
+              Apply
+            </button>
+            <button
+              onClick={() => {
+                setAuditFilterCampus('All'); setAuditFilterActor('All'); setAuditFilterAction('All');
+                setAuditSearch(''); setAuditFrom(''); setAuditTo('');
+                setAuditPage(1);
+                // Read the cleared values directly rather than from state,
+                // which has not re-rendered yet at this point.
+                admin1Service.getLogs({ page: 1, limit: 50 }).then(r => {
+                  setAuditLogs(r.entries || []); setAuditPage(r.page || 1);
+                  setAuditTotalPages(r.totalPages || 1); setAuditTotal(r.total || 0);
+                  setAuditTotalAmount(r.totalAmount || 0);
+                }).catch(() => triggerToast('Could not reload the activity log.', 'error'));
+              }}
+              style={{ ...styles.actionItemBtn, padding: '10px 18px', backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none' }}
+              className="press-interactive">
+              Clear
+            </button>
+          </div>
+
+          {/* Summary of the FILTERED set, so a narrowed view totals itself. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px', zIndex: 1 }}>
+            <GlassCard style={{ padding: '14px' }}>
+              <div style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Entries</div>
+              <div style={{ fontSize: '1.2857rem', fontWeight: 900, color: 'var(--ink)' }}>{auditTotal.toLocaleString('en-IN')}</div>
+            </GlassCard>
+            <GlassCard style={{ padding: '14px' }}>
+              <div style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Value Moved</div>
+              <div style={{ fontSize: '1.2857rem', fontWeight: 900, color: 'var(--good)' }}>Rs. {auditTotalAmount.toLocaleString('en-IN')}</div>
+            </GlassCard>
+            <GlassCard style={{ padding: '14px' }}>
+              <div style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Page</div>
+              <div style={{ fontSize: '1.2857rem', fontWeight: 900, color: 'var(--ink)' }}>{auditPage} of {auditTotalPages}</div>
+            </GlassCard>
+          </div>
+
+          {/* Trail */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
+            {auditLogs.length === 0 && (
+              <GlassCard style={{ padding: '28px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.9286rem', fontWeight: 800, color: 'var(--ink-secondary)' }}>
+                  No activity recorded for these filters.
+                </div>
+                <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '6px' }}>
+                  The log records actions from the moment it was switched on — it cannot show anything that happened before that.
+                </div>
+              </GlassCard>
+            )}
+
+            {auditLogs.map(entry => {
+              const tone = toneFor(entry);
+              const isOpen = auditExpandedId === entry._id;
+              const when = new Date(entry.createdAt);
+              return (
+                <GlassCard
+                  key={entry._id}
+                  style={{ padding: '12px 14px', borderLeft: `4px solid ${tone.border}`, cursor: 'pointer' }}
+                  onClick={() => setAuditExpandedId(isOpen ? null : entry._id)}
+                >
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '260px' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '4px' }}>
+                        <span style={{
+                          padding: '2px 8px', borderRadius: '20px', fontSize: '0.6429rem', fontWeight: 900,
+                          backgroundColor: tone.bg, color: tone.text, border: `1px solid ${tone.border}`,
+                          textTransform: 'uppercase', letterSpacing: '0.04em'
+                        }}>
+                          {prettyAction(entry.action)}
+                        </span>
+                        {entry.outcome !== 'success' && (
+                          <span style={{ fontSize: '0.6429rem', fontWeight: 900, color: 'var(--critical)', textTransform: 'uppercase' }}>
+                            {entry.outcome}
+                          </span>
+                        )}
+                        {entry.campus && (
+                          <span style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)' }}>{entry.campus}</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink)', lineHeight: 1.45 }}>
+                        {entry.summary}
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right', minWidth: '150px' }}>
+                      <div style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--ink)' }}>
+                        {entry.actorUsername}
+                      </div>
+                      <div style={{ fontSize: '0.6429rem', fontWeight: 700, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>
+                        {entry.actorRole}
+                      </div>
+                      <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                        {when.toLocaleDateString('en-IN')} · {when.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {isOpen && (
+                    <div style={{
+                      marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--line)',
+                      display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '8px'
+                    }}>
+                      {entry.entityLabel && (
+                        <div>
+                          <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Record</div>
+                          <div style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink)' }}>{entry.entityLabel}</div>
+                        </div>
+                      )}
+                      {entry.entityId && (
+                        <div>
+                          <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Reference</div>
+                          <div style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink)' }}>{entry.entityId}</div>
+                        </div>
+                      )}
+                      {entry.amount !== null && entry.amount !== undefined && (
+                        <div>
+                          <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Amount</div>
+                          <div style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--good)' }}>Rs. {Number(entry.amount).toLocaleString('en-IN')}</div>
+                        </div>
+                      )}
+                      {Object.entries(entry.details || {}).map(([key, value]) => (
+                        <div key={key}>
+                          <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>
+                            {key.replace(/([A-Z])/g, ' $1')}
+                          </div>
+                          <div style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink)', wordBreak: 'break-word' }}>
+                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </GlassCard>
+              );
+            })}
+          </div>
+
+          {/* Pagination */}
+          {auditTotalPages > 1 && (
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', alignItems: 'center', zIndex: 1, paddingBottom: '10px' }}>
+              <button
+                disabled={auditPage <= 1}
+                onClick={() => fetchAuditLogs(auditPage - 1)}
+                style={{
+                  ...styles.actionItemBtn, padding: '8px 16px',
+                  backgroundColor: auditPage <= 1 ? 'var(--line)' : 'var(--ink)',
+                  color: auditPage <= 1 ? 'var(--muted-gray)' : 'var(--surface)',
+                  border: 'none', cursor: auditPage <= 1 ? 'not-allowed' : 'pointer'
+                }}
+                className="press-interactive">
+                ← Newer
+              </button>
+              <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)' }}>
+                Page {auditPage} of {auditTotalPages}
+              </span>
+              <button
+                disabled={auditPage >= auditTotalPages}
+                onClick={() => fetchAuditLogs(auditPage + 1)}
+                style={{
+                  ...styles.actionItemBtn, padding: '8px 16px',
+                  backgroundColor: auditPage >= auditTotalPages ? 'var(--line)' : 'var(--ink)',
+                  color: auditPage >= auditTotalPages ? 'var(--muted-gray)' : 'var(--surface)',
+                  border: 'none', cursor: auditPage >= auditTotalPages ? 'not-allowed' : 'pointer'
+                }}
+                className="press-interactive">
+                Older →
+              </button>
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
   // SUBPAGE: ADMISSION ENQUIRIES DESK
   if (activePage === 'enquiries') {
+    // Admission enquiries are not among the five clerk powers.
+    if (role !== 'admin1') { setActivePage('menu'); return null; }
+
     const filteredEnquiries = enquiriesList.filter(e => {
       const matchSearch = !searchEnquiry ||
         (e.studentName || '').toLowerCase().includes(searchEnquiry.toLowerCase()) ||
@@ -4142,6 +5301,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   //  SUBPAGE 12: STUDENT FEE EDITOR (Admin 2)
   if (activePage === 'fee_editor') {
+    // Waivers are the Rector's alone. A clerk reaching this page by URL or by
+    // a stale hash gets sent back rather than shown a screen whose every
+    // action the server would refuse.
+    if (role !== 'admin1') { setActivePage('menu'); return null; }
+
     const filteredFeeStudents = students.filter((student) => matchesStudentQuery(student, feeEditSearch));
     const feeEditorPageSize = 20;
     const feeEditorTotalPages = Math.max(1, Math.ceil(filteredFeeStudents.length / feeEditorPageSize));
@@ -4634,10 +5798,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     );
   }
 
-  //  SUBPAGE 13: LATE FEES & SCHOLARSHIPS (Admin 2)
-
-  //  SUBPAGE 14: EXPENDITURE TRACKER (Admin 2)
+  //  SUBPAGE: EXPENDITURE TRACKER
   if (activePage === 'expenditure') {
+    if (!clerkCan('logExpenditures')) { setActivePage('menu'); return null; }
+
     const handleLogExpenditure = async (keyToUse?: string) => {
       if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; }
       const finalCategory = newExpCat === 'Others' ? (customExpCat.trim() || 'Others') : newExpCat;
@@ -4813,7 +5977,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           {/* Admin 1 Branch Overview Cards */}
           {role === 'admin1' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: '10px', marginBottom: '16px', zIndex: 1 }}>
-              {['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'].map(b => {
+              {CAMPUS_LIST.map(b => {
                 const total = getBranchTotal(b);
                 const isActive = selectedExpBranch === b;
                 return (
@@ -4976,7 +6140,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   //  SUBPAGE 15: STAFF SALARY STATUS (Admin 2)
   if (activePage === 'salary_status') {
-    const teacherList: any[] = teachers.filter(t => role === 'admin2' ? t.branch === loggedInCampus : true);
+    const teacherList: any[] = teachers.filter(t => role === 'clerk' ? t.branch === loggedInCampus : true);
     const salaryPageSize = 20;
     const salaryTotalPages = Math.max(1, Math.ceil(teacherList.length / salaryPageSize));
     const salaryCurrentPage = Math.min(salaryPage, salaryTotalPages);
@@ -5210,7 +6374,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             amount: Number(data.amountPaid || data.amount || data.salary || 0),
             monthPeriod: new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
             paid: true,
-            branch: role === 'admin2' ? loggedInCampus : (data.branch || loggedInCampus)
+            branch: role === 'clerk' ? loggedInCampus : (data.branch || loggedInCampus)
           };
           await admin2Service.createWorkerPayment(payload as any);
           triggerToast(`Worker payment for ${payload.workerName} recorded successfully!`);
@@ -5707,12 +6871,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
           clearance: 'Level 1 Clearance',
           registry: 'Global Institution ERP'
         };
-      } else if (role === 'admin2') {
+      } else if (role === 'clerk') {
         return {
-          initials: 'CP',
-          name: user?.name || 'Dr. Ramesh Rao (Dean)',
-          title: `${loggedInCampus} Campus Principal Dean`,
-          clearance: `Level 2 Operations Clearance (${loggedInCampus})`,
+          initials: 'CL',
+          // Falls back to the role, not to an invented person. The old
+          // fallback was a hardcoded name that appeared on any clerk account
+          // whose own name had not been set.
+          name: user?.name || `Clerk — ${loggedInCampus}`,
+          title: `${loggedInCampus} Campus Clerk`,
+          clearance: `Campus Clerk Access (${loggedInCampus})`,
           registry: 'Campus Operations ERP Cockpit'
         };
       } else {
@@ -5759,34 +6926,34 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
   return (
     <div style={styles.container} className="anim-slide-up">
-      <PortalDataLoader visible={isPageLoading} colorAccent={role === 'admin2' ? 'var(--accent)' : 'var(--warning)'} />
+      <PortalDataLoader visible={isPageLoading} colorAccent={role === 'clerk' ? 'var(--accent)' : 'var(--warning)'} />
       {renderBackgroundDesign('gold')}
 
       {/* Top Welcome Title Bar */}
       <header style={styles.header}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', zIndex: 1 }}>
           <div style={styles.parentWelcomeRow}>
-            <div style={styles.avatarMini}>{role === 'admin1' ? 'RC' : role === 'admin2' ? 'CP' : 'AR'}</div>
+            <div style={styles.avatarMini}>{role === 'admin1' ? 'RC' : role === 'clerk' ? 'CL' : 'AR'}</div>
             <div>
               <span style={styles.greetingText}>
                 {role === 'admin1'
                   ? 'General Principal Rector,'
-                  : role === 'admin2'
-                    ? 'Campus Principal Dean,'
+                  : role === 'clerk'
+                    ? 'Campus Clerk,'
                     : 'Academic Registrar,'}
               </span>
               <h2 style={styles.parentWelcomeTitle}>
                 {role === 'admin1'
                   ? 'Rector General Cockpit'
-                  : role === 'admin2'
+                  : role === 'clerk'
                     ? 'Campus Operations Cockpit'
                     : 'Academic & Publishing Cockpit'}
               </h2>
               <p style={styles.childMetaText}>
                 {role === 'admin1'
                   ? 'Superintendent Coordinator (All 4 Campuses)'
-                  : role === 'admin2'
-                    ? `Principal Coordinator (${loggedInCampus})`
+                  : role === 'clerk'
+                    ? `Campus Clerk (${loggedInCampus})`
                     : 'Independent Student Data Registrar'}
               </p>
             </div>
@@ -5872,13 +7039,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               // list silently produced different figures from the ledger.
               <AnalyticsDashboard />
             ) : null
-          ) : role === 'admin2' ? (
+          ) : role === 'clerk' ? (
             // Deliberately nothing. A dean's job here is faculty and the
             // expenditure ledger; the analytics dashboard was noise on top of
             // those two and is now Rector-only. The endpoint still scopes by
             // campus server-side, so this is a presentation decision, not a
             // permission one — removing the panel takes nothing away that an
-            // admin2 is entitled to see elsewhere.
+            // a clerk is entitled to see elsewhere.
             null
           ) : role === '__unreachable_legacy_admin2__' ? (
             (() => {
@@ -5966,7 +7133,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         {(role !== 'admin1' || admin1Tab === 'dashboard') && (
           <section style={styles.section}>
             <h3 style={styles.sectionTitle}>
-              {role === 'admin1' ? 'Operations Modules' : role === 'admin2' ? 'Finance & Staff Modules' : 'Academic Modules'}
+              {role === 'admin1' ? 'Operations Modules' : role === 'clerk' ? 'Finance & Staff Modules' : 'Academic Modules'}
             </h3>
 
             {role === 'admin1' ? (
@@ -6019,6 +7186,38 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <p style={styles.moduleDesc}>View and manage prospective student enquiries from portfolio.</p>
                 </div>
 
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('clerks'); } }} onClick={() => setActivePage('clerks')} style={styles.moduleCardNew} className="press-interactive">
+                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.18)' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                  </div>
+                  <h4 style={styles.moduleTitle}>Clerks</h4>
+                  <p style={styles.moduleDesc}>Switch clerk accounts on or off and choose what each one can do.</p>
+                </div>
+
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('collect_fees'); } }} onClick={() => setActivePage('collect_fees')} style={styles.moduleCardNew} className="press-interactive">
+                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
+                  </div>
+                  <h4 style={styles.moduleTitle}>Collect Fees</h4>
+                  <p style={styles.moduleDesc}>Choose a campus and take student payments.</p>
+                </div>
+
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('logs'); } }} onClick={() => setActivePage('logs')} style={styles.moduleCardNew} className="press-interactive">
+                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(30,58,138,0.07)', border: '1px solid rgba(30,58,138,0.18)' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1E3A8A" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>
+                  </div>
+                  <h4 style={styles.moduleTitle}>Activity Log</h4>
+                  <p style={styles.moduleDesc}>See which account made every transaction and record change.</p>
+                </div>
+
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('credentials'); } }} onClick={() => setActivePage('credentials')} style={styles.moduleCardNew} className="press-interactive">
+                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.18)' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--critical)" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                  </div>
+                  <h4 style={styles.moduleTitle}>Credentials</h4>
+                  <p style={styles.moduleDesc}>View and change the portal ID, password and PIN of every account.</p>
+                </div>
+
                 <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('profile'); } }} onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-secondary)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
@@ -6028,40 +7227,70 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
               </div>
 
-            ) : role === 'admin2' ? (
+            ) : role === 'clerk' ? (
+              /* A clerk sees ONLY what the Rector has granted. The five
+                 permissions map onto these modules; a clerk with nothing
+                 granted gets an explanatory card rather than an empty screen
+                 that reads as broken. Faculty ledger and Admission Enquiries
+                 used to sit here and are not among the five, so they are now
+                 the Rector's alone. */
               <div className="grid-container">
-                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('expenditure'); } }} onClick={() => setActivePage('expenditure')} style={styles.moduleCardNew} className="module-card press-interactive">
-                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                {clerkCan('addStudent') && (
+                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('students'); setNewStuFormPage(1); setIsStudentHoverModalOpen(true); } }} onClick={() => { setActivePage('students'); setNewStuFormPage(1); setIsStudentHoverModalOpen(true); }} style={styles.moduleCardNew} className="module-card press-interactive">
+                    <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                    </div>
+                    <h4 style={styles.moduleTitle}>+ Add Student Admission</h4>
+                    <p style={styles.moduleDesc}>Register a new student at {loggedInCampus}.</p>
                   </div>
-                  <h4 style={styles.moduleTitle}>Campus Expenditures</h4>
-                  <p style={styles.moduleDesc}>Log and track local expenditures of {loggedInCampus}.</p>
-                </div>
+                )}
 
-                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('teachers'); } }} onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="press-interactive">
-                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+                {clerkCan('editStudent') && (
+                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('students'); } }} onClick={() => setActivePage('students')} style={styles.moduleCardNew} className="module-card press-interactive">
+                    <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2"><circle cx="12" cy="7" r="4" /><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg>
+                    </div>
+                    <h4 style={styles.moduleTitle}>Students Registry</h4>
+                    <p style={styles.moduleDesc}>View and edit student records for {loggedInCampus}.</p>
                   </div>
-                  <h4 style={styles.moduleTitle}>Faculty & Staff 12-Month Ledger</h4>
-                  <p style={styles.moduleDesc}>Manage campus teachers & 12-month salary ledgers for {loggedInCampus}.</p>
-                </div>
+                )}
 
-                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('enquiries'); } }} onClick={() => setActivePage('enquiries')} style={styles.moduleCardNew} className="press-interactive">
-                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.22)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+                {clerkCan('collectFees') && (
+                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('fee_collection'); } }} onClick={() => setActiveTab('fee_collection')} style={styles.moduleCardNew} className="module-card press-interactive">
+                    <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
+                    </div>
+                    <h4 style={styles.moduleTitle}>Collect Student Fees</h4>
+                    <p style={styles.moduleDesc}>Take payments and raise receipts for {loggedInCampus}.</p>
                   </div>
-                  <h4 style={styles.moduleTitle}>Admission Enquiries</h4>
-                  <p style={styles.moduleDesc}>View incoming student enquiries for {loggedInCampus}.</p>
-                </div>
+                )}
 
+                {clerkCan('logExpenditures') && (
+                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('expenditure'); } }} onClick={() => setActivePage('expenditure')} style={styles.moduleCardNew} className="module-card press-interactive">
+                    <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.18)' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                    </div>
+                    <h4 style={styles.moduleTitle}>Campus Expenditures</h4>
+                    <p style={styles.moduleDesc}>Log and track local expenditures of {loggedInCampus}.</p>
+                  </div>
+                )}
 
+                {!clerkCan('addStudent') && !clerkCan('editStudent') && !clerkCan('collectFees') && !clerkCan('logExpenditures') && (
+                  <GlassCard hoverable={false} style={{ padding: '24px', gridColumn: '1 / -1' }}>
+                    <h4 style={{ ...styles.moduleTitle, marginBottom: '6px' }}>No permissions yet</h4>
+                    <p style={styles.moduleDesc}>
+                      Your clerk account is active but has not been given any powers.
+                      Ask the Rector to enable what you need from the Clerks screen.
+                    </p>
+                  </GlassCard>
+                )}
 
                 <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('profile'); } }} onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-secondary)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                   </div>
-                  <h4 style={styles.moduleTitle}>Campus Dean Profile</h4>
-                  <p style={styles.moduleDesc}>Review {loggedInCampus} principal dean credentials.</p>
+                  <h4 style={styles.moduleTitle}>Clerk Profile</h4>
+                  <p style={styles.moduleDesc}>Review your {loggedInCampus} clerk account details.</p>
                 </div>
               </div>
 
@@ -6081,7 +7310,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
         {/* Terminate Session */}
         <button onClick={handleLogout} style={{ ...styles.logoutBtn, marginTop: '8px' }} className="press-interactive">
-          Terminate Director Session
+          Sign Out
         </button>
 
         {/* Footer */}

@@ -32,8 +32,47 @@ export type TabType =
   | 'fees'
   | 'home'
   | string;
-export type PortalRoleType = 'admin1' | 'admin2' | 'accountant' | 'authenticator';
+export type PortalRoleType = 'admin1' | 'clerk' | 'accountant' | 'authenticator';
+
+/**
+ * Which portal a signed-in account gets.
+ *
+ * This existed as three identical inline chains — in login, forceLogin and
+ * checkSession — so a change to the mapping had to be made in three places
+ * and would have been wrong in whichever one was missed.
+ *
+ * 'admin2' is still recognised because an account may not have been migrated
+ * to 'clerk' yet; both land on the clerk portal, which is what the server's
+ * normalizeRole does with the same value.
+ */
+export const portalRoleFor = (rawRole: string): PortalRoleType => {
+  const role = (rawRole || '').toLowerCase();
+  if (role.includes('accountant') || role.includes('acc')) return 'accountant';
+  if (role.includes('clerk') || role.includes('admin2') || role.includes('principal')) return 'clerk';
+  if (role.includes('authenticator') || role.includes('security')) return 'authenticator';
+  return 'admin1';
+};
 export type ThemeModeType = 'Light' | 'Dark' | 'System';
+
+export type ClerkPermissionKey =
+  | 'addStudent' | 'editStudent' | 'editFees' | 'collectFees' | 'logExpenditures';
+
+/**
+ * Whether the signed-in account may do something.
+ *
+ * Presentation only. Every one of these is re-checked on the server by
+ * requirePermission, because a hidden button stops nobody who can type a URL
+ * — this exists so a clerk is not shown modules that would refuse them.
+ *
+ * admin1 and accountant are unrestricted here for the same reason the server
+ * treats them so: admin1 is the account that grants these, and the
+ * accountant's abilities are fixed by its own routes.
+ */
+export const accountCan = (user: any, permission: ClerkPermissionKey): boolean => {
+  const role = portalRoleFor(user?.role || '');
+  if (role === 'admin1' || role === 'accountant' || role === 'authenticator') return true;
+  return user?.permissions?.[permission] === true;
+};
 
 interface NavigationContextType {
   activeTab: TabType;
@@ -41,6 +80,17 @@ interface NavigationContextType {
   portalRole: PortalRoleType;
   setPortalRole: (role: PortalRoleType) => void;
   isMobile: boolean;
+  /**
+   * The campus an org-wide account is currently acting on.
+   *
+   * Only the Rector needs this: every other role is pinned to one campus by
+   * its own account, and modules read it from there. The Rector has campus
+   * "All", so a module that acts on exactly one campus — fee collection —
+   * has to be told which, and this carries that choice across the navigation
+   * that mounts it.
+   */
+  selectedCampus: string;
+  setSelectedCampus: (campus: string) => void;
   themeMode: ThemeModeType;
   setThemeMode: (mode: ThemeModeType) => void;
   theme: 'light' | 'dark';
@@ -69,6 +119,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
   });
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [selectedCampus, setSelectedCampus] = useState<string>('');
 
   // Auth states
   const [user, setUser] = useState<any>(null);
@@ -81,6 +132,27 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       window.history.pushState(null, '', '#/' + tab);
     }
   };
+
+  /**
+   * Keep activeTab in step with the address bar.
+   *
+   * Navigation was one-way: setActiveTab wrote the hash, but editing the hash
+   * or pressing Back never wrote activeTab. The portal therefore kept showing
+   * whatever module the tab still named, regardless of the URL — which
+   * stranded a clerk inside fee collection, because that module is chosen by
+   * activeTab and nothing they could do from the address bar changed it.
+   *
+   * pushState does not raise hashchange, so this cannot loop with the setter
+   * above; it only fires for a real navigation the user performed.
+   */
+  useEffect(() => {
+    const syncFromHash = () => {
+      const tab = window.location.hash.replace(/^#\/?/, '').trim();
+      if (tab && tab !== activeTab) setActiveTabState(tab);
+    };
+    window.addEventListener('hashchange', syncFromHash);
+    return () => window.removeEventListener('hashchange', syncFromHash);
+  }, [activeTab]);
 
   const login = async (identifier: string, pin: string, loginContext?: string, password?: string) => {
     setIsAuthLoading(true);
@@ -100,16 +172,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       setUser(userData);
       setIsAuthenticated(true);
 
-      const normRole = (userData.role || '').toLowerCase();
-      if (normRole.includes('accountant') || normRole.includes('acc')) {
-        setPortalRole('accountant');
-      } else if (normRole.includes('admin2') || normRole.includes('principal')) {
-        setPortalRole('admin2');
-      } else if (normRole.includes('authenticator') || normRole.includes('security')) {
-        setPortalRole('authenticator');
-      } else {
-        setPortalRole('admin1');
-      }
+      setPortalRole(portalRoleFor(userData.role));
 
       return userData;
     } catch (error: any) {
@@ -140,16 +203,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       setUser(userData);
       setIsAuthenticated(true);
 
-      const normRole = (userData.role || '').toLowerCase();
-      if (normRole.includes('accountant') || normRole.includes('acc')) {
-        setPortalRole('accountant');
-      } else if (normRole.includes('admin2') || normRole.includes('principal')) {
-        setPortalRole('admin2');
-      } else if (normRole.includes('authenticator') || normRole.includes('security')) {
-        setPortalRole('authenticator');
-      } else {
-        setPortalRole('admin1');
-      }
+      setPortalRole(portalRoleFor(userData.role));
 
       return userData;
     } catch (error) {
@@ -207,16 +261,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       setUser(userData);
       setIsAuthenticated(true);
 
-      const normRoleCheck = (userData.role || '').toLowerCase();
-      if (normRoleCheck.includes('accountant') || normRoleCheck.includes('acc')) {
-        setPortalRole('accountant');
-      } else if (normRoleCheck.includes('admin2') || normRoleCheck.includes('principal')) {
-        setPortalRole('admin2');
-      } else if (normRoleCheck.includes('authenticator') || normRoleCheck.includes('security')) {
-        setPortalRole('authenticator');
-      } else {
-        setPortalRole('admin1');
-      }
+      setPortalRole(portalRoleFor(userData.role));
 
       return true;
     } catch (error: any) {
@@ -321,6 +366,8 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
         portalRole,
         setPortalRole,
         isMobile,
+        selectedCampus,
+        setSelectedCampus,
         themeMode,
         setThemeMode,
         theme,
