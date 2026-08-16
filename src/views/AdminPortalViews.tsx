@@ -4438,7 +4438,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                                 value={editSlotWaivers[slotKey] !== undefined ? editSlotWaivers[slotKey] : ''}
                                 placeholder="0"
                                 onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
+                                  // `max` on a number input is advisory — it styles the field
+                                  // invalid but does not stop typing, so the old handler took
+                                  // any number of digits and the waiver was only refused by
+                                  // the server on submit. Clamp to the slot's own base here so
+                                  // the ceiling is the one printed under the field.
+                                  const raw = parseFloat(e.target.value) || 0;
+                                  const slotBase = Number(slot.amount) || 0;
+                                  const val = Math.min(Math.max(0, raw), slotBase);
                                   setEditSlotWaivers(prev => ({ ...prev, [slotKey]: val }));
                                 }}
                                 style={styles.textInputBox}

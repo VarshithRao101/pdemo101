@@ -82,6 +82,20 @@ html, body {
 }
 .page { max-width: 182mm; margin: 0 auto; }
 
+/* --- One-page fitting --------------------------------------------------
+   Every document in this app is meant to come out as a single sheet. The
+   content is wrapped in .pdf-fit so the opener can measure it (the print
+   button is outside the wrapper and must not count towards the height) and
+   scale it down until it fits.
+
+   The shell exists because a transform is purely visual: a scaled element
+   still occupies its original height in layout, which would push a blank
+   second page. The opener sets the shell's height to the SCALED height so
+   the layout box matches what is actually drawn. Both are left untouched
+   when the document already fits, which is the common case. */
+.pdf-fit { transform-origin: top left; display: flow-root; }
+.pdf-fit-shell { overflow: hidden; }
+
 /* --- Frame ------------------------------------------------------------
    A single hairline. The earlier version used a heavy border with a second
    inset keyline, which fought the content for attention on a page whose job
@@ -90,7 +104,7 @@ html, body {
    Single-page documents only: a bordered box spanning pages draws its top
    edge on the first page and its bottom on the last, leaving middle pages
    open on two sides. */
-.pdf-frame { border: 1px solid ${C.line}; padding: 8mm; }
+.pdf-frame { border: 1px solid ${C.line}; padding: 6mm; }
 
 /* --- Letterhead -------------------------------------------------------
    The logo is the letterhead. It already contains the college name, the
@@ -98,17 +112,17 @@ html, body {
    print it twice. */
 .pdf-hdr {
   text-align: center;
-  padding-bottom: 12px; margin-bottom: 6px;
+  padding-bottom: 8px; margin-bottom: 4px;
   border-bottom: 1px solid ${C.ink};
 }
-.pdf-logo { width: 260px; max-width: 62%; height: auto; display: block; margin: 0 auto 12px; }
+.pdf-logo { width: 200px; max-width: 50%; height: auto; display: block; margin: 0 auto 8px; }
 .pdf-sub {
   color: ${C.inkSecondary}; font-size: 8.5px;
   letter-spacing: .16em; text-transform: uppercase;
 }
 .pdf-meta {
   display: flex; justify-content: space-between; align-items: baseline;
-  padding: 7px 0 0; margin-bottom: 16px;
+  padding: 5px 0 0; margin-bottom: 10px;
   font-size: 8px; color: ${C.inkSecondary};
   letter-spacing: .1em; text-transform: uppercase;
 }
@@ -117,7 +131,7 @@ html, body {
 /* --- Detail block ----------------------------------------------------- */
 .pdf-card {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 20px;
-  padding: 12px 0 14px; margin-bottom: 4px;
+  padding: 8px 0 10px; margin-bottom: 3px;
   border-bottom: 1px solid ${C.line};
 }
 .pdf-card .k { display: block; font-size: 7.5px; font-weight: 600; color: ${C.inkMuted}; text-transform: uppercase; letter-spacing: .1em; }
@@ -127,7 +141,7 @@ html, body {
 .pdf-sec {
   font-size: 8.5px; font-weight: 700; color: ${C.ink};
   text-transform: uppercase; letter-spacing: .16em;
-  margin: 20px 0 8px; padding-bottom: 5px;
+  margin: 12px 0 6px; padding-bottom: 4px;
   border-bottom: 1px solid ${C.line};
 }
 
@@ -137,12 +151,12 @@ html, body {
    the darkest thing on the page. */
 .pdf-tbl { width: 100%; border-collapse: collapse; font-size: 10.5px; }
 .pdf-tbl th {
-  padding: 7px 8px 6px; text-align: left;
+  padding: 5px 6px 4px; text-align: left;
   font-size: 7.5px; font-weight: 700; color: ${C.inkSecondary};
   text-transform: uppercase; letter-spacing: .1em;
   border-bottom: 1px solid ${C.ink};
 }
-.pdf-tbl td { padding: 7px 8px; border-bottom: 1px solid ${C.line}; vertical-align: top; }
+.pdf-tbl td { padding: 4px 6px; border-bottom: 1px solid ${C.line}; vertical-align: top; }
 .pdf-tbl .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* The one way to emphasise a figure. Call sites used to set colour and weight
    inline, differently in each document; with a greyscale palette those became
@@ -156,7 +170,7 @@ html, body {
 .pdf-bar > span { display: block; height: 5px; background: ${C.ink}; }
 
 /* Small boxed note, for a summary line inside a report. */
-.pdf-callout { padding: 10px 12px; background: ${C.surfaceSunken}; font-size: 10.5px; }
+.pdf-callout { padding: 8px 10px; background: ${C.surfaceSunken}; font-size: 10px; }
 .pdf-callout-row { display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; color: ${C.ink}; }
 .pdf-tbl .muted { color: ${C.inkMuted}; text-align: center; padding: 18px; }
 .pdf-tbl tr.credit td { color: ${C.inkSecondary}; }
@@ -176,12 +190,12 @@ html, body {
    four buttons; these read as a summary. */
 .pdf-tiles {
   display: grid; grid-template-columns: repeat(4, 1fr);
-  margin-top: 18px; border-top: 1px solid ${C.ink}; border-bottom: 1px solid ${C.line};
+  margin-top: 10px; border-top: 1px solid ${C.ink}; border-bottom: 1px solid ${C.line};
 }
-.pdf-tile { padding: 12px 14px; border-right: 1px solid ${C.line}; }
+.pdf-tile { padding: 8px 10px; border-right: 1px solid ${C.line}; }
 .pdf-tile:last-child { border-right: none; }
 .pdf-tile .k { font-size: 7.5px; font-weight: 600; color: ${C.inkMuted}; text-transform: uppercase; letter-spacing: .1em; }
-.pdf-tile .v { display: block; margin-top: 5px; font-size: 15px; font-weight: 700; color: ${C.ink}; font-variant-numeric: tabular-nums; }
+.pdf-tile .v { display: block; margin-top: 3px; font-size: 13px; font-weight: 700; color: ${C.ink}; font-variant-numeric: tabular-nums; }
 /* Emphasis is weight and rule, never hue. */
 .pdf-tile.good .v, .pdf-tile.warn .v { color: ${C.ink}; }
 .pdf-tile.due { background: ${C.surfaceSunken}; }
@@ -199,13 +213,13 @@ html, body {
 
 /* --- Footer ------------------------------------------------------------ */
 .pdf-ftr {
-  margin-top: 30px; padding-top: 10px;
+  margin-top: 16px; padding-top: 8px;
   border-top: 1px solid ${C.line};
   display: flex; justify-content: space-between; align-items: flex-end;
   font-size: 8px; color: ${C.inkMuted}; line-height: 1.6;
 }
 .pdf-sig {
-  width: 150px; margin-top: 34px; padding-top: 6px;
+  width: 150px; margin-top: 20px; padding-top: 5px;
   border-top: 1px solid ${C.ink}; text-align: center;
   font-size: 7.5px; font-weight: 600; color: ${C.ink};
   text-transform: uppercase; letter-spacing: .12em;
@@ -361,6 +375,105 @@ export interface OpenPrintOptions {
   framed?: boolean;
 }
 
+/** CSS absolute units: 1mm is 96/25.4 px by definition, at any zoom. */
+const MM_TO_PX = 96 / 25.4;
+
+/**
+ * The smallest the content may be shrunk.
+ *
+ * Below about half size the figures on a fee statement stop being readable in
+ * print, and an unreadable single page is worse than two readable ones. A
+ * document that still does not fit at this scale — a ledger with a few hundred
+ * rows — is allowed to run on rather than be reduced to noise.
+ */
+const MIN_FIT_SCALE = 0.5;
+
+/**
+ * Shrinks the document until it fits on exactly one sheet.
+ *
+ * Measured in millimetres against the real printable area rather than against
+ * the popup's window size, which is whatever the browser felt like and has no
+ * relationship to the paper.
+ *
+ * The loop exists because the two variables are coupled: scaling to 0.8 leaves
+ * the content only 80% as wide, so the wrapper is widened to compensate — and
+ * at a greater width the text rewraps into fewer lines, so the height drops
+ * and less shrinking is needed than the first pass calculated. Each pass gets
+ * closer; four is comfortably more than enough to settle.
+ */
+const fitToSinglePage = (win: Window, landscape: boolean): void => {
+  const shell = win.document.querySelector<HTMLElement>('.pdf-fit-shell');
+  const fit = win.document.querySelector<HTMLElement>('.pdf-fit');
+  if (!shell || !fit) return;
+
+  // A4 less the @page margins declared above: 297−28 portrait, 210−20 landscape.
+  const availablePx = (landscape ? 210 - 20 : 297 - 28) * MM_TO_PX;
+  const targetWidthMm = landscape ? 272 : 182;
+
+  let scale = 1;
+  for (let pass = 0; pass < 4; pass++) {
+    fit.style.transform = 'none';
+    fit.style.width = `${targetWidthMm / scale}mm`;
+    // scrollHeight is the LAYOUT height and ignores transforms, which is what
+    // is wanted here — the drawn height is that value times the scale.
+    const naturalPx = fit.scrollHeight;
+    if (naturalPx * scale <= availablePx) break;
+    const next = Math.max(MIN_FIT_SCALE, scale * (availablePx / (naturalPx * scale)));
+    if (Math.abs(next - scale) < 0.005) { scale = next; break; }
+    scale = next;
+  }
+
+  if (scale >= 1) {
+    // Already a single page. Leave it exactly as the document was authored
+    // rather than reapplying a no-op transform, which would still force the
+    // content onto its own compositing layer and can soften text in print.
+    fit.style.transform = '';
+    fit.style.width = '';
+    shell.style.height = '';
+    return;
+  }
+
+  fit.style.width = `${targetWidthMm / scale}mm`;
+  fit.style.transform = `scale(${scale})`;
+  shell.style.height = `${fit.scrollHeight * scale}px`;
+};
+
+/**
+ * Runs `cb` once the document is actually measurable.
+ *
+ * Measuring before the letterhead logo has loaded reads a height with a
+ * zero-height image in it, which is exactly the case where the answer is most
+ * wrong — the logo is the single tallest element on a short receipt.
+ */
+const whenMeasurable = (win: Window, cb: () => void): void => {
+  let fired = false;
+  const run = () => {
+    if (fired) return;
+    fired = true;
+    cb();
+  };
+
+  const pending = Array.from(win.document.images).filter(img => !img.complete);
+  let left = pending.length;
+
+  const settle = () => {
+    if (left > 0 && --left > 0) return;
+    // Fonts change metrics too, and swap in after the images on a cold load.
+    const fonts = (win.document as Document & { fonts?: FontFaceSet }).fonts;
+    if (fonts?.ready) fonts.ready.then(run, run);
+    else run();
+  };
+
+  if (!left) settle();
+  else pending.forEach(img => {
+    img.addEventListener('load', settle);
+    img.addEventListener('error', settle);
+  });
+
+  // A stalled or blocked image must not leave the document unscaled forever.
+  win.setTimeout(run, 2000);
+};
+
 /**
  * Opens a print window containing one document.
  *
@@ -392,7 +505,9 @@ export const openPrintDocument = ({
 <body>
 <div class="page">
 <button class="pdf-print-btn" type="button">${escapeHtml(buttonLabel)}</button>
+<div class="pdf-fit-shell"><div class="pdf-fit">
 ${framed ? `<div class="pdf-frame">${body}</div>` : body}
+</div></div>
 </div>
 </body>
 </html>`);
@@ -408,6 +523,18 @@ ${framed ? `<div class="pdf-frame">${body}</div>` : body}
   // code, so it runs under 'self' and the policy stays strict.
   win.document.querySelector('.pdf-print-btn')
     ?.addEventListener('click', () => win.print());
+
+  // Fit to one page, for the same reason and by the same route: this is the
+  // opener's own bundled code reaching into the popup, so it needs no script
+  // in the document and stays inside `script-src 'self'`.
+  //
+  // Measured twice on purpose. Once when the content settles, so what is on
+  // screen is what will print; and again on `beforeprint`, which is the only
+  // moment the browser guarantees final layout — a window resized between
+  // opening and printing rewraps the text, and the first measurement would be
+  // describing a layout that no longer exists.
+  whenMeasurable(win, () => fitToSinglePage(win, landscape));
+  win.addEventListener('beforeprint', () => fitToSinglePage(win, landscape));
 
   return true;
 };
