@@ -362,7 +362,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
               borderRadius: '12px',
               border: '2px solid var(--card-border)',
               backgroundColor: 'var(--royal-gold)',
-              color: '#000',
+              color: '#FFFFFF',
               fontWeight: 800,
               fontSize: '0.9286rem',
               cursor: 'pointer',

@@ -1211,7 +1211,7 @@ export const AccountantDashboardView: React.FC = () => {
               </button>
               <button
                 onClick={() => handleStudentSave(editStudent, undefined)}
-                style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }}
+                style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 800 }}
                 className="press-interactive"
               >
                 Yes, Confirm & Save

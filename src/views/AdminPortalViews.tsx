@@ -975,9 +975,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
     const ledger = (t.salaryLedger?.[selectedAcademicYear] || {}) as any;
 
     let totalDisbursed = 0;
+    let settledCount = 0;
     const rows = months.map(m => {
       const rec = ledger[m] || (t.monthlySalaries as any)?.[m] || {};
       const isPaid = rec.status === 'Paid' || rec.paid === true;
+      if (isPaid) settledCount++;
       const amt = Number(rec.amountPaid || (isPaid ? baseSal : 0));
       totalDisbursed += amt;
       return [
@@ -991,7 +993,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
     const expected = baseSal * 12;
     const outstanding = Math.max(0, expected - totalDisbursed);
-    const paidMonths = rows.filter(r => r[1].includes('paid')).length;
+    // Counted from the ledger while building the rows, not by searching the
+    // rendered badge markup afterwards. The old line was
+    //   rows.filter(r => r[1].includes('paid'))
+    // and the unpaid badge reads "Unpaid", which CONTAINS "paid" — so every
+    // month matched and every payslip claimed 12 of 12 settled, including for
+    // a teacher paid once. The figure sat directly above the outstanding
+    // balance that contradicted it.
+    const paidMonths = settledCount;
 
     const body = [
       pdfHeader({
@@ -2576,7 +2585,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 ) : (
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button onClick={() => setIsRegStuOtpModalOpen(false)} style={{ ...styles.actionItemBtn, flex: 1 }} className="press-interactive">Cancel</button>
-                    <button onClick={submitStudentRegistrationWithOtp} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800 }} className="press-interactive">
+                    <button onClick={submitStudentRegistrationWithOtp} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 800 }} className="press-interactive">
                       Yes, Create Student
                     </button>
                   </div>
@@ -2800,7 +2809,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                     <button onClick={fetchWorkerPaymentsHistory} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '0.7857rem', backgroundColor: 'var(--ink)', color: '#fff' }} className="press-interactive">
                       Refresh Log
                     </button>
-                    <button onClick={handleDownloadDisbursementLogPDF} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '0.7857rem', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
+                    <button onClick={handleDownloadDisbursementLogPDF} style={{ ...styles.actionItemBtn, padding: '6px 14px', fontSize: '0.7857rem', backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 900 }} className="press-interactive">
                       Download Record
                     </button>
                   </div>
@@ -3031,7 +3040,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                               setEditTeacher({ ...t });
                               setSelectedStaffMonthForEdit(null);
                             }}
-                            style={{ ...styles.actionItemBtn, padding: '5px 12px', fontSize: '0.7143rem', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }}
+                            style={{ ...styles.actionItemBtn, padding: '5px 12px', fontSize: '0.7143rem', backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 900 }}
                             className="press-interactive"
                           >
                             Open 12-Month Ledger
@@ -3395,7 +3404,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
                     <button
                       onClick={() => handleDownloadStaffAnnualStatement(editTeacher)}
-                      style={{ ...styles.actionItemBtn, padding: '10px 16px', fontSize: '0.7857rem', fontWeight: 900, backgroundColor: 'var(--royal-gold)', color: '#000' }}
+                      style={{ ...styles.actionItemBtn, padding: '10px 16px', fontSize: '0.7857rem', fontWeight: 900, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF' }}
                       className="press-interactive"
                     >
                       Download 12-Month Annual Statement
@@ -3582,7 +3591,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                   <button onClick={() => { setIsFacOtpModalOpen(false); setFacOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
-                  <button onClick={() => submitFacOtp()} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Yes, Proceed</button>
+                  <button onClick={() => submitFacOtp()} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 900 }} className="press-interactive">Yes, Proceed</button>
                 </div>
               </GlassCard>
             </div>
@@ -3757,7 +3766,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setIsUnlockFeeOtpOpen(false); setUnlockFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
-                  <button onClick={() => handleConfirmUnlockFees(undefined)} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
+                  <button onClick={() => handleConfirmUnlockFees(undefined)} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 900 }} className="press-interactive">
                     Yes, Unlock Editor
                   </button>
                 </div>
@@ -3785,7 +3794,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setIsAcadFeeOtpOpen(false); setAcadFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
-                  <button onClick={() => handleSaveAcademicFees(undefined)} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
+                  <button onClick={() => handleSaveAcademicFees(undefined)} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 900 }} className="press-interactive">
                     Yes, Save Rates
                   </button>
                 </div>
@@ -3872,7 +3881,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
 
             <button
               onClick={fetchEnquiries}
-              style={{ ...styles.actionItemBtn, padding: '10px 18px', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }}
+              style={{ ...styles.actionItemBtn, padding: '10px 18px', backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 900 }}
               className="press-interactive"
             >
               Refresh Enquiries
@@ -4475,7 +4484,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                   <button onClick={() => { setIsFeeOtpOpen(false); setFeeOtpInput(''); }} style={styles.modalCancelBtn} className="press-interactive">Cancel</button>
-                  <button onClick={() => handleApplyWaivers(undefined)} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">
+                  <button onClick={() => handleApplyWaivers(undefined)} style={{ ...styles.modalConfirmBtn, opacity: 1, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 900 }} className="press-interactive">
                     Yes, Apply Waivers
                   </button>
                 </div>
@@ -4817,7 +4826,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setIsExpOtpOpen(false); setExpOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
-                  <button onClick={() => handleLogExpenditure(undefined)} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Yes, Log Entry</button>
+                  <button onClick={() => handleLogExpenditure(undefined)} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 900 }} className="press-interactive">Yes, Log Entry</button>
                 </div>
               </GlassCard>
             </div>
@@ -4930,7 +4939,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                   <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                     <button
                       onClick={() => openSalaryAction(t, 'paid')}
-                      style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 800, fontSize: '0.7857rem', cursor: 'pointer' }}
+                      style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 800, fontSize: '0.7857rem', cursor: 'pointer' }}
                       className="press-interactive"
                     >
                       Mark Given
@@ -5092,7 +5101,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
               style={{
                 ...styles.actionItemBtn,
                 backgroundColor: 'var(--royal-gold)',
-                color: '#000',
+                color: '#FFFFFF',
                 border: 'none',
                 fontWeight: 900,
                 fontSize: '0.8571rem',
@@ -5255,7 +5264,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                           flex: 1,
                           padding: '9px 12px',
                           border: 'none',
-                          color: '#000',
+                          color: '#FFFFFF',
                           backgroundColor: 'var(--royal-gold)',
                           borderRadius: '8px',
                           fontWeight: 900,
@@ -5371,7 +5380,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                         amountPaid: amt
                       });
                     }}
-                    style={{ ...styles.saveSubmitBtn, flex: 1.5, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }}
+                    style={{ ...styles.saveSubmitBtn, flex: 1.5, marginTop: 0, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 900 }}
                     className="press-interactive"
                   >
                     Proceed to OTP Verification 
@@ -5396,7 +5405,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                   <button onClick={() => { setIsWorkerOtpOpen(false); setWorkerPendingAction(null); setWorkerOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
-                  <button onClick={confirmWorkerAction} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#000', fontWeight: 900 }} className="press-interactive">Yes, Record Payment</button>
+                  <button onClick={confirmWorkerAction} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 900 }} className="press-interactive">Yes, Record Payment</button>
                 </div>
               </GlassCard>
             </div>
