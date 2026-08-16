@@ -1530,7 +1530,8 @@ export const AccountantDashboardView: React.FC = () => {
                           borderRadius: '8px',
                           border: '1px dashed var(--royal-gold)',
                           backgroundColor: 'var(--surface-sunken)',
-                          color: 'var(--warning)',
+                          // See above: amber on the sunken surface is unreadable.
+                          color: 'var(--royal-gold)',
                           fontSize: '0.8214rem',
                           fontWeight: 800,
                           cursor: 'pointer'
@@ -1827,7 +1828,10 @@ export const AccountantDashboardView: React.FC = () => {
                           flex: 1,
                           padding: '8px 12px',
                           border: '1.5px solid var(--royal-gold)',
-                          color: 'var(--warning)',
+                          // #FAB219 on the #F5F5F4 sunken surface is a 1.68
+                          // contrast ratio — the label was there but unreadable.
+                          // Matches the border instead.
+                          color: 'var(--royal-gold)',
                           backgroundColor: 'var(--surface-sunken)',
                           borderRadius: '8px',
                           fontWeight: 800,
@@ -1975,7 +1979,10 @@ export const AccountantDashboardView: React.FC = () => {
                         style={{
                           padding: '8px 12px',
                           border: '1.5px solid var(--royal-gold)',
-                          color: 'var(--warning)',
+                          // #FAB219 on the #F5F5F4 sunken surface is a 1.68
+                          // contrast ratio — the label was there but unreadable.
+                          // Matches the border instead.
+                          color: 'var(--royal-gold)',
                           backgroundColor: 'var(--surface-sunken)',
                           borderRadius: '10px',
                           fontWeight: 800,
@@ -2009,7 +2016,7 @@ export const AccountantDashboardView: React.FC = () => {
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <button
                     onClick={() => void openStudentEditor(selectedStudent)}
-                    style={{ ...styles.actionItemBtn, border: '1.5px solid var(--royal-gold)', color: 'var(--warning)', backgroundColor: 'var(--surface-sunken)' }}
+                    style={{ ...styles.actionItemBtn, border: '1.5px solid var(--royal-gold)', color: 'var(--royal-gold)', backgroundColor: 'var(--surface-sunken)' }}
                     className="press-interactive"
                   >
                     Edit Student
@@ -2277,7 +2284,7 @@ export const AccountantDashboardView: React.FC = () => {
                         </button>
                         <button
                           onClick={() => { setPendingPayType('full'); setPayOtpInput(''); setIsPayOtpModalOpen(true); }}
-                          style={{ ...styles.sheetBtn, backgroundColor: 'var(--warning-wash)', color: 'var(--warning)', border: '1px solid var(--accent)' }}
+                          style={{ ...styles.sheetBtn, backgroundColor: 'var(--warning-wash)', color: 'var(--accent)', border: '1px solid var(--accent)' }}
                           className="press-interactive"
                         >
                           Full Pay (100%)
@@ -2372,7 +2379,7 @@ export const AccountantDashboardView: React.FC = () => {
                       </span>
                     )}
 
-                    <button onClick={() => handleDownloadStudentStatement(selectedStudent)} style={{ ...styles.actionItemBtn, border: '1.5px solid var(--royal-gold)', backgroundColor: '#FFF8DB', color: 'var(--warning)', fontWeight: 900, whiteSpace: 'nowrap' }} className="press-interactive">Download Complete Statement</button>
+                    <button onClick={() => handleDownloadStudentStatement(selectedStudent)} style={{ ...styles.actionItemBtn, border: '1.5px solid var(--royal-gold)', backgroundColor: '#FFF8DB', color: 'var(--royal-gold)', fontWeight: 900, whiteSpace: 'nowrap' }} className="press-interactive">Download Complete Statement</button>
                   </div>
                 </div>
 
@@ -2682,7 +2689,7 @@ export const AccountantDashboardView: React.FC = () => {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '10px', marginTop: '16px' }}>
-                <button onClick={() => handleDownloadPDF(selectedReceipt, selectedStudent)} style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)', fontWeight: 800 }} className="press-interactive">Download PDF / Print</button>
+                <button onClick={() => handleDownloadPDF(selectedReceipt, selectedStudent)} style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 800 }} className="press-interactive">Download PDF / Print</button>
                 <button onClick={() => triggerToast('Receipt shared to registered parent mobile!')} style={{ ...styles.sheetBtn, backgroundColor: 'var(--line)', color: 'var(--dark-charcoal)' }} className="press-interactive">Share Receipt</button>
               </div>
             </div>
@@ -2766,7 +2773,7 @@ export const AccountantDashboardView: React.FC = () => {
                   });
                   if (opened) triggerToast('Audit report opened — ' + allTransactions.length + ' records.');
                 }}
-                style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)', fontWeight: 800, padding: '10px 18px', borderRadius: '10px' }}
+                style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 800, padding: '10px 18px', borderRadius: '10px' }}
                 className="press-interactive"
               >
                  Download PDF

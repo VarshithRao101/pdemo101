@@ -313,6 +313,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   // Students Registry States (3-Screen Reduced Field List)
   const [isStudentHoverModalOpen, setIsStudentHoverModalOpen] = useState(false);
   const [newStuFormPage, setNewStuFormPage] = useState<1 | 2 | 3>(1);
+  // Set when screen 1 is left with an admission number or mobile that already
+  // belongs to somebody. Holds the students it collides with so the dialog can
+  // name them rather than just saying "duplicate".
+  const [duplicateStudentConflict, setDuplicateStudentConflict] = useState<
+    { admissionMatch?: Student; mobileMatch?: Student } | null
+  >(null);
   const [newStuName, setNewStuName] = useState('');
   const [newStuAdmissionNumber, setNewStuAdmissionNumber] = useState('');
   const [newStuBranch, setNewStuBranch] = useState(loggedInCampus);
@@ -541,6 +547,32 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
   const [editHostelWaiver, setEditHostelWaiver] = useState('0');
   const [editMiscWaiver, setEditMiscWaiver] = useState('0');
   const [editSlotWaivers, setEditSlotWaivers] = useState<Record<string, number>>({});
+
+  /**
+   * Finds an existing student holding the admission number or mobile being
+   * typed into the new-admission form.
+   *
+   * The server already refuses a duplicate admission number, but only when the
+   * profile is finally submitted — three screens after the operator typed it,
+   * with all the family and fee detail already keyed in. Checking on the way
+   * out of screen 1 puts the error next to the field that caused it.
+   *
+   * Compared normalised: admission numbers case-insensitively and trimmed,
+   * mobiles on digits only, so "98765 43210" and "9876543210" are recognised
+   * as the same number rather than slipping through as different strings.
+   */
+  const findStudentDuplicates = (admissionNumber: string, mobile: string) => {
+    const adm = admissionNumber.trim().toLowerCase();
+    const mob = mobile.replace(/\D/g, '');
+    return {
+      admissionMatch: adm
+        ? students.find(s => String(s.admissionNumber || '').trim().toLowerCase() === adm)
+        : undefined,
+      mobileMatch: mob
+        ? students.find(s => String(s.mobile || '').replace(/\D/g, '') === mob)
+        : undefined
+    };
+  };
 
   // Admin Custom Fee Slot Management
 
@@ -987,7 +1019,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
         `<span class="pdf-badge ${isPaid ? 'paid' : 'due'}">${isPaid ? 'Paid' : 'Unpaid'}</span>`,
         isPaid ? `<span class="pdf-strong">${money(amt)}</span>` : money(0),
         dateStr(rec.paidAt || rec.paymentDate || rec.date),
-        escapeHtml(rec.paymentMode || '—')
+        escapeHtml(rec.paymentMode || '—'),
+        // The remark typed when the month was settled. It was stored by the
+        // salary screen and shown on the monthly payslip, but the annual
+        // ledger never carried a column for it — so the one document that
+        // shows the whole year was the one place the note could not be read.
+        escapeHtml(rec.note || '—')
       ];
     });
 
@@ -1025,10 +1062,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
       ]),
       pdfSection(`Monthly Disbursements — ${selectedAcademicYear}`),
       pdfTable({
-        headers: ['Month', 'Status', 'Amount Paid', 'Payment Date', 'Mode'],
+        headers: ['Month', 'Status', 'Amount Paid', 'Payment Date', 'Mode', 'Remarks'],
         numeric: [2],
         rows,
-        footer: ['Total', '', money(totalDisbursed), '', '']
+        footer: ['Total', '', money(totalDisbursed), '', '', '']
       }),
       pdfFooter({ note: 'Computer-generated annual salary ledger, verified against the Inspire ERP payroll records.' })
     ].join('');
@@ -2053,6 +2090,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                               triggerToast('Please provide Student Name, Admission Number, and Mobile Number.');
                               return;
                             }
+                            const dup = findStudentDuplicates(newStuAdmissionNumber, newStuMobile);
+                            if (dup.admissionMatch || dup.mobileMatch) {
+                              setDuplicateStudentConflict(dup);
+                              return;
+                            }
                             setNewStuFormPage(2);
                           }}
                           style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: 'var(--ink)', color: 'var(--surface)', fontWeight: 800 }}
@@ -2289,6 +2331,87 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             </div>
           )}
 
+          {/* Duplicate admission guard.
+
+              Sits above the admission form (zIndex 99999) because it is raised
+              from inside it. An admission-number clash cannot be overridden —
+              the number is the student's identity and the server refuses it
+              anyway, so offering a way past would only move the failure later.
+              A mobile-only clash CAN be overridden: siblings routinely share a
+              guardian's number, and blocking that outright would stop a
+              legitimate admission at the counter with no way forward. */}
+          {duplicateStudentConflict && (
+            <div style={{
+              position: 'fixed', inset: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(8px)',
+              zIndex: 100000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+            }}>
+              <div style={{
+                backgroundColor: 'var(--surface)', borderRadius: '18px', width: '100%', maxWidth: '520px',
+                padding: '26px', border: '1.5px solid var(--line-strong)',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)'
+              }} className="anim-scale-up">
+                <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.15rem', color: 'var(--critical)' }}>
+                  This student is already registered
+                </h3>
+                <p style={{ margin: '8px 0 16px', fontSize: '0.8571rem', color: 'var(--muted-gray)', lineHeight: 1.55 }}>
+                  {duplicateStudentConflict.admissionMatch
+                    ? 'The admission number entered belongs to an existing record. Admission numbers identify a student and cannot be reused.'
+                    : 'The mobile number entered is already on an existing record.'}
+                </p>
+
+                {duplicateStudentConflict.admissionMatch && (
+                  <div style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: 'var(--surface-sunken)', border: '1px solid var(--line)', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Admission number {newStuAdmissionNumber.trim()} — already used by
+                    </div>
+                    <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)', marginTop: '4px' }}>
+                      {duplicateStudentConflict.admissionMatch.name}
+                    </div>
+                    <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                      {duplicateStudentConflict.admissionMatch.course} · {duplicateStudentConflict.admissionMatch.branch}
+                    </div>
+                  </div>
+                )}
+
+                {duplicateStudentConflict.mobileMatch && (
+                  <div style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: 'var(--surface-sunken)', border: '1px solid var(--line)', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Mobile {newStuMobile.trim()} — already on record for
+                    </div>
+                    <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)', marginTop: '4px' }}>
+                      {duplicateStudentConflict.mobileMatch.name}
+                    </div>
+                    <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                      Adm: {duplicateStudentConflict.mobileMatch.admissionNumber} · {duplicateStudentConflict.mobileMatch.branch}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '18px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateStudentConflict(null)}
+                    style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'var(--ink)', color: 'var(--surface)', fontWeight: 900 }}
+                    className="press-interactive"
+                  >
+                    Go back and correct it
+                  </button>
+                  {!duplicateStudentConflict.admissionMatch && duplicateStudentConflict.mobileMatch && (
+                    <button
+                      type="button"
+                      onClick={() => { setDuplicateStudentConflict(null); setNewStuFormPage(2); }}
+                      style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1, backgroundColor: 'var(--line)', color: 'var(--ink)', fontWeight: 800 }}
+                      className="press-interactive"
+                    >
+                      Same family — continue
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
             <div style={{ display: 'flex', gap: '10px' }}>
               <input maxLength={100}
@@ -2376,7 +2499,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       style={{
                         padding: '8px 12px',
                         border: '1.5px solid var(--royal-gold)',
-                        color: 'var(--warning)',
+                        // Was var(--warning) — #FAB219 amber on the #F5F5F4 sunken
+                        // surface, a contrast ratio of 1.68. The same invisible-label
+                        // fault as the dark-on-dark buttons, just the light-on-light
+                        // direction of it. Matches the border instead.
+                        color: 'var(--royal-gold)',
                         backgroundColor: 'var(--surface-sunken)',
                         borderRadius: '10px',
                         fontWeight: 800,
@@ -3731,7 +3858,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
             {/* Action buttons */}
             <div style={{ marginTop: '20px' }}>
               {locked ? (
-                <button onClick={handleUnlockFees} style={{ ...styles.saveSubmitBtn, marginTop: 0, width: '100%', backgroundColor: 'var(--royal-gold)', color: 'var(--dark-charcoal)' }} className="press-interactive">
+                <button onClick={handleUnlockFees} style={{ ...styles.saveSubmitBtn, marginTop: 0, width: '100%', backgroundColor: 'var(--royal-gold)', color: '#FFFFFF' }} className="press-interactive">
                   Unlock & Modify Fee Rates
                 </button>
               ) : (
@@ -4208,7 +4335,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'admin2' }> = ({ r
                       style={{
                         padding: '8px 12px',
                         border: '1.5px solid var(--royal-gold)',
-                        color: 'var(--warning)',
+                        // Was var(--warning) — #FAB219 amber on the #F5F5F4 sunken
+                        // surface, a contrast ratio of 1.68. The same invisible-label
+                        // fault as the dark-on-dark buttons, just the light-on-light
+                        // direction of it. Matches the border instead.
+                        color: 'var(--royal-gold)',
                         backgroundColor: 'var(--surface-sunken)',
                         borderRadius: '10px',
                         fontWeight: 800,
