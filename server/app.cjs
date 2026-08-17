@@ -925,8 +925,43 @@ async function bumpRateLimitWindow(key) {
   );
 }
 
+/** The rate-limit key for a request. Must match mongoRateLimiter exactly. */
+function rateLimitKeyFor(req) {
+  return `ratelimit_${req.path}_${clientIp(req)}`;
+}
+
+/**
+ * Give back the attempt a SUCCESSFUL sign-in just consumed.
+ *
+ * The auth budget is ten requests per IP per fifteen minutes, and it counted
+ * successes as well as failures. That was fine when the system had ten
+ * accounts. It is not fine now: a campus has seven clerks plus an accountant,
+ * they share an office connection, and a shift change puts more than ten
+ * correct sign-ins through one IP inside a quarter of an hour. The eleventh
+ * person — with the right password — was told "too many requests".
+ *
+ * Refunding only on success keeps every property the limit exists for.
+ * Guessing a password produces FAILURES, and those still count, still trip
+ * the limit, and still feed the five-attempt lockout keyed to the identity.
+ * Nothing an attacker does gets refunded.
+ *
+ * Best-effort: a failure here must not turn a good login into an error, so it
+ * is logged and swallowed. The worst case is that the budget stays as strict
+ * as it was before.
+ */
+async function refundRateLimitAttempt(req) {
+  try {
+    await RateLimit.updateOne(
+      { key: rateLimitKeyFor(req), count: { $gt: 0 } },
+      { $inc: { count: -1 } }
+    );
+  } catch (err) {
+    console.warn('[RateLimit]: could not refund a successful attempt:', err.message);
+  }
+}
+
 async function mongoRateLimiter(req, res, next) {
-  const key = `ratelimit_${req.path}_${clientIp(req)}`;
+  const key = rateLimitKeyFor(req);
   const maxAttempts = rateLimitBudgetFor(req.path);
 
   try {
@@ -1510,6 +1545,58 @@ function resolveUsername(input) {
  */
 class AuthUnavailableError extends Error {}
 
+/**
+ * Find which of a campus's clerks these credentials belong to.
+ *
+ * The clerk login asks for a campus and nothing else identifying — a clerk
+ * types their own password and PIN and the server works out which of the
+ * seven slots they are. That is a deliberate convenience: the operator did
+ * not want people memorising `clerk4_beemaram_c2`.
+ *
+ * The cost is that the password is now the only thing identifying the account
+ * within a campus, so it is checked accordingly:
+ *
+ *   - Every one of the seven is compared, and ALL comparisons run before a
+ *     verdict, so the time taken does not reveal which slot matched.
+ *   - Exactly one match signs in. More than one is refused outright rather
+ *     than picking the first: two clerks sharing a password would otherwise
+ *     mean somebody silently signing in as a colleague, and every entry in
+ *     the audit trail after that would name the wrong person.
+ *   - A PIN, when supplied, has to match the SAME account as the password.
+ *     Matching the password on one clerk and the PIN on another is not a
+ *     login, it is two half-credentials.
+ */
+async function findClerkByCampusCredentials(campus, password, pin) {
+  const normalizedCampus = normalizeCampus(String(campus || '').trim());
+  if (!isValidCampus(normalizedCampus)) return { user: null, reason: 'unknown-campus' };
+
+  const normalizedPassword = String(password || '').trim();
+  const normalizedPin = pin !== undefined && pin !== null ? String(pin).trim() : null;
+  if (!normalizedPassword) return { user: null, reason: 'no-password' };
+
+  let candidates;
+  try {
+    candidates = await User.find({
+      role: { $in: ['clerk', 'admin2'] },
+      campus: normalizedCampus,
+      status: { $ne: 'disabled' }
+    });
+  } catch (dbErr) {
+    throw new AuthUnavailableError(dbErr.message);
+  }
+
+  const matches = [];
+  for (const candidate of candidates) {
+    const passwordOk = credentialMatches(normalizedPassword, candidate.password);
+    const pinOk = normalizedPin === null || credentialMatches(normalizedPin, candidate.pin);
+    if (passwordOk && pinOk) matches.push(candidate);
+  }
+
+  if (matches.length === 1) return { user: matches[0], reason: 'ok' };
+  if (matches.length > 1) return { user: null, reason: 'ambiguous', count: matches.length };
+  return { user: null, reason: 'no-match' };
+}
+
 async function validateUserLoginCredentials(inputUser, password, pin) {
   if (!inputUser || typeof password !== 'string' || !password.trim()) {
     return null;
@@ -1591,7 +1678,7 @@ app.get(['/api/auth/me', '/auth/me', '/api/me'], authenticateToken, async (req, 
 
 app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/verify-credentials'], mongoRateLimiter, async (req, res) => {
   try {
-    const { username, identifier, password } = req.body || {};
+    const { username, identifier, password, campus } = req.body || {};
 
     // This route checks a password on its own, so it needs the same five-guess
     // budget as /auth/login — and it shares the counter, or an attacker would
@@ -1599,16 +1686,26 @@ app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/veri
     // unlimited password oracle with only the IP limiter in front of it.
     const attempted = String(username || identifier || '').trim().toLowerCase();
 
+    // A clerk verifies against a CAMPUS rather than a username; the same
+    // shape /auth/login accepts, so the two steps agree about who is signing
+    // in. Keyed on the campus for the same reason.
+    const clerkCampus = !attempted && campus ? normalizeCampus(String(campus).trim()) : null;
+    const byCampus = Boolean(clerkCampus);
+
     // Same rule as /auth/login: a missing identifier or password is a
     // malformed request, not a failed guess, and must not spend an attempt.
-    if (!attempted || typeof password !== 'string' || password === '') {
+    if ((!attempted && !byCampus) || typeof password !== 'string' || password === '') {
       return res.status(400).json({
         status: 'error',
-        message: 'A username and password are both required.'
+        message: byCampus ? 'A password is required.' : 'A username and password are both required.'
       });
     }
 
-    const key = attemptKey('login', attempted);
+    if (byCampus && !isValidCampus(clerkCampus)) {
+      return res.status(400).json({ status: 'error', message: `Unknown campus [${campus}].` });
+    }
+
+    const key = attemptKey('login', byCampus ? `campus:${clerkCampus}` : attempted);
 
     const before = await getLockState(key);
     if (before.locked) {
@@ -1616,10 +1713,27 @@ app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/veri
       return lockedResponse(res, before);
     }
 
-    const user = await validateUserLoginCredentials(username || identifier, password);
+    let user = null;
+    if (byCampus) {
+      // Password only at this step — the PIN is the second factor and is
+      // checked by /auth/login, which re-resolves the same clerk.
+      const found = await findClerkByCampusCredentials(clerkCampus, password, null);
+      if (found.reason === 'ambiguous') {
+        console.warn(`[Auth]: AMBIGUOUS verify at [${clerkCampus}] — ${found.count} clerks share this password`);
+        await recordFailedAttempt(key);
+        return res.status(409).json({
+          status: 'error',
+          message: 'More than one clerk at this campus shares this password. '
+            + 'Ask the Rector to give each clerk a different password.'
+        });
+      }
+      user = found.user;
+    } else {
+      user = await validateUserLoginCredentials(username || identifier, password);
+    }
 
     if (!user) {
-      console.warn(`[Auth]: FAILED verify-credentials for [${attempted || '(blank)'}] from ${clientIp(req)}`);
+      console.warn(`[Auth]: FAILED verify-credentials for [${attempted || (byCampus ? clerkCampus : '(blank)')}] from ${clientIp(req)}`);
       const after = await recordFailedAttempt(key);
       if (after.locked) {
         console.warn(`[Auth]: LOCKED OUT [${attempted || '(blank)'}] for ${LOCKOUT_MINUTES} minutes`);
@@ -1633,11 +1747,19 @@ app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/veri
       });
     }
 
-    // Deliberately NOT cleared here. This is only the first of two factors —
-    // the PIN still has to be entered — so the run stays open until the
-    // account actually signs in. Clearing on a correct password alone would
-    // let someone with the password reset the counter at will and grind the
-    // PIN forever.
+    // The LOCKOUT run is deliberately NOT cleared here. This is only the
+    // first of two factors — the PIN still has to be entered — so the run
+    // stays open until the account actually signs in. Clearing on a correct
+    // password alone would let someone with the password reset the counter at
+    // will and grind the PIN forever.
+    //
+    // The IP's rate-limit attempt IS refunded, which is a different thing: it
+    // says "this request was not an attack", not "this person is
+    // authenticated". Signing in costs two auth requests — this one and the
+    // login — so without the refund a two-step sign-in burned two of the ten
+    // an IP is allowed in fifteen minutes, and five people could not get in.
+    await refundRateLimitAttempt(req);
+
     return res.json({
       status: 'success',
       role: user.role,
@@ -1870,8 +1992,14 @@ function lockedResponse(res, state, what = 'Too many incorrect attempts.') {
 
 async function handleLogin(req, res, label) {
   try {
-    const { username, identifier, password, pin } = req.body || {};
+    const { username, identifier, password, pin, campus } = req.body || {};
     const attempted = String(username || identifier || '').trim().toLowerCase();
+
+    // A clerk signs in with a CAMPUS instead of a username: they pick their
+    // campus and type their own password, and the server works out which of
+    // the seven slots that is. Only this shape omits an identifier.
+    const clerkCampus = !attempted && campus ? normalizeCampus(String(campus).trim()) : null;
+    const byCampus = Boolean(clerkCampus);
 
     // A request that supplies no identifier or no password is malformed, not a
     // guess: reject it 400 and do NOT charge the lockout budget.
@@ -1882,14 +2010,27 @@ async function handleLogin(req, res, label) {
     // member of staff out for fifteen minutes without anyone typing a
     // password. It also gave an attacker nothing, since guessing requires
     // sending a password anyway.
-    if (!attempted || typeof password !== 'string' || password === '') {
+    if ((!attempted && !byCampus) || typeof password !== 'string' || password === '') {
       return res.status(400).json({
         status: 'error',
-        message: 'A username and password are both required.'
+        message: byCampus
+          ? 'A password is required.'
+          : 'A username and password are both required.'
       });
     }
 
-    const key = attemptKey('login', attempted);
+    if (byCampus && !isValidCampus(clerkCampus)) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Unknown campus [${campus}].`
+      });
+    }
+
+    // The lockout is keyed on the campus for a campus sign-in. Keying it on
+    // the password would leak which guesses have been tried, and leaving it
+    // unkeyed would let seven accounts share one budget by accident. A campus
+    // is the unit being guessed against here, so it is the unit that locks.
+    const key = attemptKey('login', byCampus ? `campus:${clerkCampus}` : attempted);
 
     // Check the lock BEFORE verifying anything. A locked account must not
     // reveal whether the guess would have been right.
@@ -1899,14 +2040,38 @@ async function handleLogin(req, res, label) {
       return lockedResponse(res, before);
     }
 
-    const user = await validateUserLoginCredentials(username || identifier, password, pin);
+    let user = null;
+    let ambiguous = false;
+
+    if (byCampus) {
+      const found = await findClerkByCampusCredentials(clerkCampus, password, pin);
+      user = found.user;
+      ambiguous = found.reason === 'ambiguous';
+
+      // Two clerks on one campus sharing a password. Refusing is the only safe
+      // answer: signing in as whichever matched first would put the wrong name
+      // on every audit entry that followed. It costs a lockout attempt like any
+      // other failure, and the message says what to fix rather than "invalid
+      // credentials", because nothing the person types will help.
+      if (ambiguous) {
+        console.warn(`[Auth]: AMBIGUOUS campus sign-in at [${clerkCampus}] — ${found.count} clerks share these credentials`);
+        await recordFailedAttempt(key);
+        return res.status(409).json({
+          status: 'error',
+          message: 'More than one clerk at this campus shares these credentials. '
+            + 'Ask the Rector to give each clerk a different password.'
+        });
+      }
+    } else {
+      user = await validateUserLoginCredentials(username || identifier, password, pin);
+    }
 
     if (!user) {
       // Record who was targeted and from where. The access log alone only
       // showed "POST /api/auth/login 401", which cannot distinguish one
       // mistyped password from a credential-stuffing run against every
       // account. The password itself is never logged.
-      console.warn(`[Auth]: FAILED ${label} for [${attempted || '(blank)'}] from ${clientIp(req)}`);
+      console.warn(`[Auth]: FAILED ${label} for [${attempted || (byCampus ? clerkCampus : '(blank)')}] from ${clientIp(req)}`);
 
       const after = await recordFailedAttempt(key);
       if (after.locked) {
@@ -1926,6 +2091,9 @@ async function handleLogin(req, res, label) {
     // A correct sign-in wipes the run, so a user who mistyped twice and then
     // succeeded does not carry those failures into next week.
     await clearFailedAttempts(key);
+    // ...and does not spend the IP's auth budget either. A whole campus
+    // starting a shift is not a brute-force attempt.
+    await refundRateLimitAttempt(req);
 
     console.log(`[Auth]: ${label} succeeded for [${user.username}] (${user.role})`);
     return await issueSession(user, res, req);

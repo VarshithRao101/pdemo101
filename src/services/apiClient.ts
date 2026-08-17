@@ -238,10 +238,23 @@ export const apiClient = {
     }
   },
 
-  async verifyCredentials(identifier: string, password: string, loginContext = 'universal'): Promise<{ status: string; message?: string; role?: string; campus?: string }> {
+  /**
+   * `campus` replaces `identifier` for a clerk.
+   *
+   * A clerk picks their campus and types their own password; the server works
+   * out which of that campus's seven slots they are. Passing both would be
+   * contradictory, so a campus sign-in sends an empty identifier and the
+   * server keys its lockout on the campus instead.
+   */
+  async verifyCredentials(
+    identifier: string,
+    password: string,
+    loginContext = 'universal',
+    campus?: string
+  ): Promise<{ status: string; message?: string; role?: string; campus?: string }> {
     return this.request<{ status: string; message?: string; role?: string; campus?: string }>('/auth/verify-credentials', {
       method: 'POST',
-      body: JSON.stringify({ identifier, password, loginContext })
+      body: JSON.stringify(campus ? { password, loginContext, campus } : { identifier, password, loginContext })
     });
   }
 };

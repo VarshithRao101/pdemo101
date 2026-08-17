@@ -6,7 +6,7 @@ import { InspireLogo } from '../components/common/InspireLogo';
 import { apiClient, setGlobalSecurityKey } from '../services/apiClient';
 import {
   admin1Service, CLERK_PERMISSION_LABELS,
-  type AuditLogEntry, type ClerkSlot, type ClerkPermissionName, type PortalAccount
+  type AuditLogEntry, type ClerkSlot, type ClerkPermissionName, type ClerkPermissions, type PortalAccount
 } from '../services/admin1Service';
 import { admin2Service } from '../services/admin2Service';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
@@ -497,15 +497,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   }, [editTeacher, selectedAcademicYear]);
   // --- Clerk slot manager (Rector only) ---------------------------------
   //
-  // `clerkDraft` is the on-screen state and `clerkSaved` is what the server
-  // last confirmed. Keeping both is what lets the screen show unsaved changes
-  // and refuse to lose them silently — a single array would make an edit
-  // indistinguishable from a saved value.
+  // One array, not a draft-plus-saved pair. Every change is written the moment
+  // it is confirmed and the response replaces this, so there is no unsaved
+  // state to reconcile and nothing to lose by navigating away.
   const [clerkCampus, setClerkCampus] = useState<string>(CAMPUS_LIST[0]);
   const [clerkDraft, setClerkDraft] = useState<ClerkSlot[]>([]);
-  const [clerkSaved, setClerkSaved] = useState<ClerkSlot[]>([]);
-  const [isSavingClerks, setIsSavingClerks] = useState(false);
-  const [clerkPinPrompt, setClerkPinPrompt] = useState(false);
+  // Which of the seven boxes is open, if any.
+  const [clerkOpenSlot, setClerkOpenSlot] = useState<number | null>(null);
+  const [clerkUnlocked, setClerkUnlocked] = useState(false);
+  const [clerkRectorPin, setClerkRectorPin] = useState('');
+  const [clerkCredDraft, setClerkCredDraft] = useState<{ username: string; password: string; pin: string }>(
+    { username: '', password: '', pin: '' }
+  );
+  const [clerkCredSaving, setClerkCredSaving] = useState(false);
   const [clerkPinInput, setClerkPinInput] = useState('');
   // Shown inside the PIN dialog rather than as a toast. A wrong PIN is a
   // message about the thing the user is currently looking at, and the server
@@ -635,74 +639,167 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
     }
   };
 
+  /**
+   * Load one campus's seven slots.
+   *
+   * `clerkDraft` is what the screen shows. Unlike the old version there is no
+   * separate "saved" copy to diff against: every change is written the moment
+   * it is confirmed, so the draft and the server never drift far enough apart
+   * to need reconciling.
+   */
   const fetchClerks = async (campus = clerkCampus) => {
     try {
       const result = await admin1Service.getClerks(campus);
       setClerkDraft(result.slots);
-      // A separate copy, not a shared reference — mutating the draft must not
-      // silently change what we believe the server holds.
-      setClerkSaved(result.slots.map(s => ({ ...s, permissions: { ...s.permissions } })));
     } catch (err: any) {
       console.warn('Failed to fetch clerk slots:', err);
       triggerToast(err?.message || 'Could not load the clerk slots.', 'error');
     }
   };
 
-  /** Whether the draft differs from what the server last confirmed. */
-  const clerkHasChanges = () => {
-    if (clerkDraft.length !== clerkSaved.length) return true;
-    return clerkDraft.some((slot, i) => {
-      const saved = clerkSaved[i];
-      if (!saved) return true;
-      if ((slot.status === 'active') !== (saved.status === 'active')) return true;
-      return CLERK_PERMISSION_LABELS.some(p => slot.permissions[p.name] !== saved.permissions[p.name]);
-    });
+  /** Open the screen. One PIN, once, for the whole visit. */
+  const unlockClerks = async () => {
+    const pin = clerkPinInput.trim();
+    if (pin.length !== 6) { setClerkPinError('Enter your six-digit PIN.'); return; }
+    try {
+      // Verified by making the first real call with it. A separate "check my
+      // PIN" endpoint would be a second place for the rule to live.
+      await admin1Service.getClerks(clerkCampus);
+      setClerkRectorPin(pin);
+      setClerkUnlocked(true);
+      setClerkPinInput('');
+      setClerkPinError('');
+      await fetchClerks(clerkCampus);
+    } catch (err: any) {
+      setClerkPinError(err?.message || 'Could not open the clerks screen.');
+      setClerkPinInput('');
+    }
   };
 
-  const saveClerksWithPin = async () => {
-    const pin = clerkPinInput.trim();
-    if (pin.length !== 6) {
-      setClerkPinError('Enter your six-digit PIN to save.');
-      return;
-    }
-
+  /** Leaving the screen forgets the PIN and everything loaded with it. */
+  const lockClerks = () => {
+    setClerkUnlocked(false);
+    setClerkRectorPin('');
+    setClerkDraft([]);
+    setClerkOpenSlot(null);
+    setClerkNewCredentials([]);
+    setClerkPinInput('');
     setClerkPinError('');
-    setIsSavingClerks(true);
+  };
+
+  const switchCampus = (campus: string) => {
+    setClerkCampus(campus);
+    setClerkOpenSlot(null);
+    setClerkNewCredentials([]);
+    fetchClerks(campus);
+  };
+
+  /**
+   * Write one slot's configuration.
+   *
+   * Sends only the slot that changed. The route takes an array, so a single
+   * entry is a valid save and the other six are left exactly as they are —
+   * which matters because two people could have this screen open.
+   */
+  const saveClerkSlot = async (
+    slot: ClerkSlot,
+    next: { active: boolean; permissions: ClerkPermissions }
+  ) => {
     try {
       const result = await admin1Service.saveClerks(
         clerkCampus,
-        clerkDraft.map(s => ({
-          slotIndex: s.slotIndex,
-          active: s.status === 'active',
-          permissions: s.permissions
-        })),
-        pin
+        [{ slotIndex: slot.slotIndex, active: next.active, permissions: next.permissions }],
+        clerkRectorPin
       );
-
       setClerkDraft(result.slots);
-      setClerkSaved(result.slots.map(s => ({ ...s, permissions: { ...s.permissions } })));
-      // Shown once and never retrievable again — the server stores only the
-      // hashes, so closing this panel without noting them means the slot has
-      // to be deactivated and created again.
-      setClerkNewCredentials(result.createdCredentials || []);
-      setClerkPinPrompt(false);
-      setClerkPinInput('');
-      setClerkPinError('');
-      triggerToast(
-        result.changes.length
-          ? `Saved ${result.changes.length} change${result.changes.length === 1 ? '' : 's'} at ${clerkCampus}.`
-          : 'No changes to save.',
-        'success'
-      );
+      if ((result.createdCredentials || []).length > 0) {
+        setClerkNewCredentials(result.createdCredentials);
+      }
+      return true;
     } catch (err: any) {
-      // The dialog stays open and keeps the draft, so a mistyped PIN costs a
-      // retype rather than the whole configuration.
-      setClerkPinError(err?.message || 'Could not save the clerk settings.');
-      setClerkPinInput('');
-    } finally {
-      setIsSavingClerks(false);
+      triggerToast(err?.message || 'Could not save that change.', 'error');
+      // Put the screen back to what the server actually holds.
+      await fetchClerks(clerkCampus);
+      return false;
     }
   };
+
+  /** Open or close a clerk's portal, confirmed with a plain yes/no. */
+  const toggleClerkActive = async (slot: ClerkSlot) => {
+    const turningOn = slot.status !== 'active';
+    const question = turningOn
+      ? (slot.exists
+        ? `Open the portal for Clerk ${slot.slotIndex} at ${clerkCampus}?`
+        : `Create Clerk ${slot.slotIndex} at ${clerkCampus} and open their portal?`)
+      : `Close the portal for Clerk ${slot.slotIndex} at ${clerkCampus}?\n\nThey are signed out immediately. Nothing they recorded is deleted.`;
+    if (!window.confirm(question)) return;
+
+    await saveClerkSlot(slot, { active: turningOn, permissions: slot.permissions });
+  };
+
+  /** Grant or revoke one power, confirmed with a plain yes/no. */
+  const toggleClerkPermission = async (slot: ClerkSlot, name: ClerkPermissionName) => {
+    const label = CLERK_PERMISSION_LABELS.find(p => p.name === name)?.label || name;
+    const granting = !slot.permissions[name];
+    const question = granting
+      ? `Allow Clerk ${slot.slotIndex} to ${label.toLowerCase()}?`
+      : `Stop Clerk ${slot.slotIndex} being able to ${label.toLowerCase()}?\n\nThis takes effect on their next action, even if they are signed in.`;
+    if (!window.confirm(question)) return;
+
+    await saveClerkSlot(slot, {
+      active: slot.status === 'active',
+      permissions: { ...slot.permissions, [name]: granting }
+    });
+  };
+
+  /** Change a clerk's portal ID, password or PIN from this same screen. */
+  const saveClerkCredentials = async (slot: ClerkSlot) => {
+    const changes: { username?: string; password?: string; pin?: string } = {};
+    if (clerkCredDraft.username.trim() && clerkCredDraft.username.trim() !== slot.username) {
+      changes.username = clerkCredDraft.username.trim();
+    }
+    if (clerkCredDraft.password.trim()) changes.password = clerkCredDraft.password.trim();
+    if (clerkCredDraft.pin.trim()) changes.pin = clerkCredDraft.pin.trim();
+
+    if (Object.keys(changes).length === 0) {
+      triggerToast('Nothing to change for this clerk.', 'error');
+      return;
+    }
+
+    const what = Object.keys(changes)
+      .map(k => (k === 'username' ? 'portal ID' : k))
+      .join(' and ');
+    if (!window.confirm(`Change the ${what} for Clerk ${slot.slotIndex}?\n\nThey will be signed out.`)) return;
+
+    setClerkCredSaving(true);
+    try {
+      const result = await admin1Service.setCredentials(slot.username, changes, clerkRectorPin);
+      triggerToast(result.message, 'success');
+      setClerkCredDraft({
+        username: result.username,
+        password: result.password || '',
+        pin: result.pin || ''
+      });
+      await fetchClerks(clerkCampus);
+    } catch (err: any) {
+      triggerToast(err?.message || 'Could not change those details.', 'error');
+    } finally {
+      setClerkCredSaving(false);
+    }
+  };
+
+  // Load the open clerk's current sign-in details into the editor.
+  useEffect(() => {
+    if (clerkOpenSlot == null) return;
+    const slot = clerkDraft.find(s => s.slotIndex === clerkOpenSlot);
+    if (!slot) return;
+    const account = credAccounts.find(a => a.username === slot.username);
+    setClerkCredDraft({
+      username: slot.username,
+      password: account?.password || '',
+      pin: account?.pin || ''
+    });
+  }, [clerkOpenSlot, clerkDraft, credAccounts]);
 
   /**
    * Load one page of the audit trail.
@@ -4510,30 +4607,61 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   }
 
   if (activePage === 'clerks') {
-    const setSlot = (slotIndex: number, patch: Partial<ClerkSlot>) => {
-      setClerkDraft(prev => prev.map(s => (s.slotIndex === slotIndex ? { ...s, ...patch } : s)));
-    };
+    // Locked behind the Rector's own PIN on ENTRY, not on save. Everything
+    // inside — powers, portal ID, password, PIN — is then a plain edit with a
+    // yes/no confirmation, because asking for the same six digits again after
+    // each change is what made this screen tiring to use.
+    if (!clerkUnlocked) {
+      return (
+        <div style={styles.container} className="anim-slide-up">
+          {renderBackgroundDesign('teal')}
+          <header style={styles.header}>
+            <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
+              Back to Cockpit
+            </button>
+            <h1 style={{ ...styles.title, marginTop: '8px' }}>Clerks</h1>
+            <p style={styles.subtitle}>Seven clerk slots for each campus, and what each of them may do.</p>
+          </header>
+          <main style={{ ...styles.content, gap: '16px' }}>
+            <GlassCard hoverable={false} style={{ padding: '28px', maxWidth: '460px', zIndex: 1 }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '6px' }}>
+                Confirm it is you
+              </h3>
+              <p style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginBottom: '14px', lineHeight: 1.5 }}>
+                From here you can change what every clerk is allowed to do, and their
+                sign-in details. Enter your own six-digit PIN to open it.
+              </p>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                autoFocus
+                placeholder="Your 6-digit PIN"
+                value={clerkPinInput}
+                onChange={(e) => { setClerkPinInput(digitsOnlyPin(e.target.value)); setClerkPinError(''); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') unlockClerks(); }}
+                style={{ ...styles.textInputBox, borderColor: clerkPinError ? 'var(--critical)' : undefined, letterSpacing: '0.3em', textAlign: 'center', fontSize: '1.1rem' }}
+              />
+              {clerkPinError && (
+                <div style={{ color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 700, marginTop: '8px' }}>
+                  {clerkPinError}
+                </div>
+              )}
+              <button
+                onClick={unlockClerks}
+                style={{ ...styles.saveSubmitBtn, marginTop: '14px', width: '100%', backgroundColor: 'var(--ink)', color: 'var(--surface)', fontWeight: 900 }}
+                className="press-interactive"
+              >
+                Open clerks
+              </button>
+            </GlassCard>
+          </main>
+        </div>
+      );
+    }
 
-    const togglePermission = (slotIndex: number, name: ClerkPermissionName) => {
-      setClerkDraft(prev => prev.map(s => {
-        if (s.slotIndex !== slotIndex) return s;
-        return { ...s, permissions: { ...s.permissions, [name]: !s.permissions[name] } };
-      }));
-    };
-
-    const switchCampus = (campus: string) => {
-      // Changing campus discards unsaved edits, so say so rather than losing
-      // them quietly.
-      if (clerkHasChanges() && !window.confirm(
-        `You have unsaved changes for ${clerkCampus}. Switch to ${campus} and discard them?`
-      )) return;
-      setClerkCampus(campus);
-      setClerkNewCredentials([]);
-      fetchClerks(campus);
-    };
-
+    const openSlot = clerkOpenSlot != null ? clerkDraft.find(s => s.slotIndex === clerkOpenSlot) : null;
     const activeCount = clerkDraft.filter(s => s.status === 'active').length;
-    const dirty = clerkHasChanges();
 
     /** A single on/off switch. */
     const Toggle: React.FC<{ on: boolean; onClick: () => void; disabled?: boolean; label: string }> =
@@ -4545,22 +4673,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
           aria-label={label}
           disabled={disabled}
           onClick={onClick}
-          className="press-interactive"
           style={{
-            width: '44px', height: '24px', borderRadius: '20px', position: 'relative',
-            border: `1.5px solid ${on ? 'var(--good)' : 'var(--line)'}`,
+            width: '44px', height: '24px', borderRadius: '999px', flexShrink: 0,
+            border: `1.5px solid ${on ? 'var(--good)' : 'var(--line-strong)'}`,
             backgroundColor: on ? 'var(--good)' : 'var(--surface-sunken)',
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            opacity: disabled ? 0.4 : 1,
-            transition: 'background-color 0.15s ease, border-color 0.15s ease',
-            flexShrink: 0
+            position: 'relative', cursor: disabled ? 'not-allowed' : 'pointer',
+            opacity: disabled ? 0.45 : 1, transition: 'background-color 0.15s ease'
           }}
         >
           <span style={{
             position: 'absolute', top: '2px', left: on ? '22px' : '2px',
-            width: '17px', height: '17px', borderRadius: '50%',
-            backgroundColor: 'var(--surface)',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+            width: '18px', height: '18px', borderRadius: '50%',
+            backgroundColor: on ? '#FFFFFF' : 'var(--muted-gray)',
             transition: 'left 0.15s ease'
           }} />
         </button>
@@ -4570,269 +4694,218 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('teal')}
         <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            Back to Cockpit
+          <button
+            onClick={() => { if (clerkOpenSlot != null) { setClerkOpenSlot(null); } else { lockClerks(); setActivePage('menu'); } }}
+            style={styles.backArrowBtn}
+            className="press-interactive"
+          >
+            {clerkOpenSlot != null ? 'Back to Clerks' : 'Back to Cockpit'}
           </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Clerks</h1>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>
+            {openSlot ? `Clerk ${openSlot.slotIndex} — ${clerkCampus}` : 'Clerks'}
+          </h1>
           <p style={styles.subtitle}>
-            Seven clerk accounts per campus. Choose a campus, switch the accounts you need on,
-            and give each one only the powers it should have.
+            {openSlot
+              ? 'Everything about this clerk: what they may do, and how they sign in.'
+              : 'Choose a campus, then a clerk to set what they may do and how they sign in.'}
           </p>
         </header>
 
         <main style={{ ...styles.content, gap: '16px' }}>
-          {/* Campus boxes */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px', zIndex: 1 }}>
-            {CAMPUS_LIST.map(campus => {
-              const selected = campus === clerkCampus;
-              return (
-                <div
-                  key={campus}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); switchCampus(campus); } }}
-                  onClick={() => switchCampus(campus)}
-                  className="press-interactive"
-                  style={{
-                    padding: '14px', borderRadius: '12px', cursor: 'pointer',
-                    border: `2px solid ${selected ? 'var(--good)' : 'var(--line)'}`,
-                    backgroundColor: selected ? 'var(--good-wash)' : 'var(--surface)',
-                    transition: 'border-color 0.15s ease, background-color 0.15s ease'
-                  }}
-                >
-                  <div style={{
-                    fontSize: '0.6429rem', fontWeight: 900, textTransform: 'uppercase',
-                    letterSpacing: '0.05em', color: selected ? 'var(--good)' : 'var(--muted-gray)'
-                  }}>
-                    {selected ? 'Selected campus' : 'Campus'}
-                  </div>
-                  <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)', marginTop: '2px' }}>
-                    {campus}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Newly created credentials — shown once, never retrievable */}
-          {clerkNewCredentials.length > 0 && (
-            <GlassCard style={{ padding: '16px', border: '2px solid var(--warning)', backgroundColor: 'var(--warning-wash)' }}>
-              <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--warning)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                Write these down now
-              </div>
-              <div style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginBottom: '12px' }}>
-                These are the sign-in details for the clerk accounts you just switched on.
-                They are shown only this once and cannot be looked up again.
-              </div>
-              {clerkNewCredentials.map(cred => (
-                <div key={cred.username} style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
-                  gap: '8px', padding: '10px 0', borderTop: '1px solid var(--line)'
-                }}>
-                  <div>
-                    <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Slot {cred.slotIndex} — User ID</div>
-                    <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', wordBreak: 'break-all' }}>{cred.username}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>Password</div>
-                    <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', fontFamily: 'monospace', wordBreak: 'break-all' }}>{cred.password}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase' }}>6-digit PIN</div>
-                    <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', fontFamily: 'monospace' }}>{cred.pin}</div>
-                  </div>
-                </div>
-              ))}
-              <button
-                onClick={() => setClerkNewCredentials([])}
-                style={{ ...styles.actionItemBtn, marginTop: '12px', padding: '8px 16px', backgroundColor: 'var(--ink)', color: 'var(--surface)', border: 'none' }}
-                className="press-interactive"
-              >
-                I have noted these down
-              </button>
-            </GlassCard>
-          )}
-
-          {/* Summary */}
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', zIndex: 1 }}>
-            <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)' }}>
-              {activeCount} of {clerkDraft.length || 7} accounts active at {clerkCampus}
-            </span>
-            {dirty && (
-              <span style={{
-                fontSize: '0.6429rem', fontWeight: 900, padding: '3px 10px', borderRadius: '20px',
-                backgroundColor: 'var(--warning-wash)', color: 'var(--warning)',
-                border: '1px solid var(--warning)', textTransform: 'uppercase'
-              }}>
-                Unsaved changes
-              </span>
-            )}
-          </div>
-
-          {/* Slots */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1 }}>
-            {clerkDraft.map(slot => {
-              const isActive = slot.status === 'active';
-              return (
-                <GlassCard key={slot.slotIndex} style={{
-                  padding: '14px',
-                  borderLeft: `4px solid ${isActive ? 'var(--good)' : 'var(--line)'}`,
-                  opacity: isActive ? 1 : 0.72
-                }}>
-                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                    {/* Left: which slot this is */}
-                    <div style={{ flex: '1 1 220px', minWidth: '200px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <Toggle
-                          on={isActive}
-                          label={`Clerk ${slot.slotIndex} active`}
-                          onClick={() => setSlot(slot.slotIndex, { status: isActive ? 'inactive' : 'active' })}
-                        />
-                        <div>
-                          <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)' }}>
-                            Clerk {slot.slotIndex}
-                          </div>
-                          <div style={{ fontSize: '0.6429rem', fontWeight: 700, color: 'var(--muted-gray)', wordBreak: 'break-all' }}>
-                            {slot.exists ? slot.username : 'Not created yet'}
-                          </div>
-                        </div>
+          {clerkOpenSlot == null ? (
+            <>
+              {/* Four campus cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px', zIndex: 1 }}>
+                {CAMPUS_LIST.map(campus => {
+                  const selected = campus === clerkCampus;
+                  return (
+                    <div
+                      key={campus}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); switchCampus(campus); } }}
+                      onClick={() => switchCampus(campus)}
+                      className="press-interactive"
+                      style={{
+                        padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                        border: `2px solid ${selected ? 'var(--good)' : 'var(--line)'}`,
+                        backgroundColor: selected ? 'var(--good-wash)' : 'var(--surface)',
+                        transition: 'border-color 0.15s ease, background-color 0.15s ease'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.6429rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: selected ? 'var(--good)' : 'var(--muted-gray)' }}>
+                        {selected ? 'Selected campus' : 'Campus'}
                       </div>
-                      <div style={{
-                        marginTop: '8px', fontSize: '0.6429rem', fontWeight: 900,
-                        textTransform: 'uppercase', letterSpacing: '0.04em',
-                        color: isActive ? 'var(--good)' : 'var(--muted-gray)'
-                      }}>
-                        {isActive ? 'Active' : slot.exists ? 'Switched off' : 'Empty slot'}
+                      <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)', marginTop: '2px' }}>
+                        {campus}
                       </div>
                     </div>
+                  );
+                })}
+              </div>
 
-                    {/* Right: the five powers */}
-                    <div style={{ flex: '2 1 380px', minWidth: '280px' }}>
-                      {CLERK_PERMISSION_LABELS.map(perm => (
-                        <div key={perm.name} style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          gap: '12px', padding: '6px 0'
+              <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink-secondary)', zIndex: 1 }}>
+                {activeCount} of {clerkDraft.length || 7} clerks active at {clerkCampus}
+              </div>
+
+              {/* Seven clerk boxes */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '12px', zIndex: 1 }}>
+                {clerkDraft.map(slot => {
+                  const isActive = slot.status === 'active';
+                  const granted = CLERK_PERMISSION_LABELS.filter(p => slot.permissions[p.name]).length;
+                  return (
+                    <div
+                      key={slot.slotIndex}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setClerkOpenSlot(slot.slotIndex); } }}
+                      onClick={() => setClerkOpenSlot(slot.slotIndex)}
+                      className="press-interactive"
+                      style={{
+                        padding: '16px', borderRadius: '14px', cursor: 'pointer',
+                        border: `2px solid ${isActive ? 'var(--good)' : 'var(--line)'}`,
+                        backgroundColor: 'var(--surface)',
+                        opacity: isActive ? 1 : 0.75
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--ink)' }}>
+                          Clerk {slot.slotIndex}
+                        </div>
+                        <span style={{
+                          padding: '2px 8px', borderRadius: '20px', fontSize: '0.6429rem', fontWeight: 900,
+                          textTransform: 'uppercase', letterSpacing: '0.04em',
+                          backgroundColor: isActive ? 'var(--good-wash)' : 'var(--surface-sunken)',
+                          color: isActive ? 'var(--good)' : 'var(--muted-gray)',
+                          border: `1px solid ${isActive ? 'var(--good)' : 'var(--line-strong)'}`
                         }}>
-                          <div>
-                            <div style={{
-                              fontSize: '0.7857rem', fontWeight: 800,
-                              color: isActive ? 'var(--ink)' : 'var(--muted-gray)'
-                            }}>
-                              {perm.label}
-                            </div>
-                            <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)' }}>{perm.help}</div>
-                          </div>
-                          <Toggle
-                            on={slot.permissions[perm.name]}
-                            // A switched-off account cannot be given powers:
-                            // it is the account itself that is disabled, so a
-                            // granted permission would be meaningless and
-                            // would read as access that does not exist.
-                            disabled={!isActive}
-                            label={`${perm.label} for clerk ${slot.slotIndex}`}
-                            onClick={() => togglePermission(slot.slotIndex, perm.name)}
-                          />
-                        </div>
-                      ))}
+                          {isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.6429rem', fontWeight: 700, color: 'var(--muted-gray)', wordBreak: 'break-all' }}>
+                        {slot.exists ? slot.username : 'Not created yet'}
+                      </div>
+                      <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)', marginTop: '8px' }}>
+                        {granted} of {CLERK_PERMISSION_LABELS.length} powers granted
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : openSlot ? (
+            <>
+              {/* Status */}
+              <GlassCard hoverable={false} style={{ padding: '16px', zIndex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  <Toggle
+                    on={openSlot.status === 'active'}
+                    label={`Clerk ${openSlot.slotIndex} active`}
+                    onClick={() => toggleClerkActive(openSlot)}
+                  />
+                  <div>
+                    <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)' }}>
+                      {openSlot.status === 'active' ? 'Portal open' : 'Portal closed'}
+                    </div>
+                    <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)' }}>
+                      {openSlot.exists ? openSlot.username : 'Activating this creates the account'}
+                    </div>
+                  </div>
+                </div>
+              </GlassCard>
+
+              {/* Powers */}
+              <GlassCard hoverable={false} style={{ padding: '16px', zIndex: 1 }}>
+                <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '10px' }}>
+                  What this clerk may do
+                </div>
+                {CLERK_PERMISSION_LABELS.map(perm => (
+                  <div key={perm.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '7px 0' }}>
+                    <div>
+                      <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: openSlot.status === 'active' ? 'var(--ink)' : 'var(--muted-gray)' }}>
+                        {perm.label}
+                      </div>
+                      <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)' }}>{perm.help}</div>
+                    </div>
+                    <Toggle
+                      on={openSlot.permissions[perm.name]}
+                      // A closed portal cannot hold powers: the account itself
+                      // is disabled, so a granted permission would describe
+                      // access that does not exist.
+                      disabled={openSlot.status !== 'active'}
+                      label={`${perm.label} for clerk ${openSlot.slotIndex}`}
+                      onClick={() => toggleClerkPermission(openSlot, perm.name)}
+                    />
+                  </div>
+                ))}
+              </GlassCard>
+
+              {/* Sign-in details */}
+              <GlassCard hoverable={false} style={{ padding: '16px', zIndex: 1 }}>
+                <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '4px' }}>
+                  How this clerk signs in
+                </div>
+                <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', marginBottom: '12px', lineHeight: 1.5 }}>
+                  {openSlot.exists
+                    ? 'They choose ' + clerkCampus + ' on the sign-in screen and enter the password and PIN below. Changing either signs them out.'
+                    : 'Activate the clerk first — the account is created with a password and PIN you can then change here.'}
+                </div>
+
+                {openSlot.exists ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 190px), 1fr))', gap: '12px' }}>
+                    <div>
+                      <label style={styles.formLabel}>Portal ID</label>
+                      <input maxLength={LIMITS.username} type="text" value={clerkCredDraft.username}
+                        onChange={(e) => setClerkCredDraft({ ...clerkCredDraft, username: e.target.value })}
+                        style={styles.textInputBox} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Password</label>
+                      <input maxLength={LIMITS.password} type="text" value={clerkCredDraft.password}
+                        placeholder="unchanged"
+                        onChange={(e) => setClerkCredDraft({ ...clerkCredDraft, password: e.target.value })}
+                        style={styles.textInputBox} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>6-digit PIN</label>
+                      <input maxLength={6} inputMode="numeric" type="text" value={clerkCredDraft.pin}
+                        placeholder="unchanged"
+                        onChange={(e) => setClerkCredDraft({ ...clerkCredDraft, pin: digitsOnlyPin(e.target.value) })}
+                        style={styles.textInputBox} />
+                    </div>
+                  </div>
+                ) : null}
+
+                {openSlot.exists && (
+                  <button
+                    onClick={() => saveClerkCredentials(openSlot)}
+                    disabled={clerkCredSaving}
+                    style={{ ...styles.actionItemBtn, marginTop: '12px', padding: '10px 18px', backgroundColor: 'var(--ink)', color: 'var(--surface)', border: 'none', fontWeight: 900, opacity: clerkCredSaving ? 0.6 : 1 }}
+                    className="press-interactive"
+                  >
+                    {clerkCredSaving ? 'Saving…' : 'Save sign-in details'}
+                  </button>
+                )}
+              </GlassCard>
+
+              {clerkNewCredentials.length > 0 && (
+                <GlassCard hoverable={false} style={{ padding: '16px', borderLeft: '4px solid var(--good)', zIndex: 1 }}>
+                  <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '6px' }}>
+                    New sign-in details
+                  </div>
+                  {clerkNewCredentials.map(cred => (
+                    <div key={cred.username} style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink)', fontFamily: 'monospace' }}>
+                      {cred.username} · {cred.password} · PIN {cred.pin}
+                    </div>
+                  ))}
+                  <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)', marginTop: '6px' }}>
+                    Also shown any time on this screen and on Credentials.
                   </div>
                 </GlassCard>
-              );
-            })}
-          </div>
-
-          {/* Save */}
-          <div style={{
-            display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'flex-end',
-            flexWrap: 'wrap', paddingBottom: '16px', zIndex: 1
-          }}>
-            {dirty && (
-              <button
-                onClick={() => fetchClerks(clerkCampus)}
-                style={{ ...styles.actionItemBtn, padding: '10px 20px', backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none' }}
-                className="press-interactive"
-              >
-                Discard changes
-              </button>
-            )}
-            <button
-              disabled={!dirty || isSavingClerks}
-              onClick={() => { setClerkPinInput(''); setClerkPinError(''); setClerkPinPrompt(true); }}
-              style={{
-                ...styles.actionItemBtn, padding: '12px 32px', fontWeight: 900,
-                backgroundColor: dirty ? 'var(--good)' : 'var(--line)',
-                color: dirty ? '#FFFFFF' : 'var(--muted-gray)',
-                border: 'none', cursor: dirty ? 'pointer' : 'not-allowed'
-              }}
-              className="press-interactive"
-            >
-              {isSavingClerks ? 'Saving…' : 'Save Clerk Settings'}
-            </button>
-          </div>
-        </main>
-
-        {/* PIN confirmation — the one action in the app that still asks for it,
-            because it is what grants and revokes every other account's powers. */}
-        {clerkPinPrompt && (
-          <div style={styles.modalOverlay} onClick={() => { if (!isSavingClerks) setClerkPinPrompt(false); }}>
-            <GlassCard style={{ ...styles.modalContentCard, maxWidth: '420px' }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <h3 style={{ fontSize: '1.0714rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '6px' }}>
-                Confirm with your PIN
-              </h3>
-              <p style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginBottom: '14px', lineHeight: 1.5 }}>
-                You are changing who can do what at <strong>{clerkCampus}</strong>.
-                Enter your own six-digit PIN to save.
-              </p>
-              <input
-                type="password"
-                inputMode="numeric"
-                maxLength={LIMITS.pin}
-                autoFocus
-                value={clerkPinInput}
-                onChange={(e) => { setClerkPinInput(e.target.value.replace(/\D/g, '')); setClerkPinError(''); }}
-                onKeyDown={(e) => { if (e.key === 'Enter' && clerkPinInput.length === 6) saveClerksWithPin(); }}
-                placeholder="••••••"
-                style={{
-                  ...styles.textInputBox, textAlign: 'center', letterSpacing: '0.4em',
-                  fontSize: '1.2857rem', fontWeight: 900,
-                  borderColor: clerkPinError ? 'var(--critical)' : undefined
-                }}
-              />
-              {clerkPinError && (
-                <div role="alert" style={{
-                  marginTop: '8px', padding: '8px 10px', borderRadius: '8px',
-                  backgroundColor: 'var(--critical-wash)', border: '1px solid var(--critical)',
-                  color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 800
-                }}>
-                  {clerkPinError}
-                </div>
               )}
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px' }}>
-                <button
-                  onClick={() => setClerkPinPrompt(false)}
-                  disabled={isSavingClerks}
-                  style={{ ...styles.actionItemBtn, padding: '10px 20px', backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none' }}
-                  className="press-interactive"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveClerksWithPin}
-                  disabled={isSavingClerks || clerkPinInput.length !== 6}
-                  style={{
-                    ...styles.actionItemBtn, padding: '10px 24px', fontWeight: 900, border: 'none',
-                    backgroundColor: clerkPinInput.length === 6 ? 'var(--good)' : 'var(--line)',
-                    color: clerkPinInput.length === 6 ? '#FFFFFF' : 'var(--muted-gray)',
-                    cursor: clerkPinInput.length === 6 ? 'pointer' : 'not-allowed'
-                  }}
-                  className="press-interactive"
-                >
-                  {isSavingClerks ? 'Saving…' : 'Confirm & Save'}
-                </button>
-              </div>
-            </GlassCard>
-          </div>
-        )}
+            </>
+          ) : null}
+        </main>
       </div>
     );
   }

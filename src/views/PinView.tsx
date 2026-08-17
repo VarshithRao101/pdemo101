@@ -63,36 +63,41 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
   const [userId, setUserId] = useState<string>('');
   const [passwordInput, setPasswordInput] = useState<string>('');
+  // Which role card is active, and — for a clerk — which campus. A clerk has
+  // no username, so the campus is what identifies the sign-in.
+  const [roleChoice, setRoleChoice] = useState<string>('');
+  const [clerkCampus, setClerkCampus] = useState<string>('');
   const [showPassword, setShowPassword] = useState(false);
 
   /**
-   * The four campuses, keyed by the form used inside a clerk's portal ID.
+   * The four campuses a clerk can sign in to.
    *
-   * Must match `clerkUsername` in server/app.cjs, which builds the same key
-   * from the campus name.
+   * A clerk no longer picks a slot number. They choose their campus and type
+   * their own password, and the server works out which of that campus's seven
+   * slots that is — so nobody has to remember `clerk4_beemaram_c2`. The label
+   * is what goes to the server; there is no username on this path at all.
    */
   const CLERK_CAMPUSES = [
-    { key: 'erragattugutta_c1', label: 'Erragattugutta C1' },
-    { key: 'erragattugutta_c2', label: 'Erragattugutta C2' },
-    { key: 'beemaram_c1', label: 'Beemaram C1' },
-    { key: 'beemaram_c2', label: 'Beemaram C2' }
+    'Erragattugutta C1',
+    'Erragattugutta C2',
+    'Beemaram C1',
+    'Beemaram C2'
   ];
 
-  // Read back out of the typed ID rather than held as separate state, so the
-  // pills stay correct when the ID is edited by hand.
-  const clerkMatch = /^clerk(\d+)_(.+)$/.exec(userId.trim());
-  const clerkSlot = clerkMatch ? Math.min(7, Math.max(1, parseInt(clerkMatch[1], 10))) : 1;
-  const clerkCampusKey = clerkMatch && CLERK_CAMPUSES.some(c => c.key === clerkMatch[2])
-    ? clerkMatch[2]
-    : CLERK_CAMPUSES[0].key;
+  const isClerkMode = roleChoice === 'clerk';
 
   const handleSelectRoleCard = (roleId: string) => {
+    setRoleChoice(roleId);
     if (roleId === 'clerk') {
-      setUserId('clerk1_erragattugutta_c1');
+      // No username for a clerk — the campus below identifies them.
+      setUserId('');
+      setClerkCampus('');
     } else if (roleId === 'accountant') {
       setUserId('accountant_erragattugutta_c1_1');
+      setClerkCampus('');
     } else {
       setUserId('admin1');
+      setClerkCampus('');
     }
     setPasswordInput('');
   };
@@ -180,6 +185,14 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     let identifier = userId.trim();
     if (currentMode === 'authenticator') {
       identifier = '9059068384';
+    } else if (isClerkMode) {
+      // A clerk has no username. The campus plus their own password is what
+      // identifies them, so only the campus has to be chosen here.
+      if (!clerkCampus) {
+        triggerError('Please choose your campus first');
+        setStep('credentials');
+        return;
+      }
     } else if (!identifier) {
       triggerError('Please select a Role or enter your User ID first');
       setStep('credentials');
@@ -195,7 +208,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     setIsChecking(true);
 
     try {
-      await login(identifier, pinToSubmit, currentMode, passwordInput.trim());
+      await login(identifier, pinToSubmit, currentMode, passwordInput.trim(), isClerkMode ? clerkCampus : undefined);
       setIsSuccess(true);
       setTimeout(() => {
         window.location.hash = '#/dashboard';
@@ -237,7 +250,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     if (currentMode === 'authenticator') identifier = '9059068384';
     setIsChecking(true);
     try {
-      await forceLogin(identifier, pin, currentMode, passwordInput.trim());
+      await forceLogin(identifier, pin, currentMode, passwordInput.trim(), isClerkMode ? clerkCampus : undefined);
       setSessionConflict(false);
       setIsSuccess(true);
       setTimeout(() => {
@@ -302,6 +315,11 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
     let identifier = userId.trim();
     if (currentMode === 'authenticator') {
       identifier = '9059068384';
+    } else if (isClerkMode) {
+      if (!clerkCampus) {
+        triggerError('Please choose your campus first');
+        return;
+      }
     } else if (!identifier) {
       triggerError('Please select a Role or enter your User ID first');
       return;
@@ -314,7 +332,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
     setIsChecking(true);
     try {
-      const res = await apiClient.verifyCredentials(identifier, passwordInput.trim(), currentMode);
+      const res = await apiClient.verifyCredentials(identifier, passwordInput.trim(), currentMode, isClerkMode ? clerkCampus : undefined);
       if (res && res.status === 'success') {
         setStep('pin');
         setPin('');
@@ -519,7 +537,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
               {roleCards.map(rc => {
                 const isSelected = 
                   (rc.id === 'admin1' && (userId === 'admin1' || userId === 'admin')) ||
-                  (rc.id === 'clerk' && userId.includes('clerk')) ||
+                  (rc.id === 'clerk' && isClerkMode) ||
                   (rc.id === 'accountant' && userId.includes('accountant'));
                 return (
                   <button
@@ -575,69 +593,38 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
               })}
             </div>
 
-            {/* Campus, then clerk slot. Each campus has seven slots and the
-                portal ID is campus + slot, so both have to be chosen — the
-                pills used to offer campus alone and always resolved to slot
-                1, which left the other six reachable only by typing the ID
-                out by hand. */}
-            {userId.includes('clerk') && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: 'var(--surface-sunken)', padding: '10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--good)', textTransform: 'uppercase' }}>Select Clerk Campus:</span>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '6px' }}>
-                    {CLERK_CAMPUSES.map(c => {
-                      const selected = clerkCampusKey === c.key;
-                      return (
-                        <button
-                          key={c.key}
-                          type="button"
-                          onClick={() => { setUserId(`clerk${clerkSlot}_${c.key}`); setPasswordInput(''); }}
-                          style={{
-                            padding: '6px 8px', borderRadius: '8px', fontSize: '0.7857rem', fontWeight: 800,
-                            border: selected ? '1.5px solid var(--good)' : '1px solid var(--line-strong)',
-                            backgroundColor: selected ? 'var(--good)' : 'var(--surface)',
-                            color: selected ? 'var(--surface)' : 'var(--ink-secondary)',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {c.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+            {/* Campus only. There is no slot to choose: the clerk types their
+                own password and the server resolves which of the campus's
+                seven slots it belongs to. */}
+            {isClerkMode && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: 'var(--surface-sunken)', padding: '10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--good)', textTransform: 'uppercase' }}>Select Your Campus:</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '6px' }}>
+                  {CLERK_CAMPUSES.map(campus => {
+                    const selected = clerkCampus === campus;
+                    return (
+                      <button
+                        key={campus}
+                        type="button"
+                        onClick={() => { setClerkCampus(campus); setPasswordInput(''); }}
+                        style={{
+                          padding: '8px 10px', borderRadius: '8px', fontSize: '0.7857rem', fontWeight: 800,
+                          border: selected ? '1.5px solid var(--good)' : '1px solid var(--line-strong)',
+                          backgroundColor: selected ? 'var(--good)' : 'var(--surface)',
+                          color: selected ? 'var(--surface)' : 'var(--ink-secondary)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {campus}
+                      </button>
+                    );
+                  })}
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--good)', textTransform: 'uppercase' }}>
-                    Select Clerk Number:
-                  </span>
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {[1, 2, 3, 4, 5, 6, 7].map(n => {
-                      const selected = clerkSlot === n;
-                      return (
-                        <button
-                          key={n}
-                          type="button"
-                          aria-label={`Clerk ${n}`}
-                          onClick={() => { setUserId(`clerk${n}_${clerkCampusKey}`); setPasswordInput(''); }}
-                          style={{
-                            minWidth: '42px', padding: '6px 10px', borderRadius: '8px',
-                            fontSize: '0.8571rem', fontWeight: 900,
-                            border: selected ? '1.5px solid var(--good)' : '1px solid var(--line-strong)',
-                            backgroundColor: selected ? 'var(--good)' : 'var(--surface)',
-                            color: selected ? 'var(--surface)' : 'var(--ink-secondary)',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {n}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <span style={{ fontSize: '0.6429rem', color: 'var(--ink-secondary)', fontWeight: 700 }}>
-                    Signing in as <strong>{userId || '—'}</strong>
-                  </span>
-                </div>
+                <span style={{ fontSize: '0.6429rem', color: 'var(--ink-secondary)', fontWeight: 700 }}>
+                  {clerkCampus
+                    ? `Enter your own password and PIN — ${clerkCampus} will recognise which clerk you are.`
+                    : 'Choose your campus, then enter your password and PIN.'}
+                </span>
               </div>
             )}
 

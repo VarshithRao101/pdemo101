@@ -101,8 +101,8 @@ interface NavigationContextType {
   user: any;
   isAuthenticated: boolean;
   isAuthLoading: boolean;
-  login: (identifier: string, pin: string, loginContext?: string, password?: string) => Promise<any>;
-  forceLogin: (identifier: string, pin: string, loginContext?: string, password?: string) => Promise<any>;
+  login: (identifier: string, pin: string, loginContext?: string, password?: string, campus?: string) => Promise<any>;
+  forceLogin: (identifier: string, pin: string, loginContext?: string, password?: string, campus?: string) => Promise<any>;
   logout: () => void;
   checkSession: () => Promise<boolean>;
 }
@@ -154,16 +154,16 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
     return () => window.removeEventListener('hashchange', syncFromHash);
   }, [activeTab]);
 
-  const login = async (identifier: string, pin: string, loginContext?: string, password?: string) => {
+  const login = async (identifier: string, pin: string, loginContext?: string, password?: string, campus?: string) => {
     setIsAuthLoading(true);
     try {
       const resolvedContext = loginContext || (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
-      const response = await apiClient.post('/auth/login', {
-        identifier,
-        password: password || pin,
-        pin,
-        loginContext: resolvedContext
-      });
+      // A clerk signs in by campus: the server resolves which of that
+      // campus's seven slots the password belongs to. Sending an identifier
+      // as well would contradict it, so it is one or the other.
+      const response = await apiClient.post('/auth/login', campus
+        ? { campus, password: password || pin, pin, loginContext: resolvedContext }
+        : { identifier, password: password || pin, pin, loginContext: resolvedContext });
 
       const { token, user: userData } = response;
       // One store. Writing to two locations is what let a refreshed token be
@@ -185,16 +185,13 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
     }
   };
 
-  const forceLogin = async (identifier: string, pin: string, loginContext?: string, password?: string) => {
+  const forceLogin = async (identifier: string, pin: string, loginContext?: string, password?: string, campus?: string) => {
     setIsAuthLoading(true);
     try {
       const resolvedContext = loginContext || (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
-      const response = await apiClient.post('/auth/force-login', {
-        identifier,
-        password: password || pin,
-        pin,
-        loginContext: resolvedContext
-      });
+      const response = await apiClient.post('/auth/force-login', campus
+        ? { campus, password: password || pin, pin, loginContext: resolvedContext }
+        : { identifier, password: password || pin, pin, loginContext: resolvedContext });
 
       const { token, user: userData } = response;
       // One store. Writing to two locations is what let a refreshed token be
