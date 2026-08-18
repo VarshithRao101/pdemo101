@@ -224,6 +224,178 @@ app.use((req, res, next) => {
 // is reachable, and nothing else — it previously echoed the raw driver error
 // (which can contain the cluster host and credentials) and whether a
 // MONGODB_URI was configured, to any anonymous caller.
+/**
+ * Escape a value for HTML. Required: the public receipt page renders a student
+ * name straight into markup, and a name containing a tag would otherwise be
+ * executed in the parent's browser.
+ */
+function escapeHtmlServer(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// --- PUBLIC RECEIPT LINK -------------------------------------------------
+//
+// A parent has no account and never will, so the receipt they are sent has to
+// open without signing in. WhatsApp cannot carry a file through a wa.me link,
+// only text — so the message carries a URL instead, and this serves the
+// document behind it.
+//
+// The URL is unguessable: the token is an HMAC of the receipt number under a
+// key derived from JWT_SECRET. Without the secret you cannot produce a valid
+// token for a receipt number, so the route cannot be walked by trying
+// REC-000001, REC-000002 and so on.
+//
+// What this deliberately accepts: anyone HOLDING the link can read that one
+// receipt. That is the same exposure as emailing a PDF or forwarding the
+// message, and it is the point — the parent has to be able to open it. It
+// reveals exactly one receipt and never a list.
+
+/** Key for receipt links, derived so JWT_SECRET is never used directly. */
+function receiptLinkKey() {
+  const secret = process.env.JWT_SECRET || '';
+  if (!secret) return null;
+  return crypto.createHmac('sha256', secret).update('receipt-link-v1').digest();
+}
+
+/** The token for one receipt number, or null when no secret is configured. */
+function receiptLinkToken(receiptNumber) {
+  const key = receiptLinkKey();
+  if (!key) return null;
+  return crypto.createHmac('sha256', key)
+    .update(String(receiptNumber))
+    .digest('base64url')
+    .slice(0, 22);
+}
+
+/** Constant-time compare, so a wrong token cannot be narrowed by timing. */
+function receiptTokenValid(receiptNumber, supplied) {
+  const expected = receiptLinkToken(receiptNumber);
+  if (!expected || !supplied) return false;
+  const a = Buffer.from(String(supplied));
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  try { return crypto.timingSafeEqual(a, b); } catch { return false; }
+}
+
+/**
+ * GET /r/:receiptNumber/:token — the receipt, for a parent, with no account.
+ *
+ * Renders a self-contained page sized for half an A4 sheet, the same as the
+ * printed receipt, so "Save as PDF" on a phone produces the same document the
+ * counter would have printed.
+ */
+app.get('/r/:receiptNumber/:token', mongoRateLimiter, requireDatabase, async (req, res) => {
+  const notFound = () => res
+    .status(404)
+    .type('html')
+    .send('<!doctype html><meta charset="utf-8"><title>Receipt not found</title>'
+      + '<body style="font-family:system-ui;padding:40px;text-align:center;color:#334">'
+      + '<h2>Receipt not found</h2>'
+      + '<p>This link may be incorrect or the receipt may have been removed.</p>'
+      + '<p>Please contact the college office.</p></body>');
+
+  try {
+    await connectToDatabase();
+    const { receiptNumber, token } = req.params;
+
+    // Verified BEFORE the lookup, so an invalid token cannot be used to learn
+    // whether a receipt number exists.
+    if (!receiptTokenValid(receiptNumber, token)) return notFound();
+
+    const payment = await Payment.findOne({ receiptNumber: String(receiptNumber) }).lean();
+    if (!payment) return notFound();
+
+    const student = await Student.findOne({ studentId: payment.studentId })
+      .select('name admissionNumber branch course section receipts')
+      .lean();
+
+    // The balance AT THE TIME of this receipt, not the balance now — a receipt
+    // is a statement about the moment it was issued. The student's receipt
+    // list holds that snapshot; a later payment must not rewrite this page.
+    const snapshot = (student?.receipts || []).find(r => r.receiptNumber === payment.receiptNumber);
+    const balanceThen = snapshot && typeof snapshot.balance === 'number' ? snapshot.balance : null;
+
+    const money = n => `Rs. ${Number(n || 0).toLocaleString('en-IN')}`;
+    const when = payment.date
+      ? new Date(payment.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+      : '';
+
+    const row = (label, value) => value
+      ? `<tr><td class="l">${escapeHtmlServer(label)}</td><td class="v">${escapeHtmlServer(String(value))}</td></tr>`
+      : '';
+
+    res.set('Cache-Control', 'private, max-age=0, no-store');
+    // The page names one student; keep it out of search engines.
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+
+    return res.type('html').send(`<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Fee Receipt ${escapeHtmlServer(payment.receiptNumber)}</title>
+<style>
+  /* Half an A4 sheet, in exact millimetres. The sheet in a printer is still
+     A4 and is cut after printing, so naming A5 would make some drivers ask
+     for paper that is not loaded. */
+  @page { size: 210mm 148.5mm; margin: 8mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f4f4f5; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1f2937; }
+  .sheet { max-width: 194mm; margin: 16px auto; background: #fff; border: 2px solid #d4af37; border-radius: 14px; padding: 22px; }
+  h1 { margin: 0; font-size: 17px; color: #b8941f; letter-spacing: .04em; text-align: center; }
+  .sub { text-align: center; font-size: 10px; text-transform: uppercase; color: #6b7280; margin-top: 2px; letter-spacing: .08em; }
+  hr { border: 0; border-top: 1.5px solid #d4af37; margin: 12px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 5px 0; font-size: 13px; vertical-align: top; }
+  td.l { color: #6b7280; width: 45%; }
+  td.v { text-align: right; font-weight: 700; }
+  .paid { color: #059669; font-size: 16px; }
+  .foot { margin-top: 14px; font-size: 10px; color: #6b7280; text-align: center; line-height: 1.5; }
+  .save { display: block; max-width: 194mm; margin: 0 auto 24px; text-align: center; }
+  .save button { background: #1f2937; color: #fff; border: 0; border-radius: 10px; padding: 11px 20px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  @media print { .save { display: none } body { background: #fff } .sheet { margin: 0; border-radius: 0 } }
+</style>
+</head><body>
+  <div class="sheet">
+    <h1>INSPIRE JUNIOR COLLEGE</h1>
+    <div class="sub">Official Fee Receipt</div>
+    <hr />
+    <table>
+      ${row('Student', student?.name)}
+      ${row('Admission No', student?.admissionNumber || payment.admissionNumber)}
+      ${row('Campus', student?.branch || payment.branch)}
+      ${row('Course', [student?.course, student?.section].filter(Boolean).join(' - '))}
+    </table>
+    <hr />
+    <table>
+      <tr><td class="l">Amount Paid</td><td class="v paid">${money(payment.amount)}</td></tr>
+      ${row('Towards', [payment.category, payment.installment].filter(Boolean).join(' · '))}
+      ${row('Paid by', payment.paymentMode)}
+      ${balanceThen === null ? '' : `<tr><td class="l">Balance Remaining</td><td class="v">${balanceThen > 0 ? money(balanceThen) : 'Nil — fully cleared'}</td></tr>`}
+    </table>
+    <hr />
+    <table>
+      ${row('Receipt No', payment.receiptNumber)}
+      ${row('Date', when)}
+    </table>
+    <div class="foot">
+      This is a computer-generated acknowledgement and needs no signature.<br />
+      For any query, please contact the college office.
+    </div>
+  </div>
+  <div class="save"><button onclick="window.print()">Save as PDF / Print</button></div>
+</body></html>`);
+  } catch (err) {
+    console.error('[Receipt link]: failed:', err.message);
+    return notFound();
+  }
+});
+
 app.get('/api/health', async (req, res) => {
   let database = 'disconnected';
   try {
@@ -4209,7 +4381,11 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
     return res.status(201).json({
       status: 'success',
       data: {
-        payment: normalizePaymentForClient(newPayment),
+        payment: {
+          ...normalizePaymentForClient(newPayment),
+          // The parent's link, signed here. The portal never sees the key.
+          receiptToken: receiptLinkToken(newPayment.receiptNumber)
+        },
         student: finalStudent
       }
     });
@@ -4546,8 +4722,11 @@ app.get('/api/accountant/students/:studentId/payments', authenticateToken, requi
       return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
     }
 
-    const payments = await Payment.find({ studentId: student.studentId }).sort({ date: -1 });
-    return res.json({ status: 'success', data: payments });
+    const payments = await Payment.find({ studentId: student.studentId }).sort({ date: -1 }).lean();
+    // Same signed link on historical receipts, so one can be re-sent to a
+    // parent months later without regenerating anything.
+    const withTokens = payments.map(p => ({ ...p, receiptToken: receiptLinkToken(p.receiptNumber) }));
+    return res.json({ status: 'success', data: withTokens });
   } catch (err) {
     return failRequest(req, res, err);
   }

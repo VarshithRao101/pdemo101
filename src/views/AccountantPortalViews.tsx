@@ -153,6 +153,8 @@ const CloseIcon = () => (
 // --- STUDENT DATABASE INTERFACES ---
 interface Receipt {
   receiptNumber: string;
+  /** Signed by the server so a parent can open this receipt without an account. */
+  receiptToken?: string;
   date: string;
   category: string;
   installment: string;
@@ -958,8 +960,9 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
         amount: Number(res.payment?.amount ?? paymentAmount),
         balance: Number(updatedStudent.remainingBalance || 0),
         mode: (res.payment as any)?.mode || collectMode,
-        cashier: (res.payment as any)?.cashier || ''
-      };
+        cashier: (res.payment as any)?.cashier || '',
+        receiptToken: (res.payment as any)?.receiptToken || ''
+      } as Receipt & { receiptToken?: string };
       setSelectedReceipt(receipt);
       setActiveOverlay('receipt_view');
 
@@ -1039,7 +1042,25 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
         : '*Balance Remaining:* Nil — fees fully cleared',
       '',
       `*Receipt No:* ${receipt?.receiptNumber || '—'}`,
-      `*Date:* ${when}`,
+      `*Date:* ${when}`
+    );
+
+    // The document itself, behind a signed link.
+    //
+    // A wa.me message cannot carry a file — only text — so the receipt is
+    // served as a page the parent opens and saves as PDF. The token is an
+    // HMAC produced by the server; without it the URL cannot be guessed by
+    // walking receipt numbers.
+    const token = (receipt as any)?.receiptToken;
+    if (token && receipt?.receiptNumber) {
+      lines.push(
+        '',
+        'Download your receipt:',
+        `${window.location.origin}/r/${encodeURIComponent(receipt.receiptNumber)}/${token}`
+      );
+    }
+
+    lines.push(
       '',
       '_This is a computer-generated acknowledgement._',
       '_For any query, please contact the college office._'
