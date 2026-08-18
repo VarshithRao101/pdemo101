@@ -54,3 +54,16 @@ scratch/pdf-design-preview.html
 # protection is deleting the file once the credentials are handed over.
 credentials/
 *.credentials.txt
+
+# OpenWA / WhatsApp session experiments.
+#
+# Session folders hold an authenticated WhatsApp login — anyone with the
+# folder can send as that number, so it must never reach a public repo. The
+# exported API collections are large and local to whoever was experimenting.
+_IGNORE_session/
+open-wa-session.*
+*.wa-session/
+.wwebjs_auth/
+.wwebjs_cache/
+tokens/
+session.data.json

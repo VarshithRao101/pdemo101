@@ -937,6 +937,36 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
       triggerToast(`Payment logged: Rs.${paymentAmount.toLocaleString('en-IN')}`);
       setIsPayOtpModalOpen(false);
       setPayOtpInput('');
+
+      /**
+       * Show the receipt and open WhatsApp, both without being asked.
+       *
+       * Taking the money, producing the receipt and telling the parent are one
+       * action at the counter, so they happen together rather than leaving the
+       * clerk to remember a second button after every payment.
+       *
+       * The balance comes from the SERVER's updated student, not from
+       * subtracting locally — the same rule the block above enforces for the
+       * figures on screen. A receipt is a statement about what the database
+       * holds.
+       */
+      const receipt: Receipt = {
+        receiptNumber: res.payment?.receiptNumber || '',
+        date: res.payment?.date || collectDate,
+        category: res.payment?.category || collectCategory,
+        installment: res.payment?.installment || collectInstallment,
+        amount: Number(res.payment?.amount ?? paymentAmount),
+        balance: Number(updatedStudent.remainingBalance || 0),
+        mode: (res.payment as any)?.mode || collectMode,
+        cashier: (res.payment as any)?.cashier || ''
+      };
+      setSelectedReceipt(receipt);
+      setActiveOverlay('receipt_view');
+
+      // Opened after an await, so the browser may no longer count this as a
+      // user gesture and can block it. sendReceiptOnWhatsApp says so plainly
+      // when that happens, and the button on the receipt is the way back.
+      sendReceiptOnWhatsApp(receipt, updatedStudent as any);
       // Refetch full list and dashboard from server immediately after payment
       await triggerFreshnessRefetch();
     } catch (err: any) {
@@ -2506,7 +2536,12 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                           {slot.name}
                         </span>
                         <strong style={{ color: 'var(--ink)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                          Rs.{slot.amount.toLocaleString('en-IN')}
+                          {/* Guarded: a custom fee slot saved without an
+                              amount would otherwise throw here and take the
+                              whole fee-collection screen down for that
+                              student, with an error boundary in place of the
+                              till. */}
+                          Rs.{Number(slot.amount || 0).toLocaleString('en-IN')}
                         </strong>
                       </div>
                     ))}
