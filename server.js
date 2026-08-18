@@ -1,32 +1,29 @@
 /**
  * Hostinger Root Entry Point Bridge (server.js)
  *
- * Hostinger starts the app by running this file. It hands off to the
- * supervisor, which forks the real server and restarts it if it dies.
+ * Starts the server DIRECTLY by default. This is the arrangement the app has
+ * always run under and the one the platform is known to work with.
  *
- * Why the supervisor is in the path at all: server/start.cjs exits on an
- * uncaught exception on purpose, because the process state is undefined after
- * one and serving from it is how this app once ended up alive but answering
- * nothing. Exiting is only the right trade if something starts a clean
- * process afterwards, and nothing in this repository was doing that.
+ * The supervisor in server/supervisor.cjs is opt-in via ENABLE_SUPERVISOR=1.
+ * It is off by default because making it the default took the site down: it
+ * starts the server with fork(), and fork does NOT pass V8 flags to the child.
+ * `npm start` runs node with --max-old-space-size=1536, so the supervised
+ * child lost its heap ceiling, sized itself from total machine memory, and was
+ * killed by the platform for exceeding the plan long before V8 would collect.
  *
- * ESCAPE HATCH: if the platform turns out to supervise the process itself, or
- * forking interferes with how it detects that the app is ready, set
- *
- *     DISABLE_SUPERVISOR=1
- *
- * in the environment and this falls straight through to the server exactly as
- * it did before. No code change, no redeploy of a different file.
+ * The supervisor now forwards execArgv and NODE_OPTIONS so the ceiling
+ * survives, but the default stays direct: an auto-restart that is not there is
+ * a smaller problem than a site that will not boot.
  */
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
-const supervisorDisabled = String(process.env.DISABLE_SUPERVISOR || '').trim() === '1';
+const superviseRequested = String(process.env.ENABLE_SUPERVISOR || '').trim() === '1';
 
-if (supervisorDisabled) {
-  console.log('[Entry] DISABLE_SUPERVISOR=1 — starting the server directly, unsupervised.');
-  require('./server/start.cjs');
-} else {
+if (superviseRequested) {
+  console.log('[Entry] ENABLE_SUPERVISOR=1 — starting under the supervisor.');
   require('./server/supervisor.cjs');
+} else {
+  require('./server/start.cjs');
 }

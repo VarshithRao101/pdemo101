@@ -57,7 +57,17 @@ function start() {
   if (shuttingDown) return;
 
   const startedAt = Date.now();
-  child = fork(CHILD, [], { stdio: 'inherit' });
+  // execArgv is forwarded explicitly. fork() does NOT pass the parent's V8
+  // flags to the child, and `npm start` runs node with
+  // --max-old-space-size=1536. Without this the child sized its heap from
+  // total machine memory, believed it could grow to several gigabytes, and was
+  // killed by the platform for exceeding the plan before V8 ever collected —
+  // which took the site down rather than keeping it up.
+  child = fork(CHILD, [], {
+    stdio: 'inherit',
+    execArgv: process.execArgv,
+    env: process.env
+  });
   log(`started child PID ${child.pid}`);
 
   child.on('exit', (code, signal) => {
