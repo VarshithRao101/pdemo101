@@ -572,13 +572,20 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
 
   const fetchAllStudents = React.useCallback(async () => {
     try {
-      // Pass campus so only this campus's students are returned
-      const list = await accountantService.searchStudents('', loggedInCampus);
+      // No campus filter. Students are ONE registry across all four campuses:
+      // a student who moved, or was registered at the wrong campus, or is
+      // simply standing at this counter today, has to be findable here.
+      // Hunting for the campus that happens to hold the record is not a
+      // safeguard, it is an obstacle to collecting the fee.
+      //
+      // A clerk borrowing this screen is still pinned to its own campus —
+      // the server decides that from the account, not from this call.
+      const list = await accountantService.searchStudents('');
       setStudents(list as any);
     } catch (err) {
       console.error('Failed to load students:', err);
     }
-  }, [loggedInCampus]);
+  }, []);
 
 
   const refreshWithPulse = React.useCallback(async (pulseKey: typeof livePulseKey) => {
@@ -944,8 +951,10 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
           campus: student.branch || loggedInCampus
         })}
         ${pdfDetailCard([
+          // Roll number deliberately absent. The admission number is the
+          // identifier the college and the parent both use, and printing two
+          // near-identical numbers on a receipt invites quoting the wrong one.
           ['Student Name', student.name],
-          ['Roll / ID No.', student.rollNumber || student.studentId || student.admissionNumber],
           ['Course / Class', student.course || 'Junior College'],
           ['Section', student.section],
           ['Mobile', student.mobile],
@@ -995,6 +1004,8 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
       body,
       buttonLabel: 'Print / Save Receipt as PDF',
       framed: true,
+      // 210 x 148.5mm — half an A4 sheet, cut across the short edge.
+      halfA4: true,
       onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to print the receipt.')
     });
     if (opened) triggerToast('Receipt opened for printing.');
@@ -1058,7 +1069,6 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
         ['Academic Year', student.academicYear],
         ['Year', student.studentYear],
         ['Hostel Status', student.hostelStatus],
-        ['Roll Number', student.rollNumber]
       ]),
 
       pdfSection('Fee Structure and Applied Waivers'),
@@ -1819,7 +1829,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
               <div style={{ flex: 1, position: 'relative' }}>
                 <input maxLength={100}
                   type="text"
-                  placeholder="Search Student by Name, ID, Adm No, Roll No, Phone..."
+                  placeholder="Search any student by name, admission number or phone — all campuses"
                   value={searchAdmNo}
                   onChange={(e) => setSearchAdmNo(e.target.value)}
                   style={{ ...styles.textInputBox, fontSize: '0.9286rem', padding: '12px 14px' }}
@@ -1850,7 +1860,9 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
 
             {/* STUDENT BOXES GRID */}
             {(() => {
-              const REGISTRY_PER_PAGE = 30;
+              // Five columns, five rows. A page that fills the screen exactly
+              // is easier to scan than one that runs past the fold.
+              const REGISTRY_PER_PAGE = 25;
               const totalPages = Math.max(1, Math.ceil(filteredSearchList.length / REGISTRY_PER_PAGE));
               const currentPage = Math.min(registryPage, totalPages);
               const paginated = filteredSearchList.slice((currentPage - 1) * REGISTRY_PER_PAGE, currentPage * REGISTRY_PER_PAGE);
@@ -1870,8 +1882,10 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
               )}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))',
-              gap: '16px',
+              // 200px tracks give five columns on a normal desktop and fold
+              // down to fewer on narrow screens without a media query.
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))',
+              gap: '12px',
               marginTop: '8px'
             }}>
               {paginated.map(s => {
@@ -1886,11 +1900,11 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                     key={s._id || s.studentId}
                     hoverable={true}
                     style={{
-                      padding: '18px',
+                      padding: '12px',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
-                      gap: '14px',
+                      gap: '10px',
                       backgroundColor: 'rgba(255, 255, 255, 0.85)',
                       border: '1.5px solid rgba(226, 232, 240, 0.9)',
                       borderRadius: '16px',
@@ -1901,15 +1915,15 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                     {/* Top Row: Avatar + Name + Adm Badge */}
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                       <div style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: '12px',
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '10px',
                         backgroundColor: isResident ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
                         color: isResident ? 'var(--warning)' : 'var(--good)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '1.0714rem',
+                        fontSize: '0.9286rem',
                         fontWeight: 900,
                         flexShrink: 0
                       }}>
@@ -1917,12 +1931,12 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <strong style={{ fontSize: '1.0714rem', color: 'var(--dark-charcoal)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <strong style={{ fontSize: '0.8571rem', color: 'var(--dark-charcoal)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {s.name}
                           </strong>
                         </div>
                         <div style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginTop: '2px', fontWeight: 600 }}>
-                          Adm: <span style={{ color: 'var(--ink)', fontWeight: 800 }}>{s.admissionNumber || s.studentId}</span>  Roll: <span style={{ color: 'var(--ink)', fontWeight: 800 }}>{s.rollNumber || s.studentId}</span>
+                          Adm: <span style={{ color: 'var(--ink)', fontWeight: 800 }}>{s.admissionNumber || s.studentId}</span>
                         </div>
                         <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
                           {s.branch || loggedInCampus} ({s.course || 'MPC'}{s.section ? ` - ${s.section}` : ''})
@@ -2168,7 +2182,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                 <div>
                   <h4 style={{ margin: 0, fontSize: '1.0714rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{selectedStudent.name}</h4>
                   <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
-                    Adm No: {selectedStudent.admissionNumber}  Roll: {selectedStudent.rollNumber || 'N/A'}  Branch: {selectedStudent.branch}
+                    Adm No: {selectedStudent.admissionNumber}  Branch: {selectedStudent.branch}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>

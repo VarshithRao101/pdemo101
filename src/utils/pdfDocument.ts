@@ -364,6 +364,19 @@ export interface OpenPrintOptions {
   /** Landscape for wide tables — an audit ledger does not fit in portrait. */
   landscape?: boolean;
   /**
+   * Half an A4 sheet, for fee receipts.
+   *
+   * A4 is 210 x 297mm, so half of it cut across the short edge is
+   * 210 x 148.5mm — the same as A5 landscape. Declaring the exact millimetres
+   * rather than `A5 landscape` matters: the sheet in the printer is still A4,
+   * and the operator cuts it after printing. Naming A5 would make some drivers
+   * ask for A5 paper that is not loaded.
+   *
+   * Margins drop to 8mm because 14mm on a half sheet leaves very little room
+   * for the receipt itself.
+   */
+  halfA4?: boolean;
+  /**
    * Draws the decorative double border.
    *
    * Only for documents that fit on one page — a receipt, payslip or bill. A
@@ -482,7 +495,8 @@ const whenMeasurable = (win: Window, cb: () => void): void => {
  * — and the title is what the browser offers as the default PDF filename.
  */
 export const openPrintDocument = ({
-  title, body, buttonLabel = 'Print / Save as PDF', onBlocked, landscape = false, framed = false
+  title, body, buttonLabel = 'Print / Save as PDF', onBlocked, landscape = false, framed = false,
+  halfA4 = false
 }: OpenPrintOptions): boolean => {
   const win = window.open('', '_blank');
   if (!win) {
@@ -490,9 +504,18 @@ export const openPrintDocument = ({
     return false;
   }
 
-  const orientation = landscape
-    ? '@page { size: A4 landscape; margin: 10mm; } .page { max-width: 272mm; }'
-    : '';
+  // Half A4 wins over landscape if both are asked for — a receipt is a
+  // receipt whatever else was requested.
+  const orientation = halfA4
+    ? `@page { size: 210mm 148.5mm; margin: 8mm; }
+       .page { max-width: 194mm; }
+       html, body { font-size: 9.5px; }
+       /* One receipt per sheet. Without this a long receipt silently spills
+          onto a second half-sheet and the cut line lands mid-document. */
+       .page { page-break-after: avoid; page-break-inside: avoid; }`
+    : landscape
+      ? '@page { size: A4 landscape; margin: 10mm; } .page { max-width: 272mm; }'
+      : '';
 
   win.document.write(`<!DOCTYPE html>
 <html lang="en">

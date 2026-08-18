@@ -33,17 +33,18 @@ const userSchema = new mongoose.Schema({
   },
 
   /**
-   * Which of the seven clerk slots on this campus the account occupies.
+   * Display order within a campus. NOT a fixed slot any more.
    *
-   * Clerks are provisioned into a fixed number of slots per campus rather
-   * than created freely, so the cap is a property of the data and not a rule
-   * someone has to remember. Null for every other role.
+   * Clerks used to occupy seven numbered slots per campus, enforced by a
+   * unique index. They are now created freely up to a per-campus cap, so this
+   * is only a stable order for the list — two clerks sharing a number is
+   * untidy, not a fault, and refusing to create the fifteenth clerk because a
+   * number collided would be absurd.
    */
   slotIndex: {
     type: Number,
     default: null,
-    min: 1,
-    max: 7
+    min: 1
   },
 
   /**
@@ -122,20 +123,17 @@ const userSchema = new mongoose.Schema({
 });
 
 /**
- * One clerk per slot per campus, enforced by the database.
+ * Clerk contact details, captured when the Rector creates the account.
  *
- * An application-level count cannot hold this on its own: two concurrent
- * provisioning requests both read "six clerks" and both insert a seventh. A
- * partial index applies the constraint only to clerk documents, so the four
- * accountants and the Rector — which have no slot — are unaffected.
+ * These are ordinary profile fields — `mobile` and `email` already exist
+ * above — and are listed here only to record that the clerk creation form
+ * collects them, so nothing downstream assumes a clerk has no contact
+ * details.
+ *
+ * NOTE: the unique index on (campus, slotIndex) was removed with the fixed
+ * seven-slot model. The per-campus cap is enforced in the create route
+ * instead, counted inside the same request that inserts.
  */
-userSchema.index(
-  { campus: 1, slotIndex: 1 },
-  {
-    unique: true,
-    partialFilterExpression: { role: 'clerk', slotIndex: { $type: 'number' } }
-  }
-);
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 

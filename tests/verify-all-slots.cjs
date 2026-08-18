@@ -115,8 +115,17 @@ async function main() {
 
   const clerks = await User.find({ role: 'clerk' }).select('username campus slotIndex password pin permissions status').lean();
   ok('28 clerk accounts exist', clerks.length === 28, `${clerks.length} found`);
-  ok('every clerk has all five powers',
-    clerks.every(c => Object.values(c.permissions || {}).filter(Boolean).length === 5));
+  // NOT "all five are on". The Rector granting and revoking powers per clerk
+  // is the entire point of the feature, so asserting a fixed set would fail
+  // the moment the system is used as intended. What must hold is that every
+  // clerk carries a COMPLETE permission record — five booleans, none missing —
+  // because an absent key reads as false and would silently remove access
+  // nobody revoked.
+  const POWERS = ['addStudent', 'editStudent', 'editFees', 'collectFees', 'logExpenditures'];
+  ok('every clerk carries a complete permission record',
+    clerks.every(c => c.permissions && POWERS.every(k => typeof c.permissions[k] === 'boolean')),
+    clerks.filter(c => !c.permissions || !POWERS.every(k => typeof c.permissions[k] === 'boolean'))
+      .map(c => c.username).join(', ') || 'all complete');
 
   // Rate limiting would otherwise refuse 28 near-simultaneous logins.
   await mongoose.connection.collection('loginattempts').deleteMany({});
@@ -215,7 +224,13 @@ async function main() {
   ok('28 expenditures logged', counts['expenditure.create'] === 28, String(counts['expenditure.create']));
   ok('every action is in the log', logged >= 84, `${logged} entries for 84 actions`);
 
-  const named = await AuditLog.countDocuments({ ...tagged, actorUsername: /^clerk\d+_/ });
+  // Matched against the clerks this run actually used, NOT a name pattern.
+  // Portal IDs are the Rector's to change — a clerk renamed to something
+  // sensible would fail a /^clerk\d+_/ regex while the log was perfectly
+  // correct, which is a test asserting a naming convention rather than the
+  // property that matters.
+  const clerkNames = clerks.map(c => c.username);
+  const named = await AuditLog.countDocuments({ ...tagged, actorUsername: { $in: clerkNames } });
   ok('every entry names the clerk who did it', named === logged, `${named}/${logged}`);
 
   console.log('\nProcess health\n');

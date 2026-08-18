@@ -74,32 +74,42 @@ export type ClerkPermissionName =
 
 export type ClerkPermissions = Record<ClerkPermissionName, boolean>;
 
-export interface ClerkSlot {
-  slotIndex: number;
-  /** False for a slot nobody has provisioned yet — still shown, still empty. */
-  exists: boolean;
+export interface Clerk {
+  id: string;
   username: string;
   name: string;
+  campus: string;
   status: 'active' | 'inactive';
+  mobile: string;
+  email: string;
+  /** Readable, because credentials are stored readable. Null only for an
+   *  account still holding a credential from before that change. */
+  password: string | null;
+  pin: string | null;
   permissions: ClerkPermissions;
-  /** Whether a credential exists. Never the credential. */
-  passwordSet?: boolean;
+  slotIndex: number | null;
+  createdAt?: string | null;
   lastSeenAt?: string | null;
 }
 
-export interface ClerkSaveResult {
+export interface CampusClerks {
   campus: string;
-  /** The campus re-read after the write, so the screen shows what was stored. */
-  slots: ClerkSlot[];
-  changes: Array<{ slotIndex: number; username: string; action: string }>;
-  /**
-   * Populated only for slots activated in THIS save.
-   *
-   * The server keeps a bcrypt hash and nothing else, so this response is the
-   * only time these values exist in readable form. A caller that discards
-   * them cannot ask for them again.
-   */
-  createdCredentials: Array<{ slotIndex: number; username: string; password: string; pin: string }>;
+  clerks: Clerk[];
+  maxPerCampus: number;
+  remaining: number;
+}
+
+/** The details the Rector fills in on step one of adding a clerk. */
+export interface NewClerk {
+  campus: string;
+  name: string;
+  username: string;
+  password: string;
+  pin: string;
+  mobile?: string;
+  email?: string;
+  permissions: ClerkPermissions;
+  active?: boolean;
 }
 
 /** Labels for the five toggles, in the order the Rector sees them. */
@@ -156,34 +166,45 @@ export const admin1Service = {
     return { message: res.message, ...res.data };
   },
 
-  // --- Clerk slots ------------------------------------------------------
-  async getClerks(campus: string): Promise<{ campus: string; slotsPerCampus: number; slots: ClerkSlot[] }> {
-    const res = await apiClient.get<{ status: string; data: { campus: string; slotsPerCampus: number; slots: ClerkSlot[] } }>(
-      `/admin1/clerks?campus=${encodeURIComponent(campus)}`
+  // --- Clerks -----------------------------------------------------------
+  //
+  // Every one of these carries the Rector's own PIN. The screen collects it
+  // once on entry and passes it down, so nothing inside prompts again.
+
+  async getClerks(campus: string, pin: string): Promise<CampusClerks> {
+    const res = await apiClient.request<{ status: string; data: CampusClerks }>(
+      `/admin1/clerks?campus=${encodeURIComponent(campus)}`,
+      { method: 'GET', headers: { 'x-security-pin': pin } }
     );
     return res.data;
   },
 
-  /**
-   * Save one campus's clerk configuration.
-   *
-   * `pin` is the Rector's own six-digit PIN and is sent as a header rather
-   * than in the body, so it never lands in a request log that records bodies.
-   */
-  async saveClerks(
-    campus: string,
-    slots: Array<{ slotIndex: number; active: boolean; permissions: ClerkPermissions }>,
-    pin: string
-  ): Promise<ClerkSaveResult> {
-    const res = await apiClient.request<{ status: string; message: string; data: ClerkSaveResult }>(
+  async createClerk(clerk: NewClerk, pin: string): Promise<CampusClerks & { message: string }> {
+    const res = await apiClient.request<{ status: string; message: string; data: CampusClerks }>(
       '/admin1/clerks',
-      {
-        method: 'POST',
-        body: JSON.stringify({ campus, slots }),
-        headers: { 'x-security-pin': pin }
-      }
+      { method: 'POST', headers: { 'x-security-pin': pin }, body: JSON.stringify(clerk) }
     );
-    return res.data;
+    return { ...res.data, message: res.message };
+  },
+
+  async updateClerk(
+    id: string,
+    changes: Partial<Omit<NewClerk, 'campus'>> & { active?: boolean },
+    pin: string
+  ): Promise<CampusClerks & { message: string }> {
+    const res = await apiClient.request<{ status: string; message: string; data: CampusClerks }>(
+      `/admin1/clerks/${encodeURIComponent(id)}`,
+      { method: 'PATCH', headers: { 'x-security-pin': pin }, body: JSON.stringify(changes) }
+    );
+    return { ...res.data, message: res.message };
+  },
+
+  async deleteClerk(id: string, pin: string): Promise<CampusClerks & { message: string }> {
+    const res = await apiClient.request<{ status: string; message: string; data: CampusClerks }>(
+      `/admin1/clerks/${encodeURIComponent(id)}`,
+      { method: 'DELETE', headers: { 'x-security-pin': pin } }
+    );
+    return { ...res.data, message: res.message };
   },
 
   // --- Audit trail ------------------------------------------------------

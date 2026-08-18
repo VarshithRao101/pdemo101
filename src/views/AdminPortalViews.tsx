@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { LIMITS } from '../constants/fieldLimits';
+import { LIMITS, validateMobile, digitsOnly } from '../constants/fieldLimits';
 import { useNavigation, accountCan, type ClerkPermissionKey } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { InspireLogo } from '../components/common/InspireLogo';
 import { apiClient, setGlobalSecurityKey } from '../services/apiClient';
 import {
   admin1Service, CLERK_PERMISSION_LABELS,
-  type AuditLogEntry, type ClerkSlot, type ClerkPermissionName, type ClerkPermissions, type PortalAccount
+  type AuditLogEntry, type Clerk, type ClerkPermissions, type PortalAccount
 } from '../services/admin1Service';
 import { admin2Service } from '../services/admin2Service';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
@@ -336,21 +336,13 @@ const matchesStudentQuery = (student: Student, query: string) => {
 };
 
 
-// --- Input Validation Helpers ---
-// Mobile: optional strips spaces/dashes then checks for exactly 10 digits
-const validateMobile = (val: string): string | null => {
-  if (!val || val.trim() === '') return null; // empty is allowed (optional field)
-  const digits = val.replace(/[\s-]/g, '');
-  if (!/^\d{10}$/.test(digits)) return 'Mobile number must be exactly 10 digits.';
-  return null;
-};
 const MAX_STUDENT_FEE = 1_000_000; // Rs. 10,00,000
 
 /** A PIN is six digits and nothing else — strip anything that is not one. */
 const digitsOnlyPin = (value: string) => String(value).replace(/\D/g, '').slice(0, 6);
 
 export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ role = 'admin1' }) => {
-  const { user, activeTab: globalActiveTab, setActiveTab, setSelectedCampus } = useNavigation();
+  const { user, activeTab: globalActiveTab, setActiveTab } = useNavigation();
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
 
   /**
@@ -495,30 +487,36 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
     }
     setSelectedAcademicYear(fallback);
   }, [editTeacher, selectedAcademicYear]);
-  // --- Clerk slot manager (Rector only) ---------------------------------
+  // --- Clerk manager (Rector only) --------------------------------------
   //
-  // One array, not a draft-plus-saved pair. Every change is written the moment
-  // it is confirmed and the response replaces this, so there is no unsaved
-  // state to reconcile and nothing to lose by navigating away.
+  // Clerks are created freely now, up to fifteen a campus — not seven fixed
+  // slots. `clerkList` is whatever the server last returned for the selected
+  // campus; every write returns the refreshed campus, so there is no local
+  // draft to reconcile and nothing to lose by navigating away.
   const [clerkCampus, setClerkCampus] = useState<string>(CAMPUS_LIST[0]);
-  const [clerkDraft, setClerkDraft] = useState<ClerkSlot[]>([]);
-  // Which of the seven boxes is open, if any.
-  const [clerkOpenSlot, setClerkOpenSlot] = useState<number | null>(null);
+  const [clerkList, setClerkList] = useState<Clerk[]>([]);
+  const [clerkMax, setClerkMax] = useState(15);
+  const [clerkRemaining, setClerkRemaining] = useState(15);
+  const [clerkOpenId, setClerkOpenId] = useState<string | null>(null);
+  const [clerkBusy, setClerkBusy] = useState(false);
+
+  // The PIN is asked ONCE on entering the screen and held for the visit, so
+  // nothing inside prompts again — every action here is a plain confirmation.
   const [clerkUnlocked, setClerkUnlocked] = useState(false);
   const [clerkRectorPin, setClerkRectorPin] = useState('');
-  const [clerkCredDraft, setClerkCredDraft] = useState<{ username: string; password: string; pin: string }>(
-    { username: '', password: '', pin: '' }
-  );
-  const [clerkCredSaving, setClerkCredSaving] = useState(false);
   const [clerkPinInput, setClerkPinInput] = useState('');
-  // Shown inside the PIN dialog rather than as a toast. A wrong PIN is a
-  // message about the thing the user is currently looking at, and the server
-  // counts down remaining attempts before a lockout — that must not scroll
-  // past in a notification that disappears on its own.
   const [clerkPinError, setClerkPinError] = useState('');
-  const [clerkNewCredentials, setClerkNewCredentials] = useState<
-    Array<{ slotIndex: number; username: string; password: string; pin: string }>
-  >([]);
+
+  // Adding a clerk is two steps: details, then access. Kept as one draft so
+  // stepping back does not lose what was already typed.
+  const [clerkAddStep, setClerkAddStep] = useState<0 | 1 | 2>(0);
+  const emptyClerkDraft = {
+    name: '', username: '', password: '', pin: '', mobile: '', email: '',
+    permissions: { addStudent: false, editStudent: false, editFees: false, collectFees: false, logExpenditures: false } as ClerkPermissions
+  };
+  const [clerkAddDraft, setClerkAddDraft] = useState(emptyClerkDraft);
+  const [clerkAddError, setClerkAddError] = useState('');
+
 
   // --- Audit trail (Rector only) ----------------------------------------
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
@@ -639,167 +637,142 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
     }
   };
 
-  /**
-   * Load one campus's seven slots.
-   *
-   * `clerkDraft` is what the screen shows. Unlike the old version there is no
-   * separate "saved" copy to diff against: every change is written the moment
-   * it is confirmed, so the draft and the server never drift far enough apart
-   * to need reconciling.
-   */
-  const fetchClerks = async (campus = clerkCampus) => {
+  /** Load one campus's clerks. Every write returns the same shape. */
+  const applyCampusClerks = (result: { campus: string; clerks: Clerk[]; maxPerCampus: number; remaining: number }) => {
+    setClerkList(result.clerks);
+    setClerkMax(result.maxPerCampus);
+    setClerkRemaining(result.remaining);
+  };
+
+  const fetchClerks = async (campus = clerkCampus, pin = clerkRectorPin) => {
+    if (!pin) return;
     try {
-      const result = await admin1Service.getClerks(campus);
-      setClerkDraft(result.slots);
+      applyCampusClerks(await admin1Service.getClerks(campus, pin));
     } catch (err: any) {
-      console.warn('Failed to fetch clerk slots:', err);
-      triggerToast(err?.message || 'Could not load the clerk slots.', 'error');
+      triggerToast(err?.message || 'Could not load the clerks for this campus.', 'error');
     }
   };
 
-  /** Open the screen. One PIN, once, for the whole visit. */
+  /**
+   * Unlock the screen. Asked once, on entry.
+   *
+   * The PIN is verified by actually fetching — there is no separate "check my
+   * PIN" call to get out of step with the routes that use it.
+   */
   const unlockClerks = async () => {
     const pin = clerkPinInput.trim();
     if (pin.length !== 6) { setClerkPinError('Enter your six-digit PIN.'); return; }
     try {
-      // Verified by making the first real call with it. A separate "check my
-      // PIN" endpoint would be a second place for the rule to live.
-      await admin1Service.getClerks(clerkCampus);
+      applyCampusClerks(await admin1Service.getClerks(clerkCampus, pin));
       setClerkRectorPin(pin);
       setClerkUnlocked(true);
       setClerkPinInput('');
       setClerkPinError('');
-      await fetchClerks(clerkCampus);
     } catch (err: any) {
-      setClerkPinError(err?.message || 'Could not open the clerks screen.');
+      setClerkPinError(err?.message || 'Could not open the clerk manager.');
       setClerkPinInput('');
     }
   };
 
-  /** Leaving the screen forgets the PIN and everything loaded with it. */
+  /** Wipe every credential out of component state when leaving. */
   const lockClerks = () => {
     setClerkUnlocked(false);
     setClerkRectorPin('');
-    setClerkDraft([]);
-    setClerkOpenSlot(null);
-    setClerkNewCredentials([]);
+    setClerkList([]);
+    setClerkOpenId(null);
+    setClerkAddStep(0);
+    setClerkAddDraft(emptyClerkDraft);
     setClerkPinInput('');
     setClerkPinError('');
   };
 
-  const switchCampus = (campus: string) => {
+  const switchClerkCampus = (campus: string) => {
     setClerkCampus(campus);
-    setClerkOpenSlot(null);
-    setClerkNewCredentials([]);
+    setClerkOpenId(null);
+    setClerkAddStep(0);
+    setClerkAddDraft(emptyClerkDraft);
     fetchClerks(campus);
   };
 
-  /**
-   * Write one slot's configuration.
-   *
-   * Sends only the slot that changed. The route takes an array, so a single
-   * entry is a valid save and the other six are left exactly as they are —
-   * which matters because two people could have this screen open.
-   */
-  const saveClerkSlot = async (
-    slot: ClerkSlot,
-    next: { active: boolean; permissions: ClerkPermissions }
-  ) => {
+  /** Step one: the details. Validated here so step two is never reached with
+   *  something the server will reject at the end. */
+  const clerkDetailsProblem = (): string => {
+    const d = clerkAddDraft;
+    if (!d.name.trim()) return 'Enter the clerk’s name.';
+    if (!d.username.trim()) return 'Enter a portal ID for them to sign in with.';
+    if (d.password.trim().length < 8) return 'The password must be at least 8 characters.';
+    if (!/^\d{6}$/.test(d.pin.trim())) return 'The PIN must be exactly 6 digits.';
+    const mobileError = validateMobile(d.mobile, 'Mobile number');
+    if (mobileError) return mobileError;
+    return '';
+  };
+
+  const createClerk = async () => {
+    const problem = clerkDetailsProblem();
+    if (problem) { setClerkAddError(problem); setClerkAddStep(1); return; }
+
+    setClerkBusy(true);
     try {
-      const result = await admin1Service.saveClerks(
-        clerkCampus,
-        [{ slotIndex: slot.slotIndex, active: next.active, permissions: next.permissions }],
-        clerkRectorPin
-      );
-      setClerkDraft(result.slots);
-      if ((result.createdCredentials || []).length > 0) {
-        setClerkNewCredentials(result.createdCredentials);
-      }
-      return true;
-    } catch (err: any) {
-      triggerToast(err?.message || 'Could not save that change.', 'error');
-      // Put the screen back to what the server actually holds.
-      await fetchClerks(clerkCampus);
-      return false;
-    }
-  };
-
-  /** Open or close a clerk's portal, confirmed with a plain yes/no. */
-  const toggleClerkActive = async (slot: ClerkSlot) => {
-    const turningOn = slot.status !== 'active';
-    const question = turningOn
-      ? (slot.exists
-        ? `Open the portal for Clerk ${slot.slotIndex} at ${clerkCampus}?`
-        : `Create Clerk ${slot.slotIndex} at ${clerkCampus} and open their portal?`)
-      : `Close the portal for Clerk ${slot.slotIndex} at ${clerkCampus}?\n\nThey are signed out immediately. Nothing they recorded is deleted.`;
-    if (!window.confirm(question)) return;
-
-    await saveClerkSlot(slot, { active: turningOn, permissions: slot.permissions });
-  };
-
-  /** Grant or revoke one power, confirmed with a plain yes/no. */
-  const toggleClerkPermission = async (slot: ClerkSlot, name: ClerkPermissionName) => {
-    const label = CLERK_PERMISSION_LABELS.find(p => p.name === name)?.label || name;
-    const granting = !slot.permissions[name];
-    const question = granting
-      ? `Allow Clerk ${slot.slotIndex} to ${label.toLowerCase()}?`
-      : `Stop Clerk ${slot.slotIndex} being able to ${label.toLowerCase()}?\n\nThis takes effect on their next action, even if they are signed in.`;
-    if (!window.confirm(question)) return;
-
-    await saveClerkSlot(slot, {
-      active: slot.status === 'active',
-      permissions: { ...slot.permissions, [name]: granting }
-    });
-  };
-
-  /** Change a clerk's portal ID, password or PIN from this same screen. */
-  const saveClerkCredentials = async (slot: ClerkSlot) => {
-    const changes: { username?: string; password?: string; pin?: string } = {};
-    if (clerkCredDraft.username.trim() && clerkCredDraft.username.trim() !== slot.username) {
-      changes.username = clerkCredDraft.username.trim();
-    }
-    if (clerkCredDraft.password.trim()) changes.password = clerkCredDraft.password.trim();
-    if (clerkCredDraft.pin.trim()) changes.pin = clerkCredDraft.pin.trim();
-
-    if (Object.keys(changes).length === 0) {
-      triggerToast('Nothing to change for this clerk.', 'error');
-      return;
-    }
-
-    const what = Object.keys(changes)
-      .map(k => (k === 'username' ? 'portal ID' : k))
-      .join(' and ');
-    if (!window.confirm(`Change the ${what} for Clerk ${slot.slotIndex}?\n\nThey will be signed out.`)) return;
-
-    setClerkCredSaving(true);
-    try {
-      const result = await admin1Service.setCredentials(slot.username, changes, clerkRectorPin);
+      const result = await admin1Service.createClerk({
+        campus: clerkCampus,
+        name: clerkAddDraft.name.trim(),
+        username: clerkAddDraft.username.trim(),
+        password: clerkAddDraft.password.trim(),
+        pin: clerkAddDraft.pin.trim(),
+        mobile: clerkAddDraft.mobile.trim(),
+        email: clerkAddDraft.email.trim(),
+        permissions: clerkAddDraft.permissions,
+        active: true
+      }, clerkRectorPin);
+      applyCampusClerks(result);
+      setClerkAddStep(0);
+      setClerkAddDraft(emptyClerkDraft);
+      setClerkAddError('');
       triggerToast(result.message, 'success');
-      setClerkCredDraft({
-        username: result.username,
-        password: result.password || '',
-        pin: result.pin || ''
-      });
-      await fetchClerks(clerkCampus);
     } catch (err: any) {
-      triggerToast(err?.message || 'Could not change those details.', 'error');
+      setClerkAddError(err?.message || 'Could not create the clerk.');
     } finally {
-      setClerkCredSaving(false);
+      setClerkBusy(false);
     }
   };
 
-  // Load the open clerk's current sign-in details into the editor.
-  useEffect(() => {
-    if (clerkOpenSlot == null) return;
-    const slot = clerkDraft.find(s => s.slotIndex === clerkOpenSlot);
-    if (!slot) return;
-    const account = credAccounts.find(a => a.username === slot.username);
-    setClerkCredDraft({
-      username: slot.username,
-      password: account?.password || '',
-      pin: account?.pin || ''
-    });
-  }, [clerkOpenSlot, clerkDraft, credAccounts]);
+  /** Any change to an existing clerk. Confirmed with yes/no, never a PIN. */
+  const changeClerk = async (
+    clerk: Clerk,
+    changes: Record<string, any>,
+    confirmMessage?: string
+  ) => {
+    if (confirmMessage && !window.confirm(confirmMessage)) return;
+    setClerkBusy(true);
+    try {
+      const result = await admin1Service.updateClerk(clerk.id, changes, clerkRectorPin);
+      applyCampusClerks(result);
+      triggerToast(result.message, 'success');
+    } catch (err: any) {
+      triggerToast(err?.message || 'Could not update that clerk.', 'error');
+    } finally {
+      setClerkBusy(false);
+    }
+  };
+
+  const removeClerk = async (clerk: Clerk) => {
+    if (!window.confirm(
+      `Remove ${clerk.name} from ${clerk.campus}?\n\n` +
+      'They are signed out immediately and the place is freed for another clerk. ' +
+      'Everything they recorded — students, receipts, expenditures — is kept.'
+    )) return;
+    setClerkBusy(true);
+    try {
+      const result = await admin1Service.deleteClerk(clerk.id, clerkRectorPin);
+      applyCampusClerks(result);
+      setClerkOpenId(null);
+      triggerToast(result.message, 'success');
+    } catch (err: any) {
+      triggerToast(err?.message || 'Could not remove that clerk.', 'error');
+    } finally {
+      setClerkBusy(false);
+    }
+  };
 
   /**
    * Load one page of the audit trail.
@@ -1260,7 +1233,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
         ['Academic Year', student.academicYear],
         ['Year', student.studentYear],
         ['Hostel Status', student.hostelStatus],
-        ['Roll Number', student.rollNumber]
       ]),
       pdfSection('Fee Structure and Applied Waivers'),
       pdfTable({
@@ -4346,58 +4318,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   // Four campus boxes at the top, the seven slots for the chosen campus
   // beneath — slot on the left, its switches on the right — and one Save at
   // the bottom behind the Rector's PIN.
-  // SUBPAGE: FEE COLLECTION CAMPUS PICKER (Rector only)
-  //
-  // Fee collection acts on exactly one campus, and the Rector belongs to all
-  // four — so the campus is chosen here rather than assumed. Picking one
-  // hands off to the accountant's own fee collection module, which is the
-  // same screen the accountant and a permitted clerk use.
-  if (activePage === 'collect_fees') {
-    if (role !== 'admin1') { setActivePage('menu'); return null; }
-
-    return (
-      <div style={styles.container} className="anim-slide-up">
-        {renderBackgroundDesign('emerald')}
-        <header style={styles.header}>
-          <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-            Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Collect Fees</h1>
-          <p style={styles.subtitle}>Choose the campus whose fees you are collecting.</p>
-        </header>
-
-        <main style={{ ...styles.content, gap: '16px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '12px', zIndex: 1 }}>
-            {CAMPUS_LIST.map(campus => (
-              <div
-                key={campus}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCampus(campus); setActiveTab('fee_collection'); } }}
-                onClick={() => { setSelectedCampus(campus); setActiveTab('fee_collection'); }}
-                className="press-interactive"
-                style={{
-                  padding: '18px', borderRadius: '14px', cursor: 'pointer',
-                  border: '2px solid var(--line)', backgroundColor: 'var(--surface)'
-                }}
-              >
-                <div style={{ fontSize: '0.6429rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted-gray)' }}>
-                  Campus
-                </div>
-                <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--ink)', marginTop: '4px' }}>
-                  {campus}
-                </div>
-                <div style={{ fontSize: '0.7143rem', color: 'var(--ink-secondary)', marginTop: '6px' }}>
-                  Search students and take payments here
-                </div>
-              </div>
-            ))}
-          </div>
-        </main>
-      </div>
-    );
-  }
-
   // SUBPAGE: CREDENTIALS (Rector only)
   //
   // Shows every account's live portal ID, password and PIN, and lets the
@@ -4606,30 +4526,69 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
     );
   }
 
+  // SUBPAGE: CLERKS (Rector only)
+  //
+  // Four campus cards, then the clerks that exist at the chosen campus and a
+  // control to add another. There are no empty placeholder rows any more —
+  // clerks are created as needed up to fifteen a campus, so a blank slot is
+  // not a thing that exists.
+  //
+  // The PIN is asked once, on entry. Everything inside is a plain yes/no
+  // confirmation.
   if (activePage === 'clerks') {
-    // Locked behind the Rector's own PIN on ENTRY, not on save. Everything
-    // inside — powers, portal ID, password, PIN — is then a plain edit with a
-    // yes/no confirmation, because asking for the same six digits again after
-    // each change is what made this screen tiring to use.
-    if (!clerkUnlocked) {
-      return (
-        <div style={styles.container} className="anim-slide-up">
-          {renderBackgroundDesign('teal')}
-          <header style={styles.header}>
-            <button onClick={() => setActivePage('menu')} style={styles.backArrowBtn} className="press-interactive">
-              Back to Cockpit
-            </button>
-            <h1 style={{ ...styles.title, marginTop: '8px' }}>Clerks</h1>
-            <p style={styles.subtitle}>Seven clerk slots for each campus, and what each of them may do.</p>
-          </header>
-          <main style={{ ...styles.content, gap: '16px' }}>
+    if (role !== 'admin1') { setActivePage('menu'); return null; }
+
+    const openClerk = clerkList.find(c => c.id === clerkOpenId) || null;
+
+    /** One on/off control. Deliberately a plain labelled button. */
+    const AccessToggle: React.FC<{ on: boolean; onClick: () => void; label: string; disabled?: boolean }> =
+      ({ on, onClick, label, disabled }) => (
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          aria-pressed={on}
+          style={{
+            padding: '6px 14px', borderRadius: '8px', fontSize: '0.7857rem', fontWeight: 900,
+            border: `1.5px solid ${on ? 'var(--good)' : 'var(--line-strong)'}`,
+            backgroundColor: on ? 'var(--good)' : 'var(--surface)',
+            color: on ? '#FFFFFF' : 'var(--ink-secondary)',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            opacity: disabled ? 0.5 : 1,
+            minWidth: '92px'
+          }}
+          className="press-interactive"
+        >
+          {on ? 'Allowed' : 'Blocked'}{label ? '' : ''}
+        </button>
+      );
+
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('teal')}
+        <header style={styles.header}>
+          <button
+            onClick={() => { lockClerks(); setActivePage('menu'); }}
+            style={styles.backArrowBtn}
+            className="press-interactive"
+          >
+            Back to Cockpit
+          </button>
+          <h1 style={{ ...styles.title, marginTop: '8px' }}>Clerks</h1>
+          <p style={styles.subtitle}>
+            Create clerk accounts and choose what each one can do. Up to {clerkMax} per campus.
+          </p>
+        </header>
+
+        <main style={{ ...styles.content, gap: '16px' }}>
+          {!clerkUnlocked ? (
             <GlassCard hoverable={false} style={{ padding: '28px', maxWidth: '460px', zIndex: 1 }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '6px' }}>
                 Confirm it is you
               </h3>
               <p style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginBottom: '14px', lineHeight: 1.5 }}>
-                From here you can change what every clerk is allowed to do, and their
-                sign-in details. Enter your own six-digit PIN to open it.
+                This screen creates accounts and shows their passwords. Enter your own
+                six-digit PIN once — nothing inside will ask again.
               </p>
               <input
                 type="password"
@@ -4652,67 +4611,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                 style={{ ...styles.saveSubmitBtn, marginTop: '14px', width: '100%', backgroundColor: 'var(--ink)', color: 'var(--surface)', fontWeight: 900 }}
                 className="press-interactive"
               >
-                Open clerks
+                Open clerk manager
               </button>
             </GlassCard>
-          </main>
-        </div>
-      );
-    }
-
-    const openSlot = clerkOpenSlot != null ? clerkDraft.find(s => s.slotIndex === clerkOpenSlot) : null;
-    const activeCount = clerkDraft.filter(s => s.status === 'active').length;
-
-    /** A single on/off switch. */
-    const Toggle: React.FC<{ on: boolean; onClick: () => void; disabled?: boolean; label: string }> =
-      ({ on, onClick, disabled, label }) => (
-        <button
-          type="button"
-          role="switch"
-          aria-checked={on}
-          aria-label={label}
-          disabled={disabled}
-          onClick={onClick}
-          style={{
-            width: '44px', height: '24px', borderRadius: '999px', flexShrink: 0,
-            border: `1.5px solid ${on ? 'var(--good)' : 'var(--line-strong)'}`,
-            backgroundColor: on ? 'var(--good)' : 'var(--surface-sunken)',
-            position: 'relative', cursor: disabled ? 'not-allowed' : 'pointer',
-            opacity: disabled ? 0.45 : 1, transition: 'background-color 0.15s ease'
-          }}
-        >
-          <span style={{
-            position: 'absolute', top: '2px', left: on ? '22px' : '2px',
-            width: '18px', height: '18px', borderRadius: '50%',
-            backgroundColor: on ? '#FFFFFF' : 'var(--muted-gray)',
-            transition: 'left 0.15s ease'
-          }} />
-        </button>
-      );
-
-    return (
-      <div style={styles.container} className="anim-slide-up">
-        {renderBackgroundDesign('teal')}
-        <header style={styles.header}>
-          <button
-            onClick={() => { if (clerkOpenSlot != null) { setClerkOpenSlot(null); } else { lockClerks(); setActivePage('menu'); } }}
-            style={styles.backArrowBtn}
-            className="press-interactive"
-          >
-            {clerkOpenSlot != null ? 'Back to Clerks' : 'Back to Cockpit'}
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>
-            {openSlot ? `Clerk ${openSlot.slotIndex} — ${clerkCampus}` : 'Clerks'}
-          </h1>
-          <p style={styles.subtitle}>
-            {openSlot
-              ? 'Everything about this clerk: what they may do, and how they sign in.'
-              : 'Choose a campus, then a clerk to set what they may do and how they sign in.'}
-          </p>
-        </header>
-
-        <main style={{ ...styles.content, gap: '16px' }}>
-          {clerkOpenSlot == null ? (
+          ) : (
             <>
               {/* Four campus cards */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px', zIndex: 1 }}>
@@ -4723,14 +4625,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                       key={campus}
                       role="button"
                       tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); switchCampus(campus); } }}
-                      onClick={() => switchCampus(campus)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); switchClerkCampus(campus); } }}
+                      onClick={() => switchClerkCampus(campus)}
                       className="press-interactive"
                       style={{
                         padding: '14px', borderRadius: '12px', cursor: 'pointer',
                         border: `2px solid ${selected ? 'var(--good)' : 'var(--line)'}`,
-                        backgroundColor: selected ? 'var(--good-wash)' : 'var(--surface)',
-                        transition: 'border-color 0.15s ease, background-color 0.15s ease'
+                        backgroundColor: selected ? 'var(--good-wash)' : 'var(--surface)'
                       }}
                     >
                       <div style={{ fontSize: '0.6429rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: selected ? 'var(--good)' : 'var(--muted-gray)' }}>
@@ -4744,172 +4645,348 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                 })}
               </div>
 
-              <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink-secondary)', zIndex: 1 }}>
-                {activeCount} of {clerkDraft.length || 7} clerks active at {clerkCampus}
+              {/* Count + add */}
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', zIndex: 1 }}>
+                <span style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink-secondary)' }}>
+                  {clerkList.length} of {clerkMax} clerks at {clerkCampus}
+                  {clerkRemaining > 0 ? ` · ${clerkRemaining} place${clerkRemaining === 1 ? '' : 's'} left` : ' · full'}
+                </span>
+                <button
+                  disabled={clerkRemaining <= 0 || clerkAddStep !== 0}
+                  onClick={() => { setClerkAddDraft(emptyClerkDraft); setClerkAddError(''); setClerkAddStep(1); setClerkOpenId(null); }}
+                  style={{
+                    ...styles.actionItemBtn, padding: '9px 18px', fontWeight: 900, border: 'none',
+                    backgroundColor: clerkRemaining > 0 ? 'var(--good)' : 'var(--line)',
+                    color: clerkRemaining > 0 ? '#FFFFFF' : 'var(--muted-gray)',
+                    cursor: clerkRemaining > 0 ? 'pointer' : 'not-allowed'
+                  }}
+                  className="press-interactive"
+                >
+                  + Add clerk
+                </button>
               </div>
 
-              {/* Seven clerk boxes */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '12px', zIndex: 1 }}>
-                {clerkDraft.map(slot => {
-                  const isActive = slot.status === 'active';
-                  const granted = CLERK_PERMISSION_LABELS.filter(p => slot.permissions[p.name]).length;
+              {/* --- ADD CLERK: step 1, the details --- */}
+              {clerkAddStep === 1 && (
+                <GlassCard hoverable={false} style={{ padding: '18px', zIndex: 1, borderLeft: '4px solid var(--good)' }}>
+                  <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '2px' }}>
+                    New clerk at {clerkCampus} — step 1 of 2
+                  </div>
+                  <div style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginBottom: '14px' }}>
+                    Their details and how they sign in.
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 210px), 1fr))', gap: '12px' }}>
+                    <div>
+                      <label style={styles.formLabel}>Clerk name *</label>
+                      <input maxLength={LIMITS.personName} type="text" placeholder="e.g. Ramesh Kumar"
+                        value={clerkAddDraft.name}
+                        onChange={(e) => { setClerkAddDraft({ ...clerkAddDraft, name: e.target.value }); setClerkAddError(''); }}
+                        style={styles.textInputBox} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Portal ID *</label>
+                      <input maxLength={LIMITS.username} type="text" placeholder="what they type to sign in"
+                        value={clerkAddDraft.username}
+                        onChange={(e) => { setClerkAddDraft({ ...clerkAddDraft, username: e.target.value.toLowerCase() }); setClerkAddError(''); }}
+                        style={styles.textInputBox} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Password * (8 or more)</label>
+                      <input maxLength={LIMITS.password} type="text" placeholder="they can be told this"
+                        value={clerkAddDraft.password}
+                        onChange={(e) => { setClerkAddDraft({ ...clerkAddDraft, password: e.target.value }); setClerkAddError(''); }}
+                        style={styles.textInputBox} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>6-digit PIN *</label>
+                      <input maxLength={6} inputMode="numeric" type="text" placeholder="6 digits"
+                        value={clerkAddDraft.pin}
+                        onChange={(e) => { setClerkAddDraft({ ...clerkAddDraft, pin: digitsOnlyPin(e.target.value) }); setClerkAddError(''); }}
+                        style={styles.textInputBox} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Mobile number</label>
+                      <input maxLength={LIMITS.mobile} inputMode="numeric" type="text" placeholder="10 digits"
+                        value={clerkAddDraft.mobile}
+                        onChange={(e) => { setClerkAddDraft({ ...clerkAddDraft, mobile: digitsOnly(e.target.value) }); setClerkAddError(''); }}
+                        style={styles.textInputBox} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Email</label>
+                      <input maxLength={LIMITS.email} type="text" placeholder="name@example.com"
+                        value={clerkAddDraft.email}
+                        onChange={(e) => { setClerkAddDraft({ ...clerkAddDraft, email: e.target.value }); setClerkAddError(''); }}
+                        style={styles.textInputBox} />
+                    </div>
+                    <div>
+                      <label style={styles.formLabel}>Campus</label>
+                      <input type="text" value={clerkCampus} disabled
+                        style={{ ...styles.textInputBox, backgroundColor: 'var(--surface-sunken)', color: 'var(--ink-secondary)', fontWeight: 800, cursor: 'not-allowed' }} />
+                    </div>
+                  </div>
+
+                  {clerkAddError && (
+                    <div style={{ color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 700, marginTop: '10px' }}>
+                      {clerkAddError}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => { setClerkAddStep(0); setClerkAddDraft(emptyClerkDraft); setClerkAddError(''); }}
+                      style={{ ...styles.actionItemBtn, padding: '9px 18px', backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none' }}
+                      className="press-interactive"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        const problem = clerkDetailsProblem();
+                        if (problem) { setClerkAddError(problem); return; }
+                        setClerkAddError('');
+                        setClerkAddStep(2);
+                      }}
+                      style={{ ...styles.actionItemBtn, padding: '9px 22px', backgroundColor: 'var(--ink)', color: 'var(--surface)', border: 'none', fontWeight: 900 }}
+                      className="press-interactive"
+                    >
+                      Next: what they can do →
+                    </button>
+                  </div>
+                </GlassCard>
+              )}
+
+              {/* --- ADD CLERK: step 2, the access --- */}
+              {clerkAddStep === 2 && (
+                <GlassCard hoverable={false} style={{ padding: '18px', zIndex: 1, borderLeft: '4px solid var(--good)' }}>
+                  <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '2px' }}>
+                    {clerkAddDraft.name || 'New clerk'} — step 2 of 2
+                  </div>
+                  <div style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginBottom: '14px' }}>
+                    What this clerk is allowed to do. Everything starts blocked.
+                  </div>
+
+                  {CLERK_PERMISSION_LABELS.map(perm => (
+                    <div key={perm.name} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: '12px', padding: '8px 0', borderBottom: '1px solid var(--line)'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)' }}>{perm.label}</div>
+                        <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)' }}>{perm.help}</div>
+                      </div>
+                      <AccessToggle
+                        on={clerkAddDraft.permissions[perm.name]}
+                        label=""
+                        onClick={() => setClerkAddDraft({
+                          ...clerkAddDraft,
+                          permissions: { ...clerkAddDraft.permissions, [perm.name]: !clerkAddDraft.permissions[perm.name] }
+                        })}
+                      />
+                    </div>
+                  ))}
+
+                  {clerkAddError && (
+                    <div style={{ color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 700, marginTop: '10px' }}>
+                      {clerkAddError}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => { setClerkAddStep(1); setClerkAddError(''); }}
+                      style={{ ...styles.actionItemBtn, padding: '9px 18px', backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none' }}
+                      className="press-interactive"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      disabled={clerkBusy}
+                      onClick={createClerk}
+                      style={{ ...styles.actionItemBtn, padding: '9px 22px', backgroundColor: 'var(--good)', color: '#FFFFFF', border: 'none', fontWeight: 900, opacity: clerkBusy ? 0.6 : 1 }}
+                      className="press-interactive"
+                    >
+                      {clerkBusy ? 'Creating…' : 'Create clerk'}
+                    </button>
+                  </div>
+                </GlassCard>
+              )}
+
+              {/* --- THE CLERKS --- */}
+              {clerkList.length === 0 && clerkAddStep === 0 && (
+                <GlassCard hoverable={false} style={{ padding: '28px', textAlign: 'center', zIndex: 1 }}>
+                  <div style={{ fontSize: '0.9286rem', fontWeight: 800, color: 'var(--ink-secondary)' }}>
+                    No clerks at {clerkCampus} yet
+                  </div>
+                  <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '6px' }}>
+                    Use “Add clerk” above to create one. They can sign in as soon as you do.
+                  </div>
+                </GlassCard>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))', gap: '12px', zIndex: 1 }}>
+                {clerkList.map(clerk => {
+                  const active = clerk.status === 'active';
+                  const granted = CLERK_PERMISSION_LABELS.filter(p => clerk.permissions[p.name]);
                   return (
                     <div
-                      key={slot.slotIndex}
+                      key={clerk.id}
                       role="button"
                       tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setClerkOpenSlot(slot.slotIndex); } }}
-                      onClick={() => setClerkOpenSlot(slot.slotIndex)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setClerkOpenId(clerkOpenId === clerk.id ? null : clerk.id); } }}
+                      onClick={() => setClerkOpenId(clerkOpenId === clerk.id ? null : clerk.id)}
                       className="press-interactive"
                       style={{
-                        padding: '16px', borderRadius: '14px', cursor: 'pointer',
-                        border: `2px solid ${isActive ? 'var(--good)' : 'var(--line)'}`,
+                        padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                        border: `2px solid ${clerkOpenId === clerk.id ? 'var(--good)' : 'var(--line)'}`,
                         backgroundColor: 'var(--surface)',
-                        opacity: isActive ? 1 : 0.75
+                        opacity: active ? 1 : 0.7
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--ink)' }}>
-                          Clerk {slot.slotIndex}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                        <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)', wordBreak: 'break-word' }}>
+                          {clerk.name}
                         </div>
                         <span style={{
-                          padding: '2px 8px', borderRadius: '20px', fontSize: '0.6429rem', fontWeight: 900,
-                          textTransform: 'uppercase', letterSpacing: '0.04em',
-                          backgroundColor: isActive ? 'var(--good-wash)' : 'var(--surface-sunken)',
-                          color: isActive ? 'var(--good)' : 'var(--muted-gray)',
-                          border: `1px solid ${isActive ? 'var(--good)' : 'var(--line-strong)'}`
+                          fontSize: '0.6429rem', fontWeight: 900, padding: '2px 8px', borderRadius: '20px',
+                          backgroundColor: active ? 'var(--good-wash)' : 'var(--surface-sunken)',
+                          color: active ? 'var(--good)' : 'var(--muted-gray)',
+                          border: `1px solid ${active ? 'var(--good)' : 'var(--line-strong)'}`,
+                          whiteSpace: 'nowrap'
                         }}>
-                          {isActive ? 'Active' : 'Inactive'}
+                          {active ? 'ACTIVE' : 'BLOCKED'}
                         </span>
                       </div>
-                      <div style={{ fontSize: '0.6429rem', fontWeight: 700, color: 'var(--muted-gray)', wordBreak: 'break-all' }}>
-                        {slot.exists ? slot.username : 'Not created yet'}
+                      <div style={{ fontSize: '0.6429rem', fontWeight: 700, color: 'var(--muted-gray)', marginTop: '2px', wordBreak: 'break-all' }}>
+                        {clerk.username}
                       </div>
-                      <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)', marginTop: '8px' }}>
-                        {granted} of {CLERK_PERMISSION_LABELS.length} powers granted
+                      <div style={{ fontSize: '0.7143rem', color: 'var(--ink-secondary)', marginTop: '8px' }}>
+                        {granted.length ? `${granted.length} of ${CLERK_PERMISSION_LABELS.length} powers` : 'No powers granted'}
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </>
-          ) : openSlot ? (
-            <>
-              {/* Status */}
-              <GlassCard hoverable={false} style={{ padding: '16px', zIndex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                  <Toggle
-                    on={openSlot.status === 'active'}
-                    label={`Clerk ${openSlot.slotIndex} active`}
-                    onClick={() => toggleClerkActive(openSlot)}
-                  />
-                  <div>
-                    <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)' }}>
-                      {openSlot.status === 'active' ? 'Portal open' : 'Portal closed'}
-                    </div>
-                    <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)' }}>
-                      {openSlot.exists ? openSlot.username : 'Activating this creates the account'}
-                    </div>
-                  </div>
-                </div>
-              </GlassCard>
 
-              {/* Powers */}
-              <GlassCard hoverable={false} style={{ padding: '16px', zIndex: 1 }}>
-                <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '10px' }}>
-                  What this clerk may do
-                </div>
-                {CLERK_PERMISSION_LABELS.map(perm => (
-                  <div key={perm.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '7px 0' }}>
+              {/* --- ONE CLERK, OPENED --- */}
+              {openClerk && (
+                <GlassCard hoverable={false} style={{ padding: '18px', zIndex: 1, borderLeft: '4px solid var(--accent)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
                     <div>
-                      <div style={{ fontSize: '0.7857rem', fontWeight: 800, color: openSlot.status === 'active' ? 'var(--ink)' : 'var(--muted-gray)' }}>
-                        {perm.label}
+                      <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--ink)' }}>{openClerk.name}</div>
+                      <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', fontWeight: 700 }}>
+                        {openClerk.username} · {openClerk.campus}
                       </div>
-                      <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)' }}>{perm.help}</div>
                     </div>
-                    <Toggle
-                      on={openSlot.permissions[perm.name]}
-                      // A closed portal cannot hold powers: the account itself
-                      // is disabled, so a granted permission would describe
-                      // access that does not exist.
-                      disabled={openSlot.status !== 'active'}
-                      label={`${perm.label} for clerk ${openSlot.slotIndex}`}
-                      onClick={() => toggleClerkPermission(openSlot, perm.name)}
-                    />
+                    <button
+                      onClick={() => setClerkOpenId(null)}
+                      style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--muted-gray)' }}
+                      aria-label="Close"
+                    >
+                      ✕
+                    </button>
                   </div>
-                ))}
-              </GlassCard>
 
-              {/* Sign-in details */}
-              <GlassCard hoverable={false} style={{ padding: '16px', zIndex: 1 }}>
-                <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '4px' }}>
-                  How this clerk signs in
-                </div>
-                <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', marginBottom: '12px', lineHeight: 1.5 }}>
-                  {openSlot.exists
-                    ? 'They choose ' + clerkCampus + ' on the sign-in screen and enter the password and PIN below. Changing either signs them out.'
-                    : 'Activate the clerk first — the account is created with a password and PIN you can then change here.'}
-                </div>
-
-                {openSlot.exists ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 190px), 1fr))', gap: '12px' }}>
-                    <div>
-                      <label style={styles.formLabel}>Portal ID</label>
-                      <input maxLength={LIMITS.username} type="text" value={clerkCredDraft.username}
-                        onChange={(e) => setClerkCredDraft({ ...clerkCredDraft, username: e.target.value })}
-                        style={styles.textInputBox} />
-                    </div>
-                    <div>
-                      <label style={styles.formLabel}>Password</label>
-                      <input maxLength={LIMITS.password} type="text" value={clerkCredDraft.password}
-                        placeholder="unchanged"
-                        onChange={(e) => setClerkCredDraft({ ...clerkCredDraft, password: e.target.value })}
-                        style={styles.textInputBox} />
-                    </div>
-                    <div>
-                      <label style={styles.formLabel}>6-digit PIN</label>
-                      <input maxLength={6} inputMode="numeric" type="text" value={clerkCredDraft.pin}
-                        placeholder="unchanged"
-                        onChange={(e) => setClerkCredDraft({ ...clerkCredDraft, pin: digitsOnlyPin(e.target.value) })}
-                        style={styles.textInputBox} />
-                    </div>
+                  {/* Sign-in details, editable in place */}
+                  <div style={{ marginTop: '14px', fontSize: '0.7143rem', fontWeight: 900, color: 'var(--muted-gray)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Sign-in details
                   </div>
-                ) : null}
-
-                {openSlot.exists && (
-                  <button
-                    onClick={() => saveClerkCredentials(openSlot)}
-                    disabled={clerkCredSaving}
-                    style={{ ...styles.actionItemBtn, marginTop: '12px', padding: '10px 18px', backgroundColor: 'var(--ink)', color: 'var(--surface)', border: 'none', fontWeight: 900, opacity: clerkCredSaving ? 0.6 : 1 }}
-                    className="press-interactive"
-                  >
-                    {clerkCredSaving ? 'Saving…' : 'Save sign-in details'}
-                  </button>
-                )}
-              </GlassCard>
-
-              {clerkNewCredentials.length > 0 && (
-                <GlassCard hoverable={false} style={{ padding: '16px', borderLeft: '4px solid var(--good)', zIndex: 1 }}>
-                  <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', marginBottom: '6px' }}>
-                    New sign-in details
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px', marginTop: '8px' }}>
+                    {([
+                      ['name', 'Name', openClerk.name, LIMITS.personName],
+                      ['username', 'Portal ID', openClerk.username, LIMITS.username],
+                      ['password', 'Password', openClerk.password ?? '', LIMITS.password],
+                      ['pin', 'PIN', openClerk.pin ?? '', 6],
+                      ['mobile', 'Mobile', openClerk.mobile, LIMITS.mobile],
+                      ['email', 'Email', openClerk.email, LIMITS.email]
+                    ] as Array<[string, string, string, number]>).map(([field, label, value, max]) => (
+                      <div key={field}>
+                        <label style={styles.formLabel}>{label}</label>
+                        <input
+                          maxLength={max}
+                          type="text"
+                          defaultValue={value}
+                          placeholder={value ? '' : 'not readable'}
+                          onBlur={(e) => {
+                            const next = field === 'pin' ? digitsOnlyPin(e.target.value)
+                              : field === 'mobile' ? digitsOnly(e.target.value)
+                              : e.target.value.trim();
+                            if (next === value || (!next && !value)) return;
+                            changeClerk(openClerk, { [field]: next },
+                              `Change ${label.toLowerCase()} for ${openClerk.name}?` +
+                              (field === 'password' || field === 'pin' || field === 'username'
+                                ? '\n\nThey will be signed out and must use the new details.' : ''));
+                          }}
+                          style={styles.textInputBox}
+                        />
+                      </div>
+                    ))}
                   </div>
-                  {clerkNewCredentials.map(cred => (
-                    <div key={cred.username} style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink)', fontFamily: 'monospace' }}>
-                      {cred.username} · {cred.password} · PIN {cred.pin}
+                  <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)', marginTop: '6px' }}>
+                    Changes save when you click away from a field.
+                  </div>
+
+                  {/* Access */}
+                  <div style={{ marginTop: '18px', fontSize: '0.7143rem', fontWeight: 900, color: 'var(--muted-gray)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    What they can do
+                  </div>
+                  {CLERK_PERMISSION_LABELS.map(perm => (
+                    <div key={perm.name} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: '12px', padding: '8px 0', borderBottom: '1px solid var(--line)'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)' }}>{perm.label}</div>
+                        <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)' }}>{perm.help}</div>
+                      </div>
+                      <AccessToggle
+                        on={openClerk.permissions[perm.name]}
+                        label=""
+                        disabled={clerkBusy}
+                        onClick={() => changeClerk(openClerk, {
+                          permissions: { ...openClerk.permissions, [perm.name]: !openClerk.permissions[perm.name] }
+                        })}
+                      />
                     </div>
                   ))}
-                  <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)', marginTop: '6px' }}>
-                    Also shown any time on this screen and on Credentials.
+
+                  {/* Whole-account actions */}
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '18px', flexWrap: 'wrap' }}>
+                    <button
+                      disabled={clerkBusy}
+                      onClick={() => changeClerk(
+                        openClerk,
+                        { active: openClerk.status !== 'active' },
+                        openClerk.status === 'active'
+                          ? `Terminate access for ${openClerk.name}?\n\nThey are signed out immediately. Nothing they recorded is deleted, and you can restore access later.`
+                          : `Restore access for ${openClerk.name}?`
+                      )}
+                      style={{
+                        ...styles.actionItemBtn, padding: '9px 18px', border: 'none', fontWeight: 900,
+                        backgroundColor: openClerk.status === 'active' ? 'var(--warning)' : 'var(--good)',
+                        color: '#FFFFFF'
+                      }}
+                      className="press-interactive"
+                    >
+                      {openClerk.status === 'active' ? 'Terminate access' : 'Give access'}
+                    </button>
+                    <button
+                      disabled={clerkBusy}
+                      onClick={() => removeClerk(openClerk)}
+                      style={{ ...styles.actionItemBtn, padding: '9px 18px', border: '1.5px solid var(--critical)', color: 'var(--critical)', background: 'transparent', fontWeight: 900 }}
+                      className="press-interactive"
+                    >
+                      Remove clerk
+                    </button>
                   </div>
                 </GlassCard>
               )}
             </>
-          ) : null}
+          )}
         </main>
       </div>
     );
   }
-
   // SUBPAGE: ACTIVITY LOG (Rector only)
   //
   // Answers "which account made this transaction". Every row is one entry
@@ -5551,7 +5628,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                           {student.name}
                         </strong>
                         <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
-                          Adm: {student.admissionNumber}  |  Roll: {student.rollNumber || 'N/A'}
+                          Adm: {student.admissionNumber}
                         </div>
                         <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
                           {student.branch} ({student.course})
@@ -7267,12 +7344,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   <p style={styles.moduleDesc}>Switch clerk accounts on or off and choose what each one can do.</p>
                 </div>
 
-                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('collect_fees'); } }} onClick={() => setActivePage('collect_fees')} style={styles.moduleCardNew} className="press-interactive">
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('fee_collection'); } }} onClick={() => setActiveTab('fee_collection')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
                   </div>
                   <h4 style={styles.moduleTitle}>Collect Fees</h4>
-                  <p style={styles.moduleDesc}>Choose a campus and take student payments.</p>
+                  <p style={styles.moduleDesc}>Search any student across all four campuses and take payments.</p>
                 </div>
 
                 <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('logs'); } }} onClick={() => setActivePage('logs')} style={styles.moduleCardNew} className="press-interactive">

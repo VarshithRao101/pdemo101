@@ -14,7 +14,7 @@ import { HorizontalProgressBarLoader } from './components/common/HorizontalProgr
 import { PortalErrorBoundary } from './components/common/PortalErrorBoundary';
 
 const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
-  const { portalRole, checkSession, logout, isAuthenticated, isAuthLoading, setPortalRole, activeTab, selectedCampus } = useNavigation();
+  const { portalRole, checkSession, logout, isAuthenticated, isAuthLoading, setPortalRole, activeTab } = useNavigation();
   const [flowStage, setFlowStage] = useState<'portfolio' | 'pin' | 'authenticated'>('portfolio');
   const [currentHash, setCurrentHash] = useState<string>(window.location.hash);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -190,14 +190,15 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'a
 
   const renderActiveView = () => {
     if (portalRole === 'admin1') {
-      // The Rector collects fees through the accountant's module too, told
-      // which campus to act on. Without a campus chosen this falls through to
-      // the cockpit rather than defaulting to one — taking a payment against
-      // a campus nobody selected is the wrong kind of convenient.
-      if (activeTab === 'fee_collection' && selectedCampus) {
+      // The Rector collects fees through the accountant's module, with no
+      // campus to choose first: students are one registry, so the search
+      // spans all four campuses and the receipt is recorded against the
+      // STUDENT's campus rather than whoever happened to take the money.
+      // Picking a campus beforehand only ever narrowed the search.
+      if (activeTab === 'fee_collection') {
         return (
           <PortalErrorBoundary portalLabel="Rector — Fee Collection">
-            <AccountantDashboardView restrictTo="fee_collection" campusOverride={selectedCampus} />
+            <AccountantDashboardView restrictTo="fee_collection" />
           </PortalErrorBoundary>
         );
       }

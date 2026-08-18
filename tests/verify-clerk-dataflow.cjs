@@ -122,10 +122,14 @@ async function main() {
     Array.isArray(seenByAccountant.json?.data)
       && seenByAccountant.json.data.some(s => s.admissionNumber === `${TAG}001`));
 
+  // Students are ONE registry: an accountant anywhere reaches any student.
+  // This assertion used to require the opposite, which was correct until the
+  // registry was shared. The boundary that still exists is the CLERK one, and
+  // verify-shared-registry.cjs is where that is proved.
   const seenByForeign = await call('GET', '/api/accountant/students', { token: foreign.token });
-  ok('an accountant on ANOTHER campus cannot see it',
+  ok('an accountant on another campus CAN see it — one shared registry',
     Array.isArray(seenByForeign.json?.data)
-      && !seenByForeign.json.data.some(s => s.admissionNumber === `${TAG}001`));
+      && seenByForeign.json.data.some(s => s.admissionNumber === `${TAG}001`));
 
   console.log('\nFees the clerk collects\n');
 
