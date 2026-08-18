@@ -401,6 +401,9 @@ const MM_TO_PX = 96 / 25.4;
  */
 const MIN_FIT_SCALE = 0.5;
 
+/** The printable area of one sheet, in millimetres, less its @page margins. */
+interface Sheet { heightMm: number; widthMm: number; }
+
 /**
  * Shrinks the document until it fits on exactly one sheet.
  *
@@ -414,14 +417,17 @@ const MIN_FIT_SCALE = 0.5;
  * and less shrinking is needed than the first pass calculated. Each pass gets
  * closer; four is comfortably more than enough to settle.
  */
-const fitToSinglePage = (win: Window, landscape: boolean): void => {
+const fitToSinglePage = (win: Window, sheet: Sheet): void => {
   const shell = win.document.querySelector<HTMLElement>('.pdf-fit-shell');
   const fit = win.document.querySelector<HTMLElement>('.pdf-fit');
   if (!shell || !fit) return;
 
-  // A4 less the @page margins declared above: 297−28 portrait, 210−20 landscape.
-  const availablePx = (landscape ? 210 - 20 : 297 - 28) * MM_TO_PX;
-  const targetWidthMm = landscape ? 272 : 182;
+  // The sheet this document is actually going onto, less its @page margins.
+  // Passed in rather than assumed: this used to hardcode A4, so a half-A4
+  // receipt was measured against a page twice its height, judged to fit, and
+  // printed unscaled — off the bottom of the sheet it was sized for.
+  const availablePx = sheet.heightMm * MM_TO_PX;
+  const targetWidthMm = sheet.widthMm;
 
   let scale = 1;
   for (let pass = 0; pass < 4; pass++) {
@@ -494,6 +500,67 @@ const whenMeasurable = (win: Window, cb: () => void): void => {
  * blank document, because the latter leaves the popup's title as "about:blank"
  * — and the title is what the browser offers as the default PDF filename.
  */
+/**
+ * The @page rules and the real printable area for one paper choice.
+ *
+ * Both come from the same decision on purpose. They were separate before —
+ * the CSS said half A4 while the fitter measured against full A4 — so a
+ * receipt was judged to fit a sheet twice the height it actually had.
+ *
+ * page-break-inside: avoid is deliberately NOT set on .page. It wraps the
+ * whole document, so when the content is taller than the sheet the rule
+ * cannot be honoured, and Chrome resolves that by pushing the block onto a
+ * fresh page — printing a blank first sheet with the letterhead nowhere in
+ * the preview. Keeping a document to one sheet is the fitter's job.
+ */
+export const pageGeometry = (halfA4: boolean, landscape: boolean): { css: string; sheet: Sheet } => {
+  // Half A4 wins over landscape if both are asked for — a receipt is a
+  // receipt whatever else was requested.
+  if (halfA4) {
+    return {
+      css: `@page { size: 210mm 148.5mm; margin: 8mm; }
+            .page { max-width: 194mm; }
+            html, body { font-size: 9.5px; }`,
+      sheet: { heightMm: 148.5 - 16, widthMm: 194 }
+    };
+  }
+  if (landscape) {
+    return {
+      css: '@page { size: A4 landscape; margin: 10mm; } .page { max-width: 272mm; }',
+      sheet: { heightMm: 210 - 20, widthMm: 272 }
+    };
+  }
+  return { css: '', sheet: { heightMm: 297 - 28, widthMm: 182 } };
+};
+
+/**
+ * The complete print document, as HTML.
+ *
+ * Separate from opening the window so the document can be built and inspected
+ * without a popup — which is the only way to check that the letterhead
+ * actually renders, given browsers block popups outside a click.
+ */
+export const buildPrintDocument = (
+  { title, body, buttonLabel = 'Print / Save as PDF', framed = false, css = '' }:
+  { title: string; body: string; buttonLabel?: string; framed?: boolean; css?: string }
+): string => `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${escapeHtml(title)}</title>
+<style>${PDF_CSS}${css}</style>
+</head>
+<body>
+<div class="page">
+<button class="pdf-print-btn" type="button">${escapeHtml(buttonLabel)}</button>
+<div class="pdf-fit-shell"><div class="pdf-fit">
+${framed ? `<div class="pdf-frame">${body}</div>` : body}
+</div></div>
+</div>
+</body>
+</html>`;
+
 export const openPrintDocument = ({
   title, body, buttonLabel = 'Print / Save as PDF', onBlocked, landscape = false, framed = false,
   halfA4 = false
@@ -504,36 +571,9 @@ export const openPrintDocument = ({
     return false;
   }
 
-  // Half A4 wins over landscape if both are asked for — a receipt is a
-  // receipt whatever else was requested.
-  const orientation = halfA4
-    ? `@page { size: 210mm 148.5mm; margin: 8mm; }
-       .page { max-width: 194mm; }
-       html, body { font-size: 9.5px; }
-       /* One receipt per sheet. Without this a long receipt silently spills
-          onto a second half-sheet and the cut line lands mid-document. */
-       .page { page-break-after: avoid; page-break-inside: avoid; }`
-    : landscape
-      ? '@page { size: A4 landscape; margin: 10mm; } .page { max-width: 272mm; }'
-      : '';
+  const { css, sheet } = pageGeometry(halfA4, landscape);
 
-  win.document.write(`<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${escapeHtml(title)}</title>
-<style>${PDF_CSS}${orientation}</style>
-</head>
-<body>
-<div class="page">
-<button class="pdf-print-btn" type="button">${escapeHtml(buttonLabel)}</button>
-<div class="pdf-fit-shell"><div class="pdf-fit">
-${framed ? `<div class="pdf-frame">${body}</div>` : body}
-</div></div>
-</div>
-</body>
-</html>`);
+  win.document.write(buildPrintDocument({ title, body, buttonLabel, framed, css }));
   win.document.close();
 
   // The button's handler is attached from here rather than written into the
@@ -556,8 +596,8 @@ ${framed ? `<div class="pdf-frame">${body}</div>` : body}
   // moment the browser guarantees final layout — a window resized between
   // opening and printing rewraps the text, and the first measurement would be
   // describing a layout that no longer exists.
-  whenMeasurable(win, () => fitToSinglePage(win, landscape));
-  win.addEventListener('beforeprint', () => fitToSinglePage(win, landscape));
+  whenMeasurable(win, () => fitToSinglePage(win, sheet));
+  win.addEventListener('beforeprint', () => fitToSinglePage(win, sheet));
 
   return true;
 };

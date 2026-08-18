@@ -1134,76 +1134,83 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
     return true;
   };
 
+  /**
+   * The receipt, as a printable document.
+   *
+   * Built from the same blocks and in the same order as the fee statement —
+   * letterhead, detail grid, itemised table, summary tiles, footer — because a
+   * parent holding both should see one college, not two. The previous version
+   * printed two half-A4 copies with a cut line between them, at 9.5px, and
+   * looked like a till slip beside the statement.
+   */
   const handleDownloadPDF = (receipt: Receipt, student: Student) => {
     const receiptWords = numberToReceiptWords(receipt.amount);
-
-    // One copy. Rendered twice — for the parent and for the campus file —
-    // with a cut line between, which is how these are issued at the desk.
-    const copy = (tag: string) => `
-      <div class="pdf-copy">
-        <div class="pdf-copy-tag">${escapeHtml(tag)}</div>
-        ${pdfHeader({
-          logoSrc: collegeLogo,
-          title: 'Payment Receipt',
-          subtitle: `Receipt No. ${receipt.receiptNumber}`,
-          campus: student.branch || loggedInCampus
-        })}
-        ${pdfDetailCard([
-          // Roll number deliberately absent. The admission number is the
-          // identifier the college and the parent both use, and printing two
-          // near-identical numbers on a receipt invites quoting the wrong one.
-          ['Student Name', student.name],
-          ['Course / Class', student.course || 'Junior College'],
-          ['Section', student.section],
-          ['Mobile', student.mobile],
-          ['Admission No.', student.admissionNumber],
-          ['Receipt Date', dateStr(receipt.date)],
-          ['Payment Mode', receipt.mode],
-          ['Year', (student as any).studentYear]
-        ])}
-        ${pdfTiles([
-          { label: 'Amount Paid', value: money(receipt.amount), tone: 'good' },
-          {
-            label: 'Remaining Balance',
-            value: money(receipt.balance),
-            tone: Number(receipt.balance || 0) > 0 ? 'due' : 'good'
-          }
-        ])}
-        <div class="pdf-words">
-          <span class="k">Amount in words</span>
-          <span class="v">${escapeHtml(receiptWords)}</span>
-        </div>
-        ${pdfSection('Particulars')}
-        ${pdfTable({
-          headers: ['Particulars', 'Mode', 'Reference', 'Amount'],
-          numeric: [3],
-          rows: [[
-            escapeHtml(`${receipt.category} - ${receipt.installment}`),
-            escapeHtml(receipt.mode),
-            escapeHtml(receipt.transactionRef || (receipt as any).referenceNo || receipt.receiptNumber),
-            money(receipt.amount)
-          ]]
-        })}
-        ${pdfFooter({
-          note: 'Thank you for your payment. This is a computer-generated receipt and is valid without a stamp.',
-          signatory: 'Authorised Signature'
-        })}
-      </div>
-    `;
+    const paidToDate = Number(student.totalPaid || 0);
+    const outstanding = Number(receipt.balance ?? student.remainingBalance ?? 0);
 
     const body = [
-      copy('Parent Copy'),
-      '<div class="pdf-cut"><span>cut here</span></div>',
-      copy('Campus Copy')
+      pdfHeader({
+        logoSrc: collegeLogo,
+        title: 'Fee Receipt',
+        subtitle: `Official payment receipt · ${receipt.receiptNumber}`,
+        campus: student.branch || loggedInCampus
+      }),
+
+      // Roll number deliberately absent. The admission number is the
+      // identifier the college and the parent both use, and printing two
+      // near-identical numbers on a receipt invites quoting the wrong one.
+      pdfDetailCard([
+        ['Student Name', student.name],
+        ['Admission No.', student.admissionNumber || student.studentId],
+        ['Course / Section', `${student.course || 'N/A'} — ${student.section || 'N/A'}`],
+        ['Contact Mobile', student.mobile],
+        ['Academic Year', student.academicYear],
+        ['Year', (student as any).studentYear],
+        ['Receipt Date', dateStr(receipt.date)],
+        ['Payment Mode', receipt.mode]
+      ]),
+
+      pdfSection('Payment Received'),
+      pdfTable({
+        headers: ['Particulars', 'Mode', 'Reference', 'Amount'],
+        numeric: [3],
+        rows: [[
+          escapeHtml(`${receipt.category || 'Tuition'} — ${receipt.installment || 'Installment'}`),
+          escapeHtml(receipt.mode || 'Cash'),
+          escapeHtml(receipt.transactionRef || (receipt as any).referenceNo || receipt.receiptNumber),
+          money(receipt.amount)
+        ]],
+        footer: ['Amount Received', '', '', money(receipt.amount)]
+      }),
+
+      // In words, because a figure alone can be altered on a printed page and
+      // this is the line a parent is told to check.
+      pdfTable({
+        headers: ['Amount in Words', ''],
+        rows: [[`<span class="pdf-strong">${escapeHtml(receiptWords)}</span>`, '']]
+      }),
+
+      pdfTiles([
+        { label: 'Amount Paid Now', value: money(receipt.amount), tone: 'good' },
+        { label: 'Total Paid to Date', value: money(paidToDate), tone: 'good' },
+        {
+          label: outstanding > 0 ? 'Balance Remaining' : 'Fully Cleared',
+          value: money(outstanding),
+          tone: outstanding > 0 ? 'due' : 'good'
+        }
+      ]),
+
+      pdfFooter({
+        note: 'Computer-generated official receipt, verified against the Inspire College ERP records. Valid without a stamp.',
+        signatory: 'Authorised Signatory'
+      })
     ].join('');
 
     const opened = openPrintDocument({
-      title: `Receipt ${receipt.receiptNumber}`,
+      title: `Fee Receipt - ${receipt.receiptNumber}`,
       body,
       buttonLabel: 'Print / Save Receipt as PDF',
       framed: true,
-      // 210 x 148.5mm — half an A4 sheet, cut across the short edge.
-      halfA4: true,
       onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to print the receipt.')
     });
     if (opened) triggerToast('Receipt opened for printing.');
