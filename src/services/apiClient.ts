@@ -242,7 +242,7 @@ export const apiClient = {
    * `campus` replaces `identifier` for a clerk.
    *
    * A clerk picks their campus and types their own password; the server works
-   * out which of that campus's seven slots they are. Passing both would be
+   * out which of that campus's clerks they are. Passing both would be
    * contradictory, so a campus sign-in sends an empty identifier and the
    * server keys its lockout on the campus instead.
    */

@@ -744,7 +744,7 @@ async function getManagedPortalAccounts() {
         const roleDiff = rank(a.role) - rank(b.role);
         if (roleDiff !== 0) return roleDiff;
 
-        // Within clerks, slot 1 before slot 2 — a plain string compare puts
+        // Within clerks, keep creation order — a plain string compare puts
         // clerk10 before clerk2, which would matter once slots go past nine.
         if (a.slotIndex != null && b.slotIndex != null && a.slotIndex !== b.slotIndex) {
           return a.slotIndex - b.slotIndex;
@@ -921,7 +921,7 @@ function rateLimitKeyFor(req) {
  *
  * The auth budget is ten requests per IP per fifteen minutes, and it counted
  * successes as well as failures. That was fine when the system had ten
- * accounts. It is not fine now: a campus has seven clerks plus an accountant,
+ * accounts. It is not fine now: a campus has up to fifteen clerks plus an accountant,
  * they share an office connection, and a shift change puts more than ten
  * correct sign-ins through one IP inside a quarter of an hour. The eleventh
  * person — with the right password — was told "too many requests".
@@ -1578,7 +1578,7 @@ class AuthUnavailableError extends Error {}
  *
  * The clerk login asks for a campus and nothing else identifying — a clerk
  * types their own password and PIN and the server works out which of the
- * seven slots they are. That is a deliberate convenience: the operator did
+ * clerks they are. That is a deliberate convenience: the operator did
  * not want people memorising `clerk4_beemaram_c2`.
  *
  * The cost is that the password is now the only thing identifying the account
@@ -2025,7 +2025,7 @@ async function handleLogin(req, res, label) {
 
     // A clerk signs in with a CAMPUS instead of a username: they pick their
     // campus and type their own password, and the server works out which of
-    // the seven slots that is. Only this shape omits an identifier.
+    // clerk that is. Only this shape omits an identifier.
     const clerkCampus = !attempted && campus ? normalizeCampus(String(campus).trim()) : null;
     const byCampus = Boolean(clerkCampus);
 

@@ -595,7 +595,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
 
             {/* Campus only. There is no slot to choose: the clerk types their
                 own password and the server resolves which of the campus's
-                seven slots it belongs to. */}
+                clerks it belongs to. */}
             {isClerkMode && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: 'var(--surface-sunken)', padding: '10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
                 <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--good)', textTransform: 'uppercase' }}>Select Your Campus:</span>

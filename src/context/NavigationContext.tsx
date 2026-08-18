@@ -159,7 +159,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
     try {
       const resolvedContext = loginContext || (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
       // A clerk signs in by campus: the server resolves which of that
-      // campus's seven slots the password belongs to. Sending an identifier
+      // campus's clerks the password belongs to. Sending an identifier
       // as well would contradict it, so it is one or the other.
       const response = await apiClient.post('/auth/login', campus
         ? { campus, password: password || pin, pin, loginContext: resolvedContext }

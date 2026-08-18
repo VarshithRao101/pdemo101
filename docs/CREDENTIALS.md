@@ -62,9 +62,12 @@ the Rector's own session can reach.
 ### Clerks
 
 Clerk sign-in details are also editable from the **Clerks** screen: pick a
-campus, click a clerk, and its powers and sign-in details are edited
-together. Activating an empty slot generates a password and PIN for it — you
-do not need to note them down, because they are readable afterwards.
+campus, click a clerk, and its powers and sign-in details are edited together.
+
+Clerks are **created**, not allocated from fixed slots. The Rector adds one by
+filling in a name, portal ID, password, PIN, mobile and email, up to **fifteen
+per campus** — a cap counted on the server, not just in the form. There is no
+need to note the password down: it is readable on that screen afterwards.
 
 ## Recovering the Rector account
 
@@ -87,8 +90,9 @@ out for no reason.
 ## Bulk provisioning
 
 `scripts/rotateCredentials.cjs` issues fresh credentials for the fixed portal
-accounts, and `scripts/activateClerkSlots.cjs` brings clerk slots online in
-one pass. Both generate secrets with a CSPRNG.
+accounts. Clerks are created from the portal instead — the Rector fills in
+their details on the Clerks screen and the account exists, up to fifteen per
+campus.
 
 Generated passwords deliberately avoid `O`/`0` and `l`/`1`/`I`: somebody
 reads these off a screen and types them into a login box, and that is where
@@ -112,7 +116,7 @@ on disk long after anyone remembers it is there.
 | Clerk | **Campus only** — then their own password and PIN |
 
 A clerk does not enter a portal ID. They pick their campus and the server
-works out which of that campus's seven slots the credentials belong to. If a
+works out which of that campus's clerks the credentials belong to. If a
 password and PIN match more than one clerk on a campus, sign-in is **refused**
 rather than guessing — two people sharing a password would otherwise mean one
 of them silently signing in as the other, and every audit entry afterwards

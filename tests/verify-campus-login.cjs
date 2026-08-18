@@ -2,7 +2,7 @@
  * Signing in as a clerk with a campus and no username.
  *
  * A clerk picks their campus and types their own password; the server works
- * out which of that campus's seven slots they are. That makes the password
+ * out which of that campus's clerks they are. That makes the password
  * the only thing identifying the account within a campus, so the interesting
  * cases are the ones where it is NOT unique or NOT theirs:
  *

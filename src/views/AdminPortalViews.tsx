@@ -1516,16 +1516,21 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
 
   const fetchStudents = async (query = '', suppressToast = false) => {
     try {
-      const branchParam = role === 'clerk' ? loggedInCampus : '';
-      const data = await admin1Service.getStudents(query, branchParam);
+      // No campus filter. Students are ONE registry across all four campuses
+      // for every staffed role, so a clerk's registry here matches what they
+      // see on the fee-collection screen. The same person getting two
+      // different answers from two screens is worse than either answer.
+      //
+      // Teachers, fee settings and worker payments elsewhere in this file are
+      // deliberately still campus-scoped: those are per-campus books.
+      const data = await admin1Service.getStudents(query, '');
       setStudents(Array.isArray(data) ? data : []);
     } catch (err: any) {
       // On 404/503 (Vercel cold-start or transient error), retry once silently after a short delay
       if (err?.status === 404 || err?.status === 503) {
         try {
           await new Promise(r => setTimeout(r, 1500));
-          const branchParam = role === 'clerk' ? loggedInCampus : '';
-          const data = await admin1Service.getStudents(query, branchParam);
+          const data = await admin1Service.getStudents(query, '');
           setStudents(Array.isArray(data) ? data : []);
           return;
         } catch { /* fall through to toast below */ }
@@ -4315,7 +4320,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
 
   // SUBPAGE: CLERK MANAGER (Rector only)
   //
-  // Four campus boxes at the top, the seven slots for the chosen campus
+  // Four campus boxes at the top, the clerks at the chosen campus
   // beneath — slot on the left, its switches on the right — and one Save at
   // the bottom behind the Rector's PIN.
   // SUBPAGE: CREDENTIALS (Rector only)
