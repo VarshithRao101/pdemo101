@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LIMITS, validateMobile, digitsOnly } from '../constants/fieldLimits';
+import { CAMPUS_LIST } from '../constants/campuses';
 import { useNavigation, accountCan, type ClerkPermissionKey } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -230,7 +231,10 @@ export const ACADEMIC_YEARS = ['2026-2027', '2027-2028', '2028-2029', '2029-2030
  * campus added to one of them and missed in another is the kind of drift that
  * shows as a filter silently returning nothing.
  */
-export const CAMPUS_LIST = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
+// Imported for use in this file AND re-exported, so existing importers that
+// take CAMPUS_LIST from here keep working unchanged. A bare re-export
+// would not bring the name into this module's own scope.
+export { CAMPUS_LIST };
 
 const LEDGER_MONTHS = [
   'June', 'July', 'August', 'September', 'October', 'November',
@@ -387,6 +391,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   const [newStuBranch, setNewStuBranch] = useState(loggedInCampus);
   const [newStuMobile, setNewStuMobile] = useState('');
   const [newStuCourse, setNewStuCourse] = useState('MPC');
+  // Which year of the PROGRAMME the student is joining, not the academic
+  // year — newStuYear above is 2026-2027 and means something else. This is
+  // what the upgrade flow reads to decide who may be moved up.
+  const [newStuProgrammeYear, setNewStuProgrammeYear] = useState('First Year');
   const [newStuSection, setNewStuSection] = useState('MPC-A');
   const [newStuYear, setNewStuYear] = useState('1st Year');
 
@@ -1897,6 +1905,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
       branch: newStuBranch,
       mobile: newStuMobile.trim(),
       course: newStuCourse.trim(),
+      studentYear: newStuProgrammeYear,
       section: newStuSection.trim(),
       fatherName: newStuFatherName.trim(),
       motherName: newStuMotherName.trim(),
@@ -2254,6 +2263,18 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   <option value="CEC">CEC</option>
                   <option value="MEC">MEC</option>
                   <option value="HEC">HEC</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <label style={styles.formLabel}>Year *</label>
+                <select
+                  value={newStuProgrammeYear}
+                  onChange={(e) => setNewStuProgrammeYear(e.target.value)}
+                  style={{ ...styles.selectInput, fontSize: '0.8929rem' }}
+                >
+                  <option value="First Year">First Year</option>
+                  <option value="Second Year">Second Year</option>
+                  <option value="Short Term">Short Term</option>
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -4873,9 +4894,32 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                 })}
               </div>
 
-              {/* --- ONE CLERK, OPENED --- */}
+              {/*
+                  ONE CLERK, OPENED — a centred overlay, not a panel appended
+                  to the page.
+
+                  It used to render at the BOTTOM: clicking a clerk near the
+                  top of a long campus put their details below the fold, so to
+                  the person clicking, nothing appeared to happen. An overlay
+                  puts the record where the eye already is and dims what it is
+                  not about.
+
+                  Clicking the backdrop closes it; the sheet stops the click,
+                  so editing a field cannot dismiss the thing being edited.
+              */}
               {openClerk && (
-                <GlassCard hoverable={false} style={{ padding: '18px', zIndex: 1, borderLeft: '4px solid var(--accent)' }}>
+                <div
+                  style={styles.overlayOverlay}
+                  onClick={() => setClerkOpenId(null)}
+                  className="anim-fade-in"
+                >
+                  <div
+                    style={{ ...styles.overlaySheet, maxWidth: '720px', maxHeight: '90vh', overflowY: 'auto', borderTop: '4px solid var(--accent)' }}
+                    onClick={(e) => e.stopPropagation()}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`Clerk ${openClerk.name}`}
+                  >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
                     <div>
                       <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--ink)' }}>{openClerk.name}</div>
@@ -4984,7 +5028,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                       Remove clerk
                     </button>
                   </div>
-                </GlassCard>
+                  </div>
+                </div>
               )}
             </>
           )}

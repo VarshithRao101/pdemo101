@@ -10,6 +10,7 @@ import { InspireLogo } from '../components/common/InspireLogo';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import collegeLogo from '../assets/college logo.png';
 import * as accountantService from '../services/accountantService';
+import { CAMPUS_LIST } from '../constants/campuses';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 
 
@@ -374,6 +375,14 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [, setDeleteOtpInput] = useState('');
   const [registryPage, setRegistryPage] = useState(1);
+  // Fee collection: its own page and filters, kept separate from the registry's
+  // so moving between the two screens does not carry one's filters into the
+  // other.
+  const [feeCollectPage, setFeeCollectPage] = useState(1);
+  const [feeFilterCampus, setFeeFilterCampus] = useState('All');
+  const [feeFilterCourse, setFeeFilterCourse] = useState('All');
+  const [feeFilterYear, setFeeFilterYear] = useState('All');
+  const [feeFilterDues, setFeeFilterDues] = useState('All');
   const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
   const [, setRegStuOtpInput] = useState('');
   const [regStuError, setRegStuError] = useState('');
@@ -386,6 +395,10 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
     mobile: '',
     course: 'MPC',
     section: 'MPC-A',
+    // Which year of the programme they are joining. Needed at admission
+    // because a student can be enrolled straight into Second Year, and the
+    // upgrade flow reads this to decide who is eligible to move up.
+    studentYear: 'First Year',
     branch: loggedInCampus,
     fatherName: '',
     motherName: '',
@@ -1414,6 +1427,18 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                         </select>
                       </div>
                       <div>
+                        <label style={styles.formLabel}>Year *</label>
+                        <select
+                          value={newStudentData.studentYear}
+                          onChange={(e) => setNewStudentData({ ...newStudentData, studentYear: e.target.value })}
+                          style={styles.selectInput}
+                        >
+                          <option value="First Year">First Year</option>
+                          <option value="Second Year">Second Year</option>
+                          <option value="Short Term">Short Term</option>
+                        </select>
+                      </div>
+                      <div>
                         <label style={styles.formLabel}>Section *</label>
                         <input maxLength={LIMITS.section}
                           type="text"
@@ -2043,7 +2068,29 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
 
   //  SUBPAGE 2: FEE COLLECTION DESK (Sub-page)
   if (activeSubPage === 'fee_collection') {
-    const filteredCollectList = students.filter((student) => matchesStudentSearch(student, feeCollectAdm));
+    // Search, then filters, then a page. Applied in that order so a filter
+    // narrows what the search found rather than the whole registry.
+    const searched = students.filter((student) => matchesStudentSearch(student, feeCollectAdm));
+    const filteredCollectList = searched.filter((s: any) => {
+      if (feeFilterCampus !== 'All' && (s.branch || '') !== feeFilterCampus) return false;
+      if (feeFilterCourse !== 'All' && (s.course || '') !== feeFilterCourse) return false;
+      if (feeFilterYear !== 'All' && (s.studentYear || 'First Year') !== feeFilterYear) return false;
+      if (feeFilterDues === 'pending' && !(Number(s.remainingBalance) > 0)) return false;
+      if (feeFilterDues === 'settled' && Number(s.remainingBalance) > 0) return false;
+      return true;
+    });
+
+    const COLLECT_PER_PAGE = 24;
+    const collectTotalPages = Math.max(1, Math.ceil(filteredCollectList.length / COLLECT_PER_PAGE));
+    // Clamped rather than stored: deleting or filtering can leave the stored
+    // page beyond the end, and an empty grid reads as "no students" when the
+    // truth is "no students on page 7".
+    const collectPage = Math.min(feeCollectPage, collectTotalPages);
+    const collectPageItems = filteredCollectList.slice(
+      (collectPage - 1) * COLLECT_PER_PAGE, collectPage * COLLECT_PER_PAGE
+    );
+
+    const collectCourses = Array.from(new Set(students.map((s: any) => s.course).filter(Boolean))).sort();
 
     return (
       <div style={styles.container} className="view-container anim-slide-up">
@@ -2078,12 +2125,68 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                 type="text"
                 placeholder="Search student by Name or Admission Number..."
                 value={feeCollectAdm}
-                onChange={(e) => setFeeCollectAdm(e.target.value)}
+                onChange={(e) => { setFeeCollectAdm(e.target.value); setFeeCollectPage(1); }}
                 style={styles.textInputBox}
               />
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
-                {filteredCollectList.map(s => (
+              {/* Filters. Every one resets to page 1 — narrowing the list while
+                  sitting on page 4 of the old one shows nothing and looks
+                  broken. */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <select value={feeFilterCampus} onChange={(e) => { setFeeFilterCampus(e.target.value); setFeeCollectPage(1); }}
+                  style={{ ...styles.selectInput, width: 'auto', minWidth: '150px' }}>
+                  <option value="All">All campuses</option>
+                  {CAMPUS_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+
+                <select value={feeFilterCourse} onChange={(e) => { setFeeFilterCourse(e.target.value); setFeeCollectPage(1); }}
+                  style={{ ...styles.selectInput, width: 'auto', minWidth: '120px' }}>
+                  <option value="All">All courses</option>
+                  {collectCourses.map(c => <option key={String(c)} value={String(c)}>{String(c)}</option>)}
+                </select>
+
+                <select value={feeFilterYear} onChange={(e) => { setFeeFilterYear(e.target.value); setFeeCollectPage(1); }}
+                  style={{ ...styles.selectInput, width: 'auto', minWidth: '130px' }}>
+                  <option value="All">All years</option>
+                  <option value="First Year">First Year</option>
+                  <option value="Second Year">Second Year</option>
+                  <option value="Short Term">Short Term</option>
+                </select>
+
+                <select value={feeFilterDues} onChange={(e) => { setFeeFilterDues(e.target.value); setFeeCollectPage(1); }}
+                  style={{ ...styles.selectInput, width: 'auto', minWidth: '130px' }}>
+                  <option value="All">Paid and pending</option>
+                  <option value="pending">Pending only</option>
+                  <option value="settled">Settled only</option>
+                </select>
+
+                {(feeFilterCampus !== 'All' || feeFilterCourse !== 'All' || feeFilterYear !== 'All' || feeFilterDues !== 'All' || feeCollectAdm) && (
+                  <button
+                    onClick={() => {
+                      setFeeFilterCampus('All'); setFeeFilterCourse('All');
+                      setFeeFilterYear('All'); setFeeFilterDues('All');
+                      setFeeCollectAdm(''); setFeeCollectPage(1);
+                    }}
+                    style={{ ...styles.actionItemBtn, padding: '8px 14px', backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none' }}
+                    className="press-interactive"
+                  >
+                    Clear
+                  </button>
+                )}
+
+                <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)', marginLeft: 'auto' }}>
+                  {filteredCollectList.length} student{filteredCollectList.length === 1 ? '' : 's'}
+                  {collectTotalPages > 1 ? ` · page ${collectPage} of ${collectTotalPages}` : ''}
+                </span>
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
+                gap: '12px',
+                marginTop: '12px'
+              }}>
+                {collectPageItems.map(s => (
                   <GlassCard
                     key={s._id || s.studentId || s.admissionNumber}
                     hoverable={true}
@@ -2169,11 +2272,47 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                   </GlassCard>
                 ))}
                 {filteredCollectList.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted-gray)', fontSize: '0.8571rem' }}>
-                    No student records match your query. Try searching by Name or Admission Number.
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--muted-gray)', fontSize: '0.8571rem' }}>
+                    No students match. Try a different name or admission number, or clear the filters.
                   </div>
                 )}
               </div>
+
+              {/* Paging. Hidden entirely on a single page rather than shown
+                  greyed out — controls that can never do anything are noise. */}
+              {collectTotalPages > 1 && (
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', alignItems: 'center', paddingTop: '4px' }}>
+                  <button
+                    disabled={collectPage <= 1}
+                    onClick={() => setFeeCollectPage(collectPage - 1)}
+                    style={{
+                      ...styles.actionItemBtn, padding: '8px 16px', border: 'none',
+                      backgroundColor: collectPage <= 1 ? 'var(--line)' : 'var(--ink)',
+                      color: collectPage <= 1 ? 'var(--muted-gray)' : 'var(--surface)',
+                      cursor: collectPage <= 1 ? 'not-allowed' : 'pointer'
+                    }}
+                    className="press-interactive"
+                  >
+                    ← Previous
+                  </button>
+                  <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)' }}>
+                    Page {collectPage} of {collectTotalPages}
+                  </span>
+                  <button
+                    disabled={collectPage >= collectTotalPages}
+                    onClick={() => setFeeCollectPage(collectPage + 1)}
+                    style={{
+                      ...styles.actionItemBtn, padding: '8px 16px', border: 'none',
+                      backgroundColor: collectPage >= collectTotalPages ? 'var(--line)' : 'var(--ink)',
+                      color: collectPage >= collectTotalPages ? 'var(--muted-gray)' : 'var(--surface)',
+                      cursor: collectPage >= collectTotalPages ? 'not-allowed' : 'pointer'
+                    }}
+                    className="press-interactive"
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }} className="anim-fade-in">

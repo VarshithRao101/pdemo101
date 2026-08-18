@@ -319,6 +319,10 @@ const SESSION_ACTIVITY_WRITE_INTERVAL_MS = 60 * 1000;
 // Valid campus branches
 const VALID_CAMPUSES = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
 
+// Mirrors the enum on the Student model. A value outside this list would be
+// rejected by Mongoose at save time with a message nobody wants to read.
+const VALID_STUDENT_YEARS = ['First Year', 'Second Year', 'Short Term'];
+
 // The academic years the salary ledger covers, earliest first. Each opens only
 // once the one before it has all twelve months paid — enforced on the
 // salary-month route, not merely shown in the dropdown.
@@ -2339,7 +2343,8 @@ const createStudentHandler = async (req, res) => {
     // cleanTextFields below and is used from text.values, never the raw body.
     const {
       admissionNumber, branch, mobile, parentMobile,
-      tuitionFee = 0, hostelFee = 0, transportFee = 0, miscellaneousFee = 0, previousPending = 0, customFeeSlots = [], academicYear = '2026-2027'
+      tuitionFee = 0, hostelFee = 0, transportFee = 0, miscellaneousFee = 0, previousPending = 0, customFeeSlots = [], academicYear = '2026-2027',
+      studentYear = 'First Year'
     } = body;
 
     // Reject over-long and non-scalar values before anything reaches the
@@ -2503,6 +2508,11 @@ const createStudentHandler = async (req, res) => {
       transportWaiver: 0,
       miscWaiver: 0,
       customFeeSlots: cleanedCustomSlots,
+      // Which year of the programme they are entering. Collected on the first
+      // screen of the admission form; without it here the choice was accepted
+      // by the form, discarded by the server, and every student silently
+      // became First Year — the same shape of bug as the discarded studentId.
+      studentYear: VALID_STUDENT_YEARS.includes(studentYear) ? studentYear : 'First Year',
       academicYear
     });
 
