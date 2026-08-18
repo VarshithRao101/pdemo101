@@ -949,6 +949,114 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
 
 
 
+  /**
+   * The receipt, written out as a WhatsApp message.
+   *
+   * Kept as its own function, separate from sending, for two reasons: it is
+   * the thing most likely to be reworded, and if the college later adds the
+   * Cloud API bot the same text is reused rather than written twice and left
+   * to drift.
+   *
+   * WhatsApp renders *asterisks* as bold. There is no table support, so the
+   * layout is carried by short lines and a rule — anything cleverer collapses
+   * on a narrow phone.
+   */
+  const buildReceiptMessage = (receipt: Receipt, student: Student): string => {
+    const money = (n: any) => `Rs. ${Number(n || 0).toLocaleString('en-IN')}`;
+    const balance = Number(receipt?.balance || 0);
+
+    // Dates are stored in several shapes across this app. Print what we were
+    // given rather than risk "Invalid Date" on a parent's receipt.
+    const parsed = new Date(receipt?.date as any);
+    const when = isNaN(parsed.getTime())
+      ? String(receipt?.date || '')
+      : parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const lines = [
+      '*INSPIRE JUNIOR COLLEGE*',
+      'Fee Payment Acknowledgement',
+      '',
+      'Dear Parent,',
+      'We have received the following payment. Thank you.',
+      '',
+      `*Student:* ${student?.name || '—'}`,
+      `*Admission No:* ${student?.admissionNumber || student?.studentId || '—'}`,
+    ];
+
+    if (student?.branch) lines.push(`*Campus:* ${student.branch}`);
+
+    lines.push(
+      '',
+      '━━━━━━━━━━━━━━━━━━',
+      `*Amount Paid:* ${money(receipt?.amount)}`,
+    );
+
+    // Only state what we actually know. A line reading "Towards: undefined"
+    // on a parent's receipt is worse than no line at all.
+    const towards = [receipt?.category, receipt?.installment].filter(Boolean).join(' · ');
+    if (towards) lines.push(`*Towards:* ${towards}`);
+    if (receipt?.mode) lines.push(`*Paid by:* ${receipt.mode}`);
+
+    lines.push(
+      '━━━━━━━━━━━━━━━━━━',
+      '',
+      balance > 0
+        ? `*Balance Remaining:* ${money(balance)}`
+        : '*Balance Remaining:* Nil — fees fully cleared',
+      '',
+      `*Receipt No:* ${receipt?.receiptNumber || '—'}`,
+      `*Date:* ${when}`,
+      '',
+      '_This is a computer-generated acknowledgement._',
+      '_For any query, please contact the college office._'
+    );
+
+    return lines.join('\n');
+  };
+
+  /**
+   * Open WhatsApp with the receipt already written, addressed to the parent.
+   *
+   * Deliberately a wa.me link and not an API. It costs nothing, needs no
+   * account, no token and no approval, and cannot get the college's number
+   * banned — the message is sent by a person from the college's own WhatsApp.
+   *
+   * On a counter PC this requires WhatsApp Web to be linked once (phone →
+   * Settings → Linked devices). Without that link the tab will show the QR
+   * screen instead, which is why the toast says so rather than leaving
+   * someone staring at it.
+   *
+   * The parent's number is preferred over the student's: the parent is who
+   * paid and who asks what is left.
+   */
+  const sendReceiptOnWhatsApp = (receipt: Receipt, student: Student) => {
+    const raw = String((student as any)?.parentMobile || student?.mobile || '').replace(/\D/g, '');
+
+    if (raw.length < 10) {
+      triggerToast(
+        `No mobile number saved for ${student?.name || 'this student'}. Add a parent or student mobile on their record first.`,
+        'error'
+      );
+      return;
+    }
+
+    // wa.me wants the country code and no plus. Ten digits is a bare Indian
+    // number; anything longer already carries its own code.
+    const to = raw.length === 10 ? `91${raw}` : raw;
+
+    // encodeURIComponent rather than a template in the URL: a student name
+    // containing & or # would otherwise truncate the message silently.
+    const url = `https://wa.me/${to}?text=${encodeURIComponent(buildReceiptMessage(receipt, student))}`;
+
+    const opened = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!opened) {
+      triggerToast('Allow pop-ups for this site so WhatsApp can open.', 'error');
+      return;
+    }
+
+    triggerToast(`WhatsApp opened for ${student?.name || 'the parent'} — press send.`);
+  };
+
   const handleDownloadPDF = (receipt: Receipt, student: Student) => {
     const receiptWords = numberToReceiptWords(receipt.amount);
 
@@ -2998,7 +3106,13 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '10px', marginTop: '16px' }}>
                 <button onClick={() => handleDownloadPDF(selectedReceipt, selectedStudent)} style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 800 }} className="press-interactive">Download PDF / Print</button>
-                <button onClick={() => triggerToast('Receipt shared to registered parent mobile!')} style={{ ...styles.sheetBtn, backgroundColor: 'var(--line)', color: 'var(--dark-charcoal)' }} className="press-interactive">Share Receipt</button>
+                <button
+                  onClick={() => sendReceiptOnWhatsApp(selectedReceipt, selectedStudent)}
+                  style={{ ...styles.sheetBtn, backgroundColor: '#25D366', color: '#FFFFFF', fontWeight: 800 }}
+                  className="press-interactive"
+                >
+                  Send on WhatsApp
+                </button>
               </div>
             </div>
           </div>
