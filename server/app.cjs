@@ -282,6 +282,31 @@ function receiptTokenValid(receiptNumber, supplied) {
   try { return crypto.timingSafeEqual(a, b); } catch { return false; }
 }
 
+
+/**
+ * Attach the link token to every receipt on a student, for the response only.
+ *
+ * The token is NOT stored. It is a pure function of the receipt number, so it
+ * is recomputed here each time a student is serialised — which means a receipt
+ * opened from the student's history carries a link exactly like one opened
+ * straight after payment. Before this, only the just-paid receipt had a token
+ * and the "Download your receipt" line silently vanished from every message
+ * sent from the installment list.
+ *
+ * Derived, never persisted: nothing in Mongo gains a field, and rotating
+ * JWT_SECRET invalidates every old link at once, which is the correct
+ * behaviour for a link that grants read access.
+ */
+function withReceiptTokens(student) {
+  if (!student) return student;
+  const plain = typeof student.toObject === 'function' ? student.toObject() : student;
+  if (!Array.isArray(plain.receipts) || plain.receipts.length === 0) return plain;
+  plain.receipts = plain.receipts.map(r => (
+    r && r.receiptNumber ? { ...r, receiptToken: receiptLinkToken(r.receiptNumber) } : r
+  ));
+  return plain;
+}
+
 /**
  * GET /r/:receiptNumber/:token — the receipt, for a parent, with no account.
  *
@@ -2497,7 +2522,7 @@ app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'clerk'
       filter.branch = req.user.campus;
     }
     const students = await Student.find(filter).sort({ createdAt: -1 });
-    return res.json({ status: 'success', data: students });
+    return res.json({ status: 'success', data: students.map(withReceiptTokens) });
   } catch (err) {
     return failRequest(req, res, err);
   }
@@ -4085,7 +4110,7 @@ app.get('/api/accountant/students', authenticateToken, requireRole('accountant',
     }
 
     const students = await Student.find(filter).sort({ name: 1 });
-    return res.json({ status: 'success', data: students });
+    return res.json({ status: 'success', data: students.map(withReceiptTokens) });
   } catch (err) {
     return failRequest(req, res, err);
   }
@@ -4106,7 +4131,7 @@ app.get('/api/accountant/students/:id', authenticateToken, requireRole('accounta
       return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
     }
 
-    return res.json({ status: 'success', data: student });
+    return res.json({ status: 'success', data: withReceiptTokens(student) });
   } catch (err) {
     return failRequest(req, res, err);
   }
@@ -4398,7 +4423,7 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
           // The parent's link, signed here. The portal never sees the key.
           receiptToken: receiptLinkToken(newPayment.receiptNumber)
         },
-        student: finalStudent
+        student: withReceiptTokens(finalStudent)
       }
     });
   } catch (err) {
