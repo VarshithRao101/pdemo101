@@ -4,10 +4,10 @@
  * The other suites prove the mechanism with one or two clerks. This one asks
  * the questions that only show up at full size:
  *
- *   - does every one of the 28 slots actually sign in and write?
+ *   - does every clerk that exists actually sign in and write?
  *   - does each campus's data stay on that campus when all four are busy at
  *     once, or do concurrent writes leak across?
- *   - do the money totals add up exactly after 28 clerks have all collected?
+ *   - do the money totals add up exactly after they have all collected?
  *   - does the process stay up, and does memory come back down afterwards?
  *
  * Every clerk registers a student, collects a fee and logs an expenditure, and
@@ -107,14 +107,20 @@ async function main() {
   AuditLog = require('../server/models/AuditLog.cjs');
 
   console.log('\n========================================================');
-  console.log('ALL 28 SLOTS — FOUR CAMPUSES IN PARALLEL');
+  console.log('EVERY CLERK — FOUR CAMPUSES IN PARALLEL');
   console.log('========================================================\n');
 
   const memBefore = process.memoryUsage();
   const startedAt = Date.now();
 
   const clerks = await User.find({ role: 'clerk' }).select('username campus slotIndex password pin permissions status').lean();
-  ok('28 clerk accounts exist', clerks.length === 28, `${clerks.length} found`);
+  // NOT a fixed count. Clerks used to be seven declared slots a campus; they
+  // are created and removed freely now, so asserting 28 was asserting a model
+  // that no longer exists — it failed the moment the system was used as
+  // intended. What must hold is that EVERY clerk that exists works, and that
+  // the totals match however many that is.
+  const EXPECTED = clerks.length;
+  ok('there are clerks to exercise', EXPECTED > 0, `${EXPECTED} found`);
   // NOT "all five are on". The Rector granting and revoking powers per clerk
   // is the entire point of the feature, so asserting a fixed set would fail
   // the moment the system is used as intended. What must hold is that every
@@ -127,7 +133,7 @@ async function main() {
     clerks.filter(c => !c.permissions || !POWERS.every(k => typeof c.permissions[k] === 'boolean'))
       .map(c => c.username).join(', ') || 'all complete');
 
-  // Rate limiting would otherwise refuse 28 near-simultaneous logins.
+  // Rate limiting would otherwise refuse that many near-simultaneous logins.
   await mongoose.connection.collection('loginattempts').deleteMany({});
   await mongoose.connection.collection('ratelimits').deleteMany({});
 
@@ -154,13 +160,13 @@ async function main() {
   }
   console.log('');
 
-  ok('all 28 clerks signed in by campus', all.filter(r => r.signedIn).length === 28,
-    `${all.filter(r => r.signedIn).length}/28`);
-  ok('all 28 registered a student', all.filter(r => r.student).length === 28,
+  ok('every clerk signed in by campus', all.filter(r => r.signedIn).length === EXPECTED,
+    `${all.filter(r => r.signedIn).length}/${EXPECTED}`);
+  ok('every clerk registered a student', all.filter(r => r.student).length === EXPECTED,
     all.filter(r => !r.student).map(r => `${r.username}: ${r.error}`).slice(0, 3).join(' | '));
-  ok('all 28 collected a fee', all.filter(r => r.payment).length === 28,
+  ok('every clerk collected a fee', all.filter(r => r.payment).length === EXPECTED,
     all.filter(r => !r.payment).map(r => `${r.username}: ${r.error}`).slice(0, 3).join(' | '));
-  ok('all 28 logged an expenditure', all.filter(r => r.expenditure).length === 28,
+  ok('every clerk logged an expenditure', all.filter(r => r.expenditure).length === EXPECTED,
     all.filter(r => !r.expenditure).map(r => `${r.username}: ${r.error}`).slice(0, 3).join(' | '));
 
   console.log('\nWhere it all landed\n');
@@ -169,13 +175,18 @@ async function main() {
     const students = await Student.countDocuments({ admissionNumber: new RegExp(`^${TAG}`), branch: campus });
     const payments = await Payment.countDocuments({ studentId: new RegExp(`^${TAG}`), branch: campus });
     const exps = await Expenditure.countDocuments({ description: new RegExp(`^${TAG}`), branch: campus });
-    ok(`${campus}: 7 students, 7 payments, 7 expenditures`,
-      students === 7 && payments === 7 && exps === 7, `${students}/${payments}/${exps}`);
+    // Compared against how many clerks this campus actually has, not a fixed
+    // seven. Campuses hold different numbers now that clerks are created and
+    // removed as needed.
+    const here = clerks.filter(c => c.campus === campus).length;
+    ok(`${campus}: ${here} students, ${here} payments, ${here} expenditures`,
+      students === here && payments === here && exps === here,
+      `${students}/${payments}/${exps} for ${here} clerk(s)`);
   }
 
   const totalStudents = await Student.countDocuments({ admissionNumber: new RegExp(`^${TAG}`) });
   const totalPayments = await Payment.countDocuments({ studentId: new RegExp(`^${TAG}`) });
-  ok('28 students and 28 payments in total', totalStudents === 28 && totalPayments === 28,
+  ok('one student and one payment per clerk', totalStudents === EXPECTED && totalPayments === EXPECTED,
     `${totalStudents} / ${totalPayments}`);
 
   const sum = await Payment.aggregate([
@@ -183,7 +194,7 @@ async function main() {
     { $group: { _id: null, total: { $sum: '$amount' } } }
   ]);
   ok('collected total is exact, no double counting',
-    sum[0] && sum[0].total === 28 * PAID, `Rs. ${sum[0]?.total} vs ${28 * PAID}`);
+    sum[0] && sum[0].total === EXPECTED * PAID, `Rs. ${sum[0]?.total} vs ${EXPECTED * PAID}`);
 
   const balances = await Student.find({ admissionNumber: new RegExp(`^${TAG}`) }).select('remainingBalance totalPaid').lean();
   ok('every balance moved by exactly the amount paid',
@@ -219,10 +230,12 @@ async function main() {
   ]);
   const counts = Object.fromEntries(byAction.map(a => [a._id, a.n]));
 
-  ok('28 student registrations logged', counts['student.create'] === 28, String(counts['student.create']));
-  ok('28 fee collections logged', counts['payment.collect'] === 28, String(counts['payment.collect']));
-  ok('28 expenditures logged', counts['expenditure.create'] === 28, String(counts['expenditure.create']));
-  ok('every action is in the log', logged >= 84, `${logged} entries for 84 actions`);
+  ok('a registration logged per clerk', counts['student.create'] === EXPECTED, String(counts['student.create']));
+  ok('a collection logged per clerk', counts['payment.collect'] === EXPECTED, String(counts['payment.collect']));
+  ok('an expenditure logged per clerk', counts['expenditure.create'] === EXPECTED, String(counts['expenditure.create']));
+  // Three writes per clerk: a student, a payment, an expenditure.
+  const expectedActions = EXPECTED * 3;
+  ok('every action is in the log', logged >= expectedActions, `${logged} entries for ${expectedActions} actions`);
 
   // Matched against the clerks this run actually used, NOT a name pattern.
   // Portal IDs are the Rector's to change — a clerk renamed to something
@@ -241,7 +254,7 @@ async function main() {
   console.log(`  rss  ${mb(memBefore.rss)}MB -> ${mb(memAfter.rss)}MB`);
   console.log(`  ${all.length * 3} write requests in ${elapsed}s\n`);
 
-  ok('the process stayed up through 84 writes', true);
+  ok(`the process stayed up through ${EXPECTED * 3} writes`, true);
   ok('heap growth is not runaway', growth < 150, `+${growth}MB`);
 
   const stillAlive = await call('GET', '/api/health');
