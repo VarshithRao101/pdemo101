@@ -338,7 +338,19 @@ app.get('/r/:receiptNumber/:token', mongoRateLimiter, requireDatabase, async (re
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
-<title>Fee Receipt ${escapeHtmlServer(payment.receiptNumber)}</title>
+<!--
+  The title and preview tags are deliberately generic.
+
+  WhatsApp fetches a link to build its preview card, so Meta's servers see
+  this page before the parent does. A title carrying the receipt number, or a
+  description carrying a name or an amount, would put that into a preview
+  cached outside the college. The page itself still shows everything — but
+  only to whoever actually opens it.
+-->
+<title>Fee Receipt</title>
+<meta property="og:title" content="Fee Receipt" />
+<meta property="og:description" content="Inspire Junior College — open to view your receipt." />
+<meta name="twitter:card" content="summary" />
 <style>
   /* Half an A4 sheet, in exact millimetres. The sheet in a printer is still
      A4 and is cut after printing, so naming A5 would make some drivers ask
