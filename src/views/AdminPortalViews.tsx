@@ -2468,6 +2468,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                             </select>
                           </div>
                           <div>
+                            <label style={styles.formLabel}>Year *</label>
+                            <select value={newStuProgrammeYear} onChange={(e) => setNewStuProgrammeYear(e.target.value)} style={styles.selectInput}>
+                              <option value="First Year">First Year</option>
+                              <option value="Second Year">Second Year</option>
+                              <option value="Short Term">Short Term</option>
+                            </select>
+                          </div>
+                          <div>
                             <label style={styles.formLabel}>Section *</label>
                             <input maxLength={LIMITS.section} type="text" placeholder="e.g. MPC-A" value={newStuSection} onChange={(e) => setNewStuSection(e.target.value)} style={styles.textInputBox} />
                           </div>

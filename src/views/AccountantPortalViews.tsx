@@ -963,10 +963,10 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
       setSelectedReceipt(receipt);
       setActiveOverlay('receipt_view');
 
-      // Opened after an await, so the browser may no longer count this as a
-      // user gesture and can block it. sendReceiptOnWhatsApp says so plainly
-      // when that happens, and the button on the receipt is the way back.
-      sendReceiptOnWhatsApp(receipt, updatedStudent as any);
+      // Deliberately does NOT send anything here. Taking the payment and
+      // choosing how the parent gets the receipt are separate decisions —
+      // some want it printed, some want it on the phone — so the receipt is
+      // shown and the clerk picks Print or Share Digital.
       // Refetch full list and dashboard from server immediately after payment
       await triggerFreshnessRefetch();
     } catch (err: any) {
@@ -1014,6 +1014,10 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
     ];
 
     if (student?.branch) lines.push(`*Campus:* ${student.branch}`);
+    if ((student as any)?.course) {
+      const stream = [(student as any).course, (student as any).section].filter(Boolean).join(' - ');
+      lines.push(`*Course:* ${stream}`);
+    }
 
     lines.push(
       '',
@@ -1059,7 +1063,25 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
    * The parent's number is preferred over the student's: the parent is who
    * paid and who asks what is left.
    */
-  const sendReceiptOnWhatsApp = (receipt: Receipt, student: Student) => {
+  /**
+   * The whole digital hand-over: the receipt as a WhatsApp message, and the
+   * printable version opened so it can be saved and attached.
+   *
+   * A wa.me link CANNOT carry a file — it pre-fills text and nothing else.
+   * So the text goes on its own, and the PDF opens alongside for the clerk to
+   * attach if the parent wants the document rather than the summary. The
+   * toast says exactly that, because a button called "share digital" that
+   * quietly sent only half of it would be worse than one that explains.
+   */
+  const shareReceiptDigitally = (receipt: Receipt, student: Student) => {
+    const sent = sendReceiptOnWhatsApp(receipt, student);
+    if (!sent) return;   // no number, or pop-up blocked — already reported
+
+    // Opened second so WhatsApp is the window in front.
+    handleDownloadPDF(receipt, student);
+  };
+
+  const sendReceiptOnWhatsApp = (receipt: Receipt, student: Student): boolean => {
     const raw = String((student as any)?.parentMobile || student?.mobile || '').replace(/\D/g, '');
 
     if (raw.length < 10) {
@@ -1067,7 +1089,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
         `No mobile number saved for ${student?.name || 'this student'}. Add a parent or student mobile on their record first.`,
         'error'
       );
-      return;
+      return false;
     }
 
     // wa.me wants the country code and no plus. Ten digits is a bare Indian
@@ -1081,10 +1103,14 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
     const opened = window.open(url, '_blank', 'noopener,noreferrer');
     if (!opened) {
       triggerToast('Allow pop-ups for this site so WhatsApp can open.', 'error');
-      return;
+      return false;
     }
 
-    triggerToast(`WhatsApp opened for ${student?.name || 'the parent'} — press send.`);
+    triggerToast(
+      `WhatsApp opened for ${student?.name || 'the parent'} — press send. `
+      + 'The printable receipt has also opened: save it as PDF and attach it if they want the document.'
+    );
+    return true;
   };
 
   const handleDownloadPDF = (receipt: Receipt, student: Student) => {
@@ -3142,11 +3168,11 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '10px', marginTop: '16px' }}>
                 <button onClick={() => handleDownloadPDF(selectedReceipt, selectedStudent)} style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 800 }} className="press-interactive">Download PDF / Print</button>
                 <button
-                  onClick={() => sendReceiptOnWhatsApp(selectedReceipt, selectedStudent)}
+                  onClick={() => shareReceiptDigitally(selectedReceipt, selectedStudent)}
                   style={{ ...styles.sheetBtn, backgroundColor: '#25D366', color: '#FFFFFF', fontWeight: 800 }}
                   className="press-interactive"
                 >
-                  Send on WhatsApp
+                  Share Digital
                 </button>
               </div>
             </div>
