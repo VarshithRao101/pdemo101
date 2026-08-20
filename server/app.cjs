@@ -846,6 +846,32 @@ function isValidCampus(branch) {
  * sends `Number(input.value)` everywhere, so it was never relying on the
  * looser behaviour.
  */
+/**
+ * A boolean from a request body.
+ *
+ * Boolean('false') is true. So is Boolean('no') and Boolean('0'). A form that
+ * posts its checkbox as a string rather than a boolean therefore records the
+ * OPPOSITE of what was entered — a worker marked unpaid stored as paid — and
+ * nothing about the resulting record looks wrong afterwards.
+ *
+ * Returns null for anything that is not recognisably a yes or a no, so the
+ * caller refuses rather than guesses.
+ */
+function parseBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (value === 1) return true;
+    if (value === 0) return false;
+    return null;
+  }
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase();
+    if (v === 'true' || v === 'yes' || v === '1') return true;
+    if (v === 'false' || v === 'no' || v === '0') return false;
+  }
+  return null;
+}
+
 function isValidPositiveNumber(val) {
   if (typeof val === 'number') return Number.isFinite(val) && val >= 0;
   if (typeof val === 'string') {
@@ -963,9 +989,12 @@ function applyAllowedFields(doc, body, spec) {
         doc[field] = Number(v);
         break;
       }
-      case 'boolean':
-        doc[field] = Boolean(v);
+      case 'boolean': {
+        const b = parseBoolean(v);
+        if (b === null) return { error: `${field} must be true or false.` };
+        doc[field] = b;
         break;
+      }
       case 'date': {
         const d = new Date(v);
         if (isNaN(d.getTime())) return { error: `${field} must be a valid date.` };
@@ -4371,6 +4400,29 @@ app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1',
     if (!isValidPositiveNumber(amount) || Number(amount) <= 0) {
       return res.status(400).json({ status: 'error', message: 'Amount must be a valid positive number.' });
     }
+    if (Number(amount) > MAX_MONEY) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Amount cannot exceed ${MAX_MONEY.toLocaleString('en-IN')}.`
+      });
+    }
+
+    // Bounded like every other stored text. A name with no limit is a name
+    // that can be fifty thousand characters long.
+    const wpText = cleanTextFields(req.body, {
+      workerName: { required: true, max: FIELD_LIMITS.personName },
+      role: { required: true, max: MAX_TEXT.short },
+      monthPeriod: { required: true, max: MAX_TEXT.short }
+    });
+    if (wpText.error) {
+      return res.status(400).json({ status: 'error', message: wpText.error });
+    }
+
+    // Refused rather than coerced: see parseBoolean.
+    const paidFlag = parseBoolean(paid);
+    if (paidFlag === null) {
+      return res.status(400).json({ status: 'error', message: 'Paid must be true or false.' });
+    }
 
     if (req.user.role === 'clerk' && req.user.campus !== 'All') {
       if (targetBranch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
@@ -4388,11 +4440,11 @@ app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1',
     const wrkId = `WRK-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex')}`;
     const payment = await WorkerPayment.create({
       id: wrkId,
-      workerName: String(workerName).trim(),
-      role: String(role).trim(),
+      workerName: wpText.values.workerName,
+      role: wpText.values.role,
       amount: Number(amount),
-      monthPeriod: String(monthPeriod).trim(),
-      paid: Boolean(paid),
+      monthPeriod: wpText.values.monthPeriod,
+      paid: paidFlag,
       branch: targetBranch
     });
 
