@@ -7471,7 +7471,14 @@ app.put('/api/admin1/credentials/:id', authenticateToken, requireRole('admin1'),
       return res.status(404).json({ status: 'error', message: 'That account was not found.' });
     }
 
-    if (target.username === FIXED_AUTHENTICATOR_USERNAME) {
+    // Refused by ROLE, not only by the fixed username — the same reasoning as
+    // the reset-password route. Recognising the authenticator solely by that
+    // literal means the protection stops applying the moment the account is
+    // renamed, and it never covered a second authenticator account at all. The
+    // Rector holds credential control over every portal by design; the one
+    // account that must stay outside it is the one that audits the Rector.
+    if (target.username === FIXED_AUTHENTICATOR_USERNAME
+        || normalizeRole(target.role) === 'authenticator') {
       recordAudit(req, {
         action: 'credentials.update',
         entityType: 'account',
