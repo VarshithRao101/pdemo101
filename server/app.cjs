@@ -4468,11 +4468,58 @@ app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('ac
       return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
     }
 
+    // Validated to the SAME standard as creation.
+    //
+    // This used to copy req.body straight onto the document. Creating a
+    // student rejects a nine-digit mobile and a fifty-thousand-character name;
+    // editing one accepted both, so any rule enforced at the counter could be
+    // walked around by saving the record a second time. The parent mobile
+    // matters most: it is where fee receipts are sent, and its last four
+    // digits are what a parent types to open one.
+    //
+    // Only fields actually PRESENT are validated. cleanTextFields resolves an
+    // absent field to '', so validating the whole set would blank every
+    // detail the caller did not happen to mention.
+    const bioTextSpec = {
+      name: { max: FIELD_LIMITS.personName },
+      fatherName: { max: FIELD_LIMITS.personName },
+      motherName: { max: FIELD_LIMITS.personName },
+      email: { max: FIELD_LIMITS.email },
+      address: { max: FIELD_LIMITS.address },
+      dob: { max: 20 },
+      course: { max: FIELD_LIMITS.course },
+      section: { max: FIELD_LIMITS.section },
+      mobile: { max: FIELD_LIMITS.mobile },
+      parentMobile: { max: FIELD_LIMITS.mobile }
+    };
+    const presentSpec = {};
+    for (const [field, opts] of Object.entries(bioTextSpec)) {
+      if (req.body[field] !== undefined) presentSpec[field] = opts;
+    }
+    const bioText = cleanTextFields(req.body, presentSpec);
+    if (bioText.error) {
+      return res.status(400).json({ status: 'error', message: bioText.error });
+    }
+
+    for (const field of ['mobile', 'parentMobile']) {
+      const value = req.body[field];
+      if (value === undefined || value === '') continue;
+      const digits = String(value).replace(/[\s-]/g, '');
+      if (!/^\d{10}$/.test(digits)) {
+        return res.status(400).json({
+          status: 'error',
+          message: `${field === 'mobile' ? 'Mobile' : 'Parent mobile'} number must be exactly 10 digits.`
+        });
+      }
+    }
+
     const allowedBioFields = ['name', 'fatherName', 'motherName', 'mobile', 'parentMobile', 'email', 'address', 'dob', 'course', 'section', 'hostelStatus', 'transportStatus'];
     allowedBioFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        student[field] = req.body[field];
-      }
+      if (req.body[field] === undefined) return;
+      // The cleaned value where there is one; hostelStatus and transportStatus
+      // are enums and are checked by the schema on save.
+      const cleaned = bioText.values && bioText.values[field];
+      student[field] = cleaned !== undefined ? cleaned : req.body[field];
     });
 
     await student.save();
