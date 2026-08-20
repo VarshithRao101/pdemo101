@@ -996,6 +996,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
    */
   const buildReceiptMessage = (receipt: Receipt, student: Student): string => {
     const money = (n: any) => `Rs. ${Number(n || 0).toLocaleString('en-IN')}`;
+    const balanceRecorded = receipt?.balance !== undefined && receipt?.balance !== null;
     const balance = Number(receipt?.balance || 0);
 
     // Dates are stored in several shapes across this app. Print what we were
@@ -1037,9 +1038,16 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
     lines.push(
       '━━━━━━━━━━━━━━━━━━',
       '',
-      balance > 0
-        ? `*Balance Remaining:* ${money(balance)}`
-        : '*Balance Remaining:* Nil — fees fully cleared',
+      // A receipt with NO recorded balance is not a receipt for a cleared
+      // account. `Number(undefined || 0)` is 0, so an older receipt whose
+      // snapshot predates this field told the parent their fees were fully
+      // cleared when they might owe most of the year. Absent and zero are
+      // different facts and now read differently.
+      balanceRecorded
+        ? (balance > 0
+            ? `*Balance Remaining:* ${money(balance)}`
+            : '*Balance Remaining:* Nil — fees fully cleared')
+        : '*Balance Remaining:* Please contact the college office.',
       '',
       `*Receipt No:* ${receipt?.receiptNumber || '—'}`,
       `*Date:* ${when}`
