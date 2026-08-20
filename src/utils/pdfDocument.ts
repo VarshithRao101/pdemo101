@@ -1,3 +1,5 @@
+import pdfCss from '../styles/pdf.css?raw';
+
 /**
  * Shared print/PDF document system.
  *
@@ -62,181 +64,15 @@ export const PDF_COLORS = {
   criticalWash: '#F5F5F5'
 } as const;
 
-const C = PDF_COLORS;
-
 /**
- * One stylesheet for every document.
+ * One stylesheet for every document, loaded from src/styles/pdf.css.
  *
- * `print-color-adjust: exact` is load-bearing: without it browsers drop
- * background fills when printing, which would take the header and every
- * status badge back to plain white.
+ * Kept as a plain .css file rather than a template literal because the SERVER
+ * needs the same bytes: the public receipt page a parent opens from WhatsApp
+ * is rendered by Express, and it has to be the same document as the one the
+ * counter prints. Two copies of this stylesheet would be two receipts.
  */
-export const PDF_CSS = `
-@page { size: A4; margin: 14mm; }
-* { box-sizing: border-box; }
-html, body {
-  margin: 0; padding: 0; background: #fff; color: ${C.ink};
-  font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  font-size: 10.5px; line-height: 1.5;
-  -webkit-print-color-adjust: exact; print-color-adjust: exact;
-}
-.page { max-width: 182mm; margin: 0 auto; }
-
-/* --- One-page fitting --------------------------------------------------
-   Every document in this app is meant to come out as a single sheet. The
-   content is wrapped in .pdf-fit so the opener can measure it (the print
-   button is outside the wrapper and must not count towards the height) and
-   scale it down until it fits.
-
-   The shell exists because a transform is purely visual: a scaled element
-   still occupies its original height in layout, which would push a blank
-   second page. The opener sets the shell's height to the SCALED height so
-   the layout box matches what is actually drawn. Both are left untouched
-   when the document already fits, which is the common case. */
-.pdf-fit { transform-origin: top left; display: flow-root; }
-.pdf-fit-shell { overflow: hidden; }
-
-/* --- Frame ------------------------------------------------------------
-   A single hairline. The earlier version used a heavy border with a second
-   inset keyline, which fought the content for attention on a page whose job
-   is to present numbers.
-
-   Single-page documents only: a bordered box spanning pages draws its top
-   edge on the first page and its bottom on the last, leaving middle pages
-   open on two sides. */
-.pdf-frame { border: 1px solid ${C.line}; padding: 6mm; }
-
-/* --- Letterhead -------------------------------------------------------
-   The logo is the letterhead. It already contains the college name, the
-   stream badge and the tagline, so setting the name again beside it would
-   print it twice. */
-.pdf-hdr {
-  text-align: center;
-  padding-bottom: 8px; margin-bottom: 4px;
-  border-bottom: 1px solid ${C.ink};
-}
-.pdf-logo { width: 200px; max-width: 50%; height: auto; display: block; margin: 0 auto 8px; }
-.pdf-sub {
-  color: ${C.inkSecondary}; font-size: 8.5px;
-  letter-spacing: .16em; text-transform: uppercase;
-}
-.pdf-meta {
-  display: flex; justify-content: space-between; align-items: baseline;
-  padding: 5px 0 0; margin-bottom: 10px;
-  font-size: 8px; color: ${C.inkSecondary};
-  letter-spacing: .1em; text-transform: uppercase;
-}
-.pdf-doctype { font-size: 12px; font-weight: 700; color: ${C.ink}; letter-spacing: .18em; }
-
-/* --- Detail block ----------------------------------------------------- */
-.pdf-card {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 20px;
-  padding: 8px 0 10px; margin-bottom: 3px;
-  border-bottom: 1px solid ${C.line};
-}
-.pdf-card .k { display: block; font-size: 7.5px; font-weight: 600; color: ${C.inkMuted}; text-transform: uppercase; letter-spacing: .1em; }
-.pdf-card .v { display: block; font-size: 11.5px; font-weight: 600; color: ${C.ink}; margin-top: 3px; word-break: break-word; }
-
-/* --- Section heading -------------------------------------------------- */
-.pdf-sec {
-  font-size: 8.5px; font-weight: 700; color: ${C.ink};
-  text-transform: uppercase; letter-spacing: .16em;
-  margin: 12px 0 6px; padding-bottom: 4px;
-  border-bottom: 1px solid ${C.line};
-}
-
-/* --- Tables ------------------------------------------------------------
-   Horizontal rules only. Vertical gridlines and banded fills turn a short
-   table into a block of texture; on a fee statement the numbers should be
-   the darkest thing on the page. */
-.pdf-tbl { width: 100%; border-collapse: collapse; font-size: 10.5px; }
-.pdf-tbl th {
-  padding: 5px 6px 4px; text-align: left;
-  font-size: 7.5px; font-weight: 700; color: ${C.inkSecondary};
-  text-transform: uppercase; letter-spacing: .1em;
-  border-bottom: 1px solid ${C.ink};
-}
-.pdf-tbl td { padding: 4px 6px; border-bottom: 1px solid ${C.line}; vertical-align: top; }
-.pdf-tbl .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-/* The one way to emphasise a figure. Call sites used to set colour and weight
-   inline, differently in each document; with a greyscale palette those became
-   stray weights that made otherwise identical tables look unalike. */
-.pdf-strong { font-weight: 700; color: ${C.ink}; }
-.pdf-dim { color: ${C.inkMuted}; }
-
-/* Proportion bar, for reports that show a share of a total. Monochrome: a
-   dark fill on a light track, no rounded ends, no colour coding. */
-.pdf-bar { height: 5px; background: ${C.line}; margin-top: 4px; overflow: hidden; }
-.pdf-bar > span { display: block; height: 5px; background: ${C.ink}; }
-
-/* Small boxed note, for a summary line inside a report. */
-.pdf-callout { padding: 8px 10px; background: ${C.surfaceSunken}; font-size: 10px; }
-.pdf-callout-row { display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; color: ${C.ink}; }
-.pdf-tbl .muted { color: ${C.inkMuted}; text-align: center; padding: 18px; }
-.pdf-tbl tr.credit td { color: ${C.inkSecondary}; }
-.pdf-tbl tfoot td {
-  font-weight: 700; font-size: 11px; color: ${C.ink};
-  border-top: 1px solid ${C.ink}; border-bottom: none; padding-top: 8px;
-}
-
-/* Rows must not be split down the middle by a page break, and a long table
-   must repeat its header on each page rather than orphaning the columns. */
-.pdf-tbl tr { page-break-inside: avoid; }
-.pdf-tbl thead { display: table-header-group; }
-.pdf-tbl tfoot { display: table-footer-group; }
-
-/* --- Summary figures ---------------------------------------------------
-   Separated by rules rather than boxed. Four bordered cards in a row read as
-   four buttons; these read as a summary. */
-.pdf-tiles {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  margin-top: 10px; border-top: 1px solid ${C.ink}; border-bottom: 1px solid ${C.line};
-}
-.pdf-tile { padding: 8px 10px; border-right: 1px solid ${C.line}; }
-.pdf-tile:last-child { border-right: none; }
-.pdf-tile .k { font-size: 7.5px; font-weight: 600; color: ${C.inkMuted}; text-transform: uppercase; letter-spacing: .1em; }
-.pdf-tile .v { display: block; margin-top: 3px; font-size: 13px; font-weight: 700; color: ${C.ink}; font-variant-numeric: tabular-nums; }
-/* Emphasis is weight and rule, never hue. */
-.pdf-tile.good .v, .pdf-tile.warn .v { color: ${C.ink}; }
-.pdf-tile.due { background: ${C.surfaceSunken}; }
-.pdf-tile.due .v { color: ${C.ink}; }
-
-/* --- Status labels ----------------------------------------------------- */
-.pdf-badge {
-  display: inline-block; padding: 2px 7px;
-  font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
-  border: 1px solid ${C.lineStrong}; color: ${C.inkSecondary};
-}
-.pdf-badge.paid { border-color: ${C.ink}; color: ${C.ink}; }
-.pdf-badge.due { border-color: ${C.ink}; color: #fff; background: ${C.ink}; }
-.pdf-badge.part { border-color: ${C.inkSecondary}; color: ${C.inkSecondary}; }
-
-/* --- Footer ------------------------------------------------------------ */
-.pdf-ftr {
-  margin-top: 16px; padding-top: 8px;
-  border-top: 1px solid ${C.line};
-  display: flex; justify-content: space-between; align-items: flex-end;
-  font-size: 8px; color: ${C.inkMuted}; line-height: 1.6;
-}
-.pdf-sig {
-  width: 150px; margin-top: 20px; padding-top: 5px;
-  border-top: 1px solid ${C.ink}; text-align: center;
-  font-size: 7.5px; font-weight: 600; color: ${C.ink};
-  text-transform: uppercase; letter-spacing: .12em;
-}
-.pdf-note { max-width: 58%; }
-.pdf-note strong { color: ${C.inkSecondary}; font-weight: 600; }
-
-/* --- Print button, screen only ----------------------------------------- */
-.pdf-print-btn {
-  display: block; margin: 0 auto 18px; padding: 10px 26px; cursor: pointer;
-  background: #fff; color: ${C.ink}; border: 1px solid ${C.ink}; border-radius: 2px;
-  font-size: 10px; font-weight: 700; font-family: inherit;
-  letter-spacing: .12em; text-transform: uppercase;
-}
-.pdf-print-btn:hover { background: ${C.ink}; color: #fff; }
-@media print { .pdf-print-btn { display: none !important; } }
-`;
+export const PDF_CSS = pdfCss;
 
 /** HTML-escapes a value for interpolation into a print document. */
 export const escapeHtml = (value: unknown): string =>

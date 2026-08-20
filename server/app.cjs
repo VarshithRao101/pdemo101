@@ -245,15 +245,17 @@ function escapeHtmlServer(value) {
 // only text — so the message carries a URL instead, and this serves the
 // document behind it.
 //
-// The URL is unguessable: the token is an HMAC of the receipt number under a
-// key derived from JWT_SECRET. Without the secret you cannot produce a valid
-// token for a receipt number, so the route cannot be walked by trying
-// REC-000001, REC-000002 and so on.
+// Two things have to be true before any of it is shown:
 //
-// What this deliberately accepts: anyone HOLDING the link can read that one
-// receipt. That is the same exposure as emailing a PDF or forwarding the
-// message, and it is the point — the parent has to be able to open it. It
-// reveals exactly one receipt and never a list.
+//   1. The token in the URL is an HMAC of the receipt number under a key
+//      derived from JWT_SECRET. Without the secret you cannot produce a valid
+//      token, so the route cannot be walked by trying REC-000001, REC-000002.
+//   2. The reader knows the last four digits of the mobile the college has on
+//      file for that student. A forwarded link alone is no longer enough.
+//
+// The second check is why the GET renders a form and nothing else: it reads no
+// collection and names no student, so the preview WhatsApp fetches — Meta
+// loads the URL before the parent does — sees an empty form.
 
 /** Key for receipt links, derived so JWT_SECRET is never used directly. */
 function receiptLinkKey() {
@@ -314,124 +316,395 @@ function withReceiptTokens(student) {
  * printed receipt, so "Save as PDF" on a phone produces the same document the
  * counter would have printed.
  */
-app.get('/r/:receiptNumber/:token', mongoRateLimiter, requireDatabase, async (req, res) => {
-  const notFound = () => res
-    .status(404)
-    .type('html')
-    .send('<!doctype html><meta charset="utf-8"><title>Receipt not found</title>'
-      + '<body style="font-family:system-ui;padding:40px;text-align:center;color:#334">'
-      + '<h2>Receipt not found</h2>'
-      + '<p>This link may be incorrect or the receipt may have been removed.</p>'
-      + '<p>Please contact the college office.</p></body>');
-
+/**
+ * The print stylesheet, read once at boot.
+ *
+ * The same file the portal's print window uses. Read once rather than per
+ * request — it never changes while the process lives, and a parent opening a
+ * link should not cost a disk read.
+ */
+const PRINT_CSS = (() => {
   try {
-    await connectToDatabase();
-    const { receiptNumber, token } = req.params;
+    return fs.readFileSync(path.join(__dirname, '..', 'src', 'styles', 'pdf.css'), 'utf8');
+  } catch (err) {
+    console.warn('[Receipt link]: print stylesheet unreadable, falling back to plain:', err.message);
+    return 'body{font-family:system-ui;margin:24px;color:#111}';
+  }
+})();
 
-    // Verified BEFORE the lookup, so an invalid token cannot be used to learn
-    // whether a receipt number exists.
-    if (!receiptTokenValid(receiptNumber, token)) return notFound();
+/**
+ * The letterhead URL, resolved once at boot.
+ *
+ * The build renames the logo with a content hash, so the filename cannot be
+ * written down here; it is looked up in dist once. Referenced by URL rather
+ * than inlined as base64 so the browser caches it instead of re-downloading
+ * 57KB with every receipt.
+ */
+const LETTERHEAD_URL = (() => {
+  try {
+    const dir = path.join(__dirname, '..', 'dist', 'assets');
+    const hit = fs.readdirSync(dir).find(f => /^college.*logo.*\.png$/i.test(f));
+    return hit ? '/assets/' + encodeURIComponent(hit) : null;
+  } catch {
+    return null;
+  }
+})();
 
-    const payment = await Payment.findOne({ receiptNumber: String(receiptNumber) }).lean();
-    if (!payment) return notFound();
+/** The mobile the college would call about this student, digits only. */
+function contactDigitsFor(student) {
+  const raw = (student && (student.parentMobile || student.mobile)) || '';
+  return String(raw).replace(/\D/g, '');
+}
 
-    const student = await Student.findOne({ studentId: payment.studentId })
-      .select('name admissionNumber branch course section receipts')
-      .lean();
+/** Constant-time compare of two short digit strings. */
+function digitsMatch(supplied, expected) {
+  if (!supplied || !expected || supplied.length !== expected.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
 
-    // The balance AT THE TIME of this receipt, not the balance now — a receipt
-    // is a statement about the moment it was issued. The student's receipt
-    // list holds that snapshot; a later payment must not rewrite this page.
-    const snapshot = (student?.receipts || []).find(r => r.receiptNumber === payment.receiptNumber);
-    const balanceThen = snapshot && typeof snapshot.balance === 'number' ? snapshot.balance : null;
-
-    const money = n => `Rs. ${Number(n || 0).toLocaleString('en-IN')}`;
-    const when = payment.date
-      ? new Date(payment.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-      : '';
-
-    const row = (label, value) => value
-      ? `<tr><td class="l">${escapeHtmlServer(label)}</td><td class="v">${escapeHtmlServer(String(value))}</td></tr>`
-      : '';
-
-    res.set('Cache-Control', 'private, max-age=0, no-store');
-    // The page names one student; keep it out of search engines.
-    res.set('X-Robots-Tag', 'noindex, nofollow');
-
-    return res.type('html').send(`<!doctype html>
+/** The shell every public receipt page is served in. */
+function receiptPage({ title, inner }) {
+  return `<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
-<!--
-  The title and preview tags are deliberately generic.
-
-  WhatsApp fetches a link to build its preview card, so Meta's servers see
-  this page before the parent does. A title carrying the receipt number, or a
-  description carrying a name or an amount, would put that into a preview
-  cached outside the college. The page itself still shows everything — but
-  only to whoever actually opens it.
--->
-<title>Fee Receipt</title>
+<!-- Deliberately generic. WhatsApp fetches this URL to build its preview card,
+     so anything specific here would put the receipt into Meta's cache before
+     the parent ever taps the link. -->
+<title>${escapeHtmlServer(title)}</title>
 <meta property="og:title" content="Fee Receipt" />
 <meta property="og:description" content="Inspire Junior College — open to view your receipt." />
-<meta name="twitter:card" content="summary" />
 <style>
-  /* Half an A4 sheet, in exact millimetres. The sheet in a printer is still
-     A4 and is cut after printing, so naming A5 would make some drivers ask
-     for paper that is not loaded. */
-  @page { size: 210mm 148.5mm; margin: 8mm; }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: #f4f4f5; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1f2937; }
-  .sheet { max-width: 194mm; margin: 16px auto; background: #fff; border: 2px solid #d4af37; border-radius: 14px; padding: 22px; }
-  h1 { margin: 0; font-size: 17px; color: #b8941f; letter-spacing: .04em; text-align: center; }
-  .sub { text-align: center; font-size: 10px; text-transform: uppercase; color: #6b7280; margin-top: 2px; letter-spacing: .08em; }
-  hr { border: 0; border-top: 1.5px solid #d4af37; margin: 12px 0; }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 5px 0; font-size: 13px; vertical-align: top; }
-  td.l { color: #6b7280; width: 45%; }
-  td.v { text-align: right; font-weight: 700; }
-  .paid { color: #059669; font-size: 16px; }
-  .foot { margin-top: 14px; font-size: 10px; color: #6b7280; text-align: center; line-height: 1.5; }
-  .save { display: block; max-width: 194mm; margin: 0 auto 24px; text-align: center; }
-  .save button { background: #1f2937; color: #fff; border: 0; border-radius: 10px; padding: 11px 20px; font-size: 14px; font-weight: 700; cursor: pointer; }
-  @media print { .save { display: none } body { background: #fff } .sheet { margin: 0; border-radius: 0 } }
+${PRINT_CSS}
+
+/* Screen framing only. None of this survives to paper: the print block below
+   puts the sheet back to exactly what the counter prints. */
+body { background: #EEEEF1; padding: 18px 14px 40px; }
+.wrap { max-width: 196mm; margin: 0 auto; }
+.sheet {
+  background: #fff; padding: 26px 24px; border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.10);
+}
+.bar { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+.btn {
+  appearance: none; border: 1px solid #111; background: #111; color: #fff;
+  font: inherit; font-weight: 700; font-size: 13px; letter-spacing: .06em;
+  text-transform: uppercase; padding: 12px 22px; border-radius: 6px; cursor: pointer;
+}
+.btn:active { transform: translateY(1px); }
+.hint { text-align: center; color: #6b7280; font-size: 12px; margin-top: 12px; line-height: 1.6; }
+
+/* --- The gate --------------------------------------------------------- */
+.gate { max-width: 380px; margin: 6vh auto 0; }
+.gate .sheet { padding: 30px 26px 26px; text-align: center; }
+.gate img.mark { width: 172px; max-width: 62%; height: auto; margin: 0 auto 18px; display: block; }
+.gate h1 { font-size: 15px; margin: 0 0 6px; letter-spacing: .02em; }
+.gate p { font-size: 13px; color: #555; margin: 0 0 20px; line-height: 1.6; }
+.gate input {
+  width: 100%; font: inherit; font-size: 26px; font-weight: 700;
+  letter-spacing: .5em; text-align: center; text-indent: .5em;
+  padding: 13px 10px; border: 1.5px solid #BBB; border-radius: 8px; background: #fff; color: #111;
+}
+.gate input:focus { outline: none; border-color: #111; }
+.gate .btn { width: 100%; margin-top: 14px; }
+.gate .err {
+  background: #F5F5F5; border-left: 3px solid #111; color: #111; text-align: left;
+  font-size: 12.5px; padding: 9px 12px; margin-bottom: 16px; border-radius: 4px;
+}
+.gate .foot { font-size: 11px; color: #8A8A8A; margin: 16px 0 0; line-height: 1.6; }
+
+@media (max-width: 520px) {
+  body { padding: 10px 8px 28px; }
+  .sheet { padding: 18px 14px; border-radius: 8px; }
+}
+
+/* --- Paper -------------------------------------------------------------
+   Half an A4 sheet, cut across the short edge — the size the college issues.
+   The document is authored at full size and scaled down to fit it, which is
+   the same arrangement the portal's print window uses. */
+@page { size: 210mm 148.5mm; margin: 8mm; }
+@media print {
+  body { background: #fff; padding: 0; }
+  .sheet { box-shadow: none; border-radius: 0; padding: 0; }
+  .bar, .hint { display: none !important; }
+  /* --fit is measured by /r-print.js against the real sheet before printing.
+     The fallback is deliberately conservative: if the script is blocked the
+     receipt still lands on one sheet, just smaller than it needed to be. */
+  .pdf-fit {
+    transform: scale(var(--fit, .74));
+    transform-origin: top left;
+    width: calc(100% / var(--fit, .74));
+  }
+}
 </style>
 </head><body>
+${inner}
+</body></html>`;
+}
+
+/** The four-digit form. Shown before anything about the student is loaded. */
+function receiptGate({ error }) {
+  return receiptPage({
+    title: 'Fee Receipt',
+    // No action attribute: the form posts back to the URL it was served from.
+    // Writing the path out would print the receipt number into the page body,
+    // and this page exists partly so that WhatsApp's preview fetch finds
+    // nothing worth caching.
+    inner: `<div class="gate">
+  <form class="sheet" method="POST">
+    ${LETTERHEAD_URL
+      ? `<img class="mark" src="${LETTERHEAD_URL}" alt="Inspire Junior College" />`
+      : '<h1>INSPIRE JUNIOR COLLEGE</h1>'}
+    ${error ? `<div class="err">${escapeHtmlServer(error)}</div>` : ''}
+    <h1>View your fee receipt</h1>
+    <p>For your privacy, please enter the <strong>last 4 digits</strong> of the mobile number registered with the college.</p>
+    <input name="last4" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+           aria-label="Last 4 digits of the registered mobile number" required autofocus />
+    <button class="btn" type="submit">View Receipt</button>
+    <p class="foot">If you do not know the registered number, please contact the college office.</p>
+  </form>
+</div>`
+  });
+}
+
+/** The receipt itself, in the same document the counter prints. */
+function receiptDocument({ payment, student, balanceThen }) {
+  const money = n => `Rs. ${Number(n || 0).toLocaleString('en-IN')}`;
+  const when = payment.date
+    ? new Date(payment.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+
+  const field = (label, value) => (value === undefined || value === null || value === '')
+    ? ''
+    : `<div><span class="k">${escapeHtmlServer(label)}</span><span class="v">${escapeHtmlServer(String(value))}</span></div>`;
+
+  const course = [student && student.course, student && student.section].filter(Boolean).join(' — ');
+  const towards = [payment.category, payment.installment].filter(Boolean).join(' — ');
+
+  return receiptPage({
+    title: 'Fee Receipt',
+    inner: `<div class="wrap">
   <div class="sheet">
-    <h1>INSPIRE JUNIOR COLLEGE</h1>
-    <div class="sub">Official Fee Receipt</div>
-    <hr />
-    <table>
-      ${row('Student', student?.name)}
-      ${row('Admission No', student?.admissionNumber || payment.admissionNumber)}
-      ${row('Campus', student?.branch || payment.branch)}
-      ${row('Course', [student?.course, student?.section].filter(Boolean).join(' - '))}
-    </table>
-    <hr />
-    <table>
-      <tr><td class="l">Amount Paid</td><td class="v paid">${money(payment.amount)}</td></tr>
-      ${row('Towards', [payment.category, payment.installment].filter(Boolean).join(' · '))}
-      ${row('Paid by', payment.paymentMode)}
-      ${balanceThen === null ? '' : `<tr><td class="l">Balance Remaining</td><td class="v">${balanceThen > 0 ? money(balanceThen) : 'Nil — fully cleared'}</td></tr>`}
-    </table>
-    <hr />
-    <table>
-      ${row('Receipt No', payment.receiptNumber)}
-      ${row('Date', when)}
-    </table>
-    <div class="foot">
-      This is a computer-generated acknowledgement and needs no signature.<br />
-      For any query, please contact the college office.
-    </div>
+    <div class="pdf-fit"><div class="pdf-frame">
+
+      <div class="pdf-hdr">
+        ${LETTERHEAD_URL
+          ? `<img class="pdf-logo" src="${LETTERHEAD_URL}" alt="Inspire Junior College" />`
+          : '<div class="pdf-doctype">INSPIRE JUNIOR COLLEGE</div>'}
+        <div class="pdf-sub">Official payment receipt &middot; ${escapeHtmlServer(payment.receiptNumber)}</div>
+      </div>
+      <div class="pdf-meta">
+        <span class="pdf-doctype">Fee Receipt</span>
+        <span>${escapeHtmlServer((student && student.branch) || payment.branch || '')} &nbsp;&middot;&nbsp; ${escapeHtmlServer(when)}</span>
+      </div>
+
+      <div class="pdf-card">
+        ${field('Student Name', student && student.name)}
+        ${field('Admission No.', (student && student.admissionNumber) || payment.admissionNumber)}
+        ${field('Course / Section', course)}
+        ${field('Academic Year', student && student.academicYear)}
+        ${field('Year', student && student.studentYear)}
+        ${field('Receipt Date', when)}
+      </div>
+
+      <div class="pdf-sec">Payment Received</div>
+      <table class="pdf-tbl">
+        <thead><tr><th>Particulars</th><th>Mode</th><th>Reference</th><th class="num">Amount</th></tr></thead>
+        <tbody><tr>
+          <td>${escapeHtmlServer(towards || 'Fee Payment')}</td>
+          <td>${escapeHtmlServer(payment.paymentMode || 'Cash')}</td>
+          <td>${escapeHtmlServer(payment.receiptNumber)}</td>
+          <td class="num">${money(payment.amount)}</td>
+        </tr></tbody>
+        <tfoot><tr>
+          <td>Amount Received</td><td></td><td></td>
+          <td class="num">${money(payment.amount)}</td>
+        </tr></tfoot>
+      </table>
+
+      <div class="pdf-tiles">
+        <div class="pdf-tile good">
+          <span class="k">Amount Paid</span>
+          <span class="v">${money(payment.amount)}</span>
+        </div>
+        ${balanceThen === null ? '' : `
+        <div class="pdf-tile ${balanceThen > 0 ? 'due' : 'good'}">
+          <span class="k">${balanceThen > 0 ? 'Balance Remaining' : 'Fully Cleared'}</span>
+          <span class="v">${money(balanceThen)}</span>
+        </div>`}
+      </div>
+
+      <div class="pdf-ftr">
+        <div class="pdf-note">
+          Computer-generated official receipt, verified against the Inspire College ERP
+          records. Valid without a stamp.
+        </div>
+        <div class="pdf-sig">Authorised Signatory</div>
+      </div>
+
+    </div></div>
   </div>
-  <div class="save"><button onclick="window.print()">Save as PDF / Print</button></div>
-</body></html>`);
+
+  <div class="bar">
+    <button class="btn" type="button" id="print">Print / Save as PDF</button>
+  </div>
+  <p class="hint">
+    Prints as one half-A4 sheet. In the print dialog choose
+    <strong>Paper size: A5</strong>, or A4 with <strong>Scale: Fit to page</strong>.
+  </p>
+</div>
+<!-- type="module" is not decoration: module scripts are deferred, so this
+     runs after the document is parsed and the letterhead has been fetched,
+     which is the only point at which the height it measures is the height
+     that will print. -->
+<script type="module" src="/r-print.js"></script>`
+  });
+}
+
+/**
+ * The print button's handler, as a file rather than an inline onclick.
+ *
+ * script-src is 'self' with no 'unsafe-inline'. Under that policy an inline
+ * handler is a button that looks normal and does nothing at all, so the two
+ * lines live in a cached file instead.
+ */
+const RECEIPT_PRINT_JS = `
+// Fit the receipt onto half an A4 sheet.
+//
+// The document is authored at full size — the same markup the counter prints —
+// and scaled down onto the sheet. Measured rather than fixed, because a long
+// student name or an extra fee line changes the height, and a scale chosen
+// once here would either waste half the paper or spill onto a second sheet.
+(function () {
+  var MM = 96 / 25.4;
+  var SHEET_MM = 148.5 - 16;   // half A4, less the @page margins
+  var MIN = 0.5;               // below this it is too small for a parent to read
+
+  function fit() {
+    var el = document.querySelector('.pdf-fit');
+    if (!el) return;
+    el.style.removeProperty('--fit');
+    var h = el.scrollHeight / MM;
+    if (!h) return;
+    var scale = h <= SHEET_MM ? 1 : Math.max(MIN, SHEET_MM / h);
+    el.style.setProperty('--fit', String(Math.round(scale * 1000) / 1000));
+  }
+
+  // After the letterhead has loaded: it is the tallest single element, and
+  // measuring without it reads a height wrong by the size of the logo.
+  if (document.readyState === 'complete') fit();
+  else window.addEventListener('load', fit);
+  // And again at the only moment the browser guarantees final layout.
+  window.addEventListener('beforeprint', fit);
+
+  var btn = document.getElementById('print');
+  if (btn) btn.addEventListener('click', function () { fit(); window.print(); });
+})();
+`;
+
+app.get('/r-print.js', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=86400');
+  return res.type('application/javascript').send(RECEIPT_PRINT_JS);
+});
+
+/** Answered identically for a bad token and a missing receipt. */
+function receiptNotFound(res) {
+  return res.status(404).type('html').send(receiptPage({
+    title: 'Receipt not found',
+    inner: '<div class="gate"><div class="sheet">'
+      + '<h1>Receipt not found</h1>'
+      + '<p>This link may be incorrect, or the receipt may have been removed.</p>'
+      + '<p class="foot">Please contact the college office.</p>'
+      + '</div></div>'
+  }));
+}
+
+/** Private, never cached, never indexed. */
+function receiptHeaders(res) {
+  res.set('Cache-Control', 'private, max-age=0, no-store');
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+}
+
+/**
+ * GET /r/:receiptNumber/:token — the gate.
+ *
+ * Touches no collection at all. The token is checked with an HMAC and the form
+ * is returned; nothing about the student is read until the four digits arrive.
+ * That is what makes WhatsApp's preview fetch harmless, and it also means the
+ * common case — a crawler, not a parent — costs no database work whatsoever.
+ */
+// Deliberately NOT rate limited. It checks no secret, reads no collection and
+// returns the same static form to everybody, so there is nothing here to
+// brute-force. The limiter itself writes a counter to Mongo on every request,
+// which would put a database write on the one path WhatsApp's crawler hits —
+// and an 8-per-window budget would lock out a parent who simply reopened the
+// link. The budget belongs on the POST, which is where the digits are checked.
+app.get('/r/:receiptNumber/:token', (req, res) => {
+  const { receiptNumber, token } = req.params;
+  receiptHeaders(res);
+  if (!receiptTokenValid(receiptNumber, token)) return receiptNotFound(res);
+  return res.type('html').send(receiptGate({}));
+});
+
+/**
+ * POST /r/:receiptNumber/:token — the four digits, and the receipt.
+ *
+ * Nothing is written and nothing is remembered. No session, no cookie: a
+ * parent returning to the link enters the digits again, which is the point of
+ * not storing anything.
+ */
+app.post('/r/:receiptNumber/:token',
+  express.urlencoded({ extended: false, limit: '1kb' }),
+  mongoRateLimiter, requireDatabase, async (req, res) => {
+  receiptHeaders(res);
+  try {
+    const { receiptNumber, token } = req.params;
+    if (!receiptTokenValid(receiptNumber, token)) return receiptNotFound(res);
+
+    const last4 = String((req.body && req.body.last4) || '').replace(/\D/g, '');
+    if (last4.length !== 4) {
+      return res.status(400).type('html').send(receiptGate({
+        error: 'Please enter exactly 4 digits.'
+      }));
+    }
+
+    await connectToDatabase();
+    const payment = await Payment.findOne({ receiptNumber: String(receiptNumber) }).lean();
+    if (!payment) return receiptNotFound(res);
+
+    const student = await Student.findOne({ studentId: payment.studentId })
+      .select('name admissionNumber branch course section academicYear studentYear mobile parentMobile receipts')
+      .lean();
+
+    const contact = contactDigitsFor(student);
+    if (!digitsMatch(last4, contact.slice(-4))) {
+      // Deliberately vague, and the same message whether the digits are wrong
+      // or the student has no mobile on file. A precise error would let
+      // someone holding a forwarded link learn which case they are in.
+      return res.status(403).type('html').send(receiptGate({
+        error: 'Those digits do not match the number registered for this student.'
+      }));
+    }
+
+    // The balance AT THE TIME of this receipt, not the balance now — a receipt
+    // is a statement about the moment it was issued. The student's receipt
+    // list holds that snapshot; a later payment must not rewrite this page.
+    const snapshot = ((student && student.receipts) || [])
+      .find(r => r.receiptNumber === payment.receiptNumber);
+    const balanceThen = snapshot && typeof snapshot.balance === 'number' ? snapshot.balance : null;
+
+    return res.type('html').send(receiptDocument({ payment, student, balanceThen }));
   } catch (err) {
     console.error('[Receipt link]: failed:', err.message);
-    return notFound();
+    return receiptNotFound(res);
   }
 });
+
 
 app.get('/api/health', async (req, res) => {
   let database = 'disconnected';
@@ -1066,7 +1339,21 @@ const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 // so operators can inspect several backups without burning the login budget.
 const AUTH_PATH_PATTERN = /\/(login|verify-credentials|force-login|refresh|wipe-database|restore|reset-password)$/;
 
+// The public receipt link, which asks for four digits of a mobile number.
+// Four digits is only 10,000 combinations, so the ordinary 120-per-window
+// budget would let someone holding a forwarded link work through the lot in
+// about a day. Eight tries per fifteen minutes turns that into years, and the
+// key includes the receipt number, so one parent mistyping their own digits
+// cannot use up anyone else's allowance.
+//
+// Only the POST carries the limiter; the GET is a static form and is left
+// alone. The pattern matches both so that reattaching the limiter to the GET
+// some day cannot silently give it the ordinary budget.
+const RECEIPT_LINK_PATTERN = /^\/r\/[^/]+\/[^/]+$/;
+const RECEIPT_LINK_BUDGET = 8;
+
 function rateLimitBudgetFor(path) {
+  if (RECEIPT_LINK_PATTERN.test(path)) return RECEIPT_LINK_BUDGET;
   return AUTH_PATH_PATTERN.test(path) ? 10 : 120;
 }
 

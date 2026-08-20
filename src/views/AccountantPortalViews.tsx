@@ -1055,8 +1055,10 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
     if (token && receipt?.receiptNumber) {
       lines.push(
         '',
-        'Download your receipt:',
-        `${window.location.origin}/r/${encodeURIComponent(receipt.receiptNumber)}/${token}`
+        'View / download your receipt:',
+        `${window.location.origin}/r/${encodeURIComponent(receipt.receiptNumber)}/${token}`,
+        '',
+        '_To open it, enter the last 4 digits of your registered mobile number._'
       );
     }
 
@@ -1211,6 +1213,10 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
       body,
       buttonLabel: 'Print / Save Receipt as PDF',
       framed: true,
+      // Authored at full size and scaled onto half an A4 sheet, cut across the
+      // short edge. The document is the statement's, the paper is the
+      // college's — the fitter reconciles the two.
+      halfA4: true,
       onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to print the receipt.')
     });
     if (opened) triggerToast('Receipt opened for printing.');
