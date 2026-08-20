@@ -105,7 +105,16 @@ async function connectToDatabase() {
       minPoolSize: 1,
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
+      // 45s was too long to be useful to anybody.
+      //
+      // When Atlas dropped a connection mid-query during testing, the socket
+      // sat there for the full 45 seconds and the request finally answered 503
+      // after 51. Nobody at a fee counter waits 51 seconds — they reload, and
+      // now there are two requests in flight instead of one. The slowest real
+      // query measured here is 2.5s (212 worker payments), so 20s is still
+      // far above anything legitimate while failing fast enough that the
+      // clerk sees an error and can retry deliberately.
+      socketTimeoutMS: 20000,
       heartbeatFrequencyMS: 10000
     })
     .then((m) => {

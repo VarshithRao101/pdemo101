@@ -1844,6 +1844,56 @@ function studentScopeFilter(req) {
   return campusScopeFilter(req);
 }
 
+/**
+ * The campus filter for a LIST endpoint, from the caller and the query.
+ *
+ * Replaces a block that was copy-pasted between handlers and carried the same
+ * flaw in each copy: it tested `branch.toLowerCase() !== 'all'` before
+ * comparing against the caller's own campus, so the literal string "all" was
+ * waved past the check — and then, because the second test excluded "all" too,
+ * the filter was left empty and every campus came back. A clerk pinned to one
+ * campus could read all four by adding ?branch=all to the URL.
+ *
+ * "all" is not a neutral value. It is a request to widen, and for a
+ * campus-scoped account that is precisely the thing to refuse.
+ *
+ * Returns a Mongo filter, or null when it has already answered the request.
+ */
+function scopedCampusFilter(req, res, label) {
+  const own = String((req.user && req.user.campus) || '');
+  const orgWide = own.trim().toLowerCase() === 'all';
+  const asked = String(req.query.branch || req.query.campus || '').trim();
+
+  if (!orgWide) {
+    if (asked && asked.toLowerCase() === 'all') {
+      res.status(403).json({
+        status: 'error',
+        message: `Your account may only view ${label} for ${own}.`
+      });
+      return null;
+    }
+    if (asked && normalizeCampus(asked) !== normalizeCampus(own)) {
+      res.status(403).json({
+        status: 'error',
+        message: `Your account may only view ${label} for ${own}.`
+      });
+      return null;
+    }
+    // Pinned to the account's own campus, never left open.
+    return { branch: normalizeCampus(own) };
+  }
+
+  if (!asked || asked.toLowerCase() === 'all') return {};
+  if (!isValidCampus(asked)) {
+    res.status(400).json({
+      status: 'error',
+      message: `Invalid campus branch [${asked}]. Must be one of: ${VALID_CAMPUSES.join(', ')}`
+    });
+    return null;
+  }
+  return { branch: normalizeCampus(asked) };
+}
+
 /** Whether this caller may act on a student belonging to `studentCampus`. */
 function callerOwnsStudent(req, studentCampus) {
   if (callerReachesAllStudents(req)) return true;
@@ -4011,22 +4061,8 @@ app.patch('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', '
 const getExpendituresHandler = async (req, res) => {
   try {
     await connectToDatabase();
-    const branch = req.query.branch || req.user.campus;
-
-    if (req.user.role === 'clerk' && req.user.campus !== 'All') {
-      if (branch && branch.toLowerCase() !== 'all' && branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
-        return res.status(403).json({ status: 'error', message: `Admin2 can only view expenditures for campus [${req.user.campus}].` });
-      }
-    }
-
-    let filter = {};
-    const targetCampus = branch || req.user.campus;
-    if (targetCampus && targetCampus.toLowerCase() !== 'all') {
-      if (!isValidCampus(targetCampus)) {
-        return res.status(400).json({ status: 'error', message: `Invalid campus branch [${targetCampus}]. Must be one of: ${VALID_CAMPUSES.join(', ')}` });
-      }
-      filter.branch = targetCampus;
-    }
+    const filter = scopedCampusFilter(req, res, 'expenditures');
+    if (!filter) return;
 
     const expenditures = await Expenditure.find(filter).sort({ date: -1 });
     return res.json({ status: 'success', data: expenditures });
@@ -4202,22 +4238,8 @@ app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1
 app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
-    const branch = req.query.branch || req.user.campus;
-
-    if (req.user.role === 'clerk' && req.user.campus !== 'All') {
-      if (branch && branch.toLowerCase() !== 'all' && branch.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
-        return res.status(403).json({ status: 'error', message: `Admin2 can only view worker payments for campus [${req.user.campus}].` });
-      }
-    }
-
-    let filter = {};
-    const targetCampus = branch || req.user.campus;
-    if (targetCampus && targetCampus.toLowerCase() !== 'all') {
-      if (!isValidCampus(targetCampus)) {
-        return res.status(400).json({ status: 'error', message: `Invalid campus branch [${targetCampus}]. Must be one of: ${VALID_CAMPUSES.join(', ')}` });
-      }
-      filter.branch = targetCampus;
-    }
+    const filter = scopedCampusFilter(req, res, 'worker payments');
+    if (!filter) return;
 
     const payments = await WorkerPayment.find(filter).sort({ createdAt: -1 });
     return res.json({ status: 'success', data: payments });
