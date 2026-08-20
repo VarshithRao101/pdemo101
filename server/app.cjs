@@ -1455,6 +1455,13 @@ const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 // so operators can inspect several backups without burning the login budget.
 const AUTH_PATH_PATTERN = /\/(login|verify-credentials|force-login|refresh|wipe-database|restore|reset-password)$/;
 
+// The public enquiry form. A prospective parent submits once; sixty
+// submissions from one address in a quarter of an hour is a script. Without a
+// budget this is the one door in the application an anonymous caller can push
+// on indefinitely, and behind it is the Rector's inbox and the database.
+const PUBLIC_FORM_PATTERN = /^\/api\/enquiries$/;
+const PUBLIC_FORM_BUDGET = 10;
+
 // The public receipt link, which asks for four digits of a mobile number.
 // Four digits is only 10,000 combinations, so the ordinary 120-per-window
 // budget would let someone holding a forwarded link work through the lot in
@@ -1469,6 +1476,7 @@ const RECEIPT_LINK_PATTERN = /^\/r\/[^/]+\/[^/]+$/;
 const RECEIPT_LINK_BUDGET = 8;
 
 function rateLimitBudgetFor(path) {
+  if (PUBLIC_FORM_PATTERN.test(path)) return PUBLIC_FORM_BUDGET;
   if (RECEIPT_LINK_PATTERN.test(path)) return RECEIPT_LINK_BUDGET;
   return AUTH_PATH_PATTERN.test(path) ? 10 : 120;
 }
@@ -5932,7 +5940,35 @@ app.post('/api/authenticator/wipe-database', authenticateToken, requireRole('aut
 
 // --- PUBLIC ENQUIRIES ENDPOINT ---
 // Allows prospective students/parents to submit admissions enquiries from the public portfolio
-app.post('/api/enquiries', async (req, res) => {
+/**
+ * The next number in a named sequence, allocated atomically.
+ *
+ * The enquiry reference code was `ENQ-2026-<countDocuments() + 1>`. Two
+ * submissions arriving together both read the same count, both compute the
+ * same code, and the unique index rejects one of them with a duplicate key
+ * error that surfaces as a 500. Under ten-way concurrency eight of ten failed
+ * — and this is the public form, so the people it fails are prospective
+ * parents responding to an advertisement, at exactly the moment several of
+ * them arrive at once.
+ *
+ * findOneAndUpdate with $inc is a single atomic operation on one document, so
+ * every caller gets a different number. Sequential codes are kept because the
+ * college reads them out to families; a random code would have avoided the
+ * collision but lost that.
+ */
+async function nextSequence(name) {
+  const row = await mongoose.connection.collection('counters').findOneAndUpdate(
+    { _id: name },
+    { $inc: { seq: 1 } },
+    { upsert: true, returnDocument: 'after' }
+  );
+  // The driver has returned either the document or a { value } wrapper
+  // depending on version; both shapes are handled rather than assumed.
+  const doc = row && (row.value || row);
+  return Number(doc && doc.seq) || 1;
+}
+
+app.post('/api/enquiries', mongoRateLimiter, async (req, res) => {
   try {
     await connectToDatabase();
     const { mobile } = req.body || {};
@@ -5961,8 +5997,8 @@ app.post('/api/enquiries', async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Mobile number must be exactly 10 digits.' });
     }
 
-    const count = await Enquiry.countDocuments();
-    const referenceCode = `ENQ-2026-${String(count + 1).padStart(4, '0')}`;
+    const year = new Date().getFullYear();
+    const referenceCode = `ENQ-${year}-${String(await nextSequence(`enquiry-${year}`)).padStart(4, '0')}`;
 
     const newEnquiry = await Enquiry.create({
       referenceCode,
@@ -6038,7 +6074,12 @@ app.patch('/api/enquiries/:id', authenticateToken, requireRole('admin1'), requir
   }
 });
 
-app.get('/api/enquiries', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
+// Reading the inbox matches acting on it. Updating an enquiry is admin1
+// only, so listing them was the odd one out: a clerk could read every
+// prospective student's name, their parent's name, mobile and email —
+// personal data about people who are not even enrolled — while being
+// unable to do anything with it.
+app.get('/api/enquiries', authenticateToken, requireRole('admin1'), async (req, res) => {
   try {
     await connectToDatabase();
     // Took ?branch straight from the query with no check against the caller,
@@ -6241,12 +6282,31 @@ app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRol
     // Only salary fields are writable here. This previously applied
     // `$set: req.body` verbatim, so a caller could rewrite branch, id, status
     // or any other column through a salary endpoint.
-    const allowed = ['salary', 'salaryStatus', 'salaryLedger', 'monthlySalaries'];
+    //
+    // salaryLedger and monthlySalaries are NOT in this list, and must not be.
+    // Two rules are enforced by reading the ledger back — a month may not
+    // exceed the agreed salary, and a year does not open until the previous
+    // twelve months are settled — so a route that writes the ledger wholesale
+    // is a route that repeals both. Posting a fabricated year of "Paid"
+    // months here marked all twelve as settled at 999,999 each against a
+    // 25,000 salary, unlocked the following year, and left a payment history
+    // that no salary-month request ever created. The ledger is written by the
+    // salary-month route or not at all; the frontend only ever sends
+    // salaryStatus and paidAmount here.
+    const allowed = ['salary', 'salaryStatus'];
     for (const field of allowed) {
       if (req.body[field] === undefined) continue;
       if (field === 'salary') {
         if (!isValidPositiveNumber(req.body.salary)) {
           return res.status(400).json({ status: 'error', message: 'Salary must be a valid non-negative number.' });
+        }
+        // Capped, because the per-month ceiling is derived from this figure:
+        // an unbounded salary is an unbounded monthly payment.
+        if (Number(req.body.salary) > MAX_MONEY) {
+          return res.status(400).json({
+            status: 'error',
+            message: `Salary cannot exceed ${MAX_MONEY.toLocaleString('en-IN')}.`
+          });
         }
         teacher.salary = Number(req.body.salary);
       } else {
