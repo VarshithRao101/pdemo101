@@ -3644,9 +3644,15 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
       branch = req.user.campus; // Lock campus to admin2's assigned campus
     }
 
-    let normBranch = normalizeCampus(branch);
+    // Refused, never substituted — the same reasoning as the expenditure
+    // route. A teacher filed to a campus nobody chose appears on that
+    // campus's staff list and its salary ledger, and nothing says why.
+    const normBranch = normalizeCampus(branch);
     if (!isValidCampus(normBranch) || normBranch.toLowerCase() === 'all') {
-      normBranch = (req.user.campus && req.user.campus !== 'All' && isValidCampus(req.user.campus)) ? normalizeCampus(req.user.campus) : 'Erragattugutta C1';
+      return res.status(400).json({
+        status: 'error',
+        message: `Name the campus this teacher belongs to. Must be one of: ${VALID_CAMPUSES.join(', ')}.`
+      });
     }
     branch = normBranch;
 
@@ -4160,11 +4166,22 @@ app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'cl
   try {
     await connectToDatabase();
     const { category, amount, description, date, branch } = req.body || {};
+    // Refused, never substituted.
+    //
+    // An unrecognised campus — or none at all from the Rector, whose own
+    // campus is "All" — used to fall back to a hardcoded 'Erragattugutta C1'.
+    // That books real money against a campus that never spent it, silently:
+    // the response is a 201 and nothing anywhere says the branch was changed.
+    // Every campus report is wrong from that moment on and there is no way to
+    // tell which entries were misfiled.
     const rawBranch = branch || req.user.campus;
-    let targetBranch = normalizeCampus(rawBranch);
+    const targetBranch = normalizeCampus(rawBranch);
 
     if (!isValidCampus(targetBranch) || targetBranch.toLowerCase() === 'all') {
-      targetBranch = (req.user.campus && req.user.campus !== 'All' && isValidCampus(req.user.campus)) ? normalizeCampus(req.user.campus) : 'Erragattugutta C1';
+      return res.status(400).json({
+        status: 'error',
+        message: `Name the campus this expenditure belongs to. Must be one of: ${VALID_CAMPUSES.join(', ')}.`
+      });
     }
 
     if (!category || amount === undefined) {
@@ -4181,7 +4198,14 @@ app.post('/api/admin2/expenditure', authenticateToken, requireRole('admin1', 'cl
       }
     }
 
-    const expId = `EXP-${Date.now().toString().slice(-6)}`;
+    // Six digits of the millisecond clock is one million values that
+    // repeat every 16.7 minutes, against a unique index. That is the same
+    // generator the student id used, where it collided in production and
+    // left nine of eleven records pointing at nobody. A collision here
+    // does not corrupt anything — the index refuses it — but the refusal
+    // surfaces as a 500 and the entry is simply lost. The random suffix
+    // is what the receipt number already does.
+    const expId = `EXP-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex')}`;
     const expenditure = await Expenditure.create({
       id: expId,
       category: String(category).trim(),
@@ -4354,7 +4378,14 @@ app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1',
       }
     }
 
-    const wrkId = `WRK-${Date.now().toString().slice(-6)}`;
+    // Six digits of the millisecond clock is one million values that
+    // repeat every 16.7 minutes, against a unique index. That is the same
+    // generator the student id used, where it collided in production and
+    // left nine of eleven records pointing at nobody. A collision here
+    // does not corrupt anything — the index refuses it — but the refusal
+    // surfaces as a 500 and the entry is simply lost. The random suffix
+    // is what the receipt number already does.
+    const wrkId = `WRK-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex')}`;
     const payment = await WorkerPayment.create({
       id: wrkId,
       workerName: String(workerName).trim(),
