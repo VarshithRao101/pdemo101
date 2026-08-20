@@ -832,10 +832,29 @@ function isValidCampus(branch) {
   return VALID_CAMPUSES.includes(norm);
 }
 
+/**
+ * A non-negative amount, from a request body.
+ *
+ * Deliberately strict about TYPE, because Number() is not. Number([100]) is
+ * 100 and Number(true) is 1, so an array or a boolean sailed through the old
+ * check and was charged: posting `amount: [100]` to the fee collection route
+ * took Rs. 100 off a family's balance and wrote a receipt for it. Number('')
+ * is 0 and Number('Infinity') is Infinity, and neither is NaN, so both passed
+ * as well.
+ *
+ * Only a real number or a string that parses to one is accepted. The frontend
+ * sends `Number(input.value)` everywhere, so it was never relying on the
+ * looser behaviour.
+ */
 function isValidPositiveNumber(val) {
-  if (val === undefined || val === null) return false;
-  const num = Number(val);
-  return !isNaN(num) && num >= 0;
+  if (typeof val === 'number') return Number.isFinite(val) && val >= 0;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed === '') return false;
+    const num = Number(trimmed);
+    return Number.isFinite(num) && num >= 0;
+  }
+  return false;
 }
 
 // Strict 24-hex-character ObjectId check (prevents CastError on 12-char non-hex strings like ADM-ACC-1104)
