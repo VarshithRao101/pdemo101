@@ -1013,6 +1013,74 @@ function finiteAmount(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// A student may carry a handful of extra charges — a lab fee, a bus fee. More
+// than this is a data-entry accident, not a fee structure.
+const MAX_CUSTOM_FEE_SLOTS = 20;
+
+// Names that belong to a standard head. A custom slot called "Tuition Fee"
+// would be counted twice: once as the head, once as the slot.
+const STANDARD_FEE_KEYS = ['tuitionfee', 'hostelfee', 'transportfee', 'miscellaneousfee',
+  'previouspending', 'tuition', 'hostel', 'transport', 'misc'];
+const STANDARD_FEE_NAMES = ['tuition fee', 'hostel fee', 'transport fee',
+  'miscellaneous fee', 'previous pending'];
+
+/**
+ * Validate and normalise a list of custom fee slots.
+ *
+ * These used to be assigned straight from the request in three of the four
+ * places that accept them, and the consequence was not cosmetic. A slot with a
+ * NEGATIVE amount reduced the bill without limit: it skipped the rule that a
+ * waiver may not exceed the fee it discounts, and it never appeared in the
+ * waiver totals, so a campus report showed no concession at all. One request
+ * took a student from Rs. 85,000 owing to Rs. 5,000, invisibly.
+ *
+ * A slot of NaN was accepted and stored, and a slot with no name reached the
+ * schema and came back as a 500 rather than a refusal.
+ *
+ * Returns { values } or { error }.
+ */
+function cleanCustomFeeSlots(input, existing = []) {
+  if (input === undefined) return { values: existing };
+  if (!Array.isArray(input)) {
+    return { error: 'Custom fees must be sent as a list.' };
+  }
+  if (input.length > MAX_CUSTOM_FEE_SLOTS) {
+    return { error: `A student may have at most ${MAX_CUSTOM_FEE_SLOTS} custom fees.` };
+  }
+
+  const out = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return { error: 'Each custom fee needs a name and an amount.' };
+    }
+
+    const named = cleanText(raw.name, { field: 'Custom fee name', max: MAX_TEXT.short, required: true });
+    if (named.error) return { error: named.error };
+
+    const amount = Number(raw.amount);
+    if (!Number.isFinite(amount) || amount < 0) {
+      return { error: `The amount for "${named.value}" must be a number of zero or more.` };
+    }
+    if (amount > MAX_MONEY) {
+      return { error: `The amount for "${named.value}" cannot exceed ${MAX_MONEY.toLocaleString('en-IN')}.` };
+    }
+
+    // Silently dropped rather than refused: the frontend sends the standard
+    // heads back in this list on some screens, and refusing would break a
+    // save that is otherwise correct.
+    const key = String(raw.key || raw.id || '').toLowerCase().trim();
+    const name = named.value.toLowerCase().trim();
+    if (STANDARD_FEE_KEYS.includes(key) || STANDARD_FEE_NAMES.includes(name)) continue;
+
+    out.push({
+      id: (raw.id && String(raw.id).slice(0, 64)) || crypto.randomBytes(6).toString('hex'),
+      name: named.value,
+      amount: Math.round(amount * 100) / 100
+    });
+  }
+  return { values: out };
+}
+
 function calcStudentGrossFees(tuitionFee, hostelFee, transportFee, miscellaneousFee, previousPending, customFeeSlots) {
   const customTotal = (Array.isArray(customFeeSlots) ? customFeeSlots : [])
     .reduce((acc, slot) => acc + finiteAmount(slot && slot.amount), 0);
@@ -2968,13 +3036,11 @@ const createStudentHandler = async (req, res) => {
       });
     }
 
-    const standardKeys = ['tuitionfee', 'hostelfee', 'transportfee', 'miscellaneousfee', 'previouspending', 'tuition', 'hostel', 'transport', 'misc'];
-    const cleanedCustomSlots = (Array.isArray(customFeeSlots) ? customFeeSlots : []).filter(slot => {
-      if (!slot) return false;
-      const k = String(slot.key || slot.id || '').toLowerCase().trim();
-      const n = String(slot.name || '').toLowerCase().trim();
-      return !standardKeys.includes(k) && !['tuition fee', 'hostel fee', 'transport fee', 'miscellaneous fee', 'previous pending'].includes(n);
-    });
+    const customSlots = cleanCustomFeeSlots(customFeeSlots, []);
+    if (customSlots.error) {
+      return res.status(400).json({ status: 'error', message: customSlots.error });
+    }
+    const cleanedCustomSlots = customSlots.values;
 
     const totalCustomFees = cleanedCustomSlots.reduce((acc, slot) => acc + Number(slot.amount || 0), 0);
     const grossFees = Number(tuitionFee) + Number(hostelFee) + Number(transportFee) + Number(miscellaneousFee) + Number(previousPending) + totalCustomFees;
@@ -3243,7 +3309,12 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
     }
 
     // Fee cap enforcement on edit
-    const updatedCustomSlots = req.body.customFeeSlots !== undefined ? req.body.customFeeSlots : student.customFeeSlots;
+    const editSlots = cleanCustomFeeSlots(req.body.customFeeSlots, student.customFeeSlots || []);
+    if (editSlots.error) {
+      return res.status(400).json({ status: 'error', message: editSlots.error });
+    }
+    if (req.body.customFeeSlots !== undefined) req.body.customFeeSlots = editSlots.values;
+    const updatedCustomSlots = editSlots.values;
     const editedGrossFees = calcStudentGrossFees(
       req.body.tuitionFee !== undefined ? req.body.tuitionFee : student.tuitionFee,
       req.body.hostelFee !== undefined ? req.body.hostelFee : student.hostelFee,
@@ -3463,19 +3534,11 @@ app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students
     student.transportWaiver = Number(transportWaiver);
     student.miscWaiver = Number(miscWaiver);
 
-    if (customFeeSlots !== undefined && Array.isArray(customFeeSlots)) {
-      student.customFeeSlots = customFeeSlots;
+    const overrideSlots = cleanCustomFeeSlots(customFeeSlots, student.customFeeSlots || []);
+    if (overrideSlots.error) {
+      return res.status(400).json({ status: 'error', message: overrideSlots.error });
     }
-
-    const standardKeys = ['tuitionfee', 'hostelfee', 'transportfee', 'miscellaneousfee', 'previouspending', 'tuition', 'hostel', 'transport', 'misc'];
-    const cleanedSlots = (student.customFeeSlots || []).filter(slot => {
-      if (!slot) return false;
-      const k = String(slot.key || slot.id || '').toLowerCase().trim();
-      const n = String(slot.name || '').toLowerCase().trim();
-      return !standardKeys.includes(k) && !['tuition fee', 'hostel fee', 'transport fee', 'miscellaneous fee', 'previous pending'].includes(n);
-    });
-
-    student.customFeeSlots = cleanedSlots;
+    student.customFeeSlots = overrideSlots.values;
     const totals = computeStudentFees(student);
 
     // Fee cap applies to the gross, regardless of waivers.
