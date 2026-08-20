@@ -1636,7 +1636,7 @@ async function authenticateToken(req, res, next) {
  * This list is the single source of truth: the model's `permissions` fields,
  * the clerk manager UI and requirePermission all key off these names.
  */
-const CLERK_PERMISSIONS = ['addStudent', 'editStudent', 'editFees', 'collectFees', 'logExpenditures'];
+const CLERK_PERMISSIONS = ['addStudent', 'editStudent', 'editFees', 'collectFees', 'logExpenditures', 'manageStaff'];
 
 /**
  * One spelling for the clerk role.
@@ -3344,9 +3344,9 @@ const deleteStudentHandler = async (req, res) => {
   }
 };
 
-app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, deleteStudentHandler);
-app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, deleteStudentHandler);
-app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, deleteStudentHandler);
+app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
+app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
+app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
 
 
 // --- FEE WAIVER ROUTE ---
@@ -3503,7 +3503,7 @@ app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'],
 });
 
 // CREATE Teacher (Admin1 or Admin2; Requires Security OTP for Admin2 or optional; Admin2 campus locked)
-app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'clerk'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     let { id, name, subject, salary = 0, mobile, email, branch, classification = 'Teaching', role = 'Senior Lecturer' } = req.body || {};
@@ -3638,7 +3638,7 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
 });
 
 // UPDATE Teacher
-app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
+app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -3726,7 +3726,7 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
 });
 
 // DELETE Teacher (Requires Security OTP; Campus Isolation for Admin2)
-app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -3769,7 +3769,7 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
 });
 
 // 12-MONTH SALARY LEDGER & YEAR-LOCK PAYMENTS ROUTE
-app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
+app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4226,7 +4226,7 @@ app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 
   }
 });
 
-app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'clerk'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { workerName, role, amount, monthPeriod, paid = true, branch } = req.body || {};
@@ -4279,7 +4279,7 @@ app.post('/api/admin2/worker-payments', authenticateToken, requireRole('admin1',
   }
 });
 
-app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
+app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4313,13 +4313,20 @@ app.patch('/api/admin2/worker-payments/:id', authenticateToken, requireRole('adm
 
     await wrk.save();
 
+    recordAudit(req, {
+      action: 'workerPayment.update',
+      entityType: 'workerPayment',
+      entityId: String(req.params.id),
+      campus: req.user && req.user.campus || '',
+      summary: `Updated worker payment ${req.params.id}.`
+    });
     return res.json({ status: 'success', data: wrk });
   } catch (err) {
     return failRequest(req, res, err);
   }
 });
 
-app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'clerk'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4447,6 +4454,13 @@ app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('ac
     });
 
     await student.save();
+    recordAudit(req, {
+      action: 'student.bio.update',
+      entityType: 'student',
+      entityId: String(req.params.id),
+      campus: req.user && req.user.campus || '',
+      summary: `Edited the profile details of student ${req.params.id}.`
+    });
     return res.json({ status: 'success', data: student });
   } catch (err) {
     return failRequest(req, res, err);
@@ -4825,7 +4839,8 @@ app.get('/api/accountant/students/:studentId/upgrade-eligibility',
 });
 
 app.post('/api/accountant/students/:studentId/upgrade',
-  authenticateToken, requireRole('accountant', 'admin1', 'clerk'), mongoRateLimiter, requireDatabase, async (req, res) => {
+  authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requirePermission('editFees'),
+  mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const { studentId } = req.params;
     const isObjId = isValidObjectId(studentId);
@@ -5209,6 +5224,13 @@ app.post('/api/authenticator/regenerate-keys', authenticateToken, requireRole('a
 
     console.log(`[Keys]: PINs regenerated for ${users.length} account(s) by [${req.user.username}]`);
 
+    recordAudit(req, {
+      action: 'security.keys.regenerate',
+      entityType: 'system',
+      entityId: '',
+      campus: req.user && req.user.campus || '',
+      summary: `Regenerated the system encryption keys.`
+    });
     return res.json({
       status: 'success',
       message: `New PINs issued for ${users.length} account(s). These values are shown once and are not recoverable afterwards.`,
@@ -5457,6 +5479,14 @@ app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authe
 
 app.delete('/api/authenticator/accounts/:id', authenticateToken, requireRole('authenticator', 'admin1'), requireDatabase, async (req, res) => {
   try {
+    recordAudit(req, {
+      action: 'account.delete',
+      entityType: 'account',
+      entityId: String(req.params.id),
+      campus: req.user && req.user.campus || '',
+      outcome: 'denied',
+      summary: `Attempted to delete portal account ${req.params.id}; deletion is disabled.`
+    });
     return res.status(405).json({ status: 'error', message: 'Deleting portal accounts is disabled. Update the existing fixed slots only.' });
   } catch (err) {
     return failRequest(req, res, err);
@@ -5470,6 +5500,13 @@ app.post('/api/authenticator/backup', authenticateToken, requireRole('authentica
   try {
     await connectToDatabase();
     const backupResult = await generateAndUploadBackup(req.user?.username || 'authenticator');
+    recordAudit(req, {
+      action: 'backup.create',
+      entityType: 'backup',
+      entityId: '',
+      campus: req.user && req.user.campus || '',
+      summary: `Created an on-demand backup.`
+    });
     return res.json({ status: 'success', message: 'Backup created successfully', data: backupResult });
   } catch (err) {
     return failRequest(req, res, err);
@@ -5519,6 +5556,13 @@ app.post('/api/authenticator/reset-password', authenticateToken, requireRole('au
     await RefreshToken.updateMany({ username: target, revoked: false }, { $set: { revoked: true } });
 
     console.log(`[Accounts]: Password reset for [${target}] by [${req.user.username}]. Sessions revoked.`);
+    recordAudit(req, {
+      action: 'account.password.reset',
+      entityType: 'account',
+      entityId: String((req.body || {}).username || ''),
+      campus: req.user && req.user.campus || '',
+      summary: `Reset the password for account ${(req.body || {}).username || 'unknown'}.`
+    });
     return res.json({ status: 'success', message: `Password reset for ${target}. Any active session for that account has been ended.` });
   } catch (err) {
     console.error('[Accounts]: Password reset failed:', err.message);
@@ -5546,6 +5590,13 @@ app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, r
       teachers = tRes.deletedCount || 0;
       payments = pRes.deletedCount || 0;
     }
+    recordAudit(req, {
+      action: 'data.purge',
+      entityType: 'system',
+      entityId: '',
+      campus: req.user && req.user.campus || '',
+      summary: `Purged all student, teacher and payment records.`
+    });
     return res.json({ status: 'success', message: 'Data purged', data: { students, teachers, payments } });
   } catch (err) {
     return failRequest(req, res, err);
@@ -5587,6 +5638,13 @@ app.post('/api/authenticator/wipe-database', authenticateToken, requireRole('aut
     console.log(`âš ï¸ [EXECUTING WIPE]: Wiping data collections for [${user.username}]...`);
     const wipeResult = await wipeDataCollections(user.username);
 
+    recordAudit(req, {
+      action: 'data.wipe',
+      entityType: 'system',
+      entityId: '',
+      campus: req.user && req.user.campus || '',
+      summary: `WIPED the database. A pre-wipe backup was taken first.`
+    });
     return res.json({
       status: 'success',
       message: 'Database data collections wiped successfully after pre-wipe backup.',
@@ -5680,7 +5738,7 @@ app.post('/api/enquiries', async (req, res) => {
 // The frontend has always called PATCH /api/enquiries/:id to move an enquiry
 // through its lifecycle, but no such route existed — every status change 404'd.
 // Enquiry is a real model, so this is implemented properly rather than stubbed.
-app.patch('/api/enquiries/:id', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
+app.patch('/api/enquiries/:id', authenticateToken, requireRole('admin1'), requireDatabase, async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes } = req.body || {};
@@ -5713,6 +5771,13 @@ app.patch('/api/enquiries/:id', authenticateToken, requireRole('admin1', 'clerk'
 
     // Return the complete updated document so a client merge cannot blank
     // out fields it did not send.
+    recordAudit(req, {
+      action: 'enquiry.update',
+      entityType: 'enquiry',
+      entityId: String(req.params.id),
+      campus: req.user && req.user.campus || '',
+      summary: `Updated enquiry ${req.params.id} to status ${(req.body || {}).status || 'unchanged'}.`
+    });
     return res.json({ status: 'success', data: enquiry });
   } catch (err) {
     console.error('[Enquiry]: Update failed:', err.message);
@@ -5806,7 +5871,7 @@ app.get('/api/system/last-changed', authenticateToken, enforceCampusIsolation, a
 // ============================================================
 
 // --- TEACHER MONTHLY SALARY ---
-app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
+app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -5821,6 +5886,13 @@ app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin
     }
     if (salaryStatus) teacher.salaryStatus = salaryStatus;
     await teacher.save();
+    recordAudit(req, {
+      action: 'salary.record',
+      entityType: 'teacher',
+      entityId: String(req.params.id),
+      campus: req.user && req.user.campus || '',
+      summary: `Recorded a salary month for teacher ${req.params.id}.`
+    });
     return res.json({ status: 'success', data: teacher });
   } catch (err) {
     return failRequest(req, res, err);
@@ -5899,7 +5971,7 @@ app.get('/api/admin2/staff-salaries', authenticateToken, requireRole('admin1', '
   }
 });
 
-app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
+app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
   try {
     const { teacherId } = req.params;
     const isObjId = isValidObjectId(teacherId);
@@ -5931,6 +6003,13 @@ app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRol
     }
 
     await teacher.save();
+    recordAudit(req, {
+      action: 'salary.update',
+      entityType: 'teacher',
+      entityId: String(req.params.teacherId),
+      campus: req.user && req.user.campus || '',
+      summary: `Updated the staff salary record for teacher ${req.params.teacherId}.`
+    });
     return res.json({ status: 'success', data: teacher });
   } catch (err) {
     console.error('[StaffSalaries]: Update failed:', err.message);
@@ -5945,6 +6024,118 @@ app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRol
 // campus whenever the aggregate returned nothing — including when the database
 // was down or a campus genuinely had no students — which is indistinguishable
 // from real data on screen.
+// --- MARKS REGISTRY ------------------------------------------------------
+//
+// The Admin portal's Marks Registry screen called two endpoints that were
+// never written. Opening the page raised an error and saving a mark failed
+// silently — the toast said "updated successfully" only because the request
+// rejected before the check.
+//
+// Marks are campus scoped like every other student read, permission gated
+// behind editStudent (a mark IS a student record), and audited, because a
+// changed grade is exactly the kind of edit someone later needs to trace.
+
+/** Subjects the college teaches. Anything else is refused. */
+const VALID_SUBJECTS = ['Physics', 'Chemistry', 'Mathematics', 'Botany', 'Zoology', 'English'];
+
+app.get(['/api/admin2/student-marks', '/api/admin1/student-marks'],
+  authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
+    try {
+      await connectToDatabase();
+      const students = await Student.find(studentScopeFilter(req))
+        .select('studentId name admissionNumber branch course section marks')
+        .sort({ name: 1 })
+        .lean();
+
+      // The screen reads s.marks.find(...) without guarding, so an older
+      // student saved before this field existed would break the page.
+      return res.json({
+        status: 'success',
+        data: students.map(s => ({ ...s, marks: Array.isArray(s.marks) ? s.marks : [] }))
+      });
+    } catch (err) {
+      return failRequest(req, res, err);
+    }
+  });
+
+app.patch(['/api/admin2/student-marks', '/api/admin1/student-marks'],
+  authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'),
+  mongoRateLimiter, requireDatabase, async (req, res) => {
+    try {
+      await connectToDatabase();
+      const { studentId, subject } = req.body || {};
+
+      if (!studentId || typeof studentId !== 'string') {
+        return res.status(400).json({ status: 'error', message: 'A studentId is required.' });
+      }
+      if (!VALID_SUBJECTS.includes(subject)) {
+        return res.status(400).json({
+          status: 'error',
+          message: `Unknown subject. Expected one of: ${VALID_SUBJECTS.join(', ')}.`
+        });
+      }
+
+      // Coerced and bounded rather than trusted. '' becomes 0, not NaN, and a
+      // mark of 1e9 or -5 is refused instead of stored.
+      const score = (value, label) => {
+        const n = Number(value === '' || value === undefined || value === null ? 0 : value);
+        if (!Number.isFinite(n) || n < 0 || n > 100) {
+          throw Object.assign(new Error(`${label} must be a number between 0 and 100.`), { status: 400 });
+        }
+        return Math.round(n * 100) / 100;
+      };
+
+      let midterm, final;
+      try {
+        midterm = score(req.body.midterm, 'Midterm');
+        final = score(req.body.final, 'Final');
+      } catch (err) {
+        return res.status(400).json({ status: 'error', message: err.message });
+      }
+
+      const student = await Student.findOne({ studentId: String(studentId).trim() });
+      if (!student) {
+        return res.status(404).json({ status: 'error', message: 'Student not found.' });
+      }
+      if (!callerOwnsStudent(req, student.branch)) {
+        return res.status(403).json({
+          status: 'error',
+          message: `Access forbidden. Student belongs to campus [${student.branch}].`
+        });
+      }
+
+      const before = (student.marks || []).find(m => m.subject === subject);
+      const previous = before ? `${before.midterm}/${before.final}` : 'none';
+
+      if (before) {
+        before.midterm = midterm;
+        before.final = final;
+        before.updatedAt = new Date();
+        before.updatedBy = req.user.username || '';
+      } else {
+        student.marks.push({
+          subject, midterm, final,
+          updatedAt: new Date(),
+          updatedBy: req.user.username || ''
+        });
+      }
+      await student.save();
+
+      recordAudit(req, {
+        action: 'student.marks.update',
+        entityType: 'student',
+        entityId: student.studentId,
+        entityLabel: studentLabel(student),
+        campus: student.branch,
+        summary: `Set ${subject} marks for ${studentLabel(student)} to ${midterm}/${final} (was ${previous}).`
+      });
+
+      return res.json({ status: 'success', data: student.marks });
+    } catch (err) {
+      return failRequest(req, res, err);
+    }
+  });
+
 app.get('/api/admin2/enrollment-stats', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
     const scope = campusScopeFilter(req);
@@ -6004,7 +6195,7 @@ app.get('/api/accountant/hostel', authenticateToken, requireRole('accountant', '
   }
 });
 
-app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requireDatabase, async (req, res) => {
+app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, async (req, res) => {
   try {
     const { studentId } = req.params;
     const isObjId = isValidObjectId(studentId);
@@ -6021,6 +6212,13 @@ app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requi
     student.hostelStatus = 'Day Scholar';
     await student.save();
 
+    recordAudit(req, {
+      action: 'student.hostel.checkout',
+      entityType: 'student',
+      entityId: String(req.params.studentId),
+      campus: req.user && req.user.campus || '',
+      summary: `Checked student ${req.params.studentId} out of the hostel.`
+    });
     return res.json({ status: 'success', data: { student } });
   } catch (err) {
     console.error('[Hostel]: Checkout failed:', err.message);
@@ -7178,7 +7376,7 @@ app.get('/api/backup/tree', authenticateToken, requireRole('authenticator', 'adm
 });
 
 // POST /api/backup/run — back up one type for one campus.
-app.post('/api/backup/run', authenticateToken, requireRole('authenticator', 'admin1', 'clerk'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/backup/run', authenticateToken, requireRole('authenticator', 'admin1'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const campus = resolveBackupCampus(req, res);
     if (!campus) return;
@@ -7196,6 +7394,13 @@ app.post('/api/backup/run', authenticateToken, requireRole('authenticator', 'adm
 
     const result = await campusBackup.backupCampusType(type, campus, req.user.username);
     console.log(`[Backup]: ${type}/${campus} by ${req.user.username} -> ${result.fileName} (${result.recordCount} records)`);
+    recordAudit(req, {
+      action: 'backup.run',
+      entityType: 'backup',
+      entityId: '',
+      campus: req.user && req.user.campus || '',
+      summary: `Ran a campus backup.`
+    });
     return res.json({ status: 'success', data: result });
   } catch (err) {
     console.error('[Backup]: Run failed:', err.message);
@@ -7212,6 +7417,15 @@ app.post('/api/backup/run', authenticateToken, requireRole('authenticator', 'adm
 app.post('/api/backup/run-all', authenticateToken, requireRole('authenticator', 'admin1'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const result = await campusBackup.backupAllCampuses(req.user.username);
+    recordAudit(req, {
+      action: 'backup.runAll',
+      entityType: 'backup',
+      campus: req.user && req.user.campus || '',
+      outcome: result.success ? 'success' : 'failure',
+      summary: result.success
+        ? `Backed up ${result.created.length} campus/type combination(s).`
+        : `Ran a full backup; ${result.failures.length} combination(s) failed.`
+    });
     // A partial run is a failure, not a success with a shorter list.
     return res.status(result.success ? 200 : 500).json({
       status: result.success ? 'success' : 'error',
@@ -7237,6 +7451,16 @@ app.post('/api/backup/restore/preview', authenticateToken, requireRole('authenti
 
     const result = await campusBackup.restoreCampusType(fileId, {
       actor: req.user.username, expectedCampus: campus, expectedType: backupType, dryRun: true
+    });
+    // Writes nothing, but reading a backup means reading every record it holds,
+    // so who looked and at which file belongs in the trail.
+    recordAudit(req, {
+      action: 'backup.preview',
+      entityType: 'backup',
+      entityId: String(fileId),
+      campus,
+      outcome: result.success ? 'success' : 'failure',
+      summary: `Previewed backup file ${fileId} for ${campus}.`
     });
     return res.status(result.success ? 200 : 400).json({
       status: result.success ? 'success' : 'error',
@@ -7284,6 +7508,13 @@ app.post('/api/backup/restore', authenticateToken, requireRole('authenticator', 
       });
     }
 
+    recordAudit(req, {
+      action: 'backup.restore',
+      entityType: 'backup',
+      entityId: '',
+      campus: req.user && req.user.campus || '',
+      summary: `RESTORED the database from a backup file.`
+    });
     return res.json({
       status: 'success',
       message: `Restored ${result.applied.inserted} new and ${result.applied.updated} existing ${result.applied.backupType} record(s) for ${campus}.`,

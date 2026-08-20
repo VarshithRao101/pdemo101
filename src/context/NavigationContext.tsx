@@ -55,7 +55,7 @@ export const portalRoleFor = (rawRole: string): PortalRoleType => {
 export type ThemeModeType = 'Light' | 'Dark' | 'System';
 
 export type ClerkPermissionKey =
-  | 'addStudent' | 'editStudent' | 'editFees' | 'collectFees' | 'logExpenditures';
+  | 'addStudent' | 'editStudent' | 'editFees' | 'collectFees' | 'logExpenditures' | 'manageStaff';
 
 /**
  * Whether the signed-in account may do something.

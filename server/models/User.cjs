@@ -64,7 +64,13 @@ const userSchema = new mongoose.Schema({
     editStudent: { type: Boolean, default: false },
     editFees: { type: Boolean, default: false },
     collectFees: { type: Boolean, default: false },
-    logExpenditures: { type: Boolean, default: false }
+    logExpenditures: { type: Boolean, default: false },
+    // Teachers, staff salaries and worker payments. Added because those
+    // routes admitted any clerk with no permission at all — a clerk with
+    // every box unticked could still create, edit and delete teachers and
+    // record salary payments. Defaults false like the rest, so it has to
+    // be granted deliberately.
+    manageStaff: { type: Boolean, default: false }
   },
   name: {
     type: String,

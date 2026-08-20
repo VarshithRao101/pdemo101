@@ -70,7 +70,7 @@ export interface AuditLogFilters {
 }
 
 export type ClerkPermissionName =
-  | 'addStudent' | 'editStudent' | 'editFees' | 'collectFees' | 'logExpenditures';
+  | 'addStudent' | 'editStudent' | 'editFees' | 'collectFees' | 'logExpenditures' | 'manageStaff';
 
 export type ClerkPermissions = Record<ClerkPermissionName, boolean>;
 
@@ -112,13 +112,14 @@ export interface NewClerk {
   active?: boolean;
 }
 
-/** Labels for the five toggles, in the order the Rector sees them. */
+/** Labels for the toggles, in the order the Rector sees them. */
 export const CLERK_PERMISSION_LABELS: Array<{ name: ClerkPermissionName; label: string; help: string }> = [
   { name: 'addStudent', label: 'Add students', help: 'Register new admissions at this campus' },
   { name: 'editStudent', label: 'Edit student details', help: 'Change names, contacts and profile fields' },
   { name: 'editFees', label: 'Edit fees', help: 'Change a student’s fee structure' },
   { name: 'collectFees', label: 'Collect fees', help: 'Take payments and raise receipts' },
-  { name: 'logExpenditures', label: 'Log expenditures', help: 'Record campus spending' }
+  { name: 'logExpenditures', label: 'Log expenditures', help: 'Record campus spending' },
+  { name: 'manageStaff', label: 'Manage staff', help: 'Teachers, staff salaries and worker payments' }
 ];
 
 export interface PortalAccount {

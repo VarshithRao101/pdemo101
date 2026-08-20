@@ -520,7 +520,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   const [clerkAddStep, setClerkAddStep] = useState<0 | 1 | 2>(0);
   const emptyClerkDraft = {
     name: '', username: '', password: '', pin: '', mobile: '', email: '',
-    permissions: { addStudent: false, editStudent: false, editFees: false, collectFees: false, logExpenditures: false } as ClerkPermissions
+    permissions: { addStudent: false, editStudent: false, editFees: false, collectFees: false, logExpenditures: false, manageStaff: false } as ClerkPermissions
   };
   const [clerkAddDraft, setClerkAddDraft] = useState(emptyClerkDraft);
   const [clerkAddError, setClerkAddError] = useState('');

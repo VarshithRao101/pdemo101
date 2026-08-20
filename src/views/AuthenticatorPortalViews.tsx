@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { LIMITS } from '../constants/fieldLimits';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
-import { apiClient } from '../services/apiClient';
 import { authenticatorService, BACKUP_CATEGORIES } from '../services/authenticatorService';
 import type {
   AccountInfo,
@@ -167,28 +166,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
         setIsCreatingBackup(false);
         setBackupProgress(0);
       }, 800);
-    }
-  };
-
-  // Handler: Purge Google Drive (Keep 3 Folders Only)
-  const [isPurgingDrive, setIsPurgingDrive] = useState(false);
-  const handlePurgeGoogleDrive = async () => {
-    if (!window.confirm('Delete all items in Google Drive except the 3 category folders (Students, Teachers, Expenditures)?')) {
-      return;
-    }
-    setIsPurgingDrive(true);
-    try {
-      const res = await apiClient.post<{ status: string; message: string; deletedCount: number }>('/system/purge-drive', {});
-      if (res.status === 'success') {
-        triggerToast(res.message || 'Google Drive purged successfully!');
-        await loadAvailableBackups();
-      } else {
-        triggerToast(res.message || 'Drive purge failed.');
-      }
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to purge Google Drive.');
-    } finally {
-      setIsPurgingDrive(false);
     }
   };
 
@@ -1097,7 +1074,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 <div style={{ display: 'flex', gap: '10px', marginTop: '18px', flexWrap: 'wrap' }}>
                   <button
                     onClick={handleRunGoogleDriveBackup}
-                    disabled={isCreatingBackup || isPurgingDrive}
+                    disabled={isCreatingBackup}
                     style={{
                       padding: '12px 20px',
                       borderRadius: '12px',
@@ -1107,7 +1084,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                       fontWeight: 900,
                       fontSize: '0.9286rem',
                       boxShadow: '3px 3px 0px var(--accent)',
-                      cursor: (isCreatingBackup || isPurgingDrive) ? 'not-allowed' : 'pointer',
+                      cursor: isCreatingBackup ? 'not-allowed' : 'pointer',
                       whiteSpace: 'nowrap'
                     }}
                     className="press-interactive"
@@ -1115,25 +1092,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
                     {isCreatingBackup ? 'Backing Up to Drive...' : 'Trigger Immediate Drive Backup'}
                   </button>
 
-                  <button
-                    onClick={handlePurgeGoogleDrive}
-                    disabled={isCreatingBackup || isPurgingDrive}
-                    style={{
-                      padding: '12px 20px',
-                      borderRadius: '12px',
-                      border: '2px solid var(--critical)',
-                      backgroundColor: 'var(--critical-wash)',
-                      color: 'var(--critical)',
-                      fontWeight: 900,
-                      fontSize: '0.9286rem',
-                      boxShadow: '3px 3px 0px var(--critical)',
-                      cursor: (isCreatingBackup || isPurgingDrive) ? 'not-allowed' : 'pointer',
-                      whiteSpace: 'nowrap'
-                    }}
-                    className="press-interactive"
-                  >
-                    {isPurgingDrive ? 'Purging Google Drive...' : 'Purge Drive (Keep 3 Folders Only)'}
-                  </button>
                 </div>
               </div>
 
