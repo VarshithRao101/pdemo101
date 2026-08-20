@@ -5535,7 +5535,26 @@ app.post('/api/authenticator/reset-password', authenticateToken, requireRole('au
     }
 
     const target = String(username).trim().toLowerCase();
-    if (target === FIXED_AUTHENTICATOR_USERNAME) {
+
+    // Refused by ROLE, not only by the fixed username.
+    //
+    // This checked `target === FIXED_AUTHENTICATOR_USERNAME` alone. That
+    // happens to protect the live account, because its username is still the
+    // constant — but the protection is then one rename away from silently
+    // ceasing to apply, and it never covered a second authenticator account at
+    // all. The account that audits everyone else must not be seizable by
+    // anyone else, so the check is on what the account IS.
+    const targetUser = await User.findOne({ username: target }).select('role').lean();
+    if (target === FIXED_AUTHENTICATOR_USERNAME
+        || (targetUser && normalizeRole(targetUser.role) === 'authenticator')) {
+      recordAudit(req, {
+        action: 'account.password.reset',
+        entityType: 'account',
+        entityId: target,
+        campus: req.user && req.user.campus || '',
+        outcome: 'denied',
+        summary: `Refused a password reset for the authenticator account.`
+      });
       return res.status(403).json({ status: 'error', message: 'The authenticator password cannot be reset from this panel.' });
     }
 
