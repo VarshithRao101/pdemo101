@@ -103,9 +103,25 @@ export const updateStudentBio = async (id: string, fields: Partial<StudentProfil
   return res.data;
 };
 
+/**
+ * Records a payment.
+ *
+ * `idempotencyKey` identifies the SUBMISSION, not the request. Send the same
+ * one for every retry of a payment the clerk started once — a PIN prompt, a
+ * dropped connection, an impatient second click — and the server records it
+ * once and hands back the original receipt. Send a new one for a new payment,
+ * even if every other field is identical.
+ *
+ * Without it the server has to guess from the fields and a short time window,
+ * and a guess is wrong in one of two directions: two genuine payments merged,
+ * or one payment charged twice.
+ */
 export const recordPayment = async (
   studentId: string,
-  paymentData: { amount: number; installment: string; mode: string; category: string; date?: string; transactionRef?: string },
+  paymentData: {
+    amount: number; installment: string; mode: string; category: string;
+    date?: string; transactionRef?: string; idempotencyKey?: string;
+  },
   securityKey?: string
 ): Promise<{ payment: FeePayment; student: StudentProfile }> => {
   const res = await apiClient.post<{ status: string; data: { payment: FeePayment; student: StudentProfile } }>(

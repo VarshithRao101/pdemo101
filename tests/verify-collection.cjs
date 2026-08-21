@@ -206,6 +206,67 @@ const reconcile = async (studentId) => {
     ok('the invariant still holds', r.balanceHolds, JSON.stringify(r));
 
     // =================================================================
+    section('Two payments that are not the same payment');
+
+    // The other half of the duplicate guard, and the half that was wrong.
+    //
+    // Refusing to record a second payment is not the safe direction. It looks
+    // safe, because the request is answered 200 and the screen says the money
+    // was taken — but the ledger is short and nobody finds out until the
+    // student is refused a year upgrade for fees they actually paid.
+    //
+    // The derived key left `installment` out, so paying a balance off in two
+    // equal instalments back to back produced ONE receipt for two payments.
+    const s4 = await newStudent(tokens.clerk, 30000);
+    const i1 = await pay(s4.studentId, { amount: 5000, category: 'Tuition Fee', installment: 'Installment 1' });
+    const i2 = await pay(s4.studentId, { amount: 5000, category: 'Tuition Fee', installment: 'Installment 2' });
+    ok('a second instalment of the same amount is accepted',
+      i2.status === 200 || i2.status === 201, `status ${i2.status}`);
+    ok('it is NOT called a duplicate', i2.json?.duplicate !== true, JSON.stringify(i2.json).slice(0, 160));
+    ok('it gets a receipt of its own',
+      !!i2.json?.data?.payment?.receiptNumber
+      && i2.json.data.payment.receiptNumber !== i1.json?.data?.payment?.receiptNumber,
+      `${i1.json?.data?.payment?.receiptNumber} vs ${i2.json?.data?.payment?.receiptNumber}`);
+
+    r = await reconcile(s4.studentId);
+    ok(`both instalments reached the ledger (paid ${r.totalPaid}/10000)`, r.totalPaid === 10000, `got ${r.totalPaid}`);
+    ok('two payment rows exist', r.rows === 2, `${r.rows} rows`);
+    ok('the invariant holds across both', r.balanceHolds, JSON.stringify(r));
+
+    // Paying part in cash and part by transfer, same amount, same instalment.
+    const s5 = await newStudent(tokens.clerk, 30000);
+    await pay(s5.studentId, { amount: 4000, installment: 'Installment 1', mode: 'Cash' });
+    const byTransfer = await pay(s5.studentId, { amount: 4000, installment: 'Installment 1', mode: 'UPI / NetBanking' });
+    ok('a different payment mode is a different payment',
+      byTransfer.json?.duplicate !== true, JSON.stringify(byTransfer.json).slice(0, 160));
+    r = await reconcile(s5.studentId);
+    ok(`both modes reached the ledger (paid ${r.totalPaid}/8000)`, r.totalPaid === 8000, `got ${r.totalPaid}`);
+
+    // A caller that says "this is a new payment" is believed, even when every
+    // other field matches. This is what the portal relies on.
+    const s6 = await newStudent(tokens.clerk, 30000);
+    const kA = `zz-idem-${crypto.randomBytes(6).toString('hex')}`;
+    const kB = `zz-idem-${crypto.randomBytes(6).toString('hex')}`;
+    await pay(s6.studentId, { amount: 5000, installment: 'Installment 1', idempotencyKey: kA });
+    const newKey = await pay(s6.studentId, { amount: 5000, installment: 'Installment 1', idempotencyKey: kB });
+    ok('a fresh key means a new payment even when every field matches',
+      newKey.json?.duplicate !== true, JSON.stringify(newKey.json).slice(0, 160));
+    r = await reconcile(s6.studentId);
+    ok(`both keyed payments reached the ledger (paid ${r.totalPaid}/10000)`, r.totalPaid === 10000, `got ${r.totalPaid}`);
+    ok('two payment rows exist', r.rows === 2, `${r.rows} rows`);
+
+    // And the limitation, asserted so that it stays a decision rather than
+    // drifting into an accident: a caller sending NO key and repeating itself
+    // exactly, inside the window, is still deduplicated. That is the price of
+    // guessing, and it is paid in the direction that cannot double-charge a
+    // parent. Callers that need two identical payments send a key.
+    const s7 = await newStudent(tokens.clerk, 30000);
+    await pay(s7.studentId, { amount: 5000, installment: 'Installment 1' });
+    const echoed = await pay(s7.studentId, { amount: 5000, installment: 'Installment 1' });
+    ok('a keyless caller repeating itself exactly is still deduplicated',
+      echoed.json?.duplicate === true, JSON.stringify(echoed.json).slice(0, 160));
+
+    // =================================================================
     section('Two tills at once');
 
     // Eight simultaneous payments of 10,000 against a balance of 30,000.

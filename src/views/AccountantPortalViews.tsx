@@ -507,6 +507,21 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
   // Fee collection parameters
   const [feeCollectAdm, setFeeCollectAdm] = useState('');
   const [collectAmount, setCollectAmount] = useState('');
+
+  /**
+   * Identifies the payment the clerk is currently submitting.
+   *
+   * Held across retries on purpose. Taking a payment can round-trip more than
+   * once for one collection — the server asks for a PIN, the connection drops,
+   * the clerk clicks again because nothing visibly happened — and every one of
+   * those is the SAME payment. Reusing the key is how the server is told that,
+   * instead of inferring it from the amount and the clock and sometimes
+   * inferring it wrong.
+   *
+   * Cleared the moment the server accepts, so the next collection is a new
+   * payment rather than a duplicate of the last one.
+   */
+  const paymentSubmissionKey = useRef<string | null>(null);
   const [collectInstallment, setCollectInstallment] = useState('Installment 1');
   const [collectCategory, setCollectCategory] = useState('Tuition Fee');
   const [collectMode, setCollectMode] = useState('UPI / NetBanking');
@@ -907,6 +922,15 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
       return;
     }
 
+    // One key per collection, minted on the first attempt and kept until the
+    // server takes it. A retry after the PIN prompt is the same payment and
+    // must carry the same key; only a genuinely new collection gets a new one.
+    if (!paymentSubmissionKey.current) {
+      paymentSubmissionKey.current = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `pay-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    }
+
     setIsProcessingUpload(true);
     try {
       const res = await accountantService.recordPayment(selectedStudent._id, {
@@ -915,8 +939,14 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
         mode: collectMode,
         category: collectCategory,
         date: collectDate,
-        transactionRef: collectTransactionRef
+        transactionRef: collectTransactionRef,
+        idempotencyKey: paymentSubmissionKey.current
       }, otp || securityKey);
+
+      // Accepted. Retire the key here, before anything below can throw — a key
+      // left in place would make the clerk's NEXT collection look like a
+      // resubmission of this one and hand back this receipt instead.
+      paymentSubmissionKey.current = null;
 
       // Money figures come from the server or not at all.
       //

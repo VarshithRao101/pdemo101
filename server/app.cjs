@@ -4861,6 +4861,19 @@ app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('ac
 // --- FEE COLLECTION (PAYMENT) ROUTES ---
 
 /**
+ * How far apart two otherwise-identical payments must be, for a caller that
+ * sends no idempotency key, before the second is treated as a new payment
+ * rather than a resubmission of the first.
+ *
+ * Bucketed rather than measured, so the check costs nothing and cannot race:
+ * the window is `floor(now / this)`. The cost of bucketing is that two clicks
+ * either side of a boundary land in different buckets and both record. The
+ * portal does not rely on this — it sends its own key, which has no window at
+ * all — so that gap is only reachable by a script, which does not double-click.
+ */
+const DUPLICATE_WINDOW_MS = 15000;
+
+/**
  * Records a fee payment.
  *
  * Money handling here is deliberately defensive:
@@ -4871,10 +4884,34 @@ app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('ac
  *    The old code did an atomic $inc for totalPaid and then a read-modify-save
  *    for remainingBalance, so two concurrent payments could each write a
  *    balance computed before the other's increment landed.
- *  - The caller may pass its own idempotencyKey; otherwise we derive a stable
- *    one. The old key bucketed by a 10-second window, which both missed
- *    duplicates straddling a bucket boundary and wrongly merged two genuine
- *    identical payments made within the same 10 seconds.
+ *
+ * --- THE DUPLICATE KEY, AND WHAT IT CAN AND CANNOT KNOW -------------------
+ *
+ * Two requests that look identical are either one payment submitted twice, or
+ * two payments that happen to match. NOTHING the server can see tells those
+ * apart. Only the caller knows, and it says so by sending an idempotencyKey:
+ * the same key means "this is my earlier request again", a new key means "this
+ * is a new payment". The portal sends one per submission and reuses it when a
+ * PIN prompt makes it retry, so at a counter this is exact rather than a guess.
+ *
+ * A derived key is the fallback for callers that send none. It has to guess,
+ * and the guess is a short time window — which is a real limitation, not a
+ * solved problem:
+ *
+ *   Two payments identical in student, amount, category, installment, mode
+ *   AND transaction reference, made by a keyless caller inside the same 15
+ *   seconds, are still recorded once.
+ *
+ * An earlier version of this comment claimed the window had been removed. It
+ * had not; it was widened from 10 seconds to 15, and `installment` was left
+ * out of the key entirely, so paying a balance in two equal instalments back
+ * to back silently produced one receipt and left the balance short. That is
+ * what this note exists to stop being rediscovered.
+ *
+ * The window stays because it is the only thing standing between a keyless
+ * client and a double-charged parent, and a double charge is worse than a
+ * merge: one is money taken twice, the other is a receipt to reissue. Callers
+ * that need exactness send a key.
  */
 app.post('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requirePermission('collectFees'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
@@ -4904,9 +4941,22 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
       return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
     }
 
+    // Every field that distinguishes one payment from another belongs in the
+    // derived key. `installment` and `mode` were missing, which is how two
+    // halves of the same balance — same student, same amount, same category,
+    // different instalment — collided into a single receipt.
     const idempotencyKey = (clientKey && String(clientKey).trim())
       ? `client_${String(clientKey).trim()}`
-      : `srv_${student.studentId}_${payAmt}_${String(category).trim()}_${String(transactionRef || '').trim()}_${Math.floor(Date.now() / 15000)}`;
+      : [
+          'srv',
+          student.studentId,
+          payAmt,
+          String(category).trim(),
+          String(installment).trim(),
+          String(mode).trim(),
+          String(transactionRef || '').trim(),
+          Math.floor(Date.now() / DUPLICATE_WINDOW_MS)
+        ].join('_');
 
     // A payment may not exceed what is still owed.
     //
