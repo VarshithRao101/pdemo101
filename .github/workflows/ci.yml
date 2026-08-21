@@ -1,0 +1,168 @@
+# Continuous integration.
+#
+# WHAT THIS IS FOR, AND WHAT IT CANNOT DO
+#
+# Hostinger deploys from `main` on its own, a couple of minutes after a push.
+# Nothing here can hold that back — GitHub Actions has no say in it. So a run
+# against `main` is a TRIPWIRE, not a gate: it tells you the thing that is now
+# live is broken, which is worth knowing but is not prevention.
+#
+# The run that actually prevents anything is the one on a pull request, before
+# the merge that triggers the deploy. Work on a branch and open a PR, and this
+# is a gate. Push to `main` and it is a post-mortem.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A second push supersedes the first; there is no value in finishing a run for
+# a commit nobody will look at again.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Types, lint and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      # Not `npm run build`, which runs the typecheck itself — split so the
+      # log says which of the two failed without reading the output.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npx vite build
+
+      # The CSP is written once in server/security/csp.cjs and injected into
+      # index.html at build time, because Hostinger's edge strips the header
+      # and the meta tag is what browsers actually enforce. If a build ever
+      # stops emitting it, the live site loses its content security policy
+      # silently — nothing breaks, nothing errors, it is just gone.
+      - name: The built page carries a CSP
+        run: |
+          grep -q 'http-equiv="Content-Security-Policy"' dist/index.html \
+            || { echo "::error::dist/index.html has no CSP meta tag"; exit 1; }
+          grep -q "script-src 'self'" dist/index.html \
+            || { echo "::error::the CSP no longer restricts script-src to 'self'"; exit 1; }
+
+  secrets:
+    name: No credential literals
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # This repository is PUBLIC, and it has regressed to in-source
+      # credentials more than once — a seed array of plaintext passwords that
+      # login fell back to, and a magic request header that stood in for
+      # authentication. Both survived a cleanup that was reported as complete.
+      # A person re-checking by hand is exactly what failed before, so it is
+      # checked here instead, on every push, where it cannot be forgotten.
+      #
+      # Credentials belong in MongoDB and nowhere else. Tests are excluded
+      # because they generate throwaway values at runtime; `process.env` reads
+      # are the correct pattern and are not matches.
+      - name: Grep for passwords, PINs and secrets in source
+        run: |
+          hits=$(git ls-files '*.ts' '*.tsx' '*.cjs' '*.js' \
+            | grep -v '^tests/' \
+            | xargs grep -nEi "(password|passwd|pin|secret|token)[[:space:]]*[:=][[:space:]]*['\"][A-Za-z0-9@#\$%!_.-]{4,}['\"]" \
+            | grep -vE "process\.env|placeholder|type:|required|message|label|error" || true)
+          if [ -n "$hits" ]; then
+            echo "::error::A credential literal appears to be committed. Stop and check these:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "No credential literals found."
+
+      # The second shape, which a password grep never catches: a value the
+      # CALLER controls being consulted as though it proved identity. The live
+      # instance of this was `x-vercel-cron: 1` skipping a role check outright
+      # on a route that looked authenticated, because the Bearer check was
+      # right there — just inside an `if`.
+      #
+      # This is an ALLOWLIST, not a pattern match, because the dangerous
+      # version looks exactly like the safe version. The three below have been
+      # read and are not credentials-by-assertion:
+      #
+      #   x-forwarded-for  read for logging; the rate limiter uses req.ip,
+      #                    which Express derives with `trust proxy` so a
+      #                    client-set value is ignored
+      #   x-real-ip        same, if it ever appears
+      #   x-security-pin   carries a PIN the server then VERIFIES against the
+      #                    caller's own stored PIN. A credential being
+      #                    supplied, not a claim being believed.
+      #
+      # A new `x-` header in server code fails this step on purpose. If it is
+      # legitimate, read it properly and then add it here with a note saying
+      # what checks it.
+      - name: No new request header read in server code
+        run: |
+          # Comment lines are stripped: server/app.cjs deliberately keeps the
+          # removed x-vercel-cron bypass written out as a comment, so nobody
+          # reinvents it, and that record must not fail the build.
+          hits=$(grep -nE "req\.headers\[['\"]x-" server/*.cjs \
+            | grep -vE "^[^:]*:[0-9]+:[[:space:]]*(//|\*|/\*)" \
+            | grep -viE "x-forwarded-for|x-real-ip|x-security-pin" || true)
+          if [ -n "$hits" ]; then
+            echo "::error::A request header not on the reviewed allowlist is read in server code. Confirm it is not standing in for an auth check, then add it to the allowlist in .github/workflows/ci.yml:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "Only reviewed request headers are read in server code."
+
+  test:
+    name: Verification suites
+    runs-on: ubuntu-latest
+
+    # Standalone Mongo is enough: nothing in this codebase opens a session or
+    # a transaction, so no replica set is needed.
+    services:
+      mongodb:
+        image: mongo:7
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      MONGODB_URI: mongodb://127.0.0.1:27017
+      # Throwaway, and only ever used against the empty database above. It has
+      # to clear the 32-character minimum or the app refuses to start.
+      JWT_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
+      BACKUP_ENCRYPTION_KEY: ci-only-backup-key-not-used-anywhere-else-0123456789
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      # Only the suites that build their own fixtures in the scratch database.
+      # The rest read the production data and would fail here for reasons that
+      # have nothing to do with the commit — run-all.cjs prints which ones it
+      # left out, so the gap stays visible rather than being quietly forgotten.
+      - name: Run self-contained suites
+        run: npm run test:ci

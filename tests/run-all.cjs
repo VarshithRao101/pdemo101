@@ -7,23 +7,52 @@
  *
  *   node tests/run-all.cjs           every suite
  *   node tests/run-all.cjs --fast    skips the slow ones, named below
+ *   node tests/run-all.cjs --ci      only the suites that bring their own data
  *
  * Suites that WRITE use the scratch database jc_erp_verify and drop it. The
  * read-only ones run against whatever MONGODB_DB_NAME points at, which is the
  * live database by default — they are marked so, and none of them writes.
+ *
+ * --- WHY --ci EXISTS ------------------------------------------------------
+ *
+ * On a build machine there is no live database to read, only an empty one. A
+ * suite that expects the real accounts to be there does not fail usefully
+ * against it — it fails on every assertion, for a reason that has nothing to
+ * do with the change being tested, and a CI job that cries wolf gets ignored
+ * and then removed. So --ci runs only the suites that create everything they
+ * need in the scratch database.
+ *
+ * The split is DERIVED, not listed. A hand-kept list is a list somebody
+ * forgets to add to, and the failure mode is silent: a new suite quietly
+ * never runs in CI while the summary still says everything passed. A suite
+ * names the scratch database iff it seeds its own data, so that marker is the
+ * membership test.
  */
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
 const FAST = process.argv.includes('--fast');
+const CI = process.argv.includes('--ci');
 
 // Slow because they start and kill processes, or make hundreds of requests.
 const SLOW = new Set(['verify-resilience', 'verify-supervisor', 'verify-injection', 'verify-outage']);
 
-const files = fs.readdirSync(__dirname)
+/** True when a suite builds its own fixtures in the scratch database. */
+const selfContained = (file) =>
+  fs.readFileSync(path.join(__dirname, file), 'utf8').includes('jc_erp_verify');
+
+const all = fs.readdirSync(__dirname)
   .filter(f => f.startsWith('verify-') && f.endsWith('.cjs'))
   .sort();
+
+const files = CI ? all.filter(selfContained) : all;
+
+if (CI) {
+  const excluded = all.filter(f => !selfContained(f));
+  console.log(`\nCI mode: ${files.length} self-contained suite(s).`);
+  console.log(`Needs a live database, not run here: ${excluded.map(f => f.replace(/\.cjs$/, '')).join(', ')}`);
+}
 
 const results = [];
 let totalPass = 0, totalFail = 0, skipped = 0;

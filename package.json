@@ -11,7 +11,10 @@
     "build": "npm run typecheck && vite build",
     "start": "node --max-old-space-size=1536 server.js",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node tests/run-all.cjs",
+    "test:fast": "node tests/run-all.cjs --fast",
+    "test:ci": "node tests/run-all.cjs --ci"
   },
   "dependencies": {
     "@googleapis/drive": "^21.0.0",
