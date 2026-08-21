@@ -132,32 +132,34 @@ function decryptPayload(encryptedJsonString) {
  * Performs full database backup, encrypts payload, uploads directly to Google Drive.
  * SURFACES REAL DRIVE FAILURES explicitly per Step 1 requirement 4.
  */
-async function generateAndUploadBackup(triggeredBy = 'system') {
-  console.log(`📦 Starting system database backup triggered by [${triggeredBy}]...`);
+/**
+ * Everything a backup contains, read from the database.
+ *
+ * Separate from uploading it so the payload can be built and inspected
+ * without Google Drive — which is what makes the restore path testable at
+ * all. Credentials are excluded: a backup is copied to a third party, and a
+ * password file that travels with it is a password file published.
+ */
+async function buildBackupPayload(triggeredBy = 'system') {
+  const [students, teachers, feeSettings, expenditures, workerPayments, payments, users] =
+    await Promise.all([
+      Student.find({}), Teacher.find({}), FeeSettings.find({}),
+      Expenditure.find({}), WorkerPayment.find({}), Payment.find({}),
+      User.find({}).select('-password -pin')
+    ]);
 
-  const students = await Student.find({});
-  const teachers = await Teacher.find({});
-  const feeSettings = await FeeSettings.find({});
-  const expenditures = await Expenditure.find({});
-  const workerPayments = await WorkerPayment.find({});
-  const payments = await Payment.find({});
-  const users = await User.find({}).select('-password -pin');
-
-  const backupData = {
+  return {
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     triggeredBy,
-    collections: {
-      students,
-      teachers,
-      feeSettings,
-      expenditures,
-      workerPayments,
-      payments,
-      users
-    }
+    collections: { students, teachers, feeSettings, expenditures, workerPayments, payments, users }
   };
+}
 
+async function generateAndUploadBackup(triggeredBy = 'system') {
+  console.log(`📦 Starting system database backup triggered by [${triggeredBy}]...`);
+
+  const backupData = await buildBackupPayload(triggeredBy);
   const serializedJson = JSON.stringify(backupData);
   const encryptedPayload = encryptPayload(serializedJson);
 
@@ -288,6 +290,43 @@ async function wipeDataCollections(triggeredBy = 'authenticator') {
 /**
  * Downloads from Google Drive, decrypts, and restores database collections.
  */
+/**
+ * Apply a decrypted backup payload to the database.
+ *
+ * Split out from restoreBackupFromFile so that recovery can be REHEARSED. It
+ * used to be one function that downloaded from Drive and wrote to the
+ * database in the same breath, which meant the only way to find out whether a
+ * restore worked was to need one — and the moment you need one is the worst
+ * possible moment to discover it does not.
+ *
+ * Accounts are deliberately NOT restored. A backup carries them with the
+ * passwords stripped, so writing them back would replace working credentials
+ * with unusable ones and lock the college out of the system it is trying to
+ * recover.
+ */
+async function restoreFromPayload(backupData, triggeredBy = 'authenticator') {
+  const collections = (backupData && backupData.collections) || {};
+
+  await Student.deleteMany({});
+  await Teacher.deleteMany({});
+  await FeeSettings.deleteMany({});
+  await Expenditure.deleteMany({});
+  await WorkerPayment.deleteMany({});
+  await Payment.deleteMany({});
+
+  const restored = {};
+  for (const [key, Model] of [
+    ['students', Student], ['teachers', Teacher], ['feeSettings', FeeSettings],
+    ['expenditures', Expenditure], ['workerPayments', WorkerPayment], ['payments', Payment]
+  ]) {
+    const rows = Array.isArray(collections[key]) ? collections[key] : [];
+    if (rows.length) await Model.insertMany(rows);
+    restored[key] = rows.length;
+  }
+
+  return { success: true, restoredTimestamp: backupData && backupData.timestamp, restoredCounts: restored };
+}
+
 async function restoreBackupFromFile(fileId, triggeredBy = 'authenticator') {
   try {
     console.log(`🔄 [RESTORE]: Restoring database from Drive file ID [${fileId}] triggered by [${triggeredBy}]...`);
@@ -296,35 +335,7 @@ async function restoreBackupFromFile(fileId, triggeredBy = 'authenticator') {
     const encryptedString = encryptedBuffer.toString('utf-8');
 
     const backupData = decryptPayload(encryptedString);
-    const collections = backupData.collections || {};
-
-    // Clear current data collections
-    await Student.deleteMany({});
-    await Teacher.deleteMany({});
-    await FeeSettings.deleteMany({});
-    await Expenditure.deleteMany({});
-    await WorkerPayment.deleteMany({});
-    await Payment.deleteMany({});
-
-    // Restore items
-    if (Array.isArray(collections.students) && collections.students.length > 0) {
-      await Student.insertMany(collections.students);
-    }
-    if (Array.isArray(collections.teachers) && collections.teachers.length > 0) {
-      await Teacher.insertMany(collections.teachers);
-    }
-    if (Array.isArray(collections.feeSettings) && collections.feeSettings.length > 0) {
-      await FeeSettings.insertMany(collections.feeSettings);
-    }
-    if (Array.isArray(collections.expenditures) && collections.expenditures.length > 0) {
-      await Expenditure.insertMany(collections.expenditures);
-    }
-    if (Array.isArray(collections.workerPayments) && collections.workerPayments.length > 0) {
-      await WorkerPayment.insertMany(collections.workerPayments);
-    }
-    if (Array.isArray(collections.payments) && collections.payments.length > 0) {
-      await Payment.insertMany(collections.payments);
-    }
+    const applied = await restoreFromPayload(backupData, triggeredBy);
 
     addBackupLog({
       type: 'DATABASE_RESTORED',
@@ -333,18 +344,7 @@ async function restoreBackupFromFile(fileId, triggeredBy = 'authenticator') {
       message: `Database restored cleanly from Drive file ID [${fileId}].`
     });
 
-    return {
-      success: true,
-      restoredTimestamp: backupData.timestamp,
-      restoredCounts: {
-        students: (collections.students || []).length,
-        teachers: (collections.teachers || []).length,
-        feeSettings: (collections.feeSettings || []).length,
-        expenditures: (collections.expenditures || []).length,
-        workerPayments: (collections.workerPayments || []).length,
-        payments: (collections.payments || []).length
-      }
-    };
+    return applied;
   } catch (err) {
     addBackupLog({
       type: 'RESTORE_FAILED',
@@ -359,6 +359,8 @@ module.exports = {
   generateAndUploadBackup,
   wipeDataCollections,
   restoreBackupFromFile,
+  restoreFromPayload,
+  buildBackupPayload,
   getBackupLogs,
   getAllAvailableBackupFiles,
   encryptPayload,

@@ -16,7 +16,6 @@ export const LIMITS = {
   // People and identifiers
   personName: 50,
   admissionNumber: 20,
-  rollNumber: 20,
   staffId: 20,
   studentId: 20,
 

@@ -154,7 +154,6 @@ interface Student {
   year?: '1st Year' | '2nd Year' | 'Short Term' | string;
   section: string;
   branch: string;
-  rollNumber: string;
   status: 'Active' | 'Inactive';
   tempPassword?: string;
   documents: string[];
@@ -331,7 +330,6 @@ const matchesStudentQuery = (student: Student, query: string) => {
     student.admissionNumber,
     student.registrationNumber,
     student.studentId,
-    student.rollNumber,
     student.mobile,
     student.parentMobile,
     student.course,
@@ -865,12 +863,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [, setOtpInput] = useState('');
 
-  // Marks Registry States
-  const [studentMarksList, setStudentMarksList] = useState<any[]>([]);
-  const [editingMark, setEditingMark] = useState<any | null>(null);
-  const [markSubject, setMarkSubject] = useState('Physics');
-  const [markMidterm, setMarkMidterm] = useState('');
-  const [markFinal, setMarkFinal] = useState('');
 
   // Calendars logs
 
@@ -1489,35 +1481,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
     } catch (err: any) { triggerToast(err.message || 'Failed to load staff salaries.'); }
   };
 
-  const fetchStudentMarks = async () => {
-    try {
-      const res = await apiClient.get('/admin2/student-marks');
-      if (res.status === 'success') {
-        setStudentMarksList(res.data);
-      }
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to load student marks.');
-    }
-  };
 
-  const handleSaveStudentMark = async () => {
-    if (!editingMark) return;
-    try {
-      const res = await apiClient.patch('/admin2/student-marks', {
-        studentId: editingMark.studentId,
-        subject: markSubject,
-        midterm: markMidterm,
-        final: markFinal
-      });
-      if (res.status === 'success') {
-        triggerToast(`Marks updated successfully for ${editingMark.name}`);
-        setEditingMark(null);
-        fetchStudentMarks();
-      }
-    } catch (err: any) {
-      triggerToast(err.message || 'Failed to update student marks.');
-    }
-  };
 
 
 
@@ -1613,8 +1577,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
         await fetchStaffSalaries();
       } else if (activePage === 'worker_payments') {
         await fetchWorkerPayments();
-      } else if (activePage === 'enrollment_stats') {
-        await fetchStudentMarks();
       } else if (pulseKey === 'finance' || pulseKey === 'fees') {
         await Promise.all([fetchFeeSettings(), fetchStudents()]);
       }
@@ -1699,8 +1661,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
           await fetchStaffSalaries();
         } else if (activePage === 'worker_payments') {
           await fetchWorkerPayments();
-        } else if (activePage === 'enrollment_stats') {
-          await fetchStudentMarks();
         } else if (activePage === 'enquiries') {
           await fetchEnquiries();
         } else if (activePage === 'logs') {
@@ -1748,7 +1708,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
       (s.admissionNumber || '').toUpperCase().trim() === q ||
       (s.registrationNumber || '').toUpperCase().trim() === q ||
       (s.studentId || '').toUpperCase().trim() === q ||
-      (s.rollNumber || '').toUpperCase().trim() === q ||
       (s.name || '').toUpperCase().trim().includes(q)
     );
     if (match) {
@@ -6925,150 +6884,6 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
     );
   }
 
-  //  SUBPAGE 17: CAMPUS MARKS REGISTRY (Admin 2)
-  if (activePage === 'enrollment_stats') {
-    const list = studentMarksList
-      .filter((s: any) => s.name.toLowerCase().includes(searchFac.toLowerCase()) || s.studentId.toLowerCase().includes(searchFac.toLowerCase()));
-
-    return (
-      <div style={styles.container} className="anim-slide-up">
-        {renderBackgroundDesign('violet')}
-        <header style={styles.header}>
-          <button onClick={() => { setActivePage('menu'); setEditingMark(null); }} style={styles.backArrowBtn} className="press-interactive">Back to Cockpit</button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Campus Marks</h1>
-          <p style={styles.subtitle}>View and update subject midterm/final grades for local campus students</p>
-        </header>
-
-        <main style={styles.content}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', zIndex: 1 }}>
-            {/* Search and Subject Filter */}
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <input maxLength={100}
-                type="text"
-                placeholder="Search student name or ID..."
-                value={searchFac}
-                onChange={(e) => setSearchFac(e.target.value)}
-                style={{ ...styles.textInputBox, flex: 1, margin: 0 }}
-              />
-              <select
-                value={markSubject}
-                onChange={(e) => setMarkSubject(e.target.value)}
-                style={{ ...styles.selectInput, width: '130px', margin: 0 }}
-              >
-                <option value="Physics">Physics</option>
-                <option value="Chemistry">Chemistry</option>
-                <option value="Mathematics">Mathematics</option>
-                <option value="English">English</option>
-              </select>
-            </div>
-
-            {/* Marks List Table */}
-            <GlassCard hoverable={false} style={{ padding: '16px' }} className="neo-2d-card">
-              <h4 style={{ ...styles.sectionSubtitle, marginTop: 0, marginBottom: '14px' }}>Subject Ledgers: {markSubject}</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {list.map((s: any) => {
-                  const subMark = s.marks.find((m: any) => m.subject === markSubject) || { midterm: 0, final: 0 };
-                  return (
-                    <div key={s.studentId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                      <div>
-                        <div style={{ fontSize: '0.9286rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{s.name}</div>
-                        <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>ID: {s.studentId}</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--dark-charcoal)' }}>Midterm: <span style={{ color: 'var(--royal-gold)' }}>{subMark.midterm}</span></div>
-                          <div style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--dark-charcoal)' }}>Final Exam: <span style={{ color: 'var(--good)' }}>{subMark.final}</span></div>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setEditingMark(s);
-                            setMarkMidterm(String(subMark.midterm));
-                            setMarkFinal(String(subMark.final));
-                          }}
-                          style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--card-border)', background: 'rgba(255,255,255,0.8)', cursor: 'pointer', fontSize: '0.7857rem', fontWeight: 700 }}
-                          className="press-interactive"
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-                {list.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted-gray)', fontSize: '0.8571rem' }}>
-                    No student records found.
-                  </div>
-                )}
-              </div>
-            </GlassCard>
-          </div>
-
-          {/* EDIT GRADES HOVER MODAL */}
-          {editingMark && (
-            <div style={styles.overlayOverlay}>
-              <div style={styles.overlaySheet}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                  <h3 style={styles.modalTitle}>Edit Student Grades</h3>
-                  <button
-                    onClick={() => setEditingMark(null)}
-                    style={{ background: 'none', border: 'none', fontSize: '1.2857rem', cursor: 'pointer', color: 'var(--muted-gray)' }}
-                  >
-                    -
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>Student</div>
-                    <strong style={{ fontSize: '1rem', color: 'var(--dark-charcoal)' }}>{editingMark.name} ({editingMark.studentId})</strong>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>Subject</div>
-                    <strong style={{ fontSize: '1rem', color: 'var(--royal-gold)' }}>{markSubject}</strong>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Midterm Marks</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={markMidterm}
-                        onChange={(e) => setMarkMidterm(e.target.value)}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <label style={styles.formLabel}>Final Exam Marks</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={markFinal}
-                        onChange={(e) => setMarkFinal(e.target.value)}
-                        style={styles.textInputBox}
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleSaveStudentMark}
-                    style={{ ...styles.saveSubmitBtn, marginTop: '12px' }}
-                    className="press-interactive"
-                  >
-                    Save Grades
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
-    );
-  }
-
-  //  SUBPAGE 20: PROFILE CONSOLE
   if (activePage === 'profile') {
     const getProfileData = () => {
       if (role === 'admin1') {

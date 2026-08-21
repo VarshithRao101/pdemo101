@@ -38,7 +38,6 @@ const studentSchema = new mongoose.Schema({
     enum: ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'],
     index: true
   },
-  rollNumber: { type: String, default: '', trim: true },
   status: {
     type: String,
     enum: ['Active', 'Inactive'],
@@ -141,24 +140,6 @@ const studentSchema = new mongoose.Schema({
       cashier: { type: String }
     }]
   }],
-
-  // Subject marks, one entry per subject.
-  //
-  // The Marks Registry screen has existed in the Admin portal for some time
-  // with nothing behind it — the two calls it makes had no route at all, so
-  // the page raised an error on open and saving silently failed. Marks live on
-  // the student rather than in their own collection because they are always
-  // read and written through the student, and a separate collection would add
-  // a join and a second thing to keep in step for no gain.
-  marks: [{
-    subject: { type: String, required: true, trim: true },
-    // Bounded here as well as in the route: a mark is a percentage, and a
-    // schema that would happily store 10^9 is one migration away from doing so.
-    midterm: { type: Number, default: 0, min: 0, max: 100 },
-    final: { type: Number, default: 0, min: 0, max: 100 },
-    updatedAt: { type: Date, default: Date.now },
-    updatedBy: { type: String, default: '' }
-  }]
 }, {
   timestamps: true
 });

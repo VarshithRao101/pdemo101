@@ -197,7 +197,6 @@ interface Student {
   course?: string;
   section?: string;
   branch?: string;
-  rollNumber?: string;
   tuitionFee: number;
   hostelFee: number;
   transportFee: number;
@@ -291,7 +290,6 @@ const matchesStudentSearch = (student: Student, query: string) => {
     student.name,
     student.admissionNumber,
     student.studentId,
-    student.rollNumber,
     student.registrationNumber,
     student.mobile,
     student.parentMobile,
@@ -793,7 +791,6 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
         customFeeSlots: newStuCustomSlots,
         branch: loggedInCampus,
         studentId: newStudentData.admissionNumber,
-        rollNumber: newStudentData.admissionNumber,
         registrationNumber: newStudentData.admissionNumber
       });
       triggerToast(`Student ${created.name} (${created.admissionNumber}) registered successfully!`);

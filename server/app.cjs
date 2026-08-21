@@ -923,7 +923,6 @@ const MAX_TEXT = { short: 100, medium: 250, long: 2000 };
 const FIELD_LIMITS = {
   personName: 50,
   admissionNumber: 20,
-  rollNumber: 20,
   staffId: 20,
   studentId: 20,
   mobile: 10,
@@ -3051,7 +3050,7 @@ const createStudentHandler = async (req, res) => {
       admissionNumber: { required: true, max: FIELD_LIMITS.admissionNumber },
       fatherName: { max: FIELD_LIMITS.personName }, motherName: { max: FIELD_LIMITS.personName },
       course: { max: FIELD_LIMITS.course }, section: { max: FIELD_LIMITS.section },
-      rollNumber: { max: FIELD_LIMITS.rollNumber }, studentId: { max: FIELD_LIMITS.studentId },
+      studentId: { max: FIELD_LIMITS.studentId },
       email: { max: FIELD_LIMITS.email },
       dob: { max: 20 }, address: { max: FIELD_LIMITS.address },
       previousSchool: { max: FIELD_LIMITS.previousSchool }, previousBoard: { max: FIELD_LIMITS.previousBoard },
@@ -3183,7 +3182,6 @@ const createStudentHandler = async (req, res) => {
       course: t.course,
       section: t.section,
       branch: targetBranch,
-      rollNumber: t.rollNumber,
       status: 'Active',
       dob: t.dob,
       previousSchool: t.previousSchool,
@@ -3419,7 +3417,7 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
     const result = applyAllowedFields(student, req.body, {
       name: 'string', fatherName: 'string', motherName: 'string',
       mobile: 'string', parentMobile: 'string', email: 'string',
-      course: 'string', section: 'string', rollNumber: 'string',
+      course: 'string', section: 'string',
       dob: 'string', address: 'string',
       previousSchool: 'string', previousBoard: 'string',
       status: 'string', hostelStatus: 'string', transportStatus: 'string',
@@ -6592,118 +6590,6 @@ app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRol
 // campus whenever the aggregate returned nothing — including when the database
 // was down or a campus genuinely had no students — which is indistinguishable
 // from real data on screen.
-// --- MARKS REGISTRY ------------------------------------------------------
-//
-// The Admin portal's Marks Registry screen called two endpoints that were
-// never written. Opening the page raised an error and saving a mark failed
-// silently — the toast said "updated successfully" only because the request
-// rejected before the check.
-//
-// Marks are campus scoped like every other student read, permission gated
-// behind editStudent (a mark IS a student record), and audited, because a
-// changed grade is exactly the kind of edit someone later needs to trace.
-
-/** Subjects the college teaches. Anything else is refused. */
-const VALID_SUBJECTS = ['Physics', 'Chemistry', 'Mathematics', 'Botany', 'Zoology', 'English'];
-
-app.get(['/api/admin2/student-marks', '/api/admin1/student-marks'],
-  authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
-    try {
-      await connectToDatabase();
-      const students = await Student.find(studentScopeFilter(req))
-        .select('studentId name admissionNumber branch course section marks')
-        .sort({ name: 1 })
-        .lean();
-
-      // The screen reads s.marks.find(...) without guarding, so an older
-      // student saved before this field existed would break the page.
-      return res.json({
-        status: 'success',
-        data: students.map(s => ({ ...s, marks: Array.isArray(s.marks) ? s.marks : [] }))
-      });
-    } catch (err) {
-      return failRequest(req, res, err);
-    }
-  });
-
-app.patch(['/api/admin2/student-marks', '/api/admin1/student-marks'],
-  authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'),
-  mongoRateLimiter, requireDatabase, async (req, res) => {
-    try {
-      await connectToDatabase();
-      const { studentId, subject } = req.body || {};
-
-      if (!studentId || typeof studentId !== 'string') {
-        return res.status(400).json({ status: 'error', message: 'A studentId is required.' });
-      }
-      if (!VALID_SUBJECTS.includes(subject)) {
-        return res.status(400).json({
-          status: 'error',
-          message: `Unknown subject. Expected one of: ${VALID_SUBJECTS.join(', ')}.`
-        });
-      }
-
-      // Coerced and bounded rather than trusted. '' becomes 0, not NaN, and a
-      // mark of 1e9 or -5 is refused instead of stored.
-      const score = (value, label) => {
-        const n = Number(value === '' || value === undefined || value === null ? 0 : value);
-        if (!Number.isFinite(n) || n < 0 || n > 100) {
-          throw Object.assign(new Error(`${label} must be a number between 0 and 100.`), { status: 400 });
-        }
-        return Math.round(n * 100) / 100;
-      };
-
-      let midterm, final;
-      try {
-        midterm = score(req.body.midterm, 'Midterm');
-        final = score(req.body.final, 'Final');
-      } catch (err) {
-        return res.status(400).json({ status: 'error', message: err.message });
-      }
-
-      const student = await Student.findOne({ studentId: String(studentId).trim() });
-      if (!student) {
-        return res.status(404).json({ status: 'error', message: 'Student not found.' });
-      }
-      if (!callerOwnsStudent(req, student.branch)) {
-        return res.status(403).json({
-          status: 'error',
-          message: `Access forbidden. Student belongs to campus [${student.branch}].`
-        });
-      }
-
-      const before = (student.marks || []).find(m => m.subject === subject);
-      const previous = before ? `${before.midterm}/${before.final}` : 'none';
-
-      if (before) {
-        before.midterm = midterm;
-        before.final = final;
-        before.updatedAt = new Date();
-        before.updatedBy = req.user.username || '';
-      } else {
-        student.marks.push({
-          subject, midterm, final,
-          updatedAt: new Date(),
-          updatedBy: req.user.username || ''
-        });
-      }
-      await student.save();
-
-      recordAudit(req, {
-        action: 'student.marks.update',
-        entityType: 'student',
-        entityId: student.studentId,
-        entityLabel: studentLabel(student),
-        campus: student.branch,
-        summary: `Set ${subject} marks for ${studentLabel(student)} to ${midterm}/${final} (was ${previous}).`
-      });
-
-      return res.json({ status: 'success', data: student.marks });
-    } catch (err) {
-      return failRequest(req, res, err);
-    }
-  });
-
 app.get('/api/admin2/enrollment-stats', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
     const scope = campusScopeFilter(req);

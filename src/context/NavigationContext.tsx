@@ -24,7 +24,6 @@ export type TabType =
   | 'expenditure'
   | 'salary_status'
   | 'worker_payments'
-  | 'enrollment_stats'
   | 'profile'
   | 'registry'
   | 'student_search'

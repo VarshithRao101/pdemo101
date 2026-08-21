@@ -10,25 +10,6 @@ export interface Bulletin {
   date?: string;
 }
 
-export interface TimetableEntry {
-  _id?: string;
-  section: string;
-  day: string;
-  period: string;
-  subject: string;
-  teacher: any;
-}
-
-export interface ExamInfo {
-  _id?: string;
-  id?: string;
-  name: string;
-  date: string;
-  class: string;
-  status: 'Scheduled' | 'Results Published';
-  resultsPublished: boolean;
-}
-
 export interface AuditLogEntry {
   _id: string;
   actorUsername: string;
@@ -318,23 +299,18 @@ export const admin1Service = {
     return res.data;
   },
 
-  // Timetables
   // Sections & Allocations
   async getSections(): Promise<{ sections: string[]; teachers: any[] }> {
     const res = await apiClient.get<{ status: string; data: { sections: string[]; teachers: any[] } }>('/admin1/sections');
     return res.data;
   },
 
-  // Attendance Summary
   // Reports
   async getReports(): Promise<any> {
     const res = await apiClient.get<{ status: string; data: any }>('/admin1/reports');
     return res.data;
   },
 
-  // Exams Desk
-  // Academic Year Management
-  // Student Promotion
   // Teacher Monthly Salary
   async updateTeacherMonthlySalary(id: string, payload: {
     academicYear?: string;

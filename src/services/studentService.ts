@@ -28,7 +28,6 @@ export interface StudentProfile {
   course: string;
   section: string;
   branch: string;
-  rollNumber: string;
   status: 'Active' | 'Inactive';
   documents: string[];
   tuitionFee: number;
@@ -41,37 +40,6 @@ export interface StudentProfile {
   customFeeSlots?: Array<{ id?: string; name: string; amount: number }>;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface AttendanceRecord {
-  _id: string;
-  targetId: string;
-  targetModel: 'Student' | 'Teacher';
-  date: string;
-  status: 'present' | 'absent' | 'late' | 'leave';
-}
-
-export interface AttendanceSummary {
-  records: AttendanceRecord[];
-  total: number;
-  present: number;
-  attendancePct: number;
-}
-
-export interface ExamResult {
-  _id: string;
-  subject: string;
-  testTitle: string;
-  date: string;
-  score: number;
-  maxMarks: number;
-  student: string;
-}
-
-export interface AcademicsData {
-  attendance: AttendanceSummary;
-  examResults: ExamResult[];
-  byTestTitle: Record<string, { subject: string; score: number; maxMarks: number; date: string }[]>;
 }
 
 export interface FeePayment {
@@ -99,19 +67,6 @@ export interface FeesData {
     miscellaneousFee: number;
   };
   payments: FeePayment[];
-}
-
-export interface TimetableEntry {
-  _id: string;
-  section: string;
-  day: string;
-  period: string;
-  subject: string;
-  teacher: {
-    _id: string;
-    name: string;
-    id: string;
-  };
 }
 
 export interface Bulletin {

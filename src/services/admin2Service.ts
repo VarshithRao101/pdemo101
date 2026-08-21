@@ -203,5 +203,4 @@ export const admin2Service = {
     return res.data;
   },
 
-  // 7. Late Fees & Scholarships (Consolidated Read-Only visibility)
 };
