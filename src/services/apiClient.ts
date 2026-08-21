@@ -30,6 +30,67 @@ export interface ApiError extends Error {
   data?: any;
 }
 
+/**
+ * What a bounded list route returns alongside its rows.
+ *
+ * List routes used to hand back an entire collection, and several screens
+ * reduce over what they are given to show a money total. Now that those
+ * responses are capped, a total derived from the array would be wrong by
+ * whatever fell off the end — and would look completely plausible, which is
+ * the dangerous part. So the server computes the totals over the whole filter
+ * and sends them here, and the screens read them from here rather than
+ * summing a page.
+ */
+export interface ListMeta {
+  page: number;
+  limit: number;
+  /** Rows matching the WHOLE filter, not the length of this page. */
+  total: number;
+  /** Present only on routes that feed a money total. */
+  totalAmount?: number;
+  paidAmount?: number;
+  /** Per-campus money totals, for a screen that narrows by branch itself. */
+  byBranch?: Record<string, number>;
+  hasMore: boolean;
+}
+
+export interface ListPage<T> {
+  items: T[];
+  meta: ListMeta;
+}
+
+/**
+ * Normalise a list response, tolerating a route that sends no `meta` at all.
+ *
+ * The fallbacks matter: an older route, or one still to be converted, returns
+ * a bare array. Treating that as a complete single page keeps every caller
+ * correct instead of making them each check.
+ */
+export const asListPage = <T>(res: any): ListPage<T> => {
+  const items: T[] = Array.isArray(res?.data) ? res.data : [];
+  const raw = (res && typeof res.meta === 'object' && res.meta) || {};
+  const num = (v: any): number | undefined =>
+    Number.isFinite(Number(v)) ? Number(v) : undefined;
+
+  return {
+    items,
+    meta: {
+      // Spread FIRST so a route-specific field survives — `withoutContact` on
+      // the outstanding-fees list, `windowDays` on the recycle bin. Listing
+      // only the known keys here silently dropped them, and the screens read
+      // them as zero, which looks like data rather than like a missing field.
+      ...raw,
+      page: num(raw.page) ?? 1,
+      limit: num(raw.limit) ?? items.length,
+      total: num(raw.total) ?? items.length,
+      totalAmount: num(raw.totalAmount),
+      paidAmount: num(raw.paidAmount),
+      byBranch: (raw.byBranch && typeof raw.byBranch === 'object') ? raw.byBranch : undefined,
+      hasMore: Boolean(raw.hasMore)
+    }
+  };
+};
+
 // The security PIN the user last confirmed with, held in memory for the life
 // of the page only. Never written to localStorage — it is a live credential.
 //

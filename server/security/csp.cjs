@@ -37,7 +37,14 @@ const DIRECTIVES = {
   fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
   imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
   mediaSrc: ["'self'", 'data:', 'blob:'],
-  connectSrc: ["'self'", 'https:', 'wss:'],
+  // Same origin only. This was ["'self'", 'https:', 'wss:'], which permitted a
+  // connection to any HTTPS host on the internet. The app only ever talks to
+  // its own origin, so the allowance bought nothing and left an exfiltration
+  // route open for injected script — the precise risk script-src above exists
+  // to contain, and the one that matters most here because access tokens live
+  // in localStorage. Google Fonts is unaffected: a stylesheet is governed by
+  // style-src and the font files by font-src, never by connect-src.
+  connectSrc: ["'self'"],
   objectSrc: ["'none'"],
   baseUri: ["'self'"],
   formAction: ["'self'"],

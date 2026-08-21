@@ -1,4 +1,20 @@
-import { apiClient } from './apiClient';
+import { apiClient, asListPage, type ListPage } from './apiClient';
+
+/** One row in the Rector's Recently Deleted screen. */
+export interface DeletedEntry {
+  type: 'student' | 'expenditure' | 'worker_payment' | 'teacher';
+  collection: string;
+  id: string;
+  reference: string;
+  label: string;
+  campus: string;
+  amount: number | null;
+  deletedAt: string;
+  deletedBy: string;
+  deletedReason: string;
+  /** Receipts that would come back with a student. Null for anything else. */
+  attachedPayments: number | null;
+}
 import type { StudentProfile } from './studentService';
 
 export interface Bulletin {
@@ -212,15 +228,20 @@ export const admin1Service = {
   },
 
   // Students Registry
-  async getStudents(search = '', branch = ''): Promise<StudentProfile[]> {
+  // `search` is applied by the SERVER now. It was always sent and never read,
+  // so every screen downloaded the whole registry and filtered it in the
+  // browser; the response is bounded, so that no longer works.
+  //
+  // asListPage absorbs a malformed or empty response into an empty page, so
+  // the old "return [] rather than crash with a TypeError" guard is kept
+  // without every caller having to repeat it.
+  async getStudents(search = '', branch = ''): Promise<ListPage<StudentProfile>> {
     const params: string[] = [];
     if (search) params.push(`search=${encodeURIComponent(search)}`);
     if (branch && branch !== 'All') params.push(`branch=${encodeURIComponent(branch)}`);
     const query = params.length > 0 ? `?${params.join('&')}` : '';
-    const res = await apiClient.get<{ status: string; data: StudentProfile[] }>(`/admin1/students${query}`);
-    // Guard: if backend returns unexpected shape, return empty array rather than crashing with TypeError
-    if (!res || !Array.isArray(res.data)) return [];
-    return res.data;
+    const res = await apiClient.get<any>(`/admin1/students${query}`);
+    return asListPage<StudentProfile>(res);
   },
 
   // The create route used to also return a `credential` with a generated
@@ -309,6 +330,29 @@ export const admin1Service = {
   async getReports(): Promise<any> {
     const res = await apiClient.get<{ status: string; data: any }>('/admin1/reports');
     return res.data;
+  },
+
+  // --- Recently Deleted (undo window) ---
+  async getRecentlyDeleted(): Promise<ListPage<DeletedEntry>> {
+    const res = await apiClient.get<any>('/admin1/recently-deleted');
+    return asListPage<DeletedEntry>(res);
+  },
+
+  // The PIN travels as a header on this one call rather than through the
+  // global key, because restoring writes records back into the live books.
+  async restoreDeleted(type: string, id: string, securityPin: string): Promise<{ message: string }> {
+    return apiClient.request<any>(`/admin1/recently-deleted/${type}/${id}/restore`, {
+      method: 'POST',
+      headers: { 'x-security-pin': securityPin }
+    });
+  },
+
+  // --- Lockout recovery ---
+  async unlockAccount(id: string, securityPin: string): Promise<{ message: string }> {
+    return apiClient.request<any>(`/admin1/accounts/${id}/unlock`, {
+      method: 'POST',
+      headers: { 'x-security-pin': securityPin }
+    });
   },
 
   // Teacher Monthly Salary

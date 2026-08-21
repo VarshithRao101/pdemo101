@@ -2,7 +2,7 @@
  * accountantService.ts
  * Typed wrappers over apiClient for all Accountant portal endpoints.
  */
-import { apiClient } from './apiClient';
+import { apiClient, asListPage, type ListPage } from './apiClient';
 import type { StudentProfile, FeePayment } from './studentService';
 
 export interface RoomOccupancy {
@@ -35,15 +35,15 @@ export interface DashboardSummary {
 
 // Service Functions
 
-export const searchStudents = async (search: string, campus?: string): Promise<StudentProfile[]> => {
+// `search` is now applied by the server, so this genuinely searches the
+// registry rather than fetching all of it for the browser to filter.
+export const searchStudents = async (search: string, campus?: string): Promise<ListPage<StudentProfile>> => {
   const params: string[] = [];
   if (search) params.push(`search=${encodeURIComponent(search)}`);
   if (campus && campus !== 'All') params.push(`branch=${encodeURIComponent(campus)}`);
   const query = params.length > 0 ? `?${params.join('&')}` : '';
-  const res = await apiClient.get<{ status: string; data: StudentProfile[] }>(
-    `/accountant/students${query}`
-  );
-  return res.data;
+  const res = await apiClient.get<any>(`/accountant/students${query}`);
+  return asListPage<StudentProfile>(res);
 };
 
 export const getStudentProfile = async (id: string): Promise<StudentProfile> => {

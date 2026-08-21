@@ -1,6 +1,5 @@
-import React, { useState, type ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 import { useNavigation, accountCan } from '../../context/NavigationContext';
-import { InspireLogo } from '../common/InspireLogo';
 
 // --- TRNT BEE FLOATING BRAND BADGE (REMOVED) ---
 const TrntBeeBadge = () => {
@@ -39,23 +38,10 @@ const SvgCog = () => (
 );
 
 export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) => {
-  const { isMobile, activeTab, setActiveTab, portalRole, isDrawerOpen, setIsDrawerOpen, theme, setThemeMode, user } = useNavigation();
+  const { isMobile, activeTab, setActiveTab, portalRole, isDrawerOpen, setIsDrawerOpen, user } = useNavigation();
 
-  // State hooks for drawer modal views
-  const [showAboutModal, setShowAboutModal] = useState(false);
-  const [showSpotlightModal, setShowSpotlightModal] = useState(false);
-  const [showRateModal, setShowRateModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
-  // Rate App Modal States
-  const [stars, setStars] = useState(0);
-  const [feedbackText, setFeedbackText] = useState('');
-  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
-  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
 
-  // Settings Modal States
-  const [smsNotif, setSmsNotif] = useState(true);
-  const [biometrics, setBiometrics] = useState(true);
 
   // Derive dynamic user initials, name, ID, and branding
   const getInitials = (n: string) => {
@@ -72,20 +58,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
 
 
 
-  const handleSubmitFeedback = () => {
-    if (stars === 0) return;
-    setIsSubmittingFeedback(true);
-    setTimeout(() => {
-      setIsSubmittingFeedback(false);
-      setFeedbackSuccess(true);
-      setTimeout(() => {
-        setFeedbackSuccess(false);
-        setStars(0);
-        setFeedbackText('');
-        setShowRateModal(false);
-      }, 2000);
-    }, 1200);
-  };
 
   // Mobile & Desktop side drawer list items for all portal roles
   const drawerMenuItems = portalRole === 'authenticator'
@@ -136,382 +108,38 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
       ];
 
   // Helper function to render styled Neo-Brutalist Modal Overlay
-  const renderModal = (title: string, onClose: () => void, content: React.ReactNode) => {
-    return (
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        backdropFilter: 'blur(5px)',
-        zIndex: 99999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-      }} className="anim-fade-in" onClick={onClose}>
-        <div style={{
-          backgroundColor: 'var(--bg-secondary)',
-          border: '2px solid var(--card-border)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-lg)',
-          width: '100%',
-          maxWidth: '420px',
-          maxHeight: '80vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }} className="anim-scale-in" onClick={(e) => e.stopPropagation()}>
-          {/* Header */}
-          <div style={{
-            padding: '16px 20px',
-            borderBottom: '2px solid var(--card-border)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'var(--bg-primary)'
-          }}>
-            <h3 style={{ margin: 0, fontSize: '1.0714rem', fontWeight: 850, color: 'var(--dark-charcoal)' }}>{title}</h3>
-            <button onClick={onClose} style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--dark-charcoal)',
-              fontSize: '1.2857rem',
-              fontWeight: 800,
-              padding: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }} className="press-interactive">✕</button>
-          </div>
-          {/* Content Body */}
-          <div style={{
-            padding: '20px',
-            overflowY: 'auto',
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-            textAlign: 'left'
-          }}>
-            {content}
-          </div>
-        </div>
-      </div>
-    );
-  };
+  /*
+    REMOVED: renderModal, and the four modals built on it — About, Campus
+    Spotlight, Rate the Portal App and Portal Settings.
 
+    None of them could be opened. `showAboutModal`, `showSpotlightModal`,
+    `showRateModal` and `showSettingsModal` were all initialised false and no
+    call anywhere in the app ever set one to true; no drawer entry pointed at
+    them either. They rendered nothing, and shipped in the bundle regardless.
 
+    Three of the things they contained are the reason this is a deletion
+    rather than a rewiring:
 
-  // About Us Modal Content
-  const renderAboutModal = () => renderModal("About Inspire Junior College", () => setShowAboutModal(false), (
-    <>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
-        <InspireLogo size="md" inPortal={true} />
-      </div>
-      <p style={{ fontSize: '0.8929rem', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.5, textAlign: 'center' }}>
-        Inspire Junior College is Hanumakonda's premier institution for IIT-JEE, NEET, and intermediate education, dedicated to training young minds for bright professional careers.
-      </p>
+      - "Submit Review" ran a setTimeout, showed "Submitting…", then a success
+        message, and discarded the stars and the written feedback. There was
+        no endpoint behind it and never had been.
+      - "SMS Reminders" and "Fingerprint Sign-in" were bare useState toggles.
+        They persisted nothing, nothing read them, and biometric sign-in is
+        not implemented anywhere in this application.
+      - "Reset Portal Security PIN" called alert() with a hardcoded message
+        naming a real person and a partially masked real phone number. That
+        string was in the public JavaScript bundle, readable by anyone who
+        opened the source of the site.
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <div style={{
-          padding: '12px 14px',
-          borderRadius: '12px',
-          border: '1.5px solid var(--card-border)',
-          backgroundColor: 'var(--bg-primary)',
-        }}>
-          <h5 style={{ margin: '0 0 4px 0', fontSize: '0.8571rem', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
-            Campus Location
-          </h5>
-          <span style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>
-            Erragattu Gutta, Bheemaram, Hanumakonda, Telangana
-          </span>
-        </div>
+    A dead control is worse than a missing one — the Authenticator panel's
+    removed CSV drop-zone carries the same note and the same reasoning. The
+    working theme switch these modals also held is not lost: theme is set from
+    the Settings tab, which is a real screen with a real route.
 
-        <div style={{
-          padding: '12px 14px',
-          borderRadius: '12px',
-          border: '1.5px solid var(--card-border)',
-          backgroundColor: 'var(--bg-primary)',
-        }}>
-          <h5 style={{ margin: '0 0 4px 0', fontSize: '0.8571rem', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
-            Admission Enquiry Numbers
-          </h5>
-          <span style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>
-            +91 7416380320 | +91 9177657274
-          </span>
-        </div>
+    Changing your own password is now a genuine feature. It lives on the
+    Profile screen and talks to POST /api/account/password.
+  */
 
-        <div style={{
-          padding: '12px 14px',
-          borderRadius: '12px',
-          border: '1.5px solid var(--card-border)',
-          backgroundColor: 'var(--bg-primary)',
-        }}>
-          <h5 style={{ margin: '0 0 4px 0', fontSize: '0.8571rem', fontWeight: 800, color: 'var(--dark-charcoal)', textTransform: 'uppercase' }}>
-            Web Portal & Email
-          </h5>
-          <span style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>
-            www.inspirehnk.org <br />
-            Inspirehnk@gmail.com
-          </span>
-        </div>
-      </div>
-    </>
-  ));
-
-  // Spotlight Modal Content
-  const renderSpotlightModal = () => renderModal("Campus Spotlight", () => setShowSpotlightModal(false), (
-    <>
-      <p style={{ fontSize: '0.8929rem', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45 }}>
-        Recent accolades, news updates, and student achievements from Inspire Junior College Hanumakonda.
-      </p>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {[
-          { title: 'JEE Mains Excellence', desc: 'Over 45 students from our Hanumakonda campus secured ranks in the top 1000 in the recent JEE Mains session.', tag: 'Academic' },
-          { title: 'Robotics Exhibition', desc: 'Intermediate science exhibition models for clean energy won 1st place in district evaluations.', tag: 'Science' },
-          { title: 'Inter-College Basketball Gold', desc: 'Inspire Junior College Sports Team won the Inter-District Intermediate Championship finals.', tag: 'Sports' }
-        ].map((item, idx) => (
-          <div key={idx} style={{
-            padding: '14px',
-            borderRadius: '14px',
-            border: '1.5px solid var(--card-border)',
-            backgroundColor: 'var(--bg-primary)',
-            boxShadow: 'var(--shadow-sm)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <span style={{
-                fontSize: '0.6071rem',
-                fontWeight: 800,
-                color: 'var(--royal-gold)',
-                backgroundColor: 'rgba(212,175,55,0.08)',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                border: '1px solid rgba(212,175,55,0.15)'
-              }}>{item.tag}</span>
-            </div>
-            <h4 style={{ margin: '0 0 4px 0', fontSize: '0.9286rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>{item.title}</h4>
-            <p style={{ margin: 0, fontSize: '0.8214rem', color: 'var(--muted-gray)', lineHeight: 1.4 }}>{item.desc}</p>
-          </div>
-        ))}
-      </div>
-    </>
-  ));
-
-  // Rate Modal Content
-  const renderRateModal = () => renderModal("Rate the Portal App", () => setShowRateModal(false), (
-    <>
-      {feedbackSuccess ? (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '24px 0',
-          textAlign: 'center'
-        }} className="anim-scale-in">
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" strokeWidth="2.5" style={{ marginBottom: '12px' }}>
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          <h4 style={{ fontSize: '1.0714rem', fontWeight: 800, color: 'var(--dark-charcoal)', margin: '0 0 6px 0' }}>Thank You!</h4>
-          <p style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)', margin: 0 }}>Your rating and comments have been securely submitted to help us improve.</p>
-        </div>
-      ) : (
-        <>
-          <p style={{ fontSize: '0.8929rem', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45, textAlign: 'center' }}>
-            Your feedback helps us make the Inspire Portal better for everyone.
-          </p>
-
-          {/* Star Selection Row */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', padding: '8px 0' }}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                onClick={() => setStars(star)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  color: star <= stars ? '#FBBF24' : '#E2E8F0',
-                  transition: 'transform 0.15s ease'
-                }}
-                className="press-interactive"
-              >
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke={star <= stars ? '#F59E0B' : '#CBD5E1'} strokeWidth="1.5">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-              </button>
-            ))}
-          </div>
-
-          {/* Comment input area */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <textarea
-              placeholder="What could we improve? (Optional)"
-              value={feedbackText}
-              onChange={(e) => setFeedbackText(e.target.value)}
-              disabled={isSubmittingFeedback}
-              style={{
-                width: '100%',
-                height: '80px',
-                padding: '10px 12px',
-                borderRadius: '10px',
-                border: '1.5px solid var(--card-border)',
-                backgroundColor: 'var(--bg-primary)',
-                color: 'var(--dark-charcoal)',
-                fontSize: '0.8929rem',
-                fontFamily: 'var(--font-family)',
-                resize: 'none',
-                outline: 'none'
-              }}
-            />
-          </div>
-
-          <button
-            onClick={handleSubmitFeedback}
-            disabled={stars === 0 || isSubmittingFeedback}
-            style={{
-              padding: '12px',
-              borderRadius: '12px',
-              border: '2px solid var(--card-border)',
-              backgroundColor: 'var(--royal-gold)',
-              color: '#FFFFFF',
-              fontWeight: 800,
-              fontSize: '0.9286rem',
-              cursor: 'pointer',
-              width: '100%',
-              opacity: (stars === 0 || isSubmittingFeedback) ? 0.6 : 1,
-              marginTop: '4px'
-            }}
-            className="press-interactive"
-          >
-            {isSubmittingFeedback ? 'Submitting...' : 'Submit Review'}
-          </button>
-        </>
-      )}
-    </>
-  ));
-
-  // Settings Modal Content
-  const renderSettingsModal = () => renderModal("Portal Settings", () => setShowSettingsModal(false), (
-    <>
-      <p style={{ fontSize: '0.8929rem', color: 'var(--muted-gray)', margin: 0, lineHeight: 1.45 }}>
-        Customize your experience and security options on the Inspire Residential Portal.
-      </p>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        
-        {/* Dark Mode Toggle */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '12px 14px',
-          borderRadius: '12px',
-          border: '1.5px solid var(--card-border)',
-          backgroundColor: 'var(--bg-primary)'
-        }}>
-          <div>
-            <h5 style={{ margin: 0, fontSize: '0.9286rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Theme Toggle</h5>
-            <span style={{ fontSize: '0.75rem', color: 'var(--muted-gray)' }}>Light / Dark theme toggle</span>
-          </div>
-          <button
-            onClick={() => setThemeMode(theme === 'light' ? 'Dark' : 'Light')}
-            style={{
-              padding: '6px 12px',
-              borderRadius: '8px',
-              border: '1.5px solid var(--card-border)',
-              backgroundColor: 'var(--bg-secondary)',
-              color: 'var(--dark-charcoal)',
-              fontSize: '0.7857rem',
-              fontWeight: 800,
-              cursor: 'pointer'
-            }}
-            className="press-interactive"
-          >
-            {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
-          </button>
-        </div>
-
-        {/* SMS Notifications Toggle */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '12px 14px',
-          borderRadius: '12px',
-          border: '1.5px solid var(--card-border)',
-          backgroundColor: 'var(--bg-primary)'
-        }}>
-          <div>
-            <h5 style={{ margin: 0, fontSize: '0.9286rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>SMS Reminders</h5>
-            <span style={{ fontSize: '0.75rem', color: 'var(--muted-gray)' }}>Receive SMS reports for gate pass approvals</span>
-          </div>
-          <input
-            type="checkbox"
-            checked={smsNotif}
-            onChange={(e) => setSmsNotif(e.target.checked)}
-            style={{
-              width: '18px',
-              height: '18px',
-              cursor: 'pointer',
-              accentColor: 'var(--royal-gold)'
-            }}
-          />
-        </div>
-
-        {/* Biometrics Toggle */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '12px 14px',
-          borderRadius: '12px',
-          border: '1.5px solid var(--card-border)',
-          backgroundColor: 'var(--bg-primary)'
-        }}>
-          <div>
-            <h5 style={{ margin: 0, fontSize: '0.9286rem', fontWeight: 800, color: 'var(--dark-charcoal)' }}>Fingerprint Sign-in</h5>
-            <span style={{ fontSize: '0.75rem', color: 'var(--muted-gray)' }}>Allow biometric pass check at starting view</span>
-          </div>
-          <input
-            type="checkbox"
-            checked={biometrics}
-            onChange={(e) => setBiometrics(e.target.checked)}
-            style={{
-              width: '18px',
-              height: '18px',
-              cursor: 'pointer',
-              accentColor: 'var(--royal-gold)'
-            }}
-          />
-        </div>
-
-        {/* Security PIN Change */}
-        <button
-          onClick={() => alert('PIN reset verification code sent to your father, Sridhar Rao\'s phone: +91 ******0320')}
-          style={{
-            padding: '12px',
-            borderRadius: '12px',
-            border: '2px solid var(--card-border)',
-            backgroundColor: 'var(--bg-secondary)',
-            color: 'var(--dark-charcoal)',
-            fontWeight: 800,
-            fontSize: '0.8929rem',
-            cursor: 'pointer',
-            width: '100%',
-            marginTop: '4px'
-          }}
-          className="press-interactive"
-        >
-          Reset Portal Security PIN
-        </button>
-
-      </div>
-    </>
-  ));
 
 
   // If NOT Authenticator (admin1, admin2, accountant), render clean full-width content without sidebar
@@ -526,11 +154,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   if (isMobile) {
     return (
       <div style={styles.mobileWrapper}>
-        {/* Render Active Modals */}
-        {showAboutModal && renderAboutModal()}
-        {showSpotlightModal && renderSpotlightModal()}
-        {showRateModal && renderRateModal()}
-        {showSettingsModal && renderSettingsModal()}
 
         {/* Left Side Sliding Navigation Drawer (Screen 1 design) */}
         <div style={styles.mobileDrawerContainer}>
@@ -807,10 +430,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
       {/* Main Content Area */}
       <main style={styles.mainContent}>
         {/* Render Modals on Desktop */}
-        {showAboutModal && renderAboutModal()}
-        {showSpotlightModal && renderSpotlightModal()}
-        {showRateModal && renderRateModal()}
-        {showSettingsModal && renderSettingsModal()}
 
         {children}
       </main>

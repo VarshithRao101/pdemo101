@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const softDeletePlugin = require('./softDelete.cjs');
 
 const expenditureSchema = new mongoose.Schema({
   id: {
@@ -29,6 +30,11 @@ const expenditureSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Adds deletedAt/deletedBy and hides soft-deleted rows from every
+// read automatically. See softDelete.cjs for why this is a plugin
+// rather than a field each query has to remember to filter on.
+expenditureSchema.plugin(softDeletePlugin);
 
 const Expenditure = mongoose.models.Expenditure || mongoose.model('Expenditure', expenditureSchema);
 

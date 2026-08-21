@@ -103,6 +103,16 @@ const userSchema = new mongoose.Schema({
   // client-controlled and trivially forged.
   sessionIp: { type: String, default: '' },
   sessionUserAgent: { type: String, default: '' },
+  // The session BEFORE this one, carried across when a new one is issued.
+  //
+  // The current session's details answer "where am I signed in". These answer
+  // the question someone actually has when they suspect their password has
+  // been seen: "was the last sign-in me?" A person recognises their own last
+  // sign-in, or does not — and not recognising it is the signal. Same rule as
+  // the pair above: recorded for a human to read, never consulted to make an
+  // authorisation decision.
+  previousSessionAt: { type: Date, default: null },
+  previousSessionIp: { type: String, default: '' },
   // CREDENTIAL STORAGE, changed deliberately on 2026-08-16.
   //
   // `password` and `pin` above now hold PLAINTEXT. The operator asked for the

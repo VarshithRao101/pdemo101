@@ -18,6 +18,10 @@ import {
   pdfDetailCard, money, dateStr, escapeHtml
 } from '../utils/pdfDocument';
 import { useDataFreshness } from '../hooks/useDataFreshness';
+import { AccountSecurityPanel } from '../components/common/AccountSecurityPanel';
+import { RecentlyDeletedPanel } from '../components/common/RecentlyDeletedPanel';
+import { OutstandingFeesPanel } from '../components/common/OutstandingFeesPanel';
+import { downloadCsv } from '../services/accountService';
 
 
 // --- RENDER BACKGROUND DESIGN WITH CUSTOM ACCENT COLOR GLOWS ---
@@ -367,6 +371,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
 
   // States
   const [students, setStudents] = useState<Student[]>([]);
+  /**
+   * Totals and counts computed by the server over the WHOLE filter.
+   *
+   * List responses are capped now, so anything derived by reducing over one
+   * of these arrays would be wrong by whatever fell off the end — and would
+   * look entirely plausible on a fee screen. These hold the authoritative
+   * figures that come back in `meta`.
+   */
+  const [studentTotal, setStudentTotal] = useState(0);
+  const [studentsTruncated, setStudentsTruncated] = useState(false);
+  const [expenditureByBranch, setExpenditureByBranch] = useState<Record<string, number> | null>(null);
+  const [workerTotalAmount, setWorkerTotalAmount] = useState<number | null>(null);
+  const [workerPaidAmount, setWorkerPaidAmount] = useState<number | null>(null);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
 
   // Edit Buffer States (prevents keypress auto-save)
@@ -1077,9 +1094,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   };
 
   const handleDownloadAllWorkerRecords = (workerList: any[]) => {
-    const totalSalary = workerList.reduce((sum, w) => sum + Number(w.amount || w.salary || 0), 0);
-    const totalPaid = workerList.reduce(
-      (sum, w) => sum + Number(w.amountPaid !== undefined ? w.amountPaid : (w.paid ? (w.amount || w.salary || 0) : 0)), 0);
+    // A payroll ledger has to foot to the real wage bill, so the totals come
+    // from the server's sums over every row rather than from the page being
+    // rendered. Falling back to the reduce keeps the document correct when no
+    // totals came back — which is exactly the case where the page IS the whole
+    // list.
+    const totalSalary = workerTotalAmount
+      ?? workerList.reduce((sum, w) => sum + Number(w.amount || w.salary || 0), 0);
+    const totalPaid = workerPaidAmount
+      ?? workerList.reduce(
+        (sum, w) => sum + Number(w.amountPaid !== undefined ? w.amountPaid : (w.paid ? (w.amount || w.salary || 0) : 0)), 0);
     const totalPending = Math.max(0, totalSalary - totalPaid);
 
     const body = [
@@ -1130,8 +1154,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   };
 
   const handleDownloadDisbursementLogPDF = () => {
-    const totalAmount = workerPaymentsHistory.reduce(
-      (sum: number, item: any) => sum + Number(item.amount || 0), 0);
+    const totalAmount = workerTotalAmount
+      ?? workerPaymentsHistory.reduce(
+        (sum: number, item: any) => sum + Number(item.amount || 0), 0);
 
     const body = [
       pdfHeader({
@@ -1456,21 +1481,24 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
 
   const fetchExpenditures = async () => {
     try {
-      const data = await admin2Service.getExpenditures();
-      setExpenditures(data);
+      const { items, meta } = await admin2Service.getExpenditures();
+      setExpenditures(items);
+      setExpenditureByBranch(meta.byBranch ?? null);
     } catch (err: any) { triggerToast(err.message || 'Failed to load expenditures.'); }
   };
 
   const fetchWorkerPayments = async () => {
     try {
-      const data = await admin2Service.getWorkerPayments();
-      const mapped = data.map((w: any) => ({
+      const { items, meta } = await admin2Service.getWorkerPayments();
+      const mapped = items.map((w: any) => ({
         ...w,
         name: w.workerName || w.name,
         salary: w.amount || w.salary,
         id: w._id || w.id,
       }));
       setWorkers(mapped);
+      setWorkerTotalAmount(meta.totalAmount ?? null);
+      setWorkerPaidAmount(meta.paidAmount ?? null);
     } catch (err: any) { triggerToast(err.message || 'Failed to load worker payments.'); }
   };
 
@@ -1495,15 +1523,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
       //
       // Teachers, fee settings and worker payments elsewhere in this file are
       // deliberately still campus-scoped: those are per-campus books.
-      const data = await admin1Service.getStudents(query, '');
-      setStudents(Array.isArray(data) ? data : []);
+      const { items, meta } = await admin1Service.getStudents(query, '');
+      setStudents(items);
+      setStudentTotal(meta.total);
+      setStudentsTruncated(meta.hasMore);
     } catch (err: any) {
       // On 404/503 (Vercel cold-start or transient error), retry once silently after a short delay
       if (err?.status === 404 || err?.status === 503) {
         try {
           await new Promise(r => setTimeout(r, 1500));
-          const data = await admin1Service.getStudents(query, '');
-          setStudents(Array.isArray(data) ? data : []);
+          const { items, meta } = await admin1Service.getStudents(query, '');
+          setStudents(items);
+          setStudentTotal(meta.total);
+          setStudentsTruncated(meta.hasMore);
           return;
         } catch { /* fall through to toast below */ }
       }
@@ -1541,11 +1573,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
 
   const fetchWorkerPaymentsHistory = async () => {
     try {
-      const data = await admin2Service.getWorkerPayments();
-      if (Array.isArray(data)) {
-        const filtered = data.filter((item: any) => role === 'clerk' ? item.branch === loggedInCampus : true);
-        setWorkerPaymentsHistory(filtered);
-      }
+      const { items } = await admin2Service.getWorkerPayments();
+      const filtered = items.filter((item: any) => role === 'clerk' ? item.branch === loggedInCampus : true);
+      setWorkerPaymentsHistory(filtered);
     } catch (err: any) {
       console.error('Failed to load worker payments history:', err);
     }
@@ -1643,7 +1673,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
         if (activePage === 'students' || activePage === 'add_student' || activePage === 'teachers') {
           await Promise.all([fetchStudents(''), fetchSections()]);
           if (activePage === 'add_student') {
-            if (!newStuAdmissionNumber.trim()) setNewStuAdmissionNumber(`ADM2400${students.length + 1}`);
+            if (!newStuAdmissionNumber.trim()) setNewStuAdmissionNumber(`ADM2400${studentTotal + 1}`);
             setNewStuFormPage(1);
             setIsStudentHoverModalOpen(true);
           }
@@ -1695,6 +1725,45 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
     setToastMessage(symbol + msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  /**
+   * Download a CSV of everything in scope — not just the rows on screen.
+   *
+   * An export that stopped at the current page would still add up, just to
+   * the wrong number, which is the failure mode worth designing against on a
+   * fee register.
+   */
+  const CsvExportButton: React.FC<{ kind: 'students' | 'payments' | 'expenditures'; label: string }> =
+    ({ kind, label }) => {
+      const [downloading, setDownloading] = useState(false);
+      return (
+        <button
+          onClick={async () => {
+            setDownloading(true);
+            try {
+              await downloadCsv(kind);
+              triggerToast(`${label} downloaded.`);
+            } catch (err: any) {
+              triggerToast(err?.message || 'Could not download that export.');
+            } finally {
+              setDownloading(false);
+            }
+          }}
+          disabled={downloading}
+          style={{
+            padding: '7px 13px', borderRadius: 8,
+            border: '1.5px solid var(--card-border)', background: 'transparent',
+            color: downloading ? 'var(--muted-gray)' : 'var(--ink)',
+            fontWeight: 800, fontSize: '0.75rem',
+            cursor: downloading ? 'default' : 'pointer', whiteSpace: 'nowrap'
+          }}
+          className="press-interactive"
+        >
+          {downloading ? 'Preparing…' : `⤓ ${label}`}
+        </button>
+      );
+    };
+
 
 
 
@@ -2123,7 +2192,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
             <button
               onClick={() => {
                 if (!newStuAdmissionNumber.trim()) {
-                  setNewStuAdmissionNumber(`ADM2400${students.length + 1}`);
+                  setNewStuAdmissionNumber(`ADM2400${studentTotal + 1}`);
                 }
                 setNewStuFormPage(1);
                 setIsStudentHoverModalOpen(true);
@@ -2171,7 +2240,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                 <label style={styles.formLabel}>Admission Number *</label>
                 <input maxLength={LIMITS.admissionNumber}
                   type="text"
-                  placeholder={`ADM2400${students.length + 1}`}
+                  placeholder={`ADM2400${studentTotal + 1}`}
                   value={newStuAdmissionNumber}
                   onChange={(e) => { setNewStuAdmissionNumber(e.target.value); setRegStuError(''); }}
                   style={{ ...styles.textInputBox, fontSize: '0.8929rem' }}
@@ -2253,7 +2322,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   type="button"
                   onClick={() => {
                     if (!newStuAdmissionNumber.trim()) {
-                      setNewStuAdmissionNumber(`ADM2400${students.length + 1}`);
+                      setNewStuAdmissionNumber(`ADM2400${studentTotal + 1}`);
                     }
                     setNewStuFormPage(1);
                     setIsStudentHoverModalOpen(true);
@@ -2797,8 +2866,28 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>Student Cards</h4>
               <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--muted-gray)' }}>
                 Showing <strong>{registryPageStudents.length}</strong> of <strong>{filteredRegistryStudents.length}</strong>
+                {studentsTruncated && <> &middot; {studentTotal} in total</>}
               </span>
+              <CsvExportButton kind="students" label="Export CSV" />
             </div>
+
+            {/*
+              A capped list must never look like a complete one. The registry
+              response is bounded, so when more students exist than came back,
+              the screen says so and points at the search — which is answered
+              by the database now, so it reaches the students that are not on
+              this page.
+            */}
+            {studentsTruncated && (
+              <div style={{
+                fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink-secondary)',
+                background: 'var(--surface)', border: '1px solid var(--muted-gray)',
+                borderRadius: '8px', padding: '8px 12px'
+              }}>
+                Showing the first {students.length} of {studentTotal} students. Search by name,
+                admission number or mobile to find one that is not listed here.
+              </div>
+            )}
 
             <div style={{
               display: 'grid',
@@ -3068,7 +3157,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   <button onClick={() => !isSubmittingStudent && setIsRegStuOtpModalOpen(false)} disabled={isSubmittingStudent} style={{ background: 'none', border: 'none', fontSize: '1.4286rem', cursor: isSubmittingStudent ? 'not-allowed' : 'pointer', color: 'var(--muted-gray)', fontWeight: 900 }}>×</button>
                 </div>
                 <p style={{ fontSize: '0.9286rem', color: 'var(--dark-charcoal)', marginBottom: '16px', lineHeight: 1.5, fontWeight: 600 }}>
-                  Are you sure you want to finalize student registration for <strong>{newStuName}</strong> (Adm No: <strong>{newStuAdmissionNumber || `ADM2400${students.length + 1}`}</strong>)?
+                  Are you sure you want to finalize student registration for <strong>{newStuName}</strong> (Adm No: <strong>{newStuAdmissionNumber || `ADM2400${studentTotal + 1}`}</strong>)?
                 </p>
                 {regStuError && <div style={{ marginBottom: '14px', padding: '10px 12px', borderRadius: '8px', backgroundColor: 'var(--critical-wash)', border: '1px solid var(--critical-wash)', color: 'var(--critical)', fontSize: '0.8571rem', fontWeight: 700 }}>{regStuError}</div>}
 
@@ -4528,6 +4617,70 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   //
   // The PIN is asked once, on entry. Everything inside is a plain yes/no
   // confirmation.
+  // --- My password & sign-ins (every role) ---
+  if (activePage === 'security') {
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('sapphire')}
+        <header style={styles.pageHeader}>
+          <button onClick={() => setActivePage('menu')} style={styles.backButton} className="press-interactive">
+            ← Back
+          </button>
+          <h2 style={styles.pageTitle}>My Password & Sign-ins</h2>
+        </header>
+        <AccountSecurityPanel
+          onToast={triggerToast}
+          onSignOut={(reason) => {
+            // Routed through the app's own session ending, so the sign-in
+            // screen explains why rather than the user simply finding
+            // themselves logged out.
+            (window as any).endSession?.(reason);
+          }}
+        />
+      </div>
+    );
+  }
+
+  // --- Recently deleted (Rector only) ---
+  if (activePage === 'recently_deleted') {
+    if (role !== 'admin1') { setActivePage('menu'); return null; }
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('gold')}
+        <header style={styles.pageHeader}>
+          <button onClick={() => setActivePage('menu')} style={styles.backButton} className="press-interactive">
+            ← Back
+          </button>
+          <h2 style={styles.pageTitle}>Recently Deleted</h2>
+        </header>
+        <RecentlyDeletedPanel
+          onToast={triggerToast}
+          onRestored={() => { fetchStudents('', true); fetchExpenditures(); }}
+        />
+      </div>
+    );
+  }
+
+  // --- Outstanding fees ---
+  if (activePage === 'outstanding_fees') {
+    return (
+      <div style={styles.container} className="anim-slide-up">
+        {renderBackgroundDesign('ruby')}
+        <header style={styles.pageHeader}>
+          <button onClick={() => setActivePage('menu')} style={styles.backButton} className="press-interactive">
+            ← Back
+          </button>
+          <h2 style={styles.pageTitle}>Outstanding Fees</h2>
+        </header>
+        <OutstandingFeesPanel
+          campuses={CAMPUS_LIST}
+          fixedCampus={role === 'clerk' ? loggedInCampus : 'All'}
+          onToast={triggerToast}
+        />
+      </div>
+    );
+  }
+
   if (activePage === 'clerks') {
     if (role !== 'admin1') { setActivePage('menu'); return null; }
 
@@ -4902,6 +5055,47 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                       ✕
                     </button>
                   </div>
+
+                  {/*
+                    Clear a lockout WITHOUT changing the credential.
+
+                    Five wrong guesses locks the account for fifteen minutes,
+                    which is correct and stays. What was missing was any way
+                    back before the clock ran out: the only remedy was to
+                    change the clerk's password, which fixes the lockout by
+                    handing them a credential they do not know yet.
+                  */}
+                  <button
+                    onClick={async () => {
+                      const pin = clerkPinInput.trim();
+                      if (!/^\d{6}$/.test(pin)) {
+                        triggerToast('Enter your 6-digit PIN above first, then clear the lockout.');
+                        return;
+                      }
+                      if (!window.confirm(
+                        `Clear the sign-in lockout for ${openClerk.name}?
+
+`
+                        + 'Their password and PIN stay exactly as they are — this only resets the '
+                        + 'count of failed attempts so they can try again now.'
+                      )) return;
+                      try {
+                        const res = await admin1Service.unlockAccount(openClerk.id, pin);
+                        triggerToast(res.message || 'Lockout cleared.');
+                      } catch (err: any) {
+                        triggerToast(err?.message || 'Could not clear the lockout.');
+                      }
+                    }}
+                    style={{
+                      marginTop: '14px', padding: '9px 14px', borderRadius: '9px',
+                      border: '1.5px solid var(--royal-gold)', background: 'transparent',
+                      color: 'var(--royal-gold)', fontWeight: 850, fontSize: '0.7857rem',
+                      cursor: 'pointer', alignSelf: 'flex-start'
+                    }}
+                    className="press-interactive"
+                  >
+                    Clear sign-in lockout
+                  </button>
 
                   {/* Sign-in details, editable in place */}
                   <div style={{ marginTop: '14px', fontSize: '0.7143rem', fontWeight: 900, color: 'var(--muted-gray)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -6128,9 +6322,30 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
       ? expenditures.filter(e => normalizeBranch(e.branch) === normalizeBranch(selectedExpBranch))
       : expenditures.filter(e => normalizeBranch(e.branch) === normalizeBranch(loggedInCampus));
 
-    const totalFiltered = filteredExpenditures.reduce((s, e) => s + e.amount, 0);
+    /**
+     * Campus totals come from the server, not from the rows on screen.
+     *
+     * `expenditures` is one capped page. Reducing over it produced the right
+     * figure only while every entry happened to fit in one response — and the
+     * day it stopped fitting, the total would have quietly dropped by
+     * whatever fell off the end with nothing to indicate it.
+     *
+     * The server sends a per-campus breakdown computed over the whole filter.
+     * The reduce is kept only as the fallback for a response that carried no
+     * breakdown, where the page IS everything there is.
+     */
+    const getBranchTotal = (b: string) => {
+      if (expenditureByBranch) {
+        const key = Object.keys(expenditureByBranch)
+          .find(k => normalizeBranch(k) === normalizeBranch(b));
+        return key ? expenditureByBranch[key] : 0;
+      }
+      return expenditures
+        .filter(e => normalizeBranch(e.branch) === normalizeBranch(b))
+        .reduce((s, e) => s + e.amount, 0);
+    };
 
-    const getBranchTotal = (b: string) => expenditures.filter(e => normalizeBranch(e.branch) === normalizeBranch(b)).reduce((s, e) => s + e.amount, 0);
+    const totalFiltered = getBranchTotal(role === 'admin1' ? selectedExpBranch : loggedInCampus);
 
     return (
       <div style={styles.container} className="anim-slide-up">
@@ -6206,6 +6421,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
               <h4 style={{ ...styles.sectionSubtitle, margin: 0 }}>
                 Recent Entries {role === 'admin1' ? `(${selectedExpBranch})` : `(${loggedInCampus})`}  Total: Rs.{totalFiltered.toLocaleString('en-IN')}
               </h4>
+              {/* CSV alongside the PDF: one is for filing, the other is what
+                  gets reconciled against a bank statement. */}
+              <CsvExportButton kind="expenditures" label="Export CSV" />
               <button
                 onClick={handleDownloadExpenditureReport}
                 style={{
@@ -7070,86 +7288,24 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
             // permission one — removing the panel takes nothing away that an
             // a clerk is entitled to see elsewhere.
             null
-          ) : role === '__unreachable_legacy_admin2__' ? (
-            (() => {
-              const localStudents = students.filter(s => s.branch === loggedInCampus);
-              const localExpenditures = expenditures.filter(e => e.branch === loggedInCampus);
-              const localTeachers = teachers.filter(t => t.branch === loggedInCampus);
-              const totalStudents = localStudents.length;
-              const totalEmployees = localTeachers.length;
-              const totalExpenses = localExpenditures.reduce((sum, e) => sum + (e.amount || 0), 0);
-              const totalSalariesPaid = localTeachers
-                .filter(t => t.salaryStatus === 'paid')
-                .reduce((sum, t) => sum + Number(t.salaryPaidAmount || t.salary || 0), 0);
-              const totalSalariesUnpaid = localTeachers
-                .filter(t => t.salaryStatus !== 'paid')
-                .reduce((sum, t) => sum + Number(t.salary || 0), 0);
+          ) : null}
+          {/*
+            REMOVED: two unreachable arms of this chain.
 
-              return (
-                <>
-                  <div style={styles.metricsGrid}>
-                    <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
-                      <span style={styles.metricLabel}>Total Students</span>
-                      <strong style={{ ...styles.metricValue, color: 'var(--good)' }}>{totalStudents}</strong>
-                      <span style={styles.metricSub}>{loggedInCampus} branch students</span>
-                      <span className="glass-status-pill status-paid">Active</span>
-                    </GlassCard>
-                    <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-                      <span style={styles.metricLabel}>Total Employees</span>
-                      <strong style={{ ...styles.metricValue, color: 'var(--accent)' }}>{totalEmployees}</strong>
-                      <span style={styles.metricSub}>Faculty & staff on campus</span>
-                      <span className="glass-status-pill status-warning">Working</span>
-                    </GlassCard>
-                  </div>
-                  <div style={styles.metricsGrid}>
-                    <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
-                      <span style={styles.metricLabel}>Total Expenses</span>
-                      <strong style={{ ...styles.metricValue, color: 'var(--critical)' }}>₹{totalExpenses.toLocaleString('en-IN')}</strong>
-                      <span style={styles.metricSub}>Branch expenses logged</span>
-                      <span className="glass-status-pill status-pending">Ledger</span>
-                    </GlassCard>
-                    <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-                      <span style={styles.metricLabel}>Salaries Given</span>
-                      <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>₹{totalSalariesPaid.toLocaleString('en-IN')}</strong>
-                      <span style={styles.metricSub}>Unpaid: ₹{totalSalariesUnpaid.toLocaleString('en-IN')}</span>
-                      <span className="glass-status-pill status-info">Payroll</span>
-                    </GlassCard>
-                  </div>
-                </>
-              );
-            })()
-          ) : (
-            <>
-              <div style={styles.metricsGrid}>
-                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
-                  <span style={styles.metricLabel}>Exams Scheduled</span>
-                  <strong style={{ ...styles.metricValue, color: 'var(--good)' }}>2</strong>
-                  <span style={styles.metricSub}>Active Exam calendars</span>
-                  <span className="glass-status-pill status-active">Ready</span>
-                </GlassCard>
-                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-                  <span style={styles.metricLabel}>Published Results</span>
-                  <strong style={{ ...styles.metricValue, color: 'var(--good)' }}>24</strong>
-                  <span style={styles.metricSub}>Term-wise grades released</span>
-                  <span className="glass-status-pill status-paid">Published</span>
-                </GlassCard>
-              </div>
-              <div style={styles.metricsGrid}>
-                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring neo-2d-card hover-gold">
-                  <span style={styles.metricLabel}>Bulletins & Notice Broadcasts</span>
-                  <strong style={{ ...styles.metricValue, color: 'var(--royal-gold)' }}>12</strong>
-                  <span style={styles.metricSub}>Announcements active</span>
-                  <span className="glass-status-pill status-info">Live</span>
-                </GlassCard>
-                <GlassCard hoverable={false} style={styles.metricCard} className="glass-gold-ring">
-                  <span style={styles.metricLabel}>Active Class Schedules</span>
-                  <strong style={{ ...styles.metricValue, color: 'var(--accent)' }}>8</strong>
-                  <span style={styles.metricSub}>Sections fully mapped</span>
-                  <span className="glass-status-pill status-active">Active</span>
-                </GlassCard>
-              </div>
-            </>
-          )}
+            AdminDashboardView is typed `role?: 'admin1' | 'clerk'` and App.tsx
+            mounts it only ever as one of those two, so neither arm could run.
+
+            The first was already labelled __unreachable_legacy_admin2__ and
+            re-derived campus totals in the browser. The second was the final
+            `else`, and it rendered four hardcoded figures as though they were
+            live data — "Exams Scheduled 2", "Published Results 24",
+            "Bulletins & Notice Broadcasts 12", "Active Class Schedules 8".
+            Every one of those features was removed from this application; the
+            numbers were invented and fixed in the source.
+
+            Nothing displayed them, but they shipped in the bundle, and an
+            arm like that is one role check away from becoming visible.
+          */}
         </section>
 
         {/* Module Grid */}
@@ -7169,7 +7325,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   <p style={styles.moduleDesc}>Register admissions, view records across all 4 campuses.</p>
                 </div>
 
-                <div onClick={() => { setActivePage('students'); if (!newStuAdmissionNumber.trim()) setNewStuAdmissionNumber(`ADM2400${students.length + 1}`); setNewStuFormPage(1); setIsStudentHoverModalOpen(true); }} style={styles.moduleCardNew} className="module-card press-interactive">
+                <div onClick={() => { setActivePage('students'); if (!newStuAdmissionNumber.trim()) setNewStuAdmissionNumber(`ADM2400${studentTotal + 1}`); setNewStuFormPage(1); setIsStudentHoverModalOpen(true); }} style={styles.moduleCardNew} className="module-card press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)' }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                   </div>
@@ -7215,6 +7371,30 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   </div>
                   <h4 style={styles.moduleTitle}>Clerks</h4>
                   <p style={styles.moduleDesc}>Switch clerk accounts on or off and choose what each one can do.</p>
+                </div>
+
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('outstanding_fees'); } }} onClick={() => setActivePage('outstanding_fees')} style={styles.moduleCardNew} className="press-interactive">
+                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--critical)" strokeWidth="2"><path d="M12 2v20" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                  </div>
+                  <h4 style={styles.moduleTitle}>Outstanding Fees</h4>
+                  <p style={styles.moduleDesc}>Every student with a balance, largest first, with a one-tap reminder.</p>
+                </div>
+
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('recently_deleted'); } }} onClick={() => setActivePage('recently_deleted')} style={styles.moduleCardNew} className="press-interactive">
+                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.18)' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--royal-gold)" strokeWidth="2"><path d="M3 7v6h6" /><path d="M3.51 13a9 9 0 1 0 2.13-9.36L3 7" /></svg>
+                  </div>
+                  <h4 style={styles.moduleTitle}>Recently Deleted</h4>
+                  <p style={styles.moduleDesc}>Put back a student, staff member or entry deleted by mistake.</p>
+                </div>
+
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('security'); } }} onClick={() => setActivePage('security')} style={styles.moduleCardNew} className="press-interactive">
+                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(37,99,235,0.07)', border: '1px solid rgba(37,99,235,0.18)' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                  </div>
+                  <h4 style={styles.moduleTitle}>My Password & Sign-ins</h4>
+                  <p style={styles.moduleDesc}>Change your own password or PIN, and check where you are signed in.</p>
                 </div>
 
                 <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveTab('fee_collection'); } }} onClick={() => setActiveTab('fee_collection')} style={styles.moduleCardNew} className="press-interactive">
@@ -7307,6 +7487,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                     </p>
                   </GlassCard>
                 )}
+
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('security'); } }} onClick={() => setActivePage('security')} style={styles.moduleCardNew} className="press-interactive">
+                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(37,99,235,0.07)', border: '1px solid rgba(37,99,235,0.18)' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                  </div>
+                  <h4 style={styles.moduleTitle}>My Password & Sign-ins</h4>
+                  <p style={styles.moduleDesc}>Change your own password or PIN, and check where you are signed in.</p>
+                </div>
 
                 <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('profile'); } }} onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>

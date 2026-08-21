@@ -487,7 +487,14 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 {activeTab === 'keys' && 'Manage active 6-digit login PINs for administrative accounts with manual regeneration.'}
                 {activeTab === 'accounts' && 'Provision, update, and manage login authorization credentials for staff.'}
                 {activeTab === 'sync_integrity' && 'Audit real-time transaction journal for successful commits and system actions.'}
-                {activeTab === 'settings' && 'Configure database backups, emergency data purges, and bulk CSV file uploads.'}
+                {/*
+                  This said "and bulk CSV file uploads". There is no such
+                  feature and there never was — the drag-and-drop zone that
+                  offered it was removed from the restore panel below, which
+                  now states plainly that Drive snapshots are the only source
+                  a restore can read. This heading was still selling it.
+                */}
+                {activeTab === 'settings' && 'Configure database backups, emergency data purges, and restore from Drive snapshots.'}
               </p>
             </div>
           </div>

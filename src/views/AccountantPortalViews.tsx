@@ -616,8 +616,8 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
       //
       // A clerk borrowing this screen is still pinned to its own campus —
       // the server decides that from the account, not from this call.
-      const list = await accountantService.searchStudents('');
-      setStudents(list as any);
+      const { items } = await accountantService.searchStudents('');
+      setStudents(items as any);
     } catch (err) {
       console.error('Failed to load students:', err);
     }

@@ -644,6 +644,8 @@ const SingleFrameColorGallery: React.FC<{ onEnlargePhoto?: (src: string, title: 
             <img
               src={screen.img}
               alt={`Campus Gallery Photo ${idx + 1}`}
+              loading="lazy"
+              decoding="async"
               onClick={() => onEnlargePhoto?.(screen.img, `Campus Gallery Photo ${idx + 1}`)}
               style={{
                 width: '100%',
@@ -1113,6 +1115,9 @@ export const PortfolioView: React.FC = () => {
           <img
             src={heroImg}
             alt="Inspire Junior College Campus"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
             onClick={() => setEnlargedImage({ src: heroImg, title: 'Inspire Junior College Main Campus HQ' })}
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center', cursor: 'zoom-in' }}
           />
@@ -1238,7 +1243,7 @@ export const PortfolioView: React.FC = () => {
                 >
                   {/* Image */}
                   <div style={{ height: 260, overflow: 'hidden', position: 'relative', background: '#F1F5F9' }}>
-                    <img src={clip.src} alt={clip.title} className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <img src={clip.src} alt={clip.title} className="clip-img" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     {/* Gradient overlay at bottom of image */}
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to top,rgba(15,23,42,0.65),transparent)' }} />
                     {/* Tag badge */}
@@ -1345,7 +1350,7 @@ export const PortfolioView: React.FC = () => {
 
                   {/* Top generated stream photo */}
                   <div className="clip-wrap" style={{ height: 180, overflow: 'hidden', position: 'relative', background: '#0F172A' }}>
-                    <img src={prog.img} alt={prog.title} className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <img src={prog.img} alt={prog.title} className="clip-img" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to top, ${prog.gradA} 0%, transparent 80%)` }} />
                     <span style={{ position: 'absolute', bottom: 12, left: 16, background: prog.tagBg, color: '#FFFFFF', padding: '4px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
                       {prog.tag}
@@ -1491,6 +1496,8 @@ export const PortfolioView: React.FC = () => {
                     <img
                       src={CAMPUS_PHOTOS[photoIndex].src}
                       alt={CAMPUS_PHOTOS[photoIndex].title}
+                      loading="lazy"
+                      decoding="async"
                       style={{
                         maxWidth: '100%',
                         maxHeight: '100%',
@@ -1814,7 +1821,7 @@ export const PortfolioView: React.FC = () => {
 
                 {/* Mentorship Photo Showcase */}
                 <div className="ch clip-wrap" style={{ borderRadius: 24, overflow: 'hidden', height: 220, position: 'relative', boxShadow: '0 12px 32px rgba(15,23,42,0.12)', border: '1.5px solid #E2E8F0' }}>
-                  <img src={mentorshipImg} alt="Individual Mentorship & Tutors" className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  <img src={mentorshipImg} alt="Individual Mentorship & Tutors" className="clip-img" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,23,42,0.85) 0%, transparent 60%)' }} />
                   <div style={{ position: 'absolute', bottom: 16, left: 20, right: 20, color: '#fff' }}>
                     <span style={{ background: ACCENT_GOLD, color: '#0F172A', padding: '3px 10px', borderRadius: 12, fontSize: '0.7143rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -1885,7 +1892,7 @@ export const PortfolioView: React.FC = () => {
 
             {/* Campus Feature Banner Photo */}
             <div className={`ch clip-wrap reveal d300 ${campusesRef.visible ? 'visible' : ''}`} style={{ borderRadius: 24, overflow: 'hidden', height: 260, position: 'relative', marginBottom: 36, border: '1.5px solid #E2E8F0', boxShadow: '0 12px 36px rgba(15,23,42,0.08)' }}>
-              <img src={campusImg} alt="Inspire Junior College Infrastructure" className="clip-img" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <img src={campusImg} alt="Inspire Junior College Infrastructure" className="clip-img" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(15,23,42,0.85) 0%, transparent 60%)' }} />
               <div style={{ position: 'absolute', bottom: 20, left: 24, right: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 14, color: '#fff' }}>
                 <div>

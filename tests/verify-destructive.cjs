@@ -138,9 +138,22 @@ const req = (method, p, token, body) => new Promise((resolve, reject) => {
     ok('a whitespace operations password is refused', blankPassword.status === 401,
       `status ${blankPassword.status}`);
 
+    // 400 OR 401, and the distinction is worth writing down rather than
+    // pinning to whichever one happens to be current.
+    //
+    // This asserted 401 alone, because the operator reached verifyOpsPassword
+    // and failed the bcrypt comparison there. A global body guard now refuses
+    // any key shaped like a Mongo operator before routing, so the same request
+    // is answered 400 as a malformed body.
+    //
+    // That is a better refusal — it covers every route at once instead of
+    // relying on each one coercing its own inputs — and the property this
+    // assertion exists for is unchanged: the operator does not authorise a
+    // wipe. So both statuses pass, and what must never happen is a 2xx.
     const objectPassword = await req('POST', '/api/authenticator/wipe-database', tokens.auth,
       { password: { $ne: null } });
-    ok('a Mongo operator as the operations password is refused', objectPassword.status === 401,
+    ok('a Mongo operator as the operations password is refused',
+      objectPassword.status === 400 || objectPassword.status === 401,
       `status ${objectPassword.status}`);
 
     // Nothing was destroyed by any of that.

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const softDeletePlugin = require('./softDelete.cjs');
 
 const teacherSchema = new mongoose.Schema({
   id: {
@@ -53,6 +54,11 @@ const teacherSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Adds deletedAt/deletedBy and hides soft-deleted rows from every
+// read automatically. See softDelete.cjs for why this is a plugin
+// rather than a field each query has to remember to filter on.
+teacherSchema.plugin(softDeletePlugin);
 
 const Teacher = mongoose.models.Teacher || mongoose.model('Teacher', teacherSchema);
 

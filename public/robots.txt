@@ -1,4 +1,17 @@
+# Inspire Educational Institutions — https://inspirehnk.org
+#
+# This file previously pointed at https://inspire.pdemo101.vercel.app, a
+# deployment that no longer exists. The sitemap reference was therefore dead,
+# and the site was advertising a domain that does not serve it.
+
 User-agent: *
 Allow: /
 
-Sitemap: https://inspire.pdemo101.vercel.app/sitemap.xml
+# The administrative portal. These are hash routes, so a crawler cannot reach
+# them anyway and nothing here is a security control — the server checks every
+# request regardless. They are listed so the portal does not turn up in a
+# search for the college, which is the only thing indexing them could achieve.
+Disallow: /r/
+Disallow: /api/
+
+Sitemap: https://inspirehnk.org/sitemap.xml

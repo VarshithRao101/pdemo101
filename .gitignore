@@ -17,6 +17,17 @@ dist-ssr
 *.env*
 *.local
 
+# ...except the template, which is the point of having one.
+#
+# `*.env*` above matched .env.example too, so the file documenting which
+# variables the app needs was never committed — and the gap showed: OPS_PASSWORD_HASH
+# was live on the server and absent from the template, so a deployment built
+# from it had wipe, purge and restore silently unavailable.
+#
+# This file must never hold a real value. It currently carries only a database
+# name, a token lifetime and the public origins; every secret is blank.
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

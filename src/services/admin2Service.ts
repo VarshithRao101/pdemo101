@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+import { apiClient, asListPage, type ListPage } from './apiClient';
 
 export interface FeeSettings {
   _id?: string;
@@ -110,10 +110,13 @@ export const admin2Service = {
   },
 
   // 3. Expenditure Tracker CRUD
-  async getExpenditures(branch?: string): Promise<ExpenditureItem[]> {
+  // Returns the page AND the totals for the whole filter. The expenditure
+  // screen shows a campus total and a per-branch breakdown; both now come
+  // from meta rather than from reducing over a response that may be capped.
+  async getExpenditures(branch?: string): Promise<ListPage<ExpenditureItem>> {
     const url = branch ? `/admin2/expenditure?branch=${encodeURIComponent(branch)}` : '/admin2/expenditure';
-    const res = await apiClient.get<{ status: string; data: ExpenditureItem[] }>(url);
-    return res.data;
+    const res = await apiClient.get<any>(url);
+    return asListPage<ExpenditureItem>(res);
   },
 
   async createExpenditure(expData: { category: string; amount: number; description: string; date?: string; branch?: string }, branch?: string): Promise<ExpenditureItem> {
@@ -137,9 +140,9 @@ export const admin2Service = {
   },
 
   // 4. Worker Payments CRUD
-  async getWorkerPayments(): Promise<WorkerItem[]> {
-    const res = await apiClient.get<{ status: string; data: WorkerItem[] }>('/admin2/worker-payments');
-    return res.data;
+  async getWorkerPayments(): Promise<ListPage<WorkerItem>> {
+    const res = await apiClient.get<any>('/admin2/worker-payments');
+    return asListPage<WorkerItem>(res);
   },
 
   async createWorkerPayment(workerData: { workerName: string; role: string; amount: number; monthPeriod: string; paid?: boolean }): Promise<WorkerItem> {

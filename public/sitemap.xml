@@ -1,33 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Inspire Educational Institutions — https://inspirehnk.org
+
+  Every URL here used to be https://inspire.pdemo101.vercel.app, a deployment
+  that no longer exists, and the list included /#/dashboard and /#/profile at
+  priority 0.8 — the administrative portal, offered to search engines as
+  content worth indexing.
+
+  Both problems are fixed by listing what is actually true. This is a
+  hash-routed single-page app: every public section lives under the same
+  document, so the root URL is the one page a crawler can fetch and render.
+  Listing #/programs as a separate <url> does not create a second page; it
+  asks a crawler to index the same document repeatedly, which splits nothing
+  and gains nothing.
+
+  If the marketing sections ever need to rank independently, they need real
+  paths served by the server, not hash fragments — at which point they belong
+  here as separate entries.
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://inspire.pdemo101.vercel.app/</loc>
-    <lastmod>2026-07-05</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://inspire.pdemo101.vercel.app/#/dashboard</loc>
-    <lastmod>2026-07-05</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://inspire.pdemo101.vercel.app/#/academics</loc>
-    <lastmod>2026-07-05</lastmod>
+    <loc>https://inspirehnk.org/</loc>
+    <lastmod>2026-08-21</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://inspire.pdemo101.vercel.app/#/updates</loc>
-    <lastmod>2026-07-05</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://inspire.pdemo101.vercel.app/#/profile</loc>
-    <lastmod>2026-07-05</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
+    <priority>1.0</priority>
   </url>
 </urlset>

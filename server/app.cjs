@@ -209,6 +209,64 @@ app.use((req, res, next) => {
   return next();
 });
 
+/**
+ * No Mongo operator may arrive in a request body.
+ *
+ * The query-string guard above rejects every non-scalar outright, which it can
+ * afford to do because no route takes a structured query parameter. Bodies are
+ * different: `customFeeSlots` is an array, `permissions` is an object, and
+ * refusing those would refuse half the application. So this guard is narrower
+ * and targets the actual attack — a key that Mongo reads as an OPERATOR.
+ *
+ * `{ "username": { "$ne": null } }` posted to a login route becomes
+ * `User.findOne({ username: { $ne: null } })`, which matches the first account
+ * in the collection. Every current route already coerces its inputs with
+ * String() or a typeof check, and I verified that none of them is reachable
+ * this way today. The point of doing it here is that the NEXT route does not
+ * have to remember: per-route discipline is exactly what failed the first
+ * time, which is why the query guard was written centrally too.
+ *
+ * A dotted key is refused for the same reason — `{"a.b": 1}` reaches into a
+ * subdocument, which no client of this API has any reason to do.
+ *
+ * Depth-limited, because the walk itself must not become the denial of
+ * service it is meant to prevent.
+ */
+const MAX_BODY_DEPTH = 12;
+
+function findMongoOperatorKey(value, depth = 0) {
+  if (depth > MAX_BODY_DEPTH || value === null || typeof value !== 'object') return null;
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const hit = findMongoOperatorKey(entry, depth + 1);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  for (const [key, entry] of Object.entries(value)) {
+    if (key.startsWith('$') || key.includes('.')) return key;
+    const hit = findMongoOperatorKey(entry, depth + 1);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    const offending = findMongoOperatorKey(req.body);
+    if (offending) {
+      console.warn(`[Body]: Refused operator-shaped key [${offending}] on ${req.method} ${req.path} from ${req.ip}`);
+      return res.status(400).json({
+        status: 'error',
+        message: `The field name [${offending}] is not allowed.`
+      });
+    }
+  }
+  return next();
+});
+
 app.use(morgan('dev'));
 
 // URL Path Normalization Middleware (Fixes double /api/api/ prefixing & serverless routing quirks)
@@ -673,6 +731,34 @@ app.post('/r/:receiptNumber/:token',
       }));
     }
 
+    // A ceiling on THIS RECEIPT, independent of who is asking.
+    //
+    // mongoRateLimiter above is keyed on path AND address, which is right for
+    // sharing — one parent mistyping their own digits must not use up another
+    // parent's allowance. But it means rotating addresses buys 8 fresh guesses
+    // each, and four digits is only 10,000 combinations, so roughly 1,250
+    // addresses exhausts one receipt. That is proxy-pool territory rather than
+    // a realistic threat to a college, but it is a real bound and it is cheap
+    // to close.
+    //
+    // Keyed on the receipt number alone, so every wrong guess against this
+    // receipt counts once, wherever it came from. The budget is deliberately
+    // generous against honest error — a parent has far more than enough tries
+    // — and still leaves 10,000 combinations unreachable.
+    const receiptGuessKey = attemptKey('receipt', String(receiptNumber));
+    const guessState = await getLockState(receiptGuessKey, RECEIPT_GLOBAL_GUESS_BUDGET);
+    if (guessState.locked) {
+      console.warn(`[Receipt link]: LOCKED receipt ${receiptNumber} after too many failed digit attempts`);
+      return res.status(429).type('html').send(receiptPage({
+        title: 'Too many attempts',
+        inner: '<div class="gate"><div class="sheet">'
+          + '<h1>Too many attempts</h1>'
+          + '<p>This receipt has been temporarily locked after too many incorrect entries.</p>'
+          + '<p class="foot">Please contact the college office for a copy of your receipt.</p>'
+          + '</div></div>'
+      }));
+    }
+
     await connectToDatabase();
     const payment = await Payment.findOne({ receiptNumber: String(receiptNumber) }).lean();
     if (!payment) return receiptNotFound(res);
@@ -698,6 +784,11 @@ app.post('/r/:receiptNumber/:token',
 
     const contact = contactDigitsFor(student);
     if (!digitsMatch(last4, contact.slice(-4))) {
+      // Counted against the per-receipt ceiling, not only the per-address one.
+      // Only a WRONG guess is recorded; a correct one costs nothing, so a
+      // parent reopening their own link repeatedly can never lock it.
+      await recordFailedAttempt(receiptGuessKey, RECEIPT_GLOBAL_GUESS_BUDGET);
+
       // Deliberately vague, and the same message whether the digits are wrong
       // or the student has no mobile on file. A precise error would let
       // someone holding a forwarded link learn which case they are in.
@@ -1501,6 +1592,12 @@ const PUBLIC_FORM_BUDGET = 10;
 const RECEIPT_LINK_PATTERN = /^\/r\/[^/]+\/[^/]+$/;
 const RECEIPT_LINK_BUDGET = 8;
 
+// The ceiling on wrong digit-guesses against ONE receipt, counted regardless
+// of where they came from. See the block in POST /r/:receiptNumber/:token for
+// why the per-address budget above is not sufficient on its own. Set well
+// above anything an honest parent will need and far below 10,000.
+const RECEIPT_GLOBAL_GUESS_BUDGET = 25;
+
 function rateLimitBudgetFor(path) {
   if (PUBLIC_FORM_PATTERN.test(path)) return PUBLIC_FORM_BUDGET;
   if (RECEIPT_LINK_PATTERN.test(path)) return RECEIPT_LINK_BUDGET;
@@ -2066,6 +2163,101 @@ function campusScopeFilter(req) {
 }
 
 /**
+ * --- LIST CEILINGS AND PAGING -------------------------------------------
+ *
+ * Every list route in this file used to return its entire collection. That is
+ * survivable for students, which grow with enrolment, and not survivable for
+ * payments, which grow forever and were never scoped by date: for the Rector,
+ * whose campus is `All`, `GET /api/admin1/payments` was every payment ever
+ * taken across four campuses in one response, hydrated into full Mongoose
+ * documents on a heap capped at 1536 MB. The symptom would never have been an
+ * error. It would have been the dashboard gradually stopping working, worst
+ * on the oldest phone and worst for the one account that loads all four
+ * campuses.
+ *
+ * Two things stop that:
+ *
+ *   - a HARD ceiling the caller cannot raise. Asking for a million rows
+ *     returns LIST_MAX_LIMIT of them.
+ *   - `meta` alongside the array, carrying the TRUE total for the whole
+ *     filter — not the length of the page.
+ *
+ * That second part is not decoration, it is the thing that makes capping
+ * safe. Several screens compute money totals by reducing over the array they
+ * were given. Truncating the array without telling them would leave those
+ * totals silently wrong, which is far worse than a slow page — a wrong number
+ * on a fee screen gets acted on. Where a route feeds a total, it computes
+ * that total server-side over the FULL filter and returns it in `meta`.
+ *
+ * `data` stays an ARRAY on every route. The existing screens read `res.data`
+ * directly, so paging information travels beside the array, never around it.
+ */
+const LIST_DEFAULT_LIMIT = 500;
+const LIST_MAX_LIMIT = 1000;
+
+/**
+ * How long a deleted record can still be put back.
+ *
+ * Long enough that a mistake noticed at the end of a term is still
+ * recoverable, short enough that the bin is not an alternative database. The
+ * records are never purged automatically — nothing sweeps them — so this is a
+ * limit on what the RESTORE route will accept, not a deletion schedule. Older
+ * records stay in place and remain readable in a backup.
+ */
+const RECYCLE_BIN_DAYS = 30;
+
+function readPaging(req, { defaultLimit = LIST_DEFAULT_LIMIT } = {}) {
+  const rawLimit = Number(req.query.limit);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0
+    ? Math.min(Math.floor(rawLimit), LIST_MAX_LIMIT)
+    : defaultLimit;
+  const rawPage = Number(req.query.page);
+  const page = Number.isFinite(rawPage) && rawPage > 1 ? Math.floor(rawPage) : 1;
+  return { limit, page, skip: (page - 1) * limit };
+}
+
+/**
+ * Sum one numeric field across everything the filter matches.
+ *
+ * Runs in the database rather than over the returned page, so the figure is
+ * right whether the caller received 20 rows or 1000. Returns 0 for an empty
+ * match, which is the correct total, not a missing one.
+ */
+async function sumField(Model, filter, field) {
+  const [row] = await Model.aggregate([
+    { $match: filter },
+    { $group: { _id: null, total: { $sum: `$${field}` } } }
+  ]);
+  return row ? Number(row.total) || 0 : 0;
+}
+
+/**
+ * A student text search, over the fields a person actually types.
+ *
+ * The client has always sent `search=` to both student list routes and
+ * neither route read it, so every screen downloaded the whole registry and
+ * filtered it in the browser. This makes the parameter real, which is what
+ * lets the ceiling above be a ceiling rather than a truncation — a clerk
+ * looking for one student now gets that student, not the first page of
+ * everybody.
+ *
+ * Escaped before it reaches a regex. An unescaped value lets a caller spend
+ * the server's CPU on a pathological pattern, and a bare `.` would match the
+ * entire registry.
+ */
+function studentSearchFilter(search) {
+  const clean = String(search || '').trim();
+  if (!clean) return null;
+  const rx = new RegExp(escapeRegex(clean), 'i');
+  return {
+    $or: [
+      { name: rx }, { admissionNumber: rx }, { studentId: rx },
+      { mobile: rx }, { parentMobile: rx }, { course: rx }, { section: rx }
+    ]
+  };
+}
+
+/**
  * The campus a READ may cover, or null once a refusal has been sent.
  *
  * Three separate routes took ?branch straight from the query and used it
@@ -2112,24 +2304,53 @@ function resolveReadCampus(req, res, { requireExplicit = false } = {}) {
 }
 
 // Campus Isolation Middleware
-function enforceCampusIsolation(req, res, next) {
+/**
+ * Refuse a request that NAMES a campus the caller may not reach.
+ *
+ * Renamed from `enforceCampusIsolation`, which promised more than it did. It
+ * guards exactly one route, and it has never been the thing that keeps
+ * campuses apart — that is done inside each handler, by campusScopeFilter and
+ * studentScopeFilter forcing the caller's own campus into the query.
+ *
+ * The old name invited the belief that mounting this was sufficient. It is
+ * not: it only inspects a campus the CALLER supplied, so a request naming none
+ * passes straight through, and a handler relying on this alone would return
+ * every campus. The name now says what it actually does.
+ */
+function rejectForeignCampusParam(req, res, next) {
   if (!req.user) {
     return res.status(401).json({ status: 'error', message: 'Authentication required.' });
   }
 
-  const requestedCampus = req.query.campus || req.query.branch || req.body.campus || req.body.branch || req.params.campus || req.params.branch;
-  if (!requestedCampus || req.user.campus === 'All' || String(requestedCampus).toLowerCase() === 'all') {
+  const body = req.body || {};
+  const params = req.params || {};
+  const query = req.query || {};
+  const requestedCampus = query.campus || query.branch || body.campus || body.branch
+    || params.campus || params.branch;
+
+  // String() on both sides makes the comparison total. `campus` is required on
+  // the User schema, but a missing or malformed value must not throw a
+  // TypeError out of a security check — `.toLowerCase()` on undefined did.
+  const callerCampus = String(req.user.campus || '').trim();
+  const requested = String(requestedCampus || '').trim();
+
+  if (!requested || callerCampus.toLowerCase() === 'all' || requested.toLowerCase() === 'all') {
     return next();
   }
 
-  if (requestedCampus.toLowerCase().trim() !== req.user.campus.toLowerCase().trim()) {
+  // No campus on the account, and one named in the request: refuse. Falling
+  // through would let an account with no campus read whichever campus it asked
+  // for, which is the opposite of the point.
+  if (!callerCampus || requested.toLowerCase() !== callerCampus.toLowerCase()) {
     return res.status(403).json({
       status: 'error',
-      message: `Access forbidden. Account is restricted to campus [${req.user.campus}].`
+      message: callerCampus
+        ? `Access forbidden. Account is restricted to campus [${callerCampus}].`
+        : 'Access forbidden. This account is not assigned to a campus.'
     });
   }
 
-  next();
+  return next();
 }
 
 // Secondary confirmation for destructive and financial actions.
@@ -2526,6 +2747,16 @@ async function issueSession(user, res, req = null) {
   // recorded activity as never-seen rather than as expired, but leaving it
   // null would mean a brand new session had no clock running against it.
   const now = new Date();
+
+  // Carry the outgoing session's details across BEFORE they are overwritten,
+  // so the account can be shown its previous sign-in. Read on the next visit
+  // to the profile screen as "was that you?" — the one question a person can
+  // actually answer about their own account.
+  if (user.sessionStartedAt) {
+    user.previousSessionAt = user.sessionStartedAt;
+    user.previousSessionIp = user.sessionIp || '';
+  }
+
   user.activeSessionId = newSessionId;
   user.sessionStartedAt = now;
   user.lastSeenAt = now;
@@ -3148,8 +3379,32 @@ app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'clerk'
     if ((req.user.role === 'clerk' || req.user.role === 'accountant') && req.user.campus && req.user.campus.toLowerCase() !== 'all') {
       filter.branch = req.user.campus;
     }
-    const students = await Student.find(filter).sort({ createdAt: -1 });
-    return res.json({ status: 'success', data: students.map(withReceiptTokens) });
+
+    // `search` was always sent by the client and never read here. Applying it
+    // in the database is what makes the ceiling below safe: a clerk looking
+    // for one student gets that student rather than the first page of the
+    // whole registry.
+    const search = studentSearchFilter(req.query.search);
+    if (search) Object.assign(filter, search);
+
+    const { limit, page, skip } = readPaging(req);
+
+    // `.lean()`: this route hydrated full Mongoose documents for every student
+    // in the college. withReceiptTokens already handles a plain object, so
+    // there is nothing to give up by not hydrating them.
+    const [rows, total] = await Promise.all([
+      Student.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Student.countDocuments(filter)
+    ]);
+
+    return res.json({
+      status: 'success',
+      data: rows.map(withReceiptTokens),
+      // `total` is the count for the WHOLE filter, not this page. The admission
+      // form suggests the next number from it, so a page length here would
+      // start suggesting numbers that are already taken.
+      meta: { page, limit, total, hasMore: skip + rows.length < total }
+    });
   } catch (err) {
     return failRequest(req, res, err);
   }
@@ -3629,56 +3884,64 @@ const deleteStudentHandler = async (req, res) => {
       return res.status(403).json({ status: 'error', message: `Access forbidden. Student belongs to campus [${student.branch}].` });
     }
 
-    // Remove the payment history first.
+    // Soft delete, not removal.
     //
-    // Deleting the student alone used to leave its receipts behind as orphans:
-    // rows pointing at a studentId that no longer existed, which still counted
-    // toward every revenue total and dashboard figure. Payments go first so a
-    // failure here aborts before the student is removed — the reverse order
-    // could leave payments stranded with no way to find them again.
-    const paymentResult = await Payment.deleteMany({ studentId: student.studentId });
+    // This was Payment.deleteMany followed by Student.deleteOne: the student
+    // and every receipt they had ever been given, gone permanently, on one
+    // confirmation, recoverable only from the last Drive snapshot — which
+    // means also losing everything else that happened since that snapshot.
+    //
+    // The records are now marked instead. They disappear from every read
+    // exactly as before, because the exclusion is enforced by the schema
+    // plugin rather than by each query remembering (see
+    // server/models/softDelete.cjs), and they can be put back from the
+    // Rector's Recently Deleted screen.
+    //
+    // The payments are marked in the same operation and restored WITH the
+    // student. A student restored without their receipts is not a restored
+    // student — their balance would come back wrong, in the college's favour.
+    const reason = String((req.body && req.body.reason) || '').trim().slice(0, 200);
+    const deletedPayments = await Payment.softDelete(
+      { studentId: student.studentId },
+      { by: req.user.username, reason }
+    );
 
-    const orphanCheck = await Payment.countDocuments({ studentId: student.studentId });
-    if (orphanCheck > 0) {
-      console.error(`[Students]: Aborting delete of ${label}; ${orphanCheck} payment record(s) could not be removed.`);
-      return res.status(500).json({
-        status: 'error',
-        message: 'Could not remove this student\'s payment records. The student was NOT deleted.'
-      });
+    const marked = await Student.softDelete(
+      { _id: student._id },
+      { by: req.user.username, reason }
+    );
+    if (marked === 0) {
+      // Put the payments back rather than leaving them hidden beneath a
+      // student who is still live — that combination reads on screen as a
+      // paid balance silently vanishing.
+      await Payment.restoreDeleted({ studentId: student.studentId }).catch(() => {});
+      return res.status(500).json({ status: 'error', message: 'Delete failed. The student record was not changed.' });
     }
 
-    // Delete by primary key only. The old handler passed a broad $or of every
-    // identifier to deleteMany, which could match and remove unrelated records
-    // whose studentId happened to equal another student's admissionNumber.
-    const result = await Student.deleteOne({ _id: student._id });
-    if (result.deletedCount === 0) {
-      return res.status(500).json({ status: 'error', message: 'Delete failed. The student record was not removed.' });
-    }
-
-    // Confirm with a follow-up read rather than trusting the delete response.
-    const stillThere = await Student.findById(student._id).lean();
-    if (stillThere) {
-      console.error(`[Students]: Delete verification failed for ${student._id}; record still present.`);
+    // Confirmed by a follow-up read rather than by trusting the write. An
+    // ordinary findById excludes soft-deleted rows, so a record that is gone
+    // from here is gone from every screen in the application.
+    const stillVisible = await Student.findById(student._id).lean();
+    if (stillVisible) {
+      console.error(`[Students]: Delete verification failed for ${student._id}; record still visible.`);
       return res.status(500).json({ status: 'error', message: 'Delete could not be verified. The record may still exist.' });
     }
 
-    console.log(`[Students]: ${label} and ${paymentResult.deletedCount} payment record(s) deleted by [${req.user.username}].`);
-    // Written after the delete is verified, and it is the ONLY surviving
-    // record that this student ever existed — the row and its receipts are
-    // gone, so the label and campus frozen here are all that remain.
+    console.log(`[Students]: ${label} and ${deletedPayments} payment record(s) moved to the recycle bin by [${req.user.username}].`);
     recordAudit(req, {
       action: 'student.delete',
       entityType: 'student',
       entityId: student.studentId,
       entityLabel: label,
       campus: student.branch,
-      summary: `Deleted ${label} from ${student.branch}, along with ${paymentResult.deletedCount} payment record(s).`,
-      details: { deletedPayments: paymentResult.deletedCount, course: student.course }
+      summary: `Deleted ${label} from ${student.branch}, along with ${deletedPayments} payment record(s). Restorable for ${RECYCLE_BIN_DAYS} days.`,
+      details: { deletedPayments, course: student.course, reason, recoverable: true }
     });
     return res.json({
       status: 'success',
-      message: `Student ${label} permanently deleted, along with ${paymentResult.deletedCount} payment record(s).`,
-      deletedPayments: paymentResult.deletedCount
+      message: `Student ${label} deleted, along with ${deletedPayments} payment record(s). This can be undone from Recently Deleted for ${RECYCLE_BIN_DAYS} days.`,
+      deletedPayments,
+      recoverable: true
     });
   } catch (err) {
     console.error('[Students]: Delete failed:', err.message);
@@ -4082,8 +4345,14 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
       return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot delete staff at [${teacher.branch}].` });
     }
 
-    const result = await Teacher.deleteOne(query);
-    if (result.deletedCount === 0) {
+    // Marked, not removed — restorable from Recently Deleted. The follow-up
+    // read below still proves it, because an ordinary findOne excludes
+    // soft-deleted rows.
+    const result = await Teacher.softDelete(query, {
+      by: req.user.username,
+      reason: String((req.body && req.body.reason) || '').trim().slice(0, 200)
+    });
+    if (result === 0) {
       return res.status(404).json({ status: 'error', message: 'Teacher record not found.' });
     }
 
@@ -4354,8 +4623,39 @@ const getExpendituresHandler = async (req, res) => {
     const filter = scopedCampusFilter(req, res, 'expenditures');
     if (!filter) return;
 
-    const expenditures = await Expenditure.find(filter).sort({ date: -1 });
-    return res.json({ status: 'success', data: expenditures });
+    const { limit, page, skip } = readPaging(req);
+
+    // The expenditure screen reduces over this array to show a campus total
+    // and a per-branch breakdown, so the sums have to come from the database
+    // over the whole filter. A total derived from a capped page would be
+    // wrong by exactly the amount that fell off the end, and would look
+    // entirely plausible.
+    //
+    // `byBranch` exists because the Rector's screen fetches every campus and
+    // then narrows to one in the browser. A single overall total cannot serve
+    // that — it would show the org-wide figure under a single campus's
+    // heading — so the breakdown is computed here and the screen reads the
+    // campus it is displaying straight out of it.
+    const [rows, total, totalAmount, branchRows] = await Promise.all([
+      Expenditure.find(filter).sort({ date: -1 }).skip(skip).limit(limit).lean(),
+      Expenditure.countDocuments(filter),
+      sumField(Expenditure, filter, 'amount'),
+      Expenditure.aggregate([
+        { $match: filter },
+        { $group: { _id: '$branch', amount: { $sum: '$amount' } } }
+      ])
+    ]);
+
+    const byBranch = {};
+    for (const row of branchRows) {
+      byBranch[String(row._id || '')] = Number(row.amount) || 0;
+    }
+
+    return res.json({
+      status: 'success',
+      data: rows,
+      meta: { page, limit, total, totalAmount, byBranch, hasMore: skip + rows.length < total }
+    });
   } catch (err) {
     return failRequest(req, res, err);
   }
@@ -4515,7 +4815,10 @@ app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1
       }
     }
 
-    await Expenditure.deleteOne(query);
+    await Expenditure.softDelete(query, {
+      by: req.user.username,
+      reason: String((req.body && req.body.reason) || '').trim().slice(0, 200)
+    });
     const verify = await Expenditure.findOne(query);
     if (verify) {
       return res.status(500).json({ status: 'error', message: 'Verification failed. Expenditure record still exists.' });
@@ -4549,8 +4852,24 @@ app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 
     const filter = scopedCampusFilter(req, res, 'worker payments');
     if (!filter) return;
 
-    const payments = await WorkerPayment.find(filter).sort({ createdAt: -1 });
-    return res.json({ status: 'success', data: payments });
+    const { limit, page, skip } = readPaging(req);
+
+    // Two sums, because the screen shows both: what the wage bill comes to,
+    // and how much of it has actually been paid out. `paid` is the field the
+    // unpaid-must-not-store-as-paid fix turns on, so the second sum has to
+    // filter on it rather than assume every row counts.
+    const [rows, total, totalAmount, paidAmount] = await Promise.all([
+      WorkerPayment.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      WorkerPayment.countDocuments(filter),
+      sumField(WorkerPayment, filter, 'amount'),
+      sumField(WorkerPayment, { ...filter, paid: true }, 'amount')
+    ]);
+
+    return res.json({
+      status: 'success',
+      data: rows,
+      meta: { page, limit, total, totalAmount, paidAmount, hasMore: skip + rows.length < total }
+    });
   } catch (err) {
     return failRequest(req, res, err);
   }
@@ -4704,7 +5023,10 @@ app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('ad
       }
     }
 
-    await WorkerPayment.deleteOne(query);
+    await WorkerPayment.softDelete(query, {
+      by: req.user.username,
+      reason: String((req.body && req.body.reason) || '').trim().slice(0, 200)
+    });
     const verify = await WorkerPayment.findOne(query);
     if (verify) {
       return res.status(500).json({ status: 'error', message: 'Verification failed. Worker payment record still exists.' });
@@ -4763,8 +5085,23 @@ app.get('/api/accountant/students', authenticateToken, requireRole('accountant',
       filter.branch = normalizeCampus(requested);
     }
 
-    const students = await Student.find(filter).sort({ name: 1 });
-    return res.json({ status: 'success', data: students.map(withReceiptTokens) });
+    // Same as the admin1 registry: the search runs in the database, and the
+    // response is bounded and carries the true total beside the page.
+    const search = studentSearchFilter(req.query.search);
+    if (search) Object.assign(filter, search);
+
+    const { limit, page, skip } = readPaging(req);
+
+    const [rows, total] = await Promise.all([
+      Student.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean(),
+      Student.countDocuments(filter)
+    ]);
+
+    return res.json({
+      status: 'success',
+      data: rows.map(withReceiptTokens),
+      meta: { page, limit, total, hasMore: skip + rows.length < total }
+    });
   } catch (err) {
     return failRequest(req, res, err);
   }
@@ -6306,9 +6643,14 @@ app.delete('/api/authenticator/purge-student-faculty-data', authenticateToken, r
 
     let students = 0, teachers = 0, payments = 0;
     {
-      const sRes = await Student.deleteMany({});
-      const tRes = await Teacher.deleteMany({});
-      const pRes = await Payment.deleteMany({});
+      // withDeleted, or this purges only what is VISIBLE and leaves every
+      // soft-deleted record behind. "Erase every student, teacher and payment"
+      // has to mean the recycle bin as well — otherwise the one route whose
+      // entire job is to leave nothing would quietly leave the most sensitive
+      // rows in place.
+      const sRes = await Student.deleteMany({}).setOptions({ withDeleted: true });
+      const tRes = await Teacher.deleteMany({}).setOptions({ withDeleted: true });
+      const pRes = await Payment.deleteMany({}).setOptions({ withDeleted: true });
       students = sRes.deletedCount || 0;
       teachers = tRes.deletedCount || 0;
       payments = pRes.deletedCount || 0;
@@ -6575,7 +6917,7 @@ app.get('/api/enquiries', authenticateToken, requireRole('admin1'), async (req, 
 // Used by the frontend to check whether data has changed before doing a full refetch.
 // Intentionally cheap: returns max(updatedAt) across collections for one campus, not full datasets.
 // Requires valid JWT auth and respects campus isolation.
-app.get('/api/system/last-changed', authenticateToken, enforceCampusIsolation, async (req, res) => {
+app.get('/api/system/last-changed', authenticateToken, rejectForeignCampusParam, async (req, res) => {
   try {
     await connectToDatabase();
     const branch = req.query.branch || req.user.campus;
@@ -7944,6 +8286,676 @@ app.put('/api/admin1/credentials/:id', authenticateToken, requireRole('admin1'),
 });
 
 
+/**
+ * --- CSV EXPORT ---------------------------------------------------------
+ *
+ * PDF and print are well covered here — receipts, ledgers, payslips all go
+ * through openPrintDocument. What was missing is the format an accountant
+ * actually needs: a printed PDF cannot be reconciled against a bank
+ * statement, and retyping a fee register into a spreadsheet is how numbers
+ * get transposed.
+ *
+ * These deliberately bypass the list ceiling. An export whose whole purpose
+ * is reconciliation must be complete or it is worse than useless — a
+ * spreadsheet missing its last page still adds up, just to the wrong number.
+ * They are bounded instead by being campus-scoped, rate limited, and read-only.
+ */
+
+/** RFC 4180 quoting. A comma, quote or newline in a name must not shift columns. */
+function csvCell(value) {
+  if (value === null || value === undefined) return '';
+  const text = String(value);
+  // A leading =, +, - or @ is interpreted as a FORMULA by Excel and Sheets.
+  // A student named "=cmd" would execute on open, so the cell is prefixed with
+  // an apostrophe to force it to text. This is the standard CSV injection
+  // defence and it matters here because every value below is user-entered.
+  const guarded = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  return /[",\n\r]/.test(guarded) ? `"${guarded.replace(/"/g, '""')}"` : guarded;
+}
+
+function csvDocument(headers, rows) {
+  const lines = [headers.map(csvCell).join(',')];
+  for (const row of rows) lines.push(row.map(csvCell).join(','));
+  // CRLF and a BOM: Excel on Windows opens a plain UTF-8 CSV as mojibake for
+  // any non-ASCII name, and this is the college's own student register.
+  return '﻿' + lines.join('\r\n') + '\r\n';
+}
+
+function sendCsv(res, filename, body) {
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Cache-Control', 'private, no-store');
+  return res.send(body);
+}
+
+/** A date for a spreadsheet: sortable, unambiguous, no locale guessing. */
+function csvDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+}
+
+app.get('/api/export/students.csv',
+  authenticateToken, requireRole('admin1', 'clerk', 'accountant'), mongoRateLimiter, requireDatabase,
+  async (req, res) => {
+  try {
+    const filter = studentScopeFilter(req);
+    const rows = await Student.find(filter).sort({ branch: 1, name: 1 }).lean();
+
+    const body = csvDocument(
+      ['Admission No', 'Name', 'Campus', 'Course', 'Section', 'Year', 'Academic Year',
+       'Father', 'Mobile', 'Parent Mobile', 'Total Fee', 'Balance', 'Status'],
+      rows.map(s => {
+        const fees = computeStudentFees(s);
+        return [
+          s.admissionNumber, s.name, s.branch, s.course, s.section, s.studentYear, s.academicYear,
+          s.fatherName, s.mobile, s.parentMobile,
+          fees.netOwed, fees.balance, s.status
+        ];
+      })
+    );
+
+    recordAudit(req, {
+      action: 'export.students',
+      entityType: 'export',
+      entityId: 'students.csv',
+      campus: req.user.campus,
+      summary: `Exported ${rows.length} student record(s) to CSV.`,
+      details: { rows: rows.length }
+    });
+    return sendCsv(res, `students-${csvDate(Date.now())}.csv`, body);
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+app.get('/api/export/payments.csv',
+  authenticateToken, requireRole('admin1', 'clerk', 'accountant'), mongoRateLimiter, requireDatabase,
+  async (req, res) => {
+  try {
+    const filter = campusScopeFilter(req);
+
+    // An optional window, because a full payment history is the one export
+    // that grows without limit and "last quarter" is what gets reconciled.
+    const from = req.query.from ? new Date(String(req.query.from)) : null;
+    const to = req.query.to ? new Date(String(req.query.to)) : null;
+    if ((from && Number.isNaN(from.getTime())) || (to && Number.isNaN(to.getTime()))) {
+      return res.status(400).json({ status: 'error', message: 'Dates must be in YYYY-MM-DD form.' });
+    }
+    if (from || to) {
+      filter.date = {};
+      if (from) filter.date.$gte = from;
+      // Inclusive of the end day, which is what someone typing a date means.
+      if (to) filter.date.$lte = new Date(to.getTime() + 24 * 60 * 60 * 1000 - 1);
+    }
+
+    const rows = await Payment.find(filter).sort({ date: -1 }).lean();
+
+    const body = csvDocument(
+      ['Receipt No', 'Date', 'Student', 'Admission No', 'Campus', 'Amount', 'Mode', 'Collected By', 'Reversed'],
+      rows.map(p => [
+        p.receiptNumber, csvDate(p.date), p.studentName, p.admissionNumber, p.branch,
+        p.amount, p.paymentMode, p.collectedBy || '',
+        // Reversed rows are INCLUDED and flagged rather than filtered out. A
+        // reconciliation needs to see that a receipt was raised and reversed;
+        // silently omitting it leaves an unexplained gap in the numbering.
+        p.reversed ? 'YES' : ''
+      ])
+    );
+
+    recordAudit(req, {
+      action: 'export.payments',
+      entityType: 'export',
+      entityId: 'payments.csv',
+      campus: req.user.campus,
+      summary: `Exported ${rows.length} payment record(s) to CSV.`,
+      details: { rows: rows.length, from: req.query.from || '', to: req.query.to || '' }
+    });
+    return sendCsv(res, `payments-${csvDate(Date.now())}.csv`, body);
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+app.get('/api/export/expenditures.csv',
+  authenticateToken, requireRole('admin1', 'clerk'), mongoRateLimiter, requireDatabase,
+  async (req, res) => {
+  try {
+    const filter = campusScopeFilter(req);
+    const rows = await Expenditure.find(filter).sort({ date: -1 }).lean();
+
+    const body = csvDocument(
+      ['Reference', 'Date', 'Campus', 'Category', 'Description', 'Amount', 'Logged By'],
+      rows.map(e => [e.id, csvDate(e.date), e.branch, e.category, e.description, e.amount, e.loggedBy || ''])
+    );
+
+    recordAudit(req, {
+      action: 'export.expenditures',
+      entityType: 'export',
+      entityId: 'expenditures.csv',
+      campus: req.user.campus,
+      summary: `Exported ${rows.length} expenditure record(s) to CSV.`,
+      details: { rows: rows.length }
+    });
+    return sendCsv(res, `expenditures-${csvDate(Date.now())}.csv`, body);
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+/**
+ * GET /api/fees/outstanding — every student who still owes something.
+ *
+ * Receipt sharing works one student at a time, which is right for a parent at
+ * the counter and useless for the thing a college actually does each month:
+ * chase everybody with a balance. The balances are already computed for the
+ * dashboard; this is the same arithmetic, filtered and ordered by what is
+ * owed, with the number to contact attached.
+ *
+ * Returns the parent's mobile because that is the point of the screen. It is
+ * campus-scoped like every other read, and it is logged — a list of every
+ * family in debt at a campus is worth knowing who pulled.
+ */
+app.get('/api/fees/outstanding',
+  authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase,
+  async (req, res) => {
+  try {
+    const filter = studentScopeFilter(req);
+    const requested = String(req.query.branch || '').trim();
+    if (requested && requested.toLowerCase() !== 'all') {
+      if (!isValidCampus(requested)) {
+        return res.status(400).json({ status: 'error', message: `Unknown campus [${requested}].` });
+      }
+      filter.branch = normalizeCampus(requested);
+    }
+
+    const minBalance = Math.max(1, Number(req.query.minBalance) || 1);
+    const rows = await Student.find({ ...filter, status: { $ne: 'inactive' } })
+      .select('name admissionNumber branch course section studentYear mobile parentMobile '
+        + 'tuitionFee hostelFee transportFee miscellaneousFee previousPending customFeeSlots '
+        + 'tuitionWaiver hostelWaiver transportWaiver miscWaiver totalPaid')
+      .lean();
+
+    const owing = rows
+      .map(s => {
+        const fees = computeStudentFees(s);
+        return {
+          name: s.name,
+          admissionNumber: s.admissionNumber,
+          campus: s.branch,
+          course: s.course,
+          section: s.section,
+          studentYear: s.studentYear,
+          // Parent first: this is a fee reminder, and it is the parent who pays.
+          contact: s.parentMobile || s.mobile || '',
+          totalPayable: fees.netOwed,
+          paid: fees.paid,
+          balance: fees.balance
+        };
+      })
+      .filter(s => s.balance >= minBalance)
+      .sort((a, b) => b.balance - a.balance);
+
+    recordAudit(req, {
+      action: 'fees.outstanding.view',
+      entityType: 'report',
+      entityId: 'outstanding',
+      campus: filter.branch || req.user.campus,
+      summary: `Viewed the outstanding-fees list (${owing.length} student(s)).`,
+      details: { count: owing.length }
+    });
+
+    return res.json({
+      status: 'success',
+      data: owing,
+      meta: {
+        page: 1,
+        limit: owing.length,
+        total: owing.length,
+        totalAmount: owing.reduce((sum, s) => sum + s.balance, 0),
+        withoutContact: owing.filter(s => !s.contact).length,
+        hasMore: false
+      }
+    });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+/**
+ * POST /api/admin1/accounts/:id/unlock — clear a lockout without touching the
+ * credential.
+ *
+ * Five wrong guesses locks an account for fifteen minutes, which is correct
+ * and stays. What was missing was any way back in before the clock ran out:
+ * a clerk locked out at nine on admissions morning either waited, or the
+ * Rector changed their password — which fixes the lockout by creating a
+ * different problem, since the clerk then has a credential they do not know.
+ *
+ * This clears the counters and nothing else. The password and PIN are
+ * untouched, so the clerk signs in with what they already have.
+ *
+ * Deliberately does NOT clear the campus-wide gate. That one exists so a
+ * whole campus cannot be ground down through a shared office address, and a
+ * route that cleared it on request would hand an attacker the reset button
+ * for the backstop. Only the two gates keyed to this one account are cleared.
+ */
+app.post('/api/admin1/accounts/:id/unlock',
+  authenticateToken, requireRole('admin1'), verifySecurityOtp, mongoRateLimiter, requireDatabase,
+  async (req, res) => {
+  try {
+    const { id } = req.params;
+    const isObjId = isValidObjectId(id);
+    const target = await User.findOne({
+      $or: [{ _id: isObjId ? id : null }, { username: String(id).toLowerCase().trim() }]
+    }).select('username name role campus');
+
+    if (!target) {
+      return res.status(404).json({ status: 'error', message: 'That account was not found.' });
+    }
+
+    // The account gate (keyed on the typed username) and the two step-up gates
+    // (keyed on the user id). Nothing here is keyed on a campus.
+    const cleared = [
+      attemptKey('login', target.username),
+      attemptKey('pin', String(target._id)),
+      attemptKey('ownpw', String(target._id))
+    ];
+    for (const key of cleared) {
+      await clearFailedAttempts(key).catch(() => {});
+    }
+
+    recordAudit(req, {
+      action: 'account.unlock',
+      entityType: 'account',
+      entityId: target.username,
+      entityLabel: `${target.name} (${target.username})`,
+      campus: target.campus,
+      summary: `Cleared the sign-in lockout for ${target.username}. No credential was changed.`,
+      details: { role: normalizeRole(target.role) }
+    });
+
+    return res.json({
+      status: 'success',
+      message: `${target.username} can sign in again. Their password and PIN are unchanged.`
+    });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+/**
+ * --- RECENTLY DELETED ---------------------------------------------------
+ *
+ * The other half of soft deletion. Marking a record is only useful if someone
+ * can find it again, and the person who needs to is whoever has just realised
+ * they deleted the wrong thing.
+ *
+ * Rector-only, deliberately. A clerk with `editStudent` can delete a student,
+ * and that is the power they were granted; being able to reach into every
+ * deletion made at their campus and reverse it is a different and larger
+ * power. Restoration is an administrative act.
+ */
+
+/** The four collections a deletion can be undone from, by name. */
+const RECYCLE_BIN_MODELS = {
+  student: { model: () => Student, label: 'Students', key: 'studentId' },
+  payment: { model: () => Payment, label: 'Payments', key: 'receiptNumber' },
+  expenditure: { model: () => Expenditure, label: 'Expenditures', key: 'id' },
+  worker_payment: { model: () => WorkerPayment, label: 'Worker payments', key: 'id' },
+  teacher: { model: () => Teacher, label: 'Teachers', key: 'id' }
+};
+
+/**
+ * GET /api/admin1/recently-deleted — what can still be put back.
+ *
+ * Everything soft-deleted within the window, newest first, across all five
+ * collections. Payments belonging to a deleted STUDENT are folded into that
+ * student's entry rather than listed separately: they were deleted as one
+ * action and are restored as one, and listing forty receipts individually
+ * would bury the student they belong to.
+ */
+app.get('/api/admin1/recently-deleted', authenticateToken, requireRole('admin1'), requireDatabase, async (req, res) => {
+  try {
+    const since = new Date(Date.now() - RECYCLE_BIN_DAYS * 24 * 60 * 60 * 1000);
+    const { limit } = readPaging(req, { defaultLimit: 200 });
+
+    const entries = [];
+    for (const [type, spec] of Object.entries(RECYCLE_BIN_MODELS)) {
+      // Payments are represented through their student, not on their own.
+      if (type === 'payment') continue;
+
+      const rows = await spec.model()
+        .find({ deletedAt: { $gte: since } })
+        .setOptions({ withDeleted: true })
+        .sort({ deletedAt: -1 })
+        .limit(limit)
+        .lean();
+
+      for (const row of rows) {
+        entries.push({
+          type,
+          collection: spec.label,
+          id: String(row._id),
+          reference: row[spec.key] || '',
+          label: row.name || row.workerName || row.description || row.category || row[spec.key] || '(unnamed)',
+          campus: row.branch || '',
+          amount: typeof row.amount === 'number' ? row.amount : null,
+          deletedAt: row.deletedAt,
+          deletedBy: row.deletedBy || '',
+          deletedReason: row.deletedReason || '',
+          // Only meaningful for a student, and it is the figure that makes the
+          // difference between "undo this" and "leave it".
+          attachedPayments: type === 'student'
+            ? await Payment.countDocuments({ studentId: row.studentId, deletedAt: { $gte: since } })
+              .setOptions({ withDeleted: true })
+            : null
+        });
+      }
+    }
+
+    entries.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+
+    return res.json({
+      status: 'success',
+      data: entries.slice(0, limit),
+      meta: { page: 1, limit, total: entries.length, windowDays: RECYCLE_BIN_DAYS, hasMore: entries.length > limit }
+    });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+/**
+ * POST /api/admin1/recently-deleted/:type/:id/restore — put it back.
+ *
+ * Takes the Rector's PIN, because it writes records back into the live books
+ * and the amounts come back with them. The same gate the Clerk Manager and the
+ * Credentials screen use.
+ */
+app.post('/api/admin1/recently-deleted/:type/:id/restore',
+  authenticateToken, requireRole('admin1'), verifySecurityOtp, mongoRateLimiter, requireDatabase,
+  async (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const spec = RECYCLE_BIN_MODELS[String(type)];
+    if (!spec || type === 'payment') {
+      return res.status(400).json({ status: 'error', message: 'That is not something that can be restored on its own.' });
+    }
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ status: 'error', message: 'That record reference is not valid.' });
+    }
+
+    const Model = spec.model();
+    const row = await Model.findById(id).setOptions({ withDeleted: true }).lean();
+    if (!row) {
+      return res.status(404).json({ status: 'error', message: 'That record no longer exists.' });
+    }
+    if (!row.deletedAt) {
+      return res.status(409).json({ status: 'error', message: 'That record is not deleted — nothing to restore.' });
+    }
+
+    const cutoff = new Date(Date.now() - RECYCLE_BIN_DAYS * 24 * 60 * 60 * 1000);
+    if (new Date(row.deletedAt) < cutoff) {
+      return res.status(410).json({
+        status: 'error',
+        message: `That was deleted more than ${RECYCLE_BIN_DAYS} days ago and can no longer be restored here. Use a backup.`
+      });
+    }
+
+    const label = row.name || row.workerName || row.description || row.category || String(row._id);
+
+    // An admission number is unique college-wide. If the number was reissued
+    // while the record sat in the bin, restoring it would violate that index —
+    // so it is refused with an explanation rather than failing on a duplicate
+    // key error the caller cannot interpret.
+    if (type === 'student') {
+      const clash = await Student.findOne({
+        admissionNumber: row.admissionNumber,
+        _id: { $ne: row._id }
+      }).lean();
+      if (clash) {
+        return res.status(409).json({
+          status: 'error',
+          message: `Admission number ${row.admissionNumber} has been given to another student since this one was deleted. `
+            + 'Change that student\'s number before restoring this record.'
+        });
+      }
+    }
+
+    const restored = await Model.restoreDeleted({ _id: row._id });
+    if (restored === 0) {
+      return res.status(500).json({ status: 'error', message: 'Restore failed. Nothing was changed.' });
+    }
+
+    // A student comes back with the receipts that were deleted alongside them.
+    // Matched on the same deletion window rather than on all deleted payments,
+    // so an earlier, separate deletion of one receipt is not swept back in.
+    let restoredPayments = 0;
+    if (type === 'student') {
+      restoredPayments = await Payment.restoreDeleted({
+        studentId: row.studentId,
+        deletedAt: { $gte: cutoff }
+      });
+    }
+
+    recordAudit(req, {
+      action: `${type}.restore`,
+      entityType: type,
+      entityId: String(row[spec.key] || row._id),
+      entityLabel: label,
+      campus: row.branch || '',
+      amount: typeof row.amount === 'number' ? row.amount : null,
+      summary: `Restored ${label}${restoredPayments ? ` and ${restoredPayments} payment record(s)` : ''} from Recently Deleted.`,
+      details: { restoredPayments, originallyDeletedBy: row.deletedBy || '', originallyDeletedAt: row.deletedAt }
+    });
+
+    return res.json({
+      status: 'success',
+      message: `Restored ${label}${restoredPayments ? `, along with ${restoredPayments} payment record(s)` : ''}.`,
+      data: { type, id: String(row._id), restoredPayments }
+    });
+  } catch (err) {
+    if (err && err.code === 11000) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'Restoring this record clashes with one that already exists. Resolve the duplicate first.'
+      });
+    }
+    return failRequest(req, res, err);
+  }
+});
+
+/**
+ * --- THE CALLER'S OWN ACCOUNT ------------------------------------------
+ *
+ * Everything below acts on `req.user.id` and nothing else. There is no target
+ * parameter to get wrong: a caller cannot name another account here, so no
+ * amount of tampering with the body turns one of these into an administrative
+ * route. That is the whole reason these are separate from the Rector's
+ * credential screen rather than a relaxed version of it.
+ */
+
+/**
+ * GET /api/account/session — where am I signed in, and since when.
+ *
+ * Sessions are single-session and database-authoritative: signing in
+ * elsewhere ends the previous session on its next request. That is a good
+ * property nobody could see. A clerk whose screen stopped working could not
+ * tell an idle timeout from somebody else using their credentials, which is
+ * exactly the thing they would want to report.
+ *
+ * Returns no credential and no token — only when this session started, when
+ * it was last active, and when it will lapse if left alone.
+ */
+app.get('/api/account/session', authenticateToken, requireDatabase, async (req, res) => {
+  try {
+    const me = await User.findById(req.user.id)
+      .select('username name role campus lastSeenAt sessionStartedAt sessionIp previousSessionAt previousSessionIp')
+      .lean();
+    if (!me) {
+      return res.status(404).json({ status: 'error', message: 'Account not found.' });
+    }
+
+    const lastSeen = me.lastSeenAt ? new Date(me.lastSeenAt).getTime() : null;
+    return res.json({
+      status: 'success',
+      data: {
+        username: me.username,
+        name: me.name,
+        role: normalizeRole(me.role),
+        campus: me.campus,
+        sessionStartedAt: me.sessionStartedAt || null,
+        sessionIp: me.sessionIp || '',
+        previousSessionAt: me.previousSessionAt || null,
+        previousSessionIp: me.previousSessionIp || '',
+        lastSeenAt: me.lastSeenAt || null,
+        idleTimeoutMinutes: Math.round(SESSION_IDLE_TIMEOUT_MS / 60000),
+        // Seconds until this session lapses through inactivity alone. Null
+        // when nothing has been recorded yet, which is not the same as zero.
+        expiresInSeconds: lastSeen
+          ? Math.max(0, Math.round((lastSeen + SESSION_IDLE_TIMEOUT_MS - Date.now()) / 1000))
+          : null
+      }
+    });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+/**
+ * POST /api/account/password — change your own password and/or PIN.
+ *
+ * There was no way to do this. Every credential change went through the
+ * Rector's screen or the authenticator's reset, so a clerk who thought their
+ * password had been seen could not act on it themselves — they had to find
+ * the Rector first.
+ *
+ * Credentials are stored readable here by a deliberate decision, so the
+ * Rector can already read every password. This route therefore adds no
+ * secrecy that did not exist; what it adds is SPEED at the moment it matters,
+ * which is the entire value.
+ *
+ * Three things it does NOT do, each on purpose:
+ *
+ *   - it does not accept a username. Changing your own portal ID is an
+ *     administrative act with collision consequences, and it stays with the
+ *     Rector.
+ *   - it does not let the authenticator through, matching every other
+ *     credential path in this file. That account is administered out of band.
+ *   - it does not reveal the stored value back. Confirming the current
+ *     password is the caller proving what they already know.
+ */
+app.post('/api/account/password', authenticateToken, mongoRateLimiter, requireDatabase, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const currentPassword = String(body.currentPassword || '');
+    const nextPassword = body.newPassword === undefined ? undefined : String(body.newPassword).trim();
+    const nextPin = body.newPin === undefined ? undefined : String(body.newPin).trim();
+
+    if (nextPassword === undefined && nextPin === undefined) {
+      return res.status(400).json({ status: 'error', message: 'Choose a new password, a new PIN, or both.' });
+    }
+
+    const me = await User.findById(req.user.id).select('username name role campus password pin');
+    if (!me) {
+      return res.status(404).json({ status: 'error', message: 'Account not found.' });
+    }
+
+    if (normalizeRole(me.role) === 'authenticator' || me.username === FIXED_AUTHENTICATOR_USERNAME) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'The security authenticator\'s credentials are not changed from a portal.'
+      });
+    }
+
+    // The current password, every time, even though the session is already
+    // valid. A session left open on a counter must not be enough to lock the
+    // real holder out of their own account.
+    //
+    // Rate limited on the same tight budget as the login routes, because this
+    // compares a secret and would otherwise be a password oracle for anyone
+    // who found an unattended screen. AUTH_PATH_PATTERN does not match this
+    // path, so the budget is set here explicitly.
+    const gateKey = attemptKey('ownpw', req.user.id);
+    const gate = await getLockState(gateKey);
+    if (gate.locked) {
+      const mins = Math.ceil(gate.secondsRemaining / 60);
+      return res.status(429).json({
+        status: 'error',
+        message: `Too many incorrect attempts. Try again in ${mins} minute${mins === 1 ? '' : 's'}.`
+      });
+    }
+
+    if (!currentPassword || !credentialMatches(currentPassword, me.password)) {
+      const after = await recordFailedAttempt(gateKey);
+      console.warn(`[Account]: Failed own-password confirmation by [${me.username}]`);
+      return res.status(401).json({
+        status: 'error',
+        message: 'That is not your current password.',
+        attemptsRemaining: after.attemptsRemaining
+      });
+    }
+    await clearFailedAttempts(gateKey).catch(() => {});
+
+    const changed = [];
+
+    if (nextPassword !== undefined) {
+      if (nextPassword.length < 8) {
+        return res.status(400).json({ status: 'error', message: 'Your new password must be at least 8 characters.' });
+      }
+      if (nextPassword.length > FIELD_LIMITS.password) {
+        return res.status(400).json({ status: 'error', message: `A password cannot exceed ${FIELD_LIMITS.password} characters.` });
+      }
+      // A stored value beginning with $2 is read back as a legacy hash and
+      // reported unreadable — confusing rather than wrong, so it is refused.
+      if (nextPassword.startsWith('$2')) {
+        return res.status(400).json({ status: 'error', message: 'A password cannot begin with "$2".' });
+      }
+      if (credentialMatches(nextPassword, me.password)) {
+        return res.status(400).json({ status: 'error', message: 'That is already your password. Choose a different one.' });
+      }
+      me.password = nextPassword;
+      changed.push('password');
+    }
+
+    if (nextPin !== undefined) {
+      if (!/^\d{6}$/.test(nextPin)) {
+        return res.status(400).json({ status: 'error', message: 'Your new PIN must be exactly 6 digits.' });
+      }
+      me.pin = nextPin;
+      changed.push('PIN');
+    }
+
+    // Ends every session including this one, so the caller signs in again with
+    // what they just chose. Anyone else holding the old password stops working
+    // immediately rather than at the natural expiry of their token — which is
+    // the reason someone changes a password they think has been seen.
+    me.activeSessionId = null;
+    await me.save();
+    await RefreshToken.deleteMany({ userId: me._id }).catch(() => {});
+
+    // WHAT changed, never the values. Same rule as every other credential path.
+    recordAudit(req, {
+      action: 'account.password.self-change',
+      entityType: 'account',
+      entityId: me.username,
+      entityLabel: `${me.name} (${me.username})`,
+      campus: me.campus,
+      summary: `${me.username} changed their own ${changed.join(' and ')}.`,
+      details: { fields: changed, role: normalizeRole(me.role) }
+    });
+
+    return res.json({
+      status: 'success',
+      message: `Your ${changed.join(' and ')} ${changed.length > 1 ? 'have' : 'has'} been changed. Please sign in again.`,
+      data: { signedOut: true }
+    });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
 app.get('/api/admin1/logs/filters', authenticateToken, requireRole('admin1'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
@@ -7966,8 +8978,26 @@ app.get('/api/admin1/logs/filters', authenticateToken, requireRole('admin1'), re
 
 app.get(['/api/admin1/payments', '/api/accountant/payments'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
-    const payments = await Payment.find(campusScopeFilter(req)).sort({ createdAt: -1 }).lean();
-    return res.json({ status: 'success', data: payments });
+    // The unbounded one. Payments accumulate for the life of the college and
+    // were never scoped by date, so for the Rector this returned every payment
+    // ever taken at every campus in a single response.
+    const filter = campusScopeFilter(req);
+    const { limit, page, skip } = readPaging(req);
+
+    const [rows, total, totalAmount] = await Promise.all([
+      Payment.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Payment.countDocuments(filter),
+      sumField(Payment, { ...filter, reversed: { $ne: true } }, 'amount')
+    ]);
+
+    return res.json({
+      status: 'success',
+      data: rows,
+      // Reversed payments are excluded from the money total and included in
+      // the row count: a reversal is still a record worth listing, and is not
+      // still income.
+      meta: { page, limit, total, totalAmount, hasMore: skip + rows.length < total }
+    });
   } catch (err) {
     console.error('[Payments]: List failed:', err.message);
     return res.status(500).json({ status: 'error', message: 'Failed to load payments.' });
@@ -7976,8 +9006,20 @@ app.get(['/api/admin1/payments', '/api/accountant/payments'], authenticateToken,
 
 app.get(['/api/admin1/expenditures', '/api/accountant/expenditures'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
-    const expenditures = await Expenditure.find(campusScopeFilter(req)).sort({ createdAt: -1 }).lean();
-    return res.json({ status: 'success', data: expenditures });
+    const filter = campusScopeFilter(req);
+    const { limit, page, skip } = readPaging(req);
+
+    const [rows, total, totalAmount] = await Promise.all([
+      Expenditure.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Expenditure.countDocuments(filter),
+      sumField(Expenditure, filter, 'amount')
+    ]);
+
+    return res.json({
+      status: 'success',
+      data: rows,
+      meta: { page, limit, total, totalAmount, hasMore: skip + rows.length < total }
+    });
   } catch (err) {
     console.error('[Expenditures]: List failed:', err.message);
     return res.status(500).json({ status: 'error', message: 'Failed to load expenditures.' });
