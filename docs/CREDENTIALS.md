@@ -129,3 +129,37 @@ fifteen minutes, counted per account. This is what makes a short PIN
 acceptable: six digits is a million combinations, which is nothing to a
 machine allowed to guess freely and a great deal to one allowed five tries.
 Do not remove the lockout without replacing it with something equivalent.
+
+### A clerk sign-in counts differently, and why
+
+A clerk types a campus rather than a portal ID, so when a guess fails there is
+no account yet to charge it to. That budget was once counted **per campus**,
+which quietly made the lockout a weapon: five wrong guesses from a stranger,
+who needs to know nothing but a campus name, stopped every clerk on that
+campus from signing in for fifteen minutes. On a collection day that is an
+outage, and anyone on the internet could cause it.
+
+A clerk sign-in now passes two counters:
+
+| Counter | Budget | What it stops |
+|---|---|---|
+| campus **and** the caller's address | 5 | the ordinary guesser, and the clerk who mistyped |
+| campus alone | 50 | an attacker rotating addresses for a fresh five each time |
+
+The first is the one people meet. It cannot affect anybody signing in from
+anywhere else, so a burst of failures locks out the machine that produced it
+and nothing more. The second is a backstop far above what a shift of clerks
+reaches by fat-fingering — fifteen people would each have to fail three times
+within the same fifteen minutes — and a correct sign-in on that campus clears
+both.
+
+Both are tunable with `MAX_LOGIN_ATTEMPTS` and `MAX_CAMPUS_LOGIN_ATTEMPTS`.
+If you raise the second, understand what you are trading: it is the only
+thing bounding a distributed guess run against a campus. If you lower it, you
+are moving it back towards being a way for a stranger to close a campus.
+
+Worth naming plainly rather than leaving implied: this reduces the problem, it
+does not delete it. Any login endpoint that bounds an attacker's guesses can
+be made to bound a real user too. What changed is the price — locking a campus
+now needs ten times the guesses *and* enough separate addresses to clear the
+first counter, instead of five requests from one laptop.

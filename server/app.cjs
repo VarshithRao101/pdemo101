@@ -2433,12 +2433,15 @@ app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/veri
       return res.status(400).json({ status: 'error', message: `Unknown campus [${campus}].` });
     }
 
-    const key = attemptKey('login', byCampus ? `campus:${clerkCampus}` : attempted);
+    // Same gates as /auth/login, built by the same helper — a campus sign-in
+    // is bounded by the caller's address and by a campus-wide backstop, never
+    // by the campus alone. See the ACCOUNT LOCKOUT comment for why.
+    const gates = loginGates(req, { byCampus, clerkCampus, attempted });
 
-    const before = await getLockState(key);
-    if (before.locked) {
-      console.warn(`[Auth]: LOCKED verify-credentials for [${attempted || '(blank)'}] from ${clientIp(req)}`);
-      return lockedResponse(res, before);
+    const blocked = await lockedGate(gates);
+    if (blocked) {
+      console.warn(`[Auth]: LOCKED verify-credentials for [${attempted || clerkCampus || '(blank)'}] from ${clientIp(req)} (${blocked.scope})`);
+      return lockedResponse(res, blocked.state, 'Too many incorrect attempts.', LOCK_SUBJECT[blocked.scope]);
     }
 
     let user = null;
@@ -2448,7 +2451,7 @@ app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/veri
       const found = await findClerkByCampusCredentials(clerkCampus, password, null);
       if (found.reason === 'ambiguous') {
         console.warn(`[Auth]: AMBIGUOUS verify at [${clerkCampus}] — ${found.count} clerks share this password`);
-        await recordFailedAttempt(key);
+        await recordFailureAcrossGates(gates);
         return res.status(409).json({
           status: 'error',
           message: 'More than one clerk at this campus shares this password. '
@@ -2462,15 +2465,16 @@ app.post(['/api/auth/verify-credentials', '/auth/verify-credentials', '/api/veri
 
     if (!user) {
       console.warn(`[Auth]: FAILED verify-credentials for [${attempted || (byCampus ? clerkCampus : '(blank)')}] from ${clientIp(req)}`);
-      const after = await recordFailedAttempt(key);
-      if (after.locked) {
-        console.warn(`[Auth]: LOCKED OUT [${attempted || '(blank)'}] for ${LOCKOUT_MINUTES} minutes`);
-        return lockedResponse(res, after);
+      const after = await recordFailureAcrossGates(gates);
+      if (after.state.locked) {
+        console.warn(`[Auth]: LOCKED OUT [${attempted || clerkCampus || '(blank)'}] (${after.scope}) for ${LOCKOUT_MINUTES} minutes`);
+        return lockedResponse(res, after.state, 'Too many incorrect attempts.', LOCK_SUBJECT[after.scope]);
       }
+      const subject = after.scope === 'account' ? 'this account' : 'sign-in';
       return res.status(401).json({
         status: 'error',
-        message: `Invalid credentials. ${after.attemptsRemaining} attempt${after.attemptsRemaining === 1 ? '' : 's'} remaining before this account is locked.`,
-        attemptsRemaining: after.attemptsRemaining,
+        message: `Invalid credentials. ${after.state.attemptsRemaining} attempt${after.state.attemptsRemaining === 1 ? '' : 's'} remaining before ${subject} is locked.`,
+        attemptsRemaining: after.state.attemptsRemaining,
         locked: false
       });
     }
@@ -2613,8 +2617,44 @@ function clientIp(req) {
  * Accepted trade-off: anyone who knows a username can keep it locked by
  * failing five times. Fifteen minutes and self-clearing keeps that a nuisance
  * rather than an outage, and the alternative — no lockout — is worse.
+ *
+ * --- WHY A CAMPUS SIGN-IN LOCKS DIFFERENTLY ------------------------------
+ *
+ * A clerk signs in with a campus and no username, so at the moment a guess
+ * fails there is no account to charge it to. This budget was therefore once
+ * keyed on the campus alone — and that made the trade-off above far worse
+ * than it reads. A campus is not one account: it is up to fifteen clerks. So
+ * five wrong guesses from one stranger, who needs to know nothing beyond a
+ * campus name, stopped every clerk on that campus from signing in. On a fee
+ * collection day that is not a nuisance, it is an outage, and it was
+ * reachable by anyone on the internet without credentials.
+ *
+ * A campus sign-in now passes two counters, and BOTH must be clear:
+ *
+ *   1. campus + client address, five guesses. This is the real limit and the
+ *      one that catches an ordinary attacker or a clerk mistyping. It cannot
+ *      affect anybody signing in from anywhere else, so the blast radius of
+ *      a burst of failures is the address that produced it.
+ *
+ *   2. campus alone, MAX_CAMPUS_LOGIN_ATTEMPTS guesses. The backstop for an
+ *      attacker rotating addresses to get a fresh five each time, which is
+ *      exactly the evasion the per-account lockout exists to close.
+ *
+ * The second counter can still be tripped deliberately, and that is worth
+ * stating plainly rather than claiming the problem is gone: a login endpoint
+ * that bounds guesses can always be made to bound a legitimate user too. What
+ * changes is the cost and the accident rate. Locking a campus now takes ten
+ * times the guesses AND enough distinct addresses to get past counter 1,
+ * instead of five requests from one machine, and no realistic amount of
+ * ordinary mistyping reaches it.
  */
 const MAX_LOGIN_ATTEMPTS = Number(process.env.MAX_LOGIN_ATTEMPTS) || 5;
+
+// The campus-wide backstop. Deliberately far above anything a shift of clerks
+// produces by fat-fingering — fifteen people would each have to fail three
+// times inside the same fifteen minutes — and far below what a password guess
+// run needs to be useful.
+const MAX_CAMPUS_LOGIN_ATTEMPTS = Number(process.env.MAX_CAMPUS_LOGIN_ATTEMPTS) || 50;
 const LOCKOUT_MINUTES = Number(process.env.LOCKOUT_MINUTES) || 15;
 const LOCKOUT_MS = LOCKOUT_MINUTES * 60 * 1000;
 
@@ -2627,9 +2667,12 @@ function attemptKey(kind, value) {
 }
 
 // Returns { locked, secondsRemaining, attemptsRemaining }.
-async function getLockState(key) {
+//
+// `max` is a parameter because a campus sign-in runs two counters with
+// different budgets against the same machinery (see the block comment above).
+async function getLockState(key, max = MAX_LOGIN_ATTEMPTS) {
   const row = await LoginAttempt.findOne({ key }).lean();
-  if (!row) return { locked: false, secondsRemaining: 0, attemptsRemaining: MAX_LOGIN_ATTEMPTS };
+  if (!row) return { locked: false, secondsRemaining: 0, attemptsRemaining: max };
 
   const until = row.lockedUntil ? new Date(row.lockedUntil).getTime() : 0;
   if (until > Date.now()) {
@@ -2642,7 +2685,7 @@ async function getLockState(key) {
   // An expired lock means the previous run is spent; start the count again
   // rather than leaving the caller one guess away from a fresh lock.
   const used = until ? 0 : (row.failedCount || 0);
-  return { locked: false, secondsRemaining: 0, attemptsRemaining: Math.max(0, MAX_LOGIN_ATTEMPTS - used) };
+  return { locked: false, secondsRemaining: 0, attemptsRemaining: Math.max(0, max - used) };
 }
 
 /**
@@ -2659,7 +2702,7 @@ async function getLockState(key) {
  * The increment now happens inside the database, the same way the IP rate
  * limiter above already did it, so every concurrent attempt is counted.
  */
-async function recordFailedAttempt(key) {
+async function recordFailedAttempt(key, max = MAX_LOGIN_ATTEMPTS) {
   const now = Date.now();
 
   // Retire a run whose lock has already run out, so the next failure starts a
@@ -2680,7 +2723,7 @@ async function recordFailedAttempt(key) {
   );
 
   const failedCount = row ? (row.failedCount || 0) : 1;
-  const locked = failedCount >= MAX_LOGIN_ATTEMPTS;
+  const locked = failedCount >= max;
 
   // Stamp the lock only on the row that has none yet. Whichever of a set of
   // concurrent attempts arrives here first sets the deadline; the rest match
@@ -2696,7 +2739,7 @@ async function recordFailedAttempt(key) {
   const until = row.lockedUntil ? new Date(row.lockedUntil).getTime() : now + LOCKOUT_MS;
   return {
     locked,
-    attemptsRemaining: Math.max(0, MAX_LOGIN_ATTEMPTS - failedCount),
+    attemptsRemaining: Math.max(0, max - failedCount),
     secondsRemaining: locked ? Math.max(1, Math.ceil((until - now) / 1000)) : 0
   };
 }
@@ -2705,18 +2748,93 @@ async function clearFailedAttempts(key) {
   await LoginAttempt.deleteOne({ key }).catch(() => {});
 }
 
+/**
+ * The counters a sign-in attempt has to get past.
+ *
+ * A username sign-in has one, keyed on the account. A campus sign-in has two
+ * — see the ACCOUNT LOCKOUT comment for why. Both call sites that verify a
+ * password (/auth/verify-credentials and /auth/login) build their gates here,
+ * so the two steps of a clerk's sign-in charge the same counters instead of
+ * handing out a separate budget each.
+ */
+function loginGates(req, { byCampus, clerkCampus, attempted }) {
+  if (!byCampus) {
+    return [{ key: attemptKey('login', attempted), max: MAX_LOGIN_ATTEMPTS, scope: 'account' }];
+  }
+  return [
+    {
+      key: attemptKey('login', `campus:${clerkCampus}|ip:${clientIp(req)}`),
+      max: MAX_LOGIN_ATTEMPTS,
+      scope: 'address'
+    },
+    {
+      key: attemptKey('login', `campus:${clerkCampus}`),
+      max: MAX_CAMPUS_LOGIN_ATTEMPTS,
+      scope: 'campus'
+    }
+  ];
+}
+
+/** The first gate already locked, or null. Checked before any credential is looked at. */
+async function lockedGate(gates) {
+  for (const gate of gates) {
+    const state = await getLockState(gate.key, gate.max);
+    if (state.locked) return { ...gate, state };
+  }
+  return null;
+}
+
+/**
+ * Charge one failed guess to every gate.
+ *
+ * All of them are incremented — a guess that the address budget catches still
+ * counted towards the campus backstop, or an attacker would get the larger
+ * budget for free by never exhausting the smaller one. The state reported back
+ * is the tightest: the fewest attempts left, and the longest wait.
+ */
+async function recordFailureAcrossGates(gates) {
+  let worst = null;
+  for (const gate of gates) {
+    const state = await recordFailedAttempt(gate.key, gate.max);
+    if (
+      !worst
+      || (state.locked && !worst.state.locked)
+      || (state.locked === worst.state.locked && state.attemptsRemaining < worst.state.attemptsRemaining)
+    ) {
+      worst = { ...gate, state };
+    }
+  }
+  return worst;
+}
+
+/** A correct sign-in wipes every counter it passed, not just the tightest one. */
+async function clearGates(gates) {
+  for (const gate of gates) await clearFailedAttempts(gate.key);
+}
+
 // The refusal shown to a locked-out caller. Same shape everywhere so the UI
 // can render one countdown regardless of which gate produced it.
-function lockedResponse(res, state, what = 'Too many incorrect attempts.') {
+//
+// `subject` names what is locked. A campus-wide backstop trip is not "this
+// account" — telling a clerk their account is locked when the lock is on the
+// whole campus sends them to reset a password that was never the problem.
+function lockedResponse(res, state, what = 'Too many incorrect attempts.', subject = 'This account') {
   const mins = Math.ceil(state.secondsRemaining / 60);
   return res.status(429).json({
     status: 'error',
     locked: true,
     lockedForSeconds: state.secondsRemaining,
     attemptsRemaining: 0,
-    message: `${what} This account is locked for ${mins} more minute${mins === 1 ? '' : 's'}.`
+    message: `${what} ${subject} is locked for ${mins} more minute${mins === 1 ? '' : 's'}.`
   });
 }
+
+/** How a locked gate describes itself to the person who hit it. */
+const LOCK_SUBJECT = {
+  account: 'This account',
+  address: 'Sign-in from this device',
+  campus: 'Sign-in for this campus'
+};
 
 async function handleLogin(req, res, label) {
   try {
@@ -2754,18 +2872,19 @@ async function handleLogin(req, res, label) {
       });
     }
 
-    // The lockout is keyed on the campus for a campus sign-in. Keying it on
-    // the password would leak which guesses have been tried, and leaving it
-    // unkeyed would let seven accounts share one budget by accident. A campus
-    // is the unit being guessed against here, so it is the unit that locks.
-    const key = attemptKey('login', byCampus ? `campus:${clerkCampus}` : attempted);
+    // A username sign-in is bounded by one counter on the account. A campus
+    // sign-in has no account to charge yet, so it is bounded by two — the
+    // caller's own address, and a much larger campus-wide backstop. Keying it
+    // on the password instead would leak which guesses have been tried, and
+    // leaving it unkeyed would give every clerk on a campus one shared budget.
+    const gates = loginGates(req, { byCampus, clerkCampus, attempted });
 
-    // Check the lock BEFORE verifying anything. A locked account must not
+    // Check the locks BEFORE verifying anything. A locked account must not
     // reveal whether the guess would have been right.
-    const before = await getLockState(key);
-    if (before.locked) {
-      console.warn(`[Auth]: LOCKED ${label} attempt for [${attempted || '(blank)'}] from ${clientIp(req)}`);
-      return lockedResponse(res, before);
+    const blocked = await lockedGate(gates);
+    if (blocked) {
+      console.warn(`[Auth]: LOCKED ${label} attempt for [${attempted || clerkCampus || '(blank)'}] from ${clientIp(req)} (${blocked.scope})`);
+      return lockedResponse(res, blocked.state, 'Too many incorrect attempts.', LOCK_SUBJECT[blocked.scope]);
     }
 
     let user = null;
@@ -2783,7 +2902,7 @@ async function handleLogin(req, res, label) {
       // credentials", because nothing the person types will help.
       if (ambiguous) {
         console.warn(`[Auth]: AMBIGUOUS campus sign-in at [${clerkCampus}] — ${found.count} clerks share these credentials`);
-        await recordFailedAttempt(key);
+        await recordFailureAcrossGates(gates);
         return res.status(409).json({
           status: 'error',
           message: 'More than one clerk at this campus shares these credentials. '
@@ -2801,24 +2920,28 @@ async function handleLogin(req, res, label) {
       // account. The password itself is never logged.
       console.warn(`[Auth]: FAILED ${label} for [${attempted || (byCampus ? clerkCampus : '(blank)')}] from ${clientIp(req)}`);
 
-      const after = await recordFailedAttempt(key);
-      if (after.locked) {
-        console.warn(`[Auth]: LOCKED OUT [${attempted || '(blank)'}] for ${LOCKOUT_MINUTES} minutes`);
-        return lockedResponse(res, after);
+      const after = await recordFailureAcrossGates(gates);
+      if (after.state.locked) {
+        console.warn(`[Auth]: LOCKED OUT [${attempted || clerkCampus || '(blank)'}] (${after.scope}) for ${LOCKOUT_MINUTES} minutes`);
+        return lockedResponse(res, after.state, 'Too many incorrect attempts.', LOCK_SUBJECT[after.scope]);
       }
       // Tell the user how many tries are left. Withholding it does not slow an
       // attacker down — they can count — it only ambushes staff who mistyped.
+      const subject = after.scope === 'account' ? 'this account' : 'sign-in';
       return res.status(401).json({
         status: 'error',
-        message: `Invalid credentials. ${after.attemptsRemaining} attempt${after.attemptsRemaining === 1 ? '' : 's'} remaining before this account is locked.`,
-        attemptsRemaining: after.attemptsRemaining,
+        message: `Invalid credentials. ${after.state.attemptsRemaining} attempt${after.state.attemptsRemaining === 1 ? '' : 's'} remaining before ${subject} is locked.`,
+        attemptsRemaining: after.state.attemptsRemaining,
         locked: false
       });
     }
 
     // A correct sign-in wipes the run, so a user who mistyped twice and then
-    // succeeded does not carry those failures into next week.
-    await clearFailedAttempts(key);
+    // succeeded does not carry those failures into next week. Every gate is
+    // cleared, including the campus backstop — a clerk signing in correctly is
+    // the strongest evidence available that the failures before it were not an
+    // attack in progress.
+    await clearGates(gates);
     // ...and does not spend the IP's auth budget either. A whole campus
     // starting a shift is not a brute-force attempt.
     await refundRateLimitAttempt(req);
