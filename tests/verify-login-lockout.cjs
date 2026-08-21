@@ -214,9 +214,36 @@ let server;
     ok('two mistypes then the right password signs in',
       recovered.status === 200 && !!recovered.json?.token, `HTTP ${recovered.status}`);
 
-    const countersLeft = await attempts().countDocuments({ key: /^login:campus:/ });
+    const countersLeft = await attempts().countDocuments({ key: /^login-campus/ });
     ok('the campus counters are wiped, not carried forward',
       countersLeft === 0, `${countersLeft} row(s) left`);
+
+    // =================================================================
+    section('A username cannot spell another gate\'s key');
+    await reset();
+
+    // The counters are addressed by strings, and one of those strings is a
+    // username straight from the request body. If the account gate and the
+    // campus gates shared a prefix, a caller could TYPE the key of a gate it
+    // was never issued — a username of "campus:<campus>|ip:<someone else's
+    // address>" would spend the lockout budget of a real clerk office, from
+    // anywhere, with no campus form involved.
+    const VICTIM_IP = '198.51.100.90';
+    const FORGER_IP = '203.0.113.77';
+    for (let i = 0; i < PER_ADDRESS + 1; i++) {
+      await login({
+        username: `campus:${CAMPUS}|ip:${VICTIM_IP}`,
+        password: 'forge-attempt'
+      }, FORGER_IP);
+    }
+    const victim = await login(right(alice), VICTIM_IP);
+    ok('a forged username does not lock the campus gate it names',
+      victim.status === 200 && !!victim.json?.token,
+      `HTTP ${victim.status}: ${victim.raw.slice(0, 160)}`);
+
+    const forgedRows = await attempts().countDocuments({ key: /^login-campus/ });
+    ok('the forged attempts landed on the account gate, not a campus gate',
+      forgedRows === 0, `${forgedRows} campus row(s) created by a username`);
 
     // =================================================================
     section('A username sign-in is still bounded by its own account');

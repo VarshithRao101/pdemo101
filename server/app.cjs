@@ -2763,12 +2763,29 @@ function loginGates(req, { byCampus, clerkCampus, attempted }) {
   }
   return [
     {
-      key: attemptKey('login', `campus:${clerkCampus}|ip:${clientIp(req)}`),
+      // Each gate gets its OWN kind, and that is load-bearing rather than
+      // tidiness. The kind is a literal in this file; the value is not. When
+      // all three shared the kind `login`, the account gate's value — a
+      // username, straight from the request body — could be typed to spell
+      // another gate's key exactly: a username of
+      //
+      //     campus:beemaram c1|ip:203.0.113.5
+      //
+      // produced `login:campus:beemaram c1|ip:203.0.113.5`, byte for byte the
+      // address gate of a real clerk office. Five posts and that office was
+      // locked out by a stranger who never touched its campus form. That is
+      // the same failure this whole two-gate design exists to remove, walked
+      // in through the other door.
+      //
+      // Distinct kinds close it structurally: `login:x` cannot equal
+      // `login-campus-ip:y` for ANY x and y, so no value a caller supplies can
+      // reach a gate it was not issued.
+      key: attemptKey('login-campus-ip', `${clerkCampus}|${clientIp(req)}`),
       max: MAX_LOGIN_ATTEMPTS,
       scope: 'address'
     },
     {
-      key: attemptKey('login', `campus:${clerkCampus}`),
+      key: attemptKey('login-campus', clerkCampus),
       max: MAX_CAMPUS_LOGIN_ATTEMPTS,
       scope: 'campus'
     }
@@ -5006,6 +5023,25 @@ app.post('/api/accountant/students/:studentId/payments', authenticateToken, requ
       // Return the original receipt rather than double-charging.
       if (createErr && createErr.code === 11000) {
         const existing = await Payment.findOne({ idempotencyKey });
+
+        // The key must belong to THIS student before its receipt is handed
+        // back. idempotencyKey is unique across the whole collection and the
+        // `client_` half of it is chosen by the caller, so a lookup on the key
+        // alone answers a question nobody asked: it can return a payment
+        // belonging to another student, on another campus, past the ownership
+        // check performed above — student name, admission number, amount and
+        // receipt number included. Guessing a key is not realistic now that
+        // the portal sends a UUID, but "not realistic" is not the standard for
+        // handing one campus another campus's records, and the scoping costs a
+        // single condition.
+        if (existing && existing.studentId !== student.studentId) {
+          console.warn(`[Payments]: Key [${idempotencyKey}] belongs to a different student; refusing to answer with it.`);
+          return res.status(409).json({
+            status: 'error',
+            message: 'That idempotency key was already used for a different payment. Use a new key.'
+          });
+        }
+
         if (existing) {
           console.log(`[Payments]: Duplicate submission blocked by unique index for key [${idempotencyKey}].`);
           const current = await Student.findById(student._id);

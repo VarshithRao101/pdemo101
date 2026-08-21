@@ -255,6 +255,21 @@ const reconcile = async (studentId) => {
     ok(`both keyed payments reached the ledger (paid ${r.totalPaid}/10000)`, r.totalPaid === 10000, `got ${r.totalPaid}`);
     ok('two payment rows exist', r.rows === 2, `${r.rows} rows`);
 
+    // A key already spent on ANOTHER student is refused rather than answered.
+    // The unique index spans the whole collection and the caller picks half of
+    // the key, so a lookup on the key alone would hand back a payment from a
+    // different student — and a different campus — past the ownership check.
+    const sOther = await newStudent(tokens.clerk, 30000);
+    const kShared = `zz-idem-${crypto.randomBytes(6).toString('hex')}`;
+    await pay(s6.studentId, { amount: 3000, installment: 'Installment 1', idempotencyKey: kShared });
+    const crossed = await pay(sOther.studentId, { amount: 3000, installment: 'Installment 1', idempotencyKey: kShared });
+    ok('a key belonging to another student is refused', crossed.status === 409, `status ${crossed.status}`);
+    ok("it does not leak the other student's receipt",
+      !JSON.stringify(crossed.json || {}).includes(s6.studentId),
+      JSON.stringify(crossed.json).slice(0, 200));
+    r = await reconcile(sOther.studentId);
+    ok('and nothing was recorded against the second student', r.rows === 0, `${r.rows} rows`);
+
     // And the limitation, asserted so that it stays a decision rather than
     // drifting into an accident: a caller sending NO key and repeating itself
     // exactly, inside the window, is still deduplicated. That is the price of
