@@ -515,6 +515,14 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
   const [collectTransactionRef, setCollectTransactionRef] = useState('');
   const [collectDate, setCollectDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
+
+  // Undoing a payment. The receipt being reversed, the reason it is being
+  // reversed, and the PIN that authorises it — all held only while the dialog
+  // is open, and cleared the moment it closes.
+  const [reversing, setReversing] = useState<Receipt | null>(null);
+  const [reversalReason, setReversalReason] = useState('');
+  const [reversalPin, setReversalPin] = useState('');
+  const [isReversing, setIsReversing] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<string | null>(null);
 
   // Year upgrade. Eligibility always comes from the server — the balance held
@@ -1153,6 +1161,46 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
    * printed two half-A4 copies with a cut line between them, at 9.5px, and
    * looked like a till slip beside the statement.
    */
+  /**
+   * Undo a payment taken in error.
+   *
+   * The PIN is the clerk's own sign-in PIN and is sent for this one request
+   * only — never stored, never put in the global header, so it cannot ride
+   * along on some later call.
+   */
+  const handleReversePayment = async () => {
+    if (!reversing || !selectedStudent) return;
+
+    if (!reversalReason.trim()) {
+      triggerToast('Say why this payment is being reversed. It goes on the record.', 'error');
+      return;
+    }
+    if (!/^\d{6}$/.test(reversalPin)) {
+      triggerToast('Enter your 6-digit PIN to confirm.', 'error');
+      return;
+    }
+
+    setIsReversing(true);
+    try {
+      await accountantService.reversePayment(
+        selectedStudent.studentId, reversing.receiptNumber,
+        reversalReason.trim(), reversalPin
+      );
+      triggerToast(
+        `Receipt ${reversing.receiptNumber} reversed. `
+        + `Rs.${Number(reversing.amount || 0).toLocaleString('en-IN')} is back on the balance.`
+      );
+      setReversing(null);
+      setReversalReason('');
+      setReversalPin('');
+      await triggerFreshnessRefetch();
+    } catch (err: any) {
+      triggerToast(err?.message || 'The payment could not be reversed.', 'error');
+    } finally {
+      setIsReversing(false);
+    }
+  };
+
   const handleDownloadPDF = (receipt: Receipt, student: Student) => {
     const receiptWords = numberToReceiptWords(receipt.amount);
     const paidToDate = Number(student.totalPaid || 0);
@@ -2959,6 +3007,14 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                         >
                           Print / PDF
                         </button>
+                        <button
+                          onClick={() => { setReversing(receipt); setReversalReason(''); setReversalPin(''); }}
+                          style={{ ...styles.actionItemBtn, border: '1.5px solid var(--critical)', color: 'var(--critical)', background: 'transparent' }}
+                          className="press-interactive"
+                          title="Undo this payment and put the money back on the balance"
+                        >
+                          Undo
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -3164,6 +3220,85 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
           </div>
         )}
 
+        {/* Undo a payment taken in error */}
+        {reversing && selectedStudent && (
+          <div style={styles.overlayOverlay} className="anim-fade-in">
+            <div style={{ ...styles.overlaySheet, position: 'relative', maxWidth: '460px' }} className="glass-panel-heavy">
+              <h3 style={{ margin: '0 0 6px', fontSize: '1.1rem', fontWeight: 900, color: 'var(--critical)' }}>
+                Undo this payment
+              </h3>
+              <p style={{ margin: '0 0 16px', fontSize: '0.8571rem', color: 'var(--muted-gray)', lineHeight: 1.6 }}>
+                Rs.{Number(reversing.amount || 0).toLocaleString('en-IN')} will be put back on
+                {' '}{selectedStudent.name}'s balance. The receipt stays on record marked as
+                reversed, with your name against it, and the parent's copy stops opening.
+              </p>
+
+              <div style={{
+                backgroundColor: 'var(--surface-sunken)', border: '1.5px solid var(--line-strong)',
+                borderRadius: '10px', padding: '10px 12px', marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                  Receipt
+                </div>
+                <div style={{ fontSize: '0.9286rem', fontWeight: 800, color: 'var(--dark-charcoal)', marginTop: '2px' }}>
+                  {reversing.receiptNumber}
+                </div>
+                <div style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px' }}>
+                  {reversing.installment} ({reversing.category}) &middot; {new Date(reversing.date).toLocaleDateString('en-GB')}
+                </div>
+              </div>
+
+              <label style={{ display: 'block', fontSize: '0.7857rem', fontWeight: 800, color: 'var(--dark-charcoal)', marginBottom: '6px' }}>
+                Why is this being reversed?
+              </label>
+              <input
+                value={reversalReason}
+                onChange={(e) => setReversalReason(e.target.value.slice(0, 100))}
+                placeholder="Wrong amount entered"
+                maxLength={100}
+                style={{ ...styles.textInputBox, marginBottom: '14px' }}
+              />
+
+              <label style={{ display: 'block', fontSize: '0.7857rem', fontWeight: 800, color: 'var(--dark-charcoal)', marginBottom: '6px' }}>
+                Your 6-digit PIN
+              </label>
+              <input
+                value={reversalPin}
+                onChange={(e) => setReversalPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="••••••"
+                style={{ ...styles.textInputBox, letterSpacing: '.4em', textAlign: 'center', fontWeight: 800 }}
+              />
+              <p style={{ margin: '8px 0 18px', fontSize: '0.7143rem', color: 'var(--muted-gray)' }}>
+                The same PIN you sign in with. It confirms this one action and is not stored.
+              </p>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => { setReversing(null); setReversalReason(''); setReversalPin(''); }}
+                  disabled={isReversing}
+                  style={{ ...styles.sheetBtn, flex: 1, backgroundColor: 'transparent', border: '1.5px solid var(--line-strong)', color: 'var(--dark-charcoal)', fontWeight: 800 }}
+                  className="press-interactive"
+                >
+                  Keep the payment
+                </button>
+                <button
+                  onClick={handleReversePayment}
+                  disabled={isReversing}
+                  style={{
+                    ...styles.sheetBtn, flex: 1, backgroundColor: 'var(--critical)', color: '#FFFFFF',
+                    fontWeight: 900, opacity: isReversing ? 0.6 : 1,
+                    cursor: isReversing ? 'wait' : 'pointer'
+                  }}
+                  className="press-interactive"
+                >
+                  {isReversing ? 'Reversing...' : 'Confirm — Undo Payment'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Ack Receipt popup */}
         {activeOverlay === 'receipt_view' && selectedReceipt && selectedStudent && (
           <div style={styles.overlayOverlay} className="anim-fade-in">

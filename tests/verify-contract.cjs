@@ -33,9 +33,9 @@ const ok = (name, cond, detail = '') => {
 };
 const section = t => console.log(`\n${t}\n${'-'.repeat(t.length)}`);
 
-const { readRoutes } = require('./lib/routes.cjs');
+const { readRoutes, stripComments } = require('./lib/routes.cjs');
 
-const routes = readRoutes(SERVER);
+const routes = readRoutes(stripComments(SERVER));
 const has = (r, name) => r.chain.includes(name);
 const isWrite = r => r.method !== 'GET';
 

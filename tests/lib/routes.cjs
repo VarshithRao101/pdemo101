@@ -91,11 +91,53 @@ function readRoutes(src) {
 }
 
 
+/**
+ * Comments removed, with the source's length preserved.
+ *
+ * The paren and brace walkers below track string state so that a bracket
+ * inside a string does not confuse them — but they cannot tell a string from
+ * an apostrophe or a backtick inside a COMMENT. One `reversed: false` written
+ * in prose opened a template literal that never closed, the walker swallowed
+ * the rest of the handler, and a fully audited route was reported as having no
+ * audit call at all. A false finding produced by the tool that looks for
+ * findings is the worst possible failure mode for this parser, so comments go
+ * before anything else reads the text.
+ *
+ * Each removed character is replaced by a space, so every line number and
+ * offset still matches the real file.
+ */
+function stripComments(src) {
+  let out = '';
+  let i = 0, inStr = null, prev = '';
+  while (i < src.length) {
+    const c = src[i], next = src[i + 1];
+    if (inStr) {
+      if (c === inStr && prev !== '\\') inStr = null;
+      out += c; prev = prev === '\\' && c === '\\' ? '' : c; i++;
+      continue;
+    }
+    if (c === "'" || c === '"' || c === '`') { inStr = c; out += c; prev = c; i++; continue; }
+    if (c === '/' && next === '/') {
+      while (i < src.length && src[i] !== '\n') { out += ' '; i++; }
+      continue;
+    }
+    if (c === '/' && next === '*') {
+      while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) {
+        out += src[i] === '\n' ? '\n' : ' '; i++;
+      }
+      out += '  '; i += 2;
+      continue;
+    }
+    out += c; prev = c; i++;
+  }
+  return out;
+}
+
 /** Every route in server/app.cjs, parsed once. */
 function loadRoutes() {
   const SERVER = fs.readFileSync(
     path.join(__dirname, '..', '..', 'server', 'app.cjs'), 'utf8');
-  return readRoutes(SERVER);
+  return readRoutes(stripComments(SERVER));
 }
 
 /** The roles a route names, or null when it names none. */
@@ -111,4 +153,4 @@ function permissionFor(route) {
   return m ? m[1] : null;
 }
 
-module.exports = { readRoutes, loadRoutes, rolesFor, permissionFor, namedBody };
+module.exports = { readRoutes, loadRoutes, rolesFor, permissionFor, namedBody, stripComments };

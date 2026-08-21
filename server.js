@@ -1,29 +1,40 @@
 /**
  * Hostinger Root Entry Point Bridge (server.js)
  *
- * Starts the server DIRECTLY by default. This is the arrangement the app has
- * always run under and the one the platform is known to work with.
+ * Starts the server UNDER THE SUPERVISOR by default, so a crash is followed by
+ * a restart rather than by an outage that lasts until somebody notices.
  *
- * The supervisor in server/supervisor.cjs is opt-in via ENABLE_SUPERVISOR=1.
- * It is off by default because making it the default took the site down: it
- * starts the server with fork(), and fork does NOT pass V8 flags to the child.
- * `npm start` runs node with --max-old-space-size=1536, so the supervised
- * child lost its heap ceiling, sized itself from total machine memory, and was
- * killed by the platform for exceeding the plan long before V8 would collect.
+ * This was not always the default, and the reason is worth keeping written
+ * down. Making it the default the first time took the site down: the
+ * supervisor starts the server with fork(), fork does NOT pass V8 flags to the
+ * child, and `npm start` runs node with --max-old-space-size=1536. The
+ * supervised child therefore lost its heap ceiling, sized itself from total
+ * machine memory, believed it could grow to several gigabytes, and was killed
+ * by the platform for exceeding the plan long before V8 would have collected.
  *
- * The supervisor now forwards execArgv and NODE_OPTIONS so the ceiling
- * survives, but the default stays direct: an auto-restart that is not there is
- * a smaller problem than a site that will not boot.
+ * That cause is fixed — supervisor.cjs forwards execArgv and the environment —
+ * and the fix is verified rather than assumed: tests/verify-supervisor.cjs
+ * starts the real thing and reads the child's own boot line to confirm the
+ * ceiling survived, and kills it twice to confirm it comes back.
+ *
+ * The supervisor deliberately does NOT restart after a clean exit or a stop
+ * signal, and gives up after ten quick failures in a row rather than looping
+ * on a broken build.
+ *
+ * Escape hatch: DISABLE_SUPERVISOR=1 runs the server directly. If supervision
+ * ever misbehaves on the platform again, that is the switch — no redeploy of
+ * code required.
  */
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
-const superviseRequested = String(process.env.ENABLE_SUPERVISOR || '').trim() === '1';
+const supervisionDisabled = String(process.env.DISABLE_SUPERVISOR || '').trim() === '1';
 
-if (superviseRequested) {
-  console.log('[Entry] ENABLE_SUPERVISOR=1 — starting under the supervisor.');
-  require('./server/supervisor.cjs');
-} else {
+if (supervisionDisabled) {
+  console.log('[Entry] DISABLE_SUPERVISOR=1 — starting the server directly, with no auto-restart.');
   require('./server/start.cjs');
+} else {
+  console.log('[Entry] Starting under the supervisor; a crash will be restarted automatically.');
+  require('./server/supervisor.cjs');
 }

@@ -116,6 +116,30 @@ export const recordPayment = async (
   return res.data;
 };
 
+/**
+ * Undo a payment taken in error.
+ *
+ * Guarded by the signed-in account's own six-digit PIN — the same one used to
+ * sign in — because putting money back is not a routine edit and a terminal
+ * left open at a counter is the ordinary case rather than the unlucky one.
+ *
+ * The payment is reversed, not deleted: the receipt number and the original
+ * amount stay on record so the college can see afterwards that it happened.
+ */
+export const reversePayment = async (
+  studentId: string,
+  receiptNumber: string,
+  reason: string,
+  securityKey: string
+): Promise<{ payment: FeePayment; student: StudentProfile }> => {
+  const res = await apiClient.post<{ status: string; data: { payment: FeePayment; student: StudentProfile } }>(
+    `/accountant/students/${studentId}/payments/${encodeURIComponent(receiptNumber)}/reverse`,
+    { reason },
+    { headers: { 'x-security-pin': securityKey } }
+  );
+  return res.data;
+};
+
 export const getPaymentHistory = async (studentId: string): Promise<FeePayment[]> => {
   const res = await apiClient.get<{ status: string; data: FeePayment[] }>(`/accountant/students/${studentId}/payments`);
   return res.data;

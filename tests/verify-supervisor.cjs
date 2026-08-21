@@ -52,8 +52,15 @@ async function main() {
   console.log('SUPERVISOR — does it come back?');
   console.log('========================================================\n');
 
+  // Forked WITH the heap flag, exactly as `npm start` runs node. This is the
+  // whole point of the check below: fork() does not pass V8 flags to the child
+  // it spawns, so the supervised server once lost its ceiling, sized its heap
+  // from total machine memory, and was killed by the platform. Supervising
+  // without reproducing that launch would test the restart and miss the bug
+  // that made supervision dangerous in the first place.
   supervisor = fork(path.join(__dirname, '..', 'server', 'supervisor.cjs'), [], {
     env: { ...process.env, PORT },
+    execArgv: ['--max-old-space-size=1536'],
     stdio: ['ignore', 'pipe', 'pipe', 'ipc']
   });
 
@@ -70,6 +77,16 @@ async function main() {
   ok('the server comes up under the supervisor', await waitForUp(45000));
   ok('the supervisor reported its child PID', !!childPid, String(childPid));
   if (!childPid) return;
+
+  // The child prints its own ceiling at boot. Reading it back is the only way
+  // to know the flag survived the fork rather than assuming it did.
+  const ceiling = /heap ceiling (\d+)MB/.exec(seen.join(''));
+  ok('the supervised child reports a heap ceiling', !!ceiling,
+    'the boot line is missing, so the ceiling cannot be confirmed');
+  ok(`the ceiling survived the fork (${ceiling ? ceiling[1] : '?'}MB)`,
+    !!ceiling && Number(ceiling[1]) < 2500,
+    `${ceiling ? ceiling[1] : 'unknown'}MB — the child sized its heap from machine memory, `
+    + 'which is what took the site down when supervision was first made the default');
 
   console.log('\n1. The harshest case — SIGKILL the child, no chance to clean up\n');
 

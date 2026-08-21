@@ -677,6 +677,21 @@ app.post('/r/:receiptNumber/:token',
     const payment = await Payment.findOne({ receiptNumber: String(receiptNumber) }).lean();
     if (!payment) return receiptNotFound(res);
 
+    // A reversed receipt is no longer a receipt. The money has been put back,
+    // so a parent must not be able to keep opening a document that says they
+    // paid it — and a link already sent by WhatsApp cannot be recalled, which
+    // is exactly why the check belongs here rather than only in the portal.
+    if (payment.reversed) {
+      return res.status(410).type('html').send(receiptPage({
+        title: 'Receipt cancelled',
+        inner: '<div class="gate"><div class="sheet">'
+          + '<h1>This receipt has been cancelled</h1>'
+          + '<p>The payment it recorded was reversed by the college.</p>'
+          + '<p class="foot">Please contact the college office for the current position on your fees.</p>'
+          + '</div></div>'
+      }));
+    }
+
     const student = await Student.findOne({ studentId: payment.studentId })
       .select('name admissionNumber branch course section academicYear studentYear mobile parentMobile receipts')
       .lean();
@@ -1128,6 +1143,18 @@ function cleanCustomFeeSlots(input, existing = []) {
   }
   return { values: out };
 }
+
+/**
+ * A reversed payment is not money.
+ *
+ * Every figure the college reads — today's collection, a campus total, the
+ * analytics, the reports — filters on this. The row itself stays exactly where
+ * it was so the reversal remains visible and auditable; it simply stops
+ * counting. Written as one constant rather than repeated inline, because a
+ * total that forgot the filter would quietly overstate what the college has
+ * taken, and would look right.
+ */
+const LIVE_PAYMENT = { reversed: { $ne: true } };
 
 function calcStudentGrossFees(tuitionFee, hostelFee, transportFee, miscellaneousFee, previousPending, customFeeSlots) {
   const customTotal = (Array.isArray(customFeeSlots) ? customFeeSlots : [])
@@ -5288,6 +5315,234 @@ app.post('/api/accountant/students/:studentId/upgrade',
   }
 });
 
+/**
+ * POST /api/accountant/students/:studentId/payments/:receiptNumber/reverse
+ *
+ * Undo a payment taken in error.
+ *
+ * There was no way to do this at all, which meant a clerk who typed 25,000
+ * instead of 2,500 had no path back except somebody editing MongoDB by hand —
+ * and that breaks the audit trail and the ledger invariant in the same motion.
+ * Mistakes at a fee counter are a daily event, not an edge case.
+ *
+ * The payment is REVERSED, never deleted. Deleting it would put the money back
+ * and destroy the evidence that it was ever taken; a family disputing a receipt
+ * they were handed needs the college to be able to say what happened to it. The
+ * row, its receipt number and its original amount all stay. What changes is
+ * that it stops counting: every total filters on `reversed`.
+ *
+ * Guarded by the account's own six-digit PIN, the same one used to sign in.
+ * Putting money back is not a routine edit, and a shared terminal left open is
+ * the ordinary case rather than the unlucky one.
+ */
+app.post('/api/accountant/students/:studentId/payments/:receiptNumber/reverse',
+  authenticateToken, requireRole('accountant', 'admin1', 'clerk'),
+  requirePermission('collectFees'), verifySecurityOtp,
+  mongoRateLimiter, requireDatabase, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { studentId, receiptNumber } = req.params;
+
+    const reason = cleanText((req.body && req.body.reason) || '', {
+      field: 'Reason', max: MAX_TEXT.short, required: true
+    });
+    if (reason.error) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Say why this payment is being reversed. It is recorded against your name.'
+      });
+    }
+
+    const payment = await Payment.findOne({ receiptNumber: String(receiptNumber).trim() });
+    if (!payment) {
+      return res.status(404).json({ status: 'error', message: 'That receipt was not found.' });
+    }
+
+    // Already reversed. Answered as a conflict rather than repeated, because
+    // reversing twice would credit the money back twice.
+    if (payment.reversed) {
+      return res.status(409).json({
+        status: 'error',
+        message: `Receipt ${payment.receiptNumber} was already reversed`
+          + `${payment.reversedBy ? ` by ${payment.reversedBy}` : ''}.`
+      });
+    }
+
+    const isObjId = isValidObjectId(studentId);
+    const student = await Student.findOne({
+      $or: [{ _id: isObjId ? studentId : null }, { studentId }, { admissionNumber: studentId }]
+    });
+    if (!student) {
+      return res.status(404).json({ status: 'error', message: 'Student record not found.' });
+    }
+    if (payment.studentId !== student.studentId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'That receipt belongs to a different student.'
+      });
+    }
+    if (!callerOwnsStudent(req, student.branch)) {
+      return res.status(403).json({
+        status: 'error',
+        message: `Access forbidden. Student belongs to campus [${student.branch}].`
+      });
+    }
+
+    // A payment from a closed year cannot be reversed here. Its money has been
+    // archived into yearHistory and the fee structure it was taken against no
+    // longer exists on the record, so putting it back would credit this year's
+    // balance with last year's payment.
+    const archived = (student.yearHistory || []).some(y =>
+      (y.receipts || []).some(r => r.receiptNumber === payment.receiptNumber));
+    if (archived) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'That receipt belongs to a closed academic year and cannot be reversed here. '
+          + 'Ask the Rector to correct the archived year.'
+      });
+    }
+
+    const amount = Math.round(Number(payment.amount || 0) * 100) / 100;
+
+    // Marked reversed FIRST, conditionally on it not already being reversed.
+    // Two clerks pressing undo at the same moment both read `reversed: false`
+    // above; only one of them can win this update, and the loser is refused
+    // before any money moves. Doing it the other way round — ledger first —
+    // would credit the amount back twice.
+    const claimed = await Payment.findOneAndUpdate(
+      { _id: payment._id, reversed: { $ne: true } },
+      {
+        $set: {
+          reversed: true,
+          reversedAt: new Date(),
+          reversedBy: req.user.username,
+          reversalReason: reason.value
+        }
+      },
+      { new: true }
+    );
+    if (!claimed) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'That receipt was reversed by someone else a moment ago.'
+      });
+    }
+
+    // The same arithmetic the collection route uses, subtracting instead of
+    // adding: totalPaid comes down and the balance is recomputed from the
+    // document's own fee fields in one atomic operation.
+    const updatedStudent = await Student.findOneAndUpdate(
+      { _id: student._id },
+      [
+        {
+          $set: {
+            totalPaid: {
+              $max: [0, { $round: [{ $subtract: [{ $ifNull: ['$totalPaid', 0] }, amount] }, 2] }]
+            }
+          }
+        },
+        {
+          $set: {
+            remainingBalance: {
+              $max: [
+                0,
+                {
+                  $round: [
+                    {
+                      $subtract: [
+                        {
+                          $add: [
+                            { $ifNull: ['$tuitionFee', 0] }, { $ifNull: ['$hostelFee', 0] },
+                            { $ifNull: ['$transportFee', 0] }, { $ifNull: ['$miscellaneousFee', 0] },
+                            { $ifNull: ['$previousPending', 0] },
+                            { $sum: { $map: { input: { $ifNull: ['$customFeeSlots', []] }, as: 's', in: { $ifNull: ['$$s.amount', 0] } } } }
+                          ]
+                        },
+                        {
+                          $add: [
+                            { $ifNull: ['$tuitionWaiver', 0] }, { $ifNull: ['$hostelWaiver', 0] },
+                            { $ifNull: ['$transportWaiver', 0] }, { $ifNull: ['$miscWaiver', 0] },
+                            { $ifNull: ['$totalPaid', 0] }
+                          ]
+                        }
+                      ]
+                    },
+                    2
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        // The receipt comes off the student's list in the same operation, so
+        // there is never a moment where the money is back but the receipt is
+        // still printable and shareable.
+        {
+          $set: {
+            receipts: {
+              $filter: {
+                input: { $ifNull: ['$receipts', []] },
+                as: 'r',
+                cond: { $ne: ['$$r.receiptNumber', payment.receiptNumber] }
+              }
+            }
+          }
+        }
+      ],
+      { new: true }
+    );
+
+    if (!updatedStudent) {
+      // The ledger did not move but the receipt is marked reversed. Put the
+      // mark back rather than leave the two disagreeing, and say so loudly.
+      await Payment.updateOne({ _id: payment._id }, {
+        $set: { reversed: false, reversedAt: null, reversedBy: '', reversalReason: '' }
+      }).catch(err =>
+        console.error(`[Reversal]: could not un-mark ${payment.receiptNumber}:`, err.message));
+
+      console.error(`[Reversal]: ${payment.receiptNumber} marked reversed but the student `
+        + `balance did not move; the mark has been rolled back.`);
+      return res.status(500).json({
+        status: 'error',
+        message: 'The reversal could not be applied. Nothing was changed — please try again.'
+      });
+    }
+
+    recordAudit(req, {
+      action: 'payment.reverse',
+      entityType: 'payment',
+      entityId: payment.receiptNumber,
+      entityLabel: studentLabel(updatedStudent),
+      campus: student.branch,
+      amount,
+      summary: `Reversed receipt ${payment.receiptNumber} for `
+        + `Rs. ${amount.toLocaleString('en-IN')} against ${studentLabel(updatedStudent)}. `
+        + `Reason: ${reason.value}`,
+      details: {
+        receiptNumber: payment.receiptNumber,
+        reason: reason.value,
+        balanceBefore: student.remainingBalance,
+        balanceAfter: updatedStudent.remainingBalance
+      }
+    });
+
+    console.log(`[Reversal]: ${payment.receiptNumber} (Rs. ${amount}) reversed by `
+      + `[${req.user.username}] — ${reason.value}`);
+
+    return res.json({
+      status: 'success',
+      message: `Receipt ${payment.receiptNumber} has been reversed. `
+        + `Rs. ${amount.toLocaleString('en-IN')} has been put back on the balance.`,
+      data: {
+        payment: normalizePaymentForClient(claimed),
+        student: withReceiptTokens(updatedStudent)
+      }
+    });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
 app.get('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
@@ -6548,7 +6803,7 @@ app.get('/api/accountant/dashboard-summary', authenticateToken, requireRole('acc
 
     const [todayAgg, pendingAgg] = await Promise.all([
       Payment.aggregate([
-        { $match: { ...scope, date: { $gte: startOfDay } } },
+        { $match: { ...scope, ...LIVE_PAYMENT, date: { $gte: startOfDay } } },
         { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
       ]),
       Student.aggregate([
@@ -6640,6 +6895,9 @@ app.get('/api/admin1/analytics', authenticateToken, requireRole('admin1', 'clerk
 
     const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
     const match = scope.branch ? [{ $match: scope }] : [];
+    // Payments need the reversal filter; students, teachers and
+    // expenditures do not have the field and must not be filtered on it.
+    const payMatch = [{ $match: { ...scope, ...LIVE_PAYMENT } }];
 
     const [
       studentAgg, paymentAgg, dailyAgg, campusStudents, campusPaid,
@@ -6681,11 +6939,11 @@ app.get('/api/admin1/analytics', authenticateToken, requireRole('admin1', 'clerk
         } }
       ]),
 
-      Payment.aggregate([...match, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
+      Payment.aggregate([...payMatch, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
 
       // Daily collections for the sparkline / trend chart.
       Payment.aggregate([
-        { $match: { ...scope, date: { $gte: since } } },
+        { $match: { ...scope, ...LIVE_PAYMENT, date: { $gte: since } } },
         { $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
           amount: { $sum: '$amount' }, count: { $sum: 1 }
@@ -6694,7 +6952,7 @@ app.get('/api/admin1/analytics', authenticateToken, requireRole('admin1', 'clerk
       ]),
 
       Student.aggregate([...match, { $group: { _id: '$branch', students: { $sum: 1 }, outstanding: { $sum: { $ifNull: ['$remainingBalance', 0] } }, paid: { $sum: { $ifNull: ['$totalPaid', 0] } } } }]),
-      Payment.aggregate([...match, { $group: { _id: '$branch', collected: { $sum: '$amount' }, receipts: { $sum: 1 } } }]),
+      Payment.aggregate([...payMatch, { $group: { _id: '$branch', collected: { $sum: '$amount' }, receipts: { $sum: 1 } } }]),
       Expenditure.aggregate([...match, { $group: { _id: '$category', amount: { $sum: '$amount' }, count: { $sum: 1 } } }, { $sort: { amount: -1 } }]),
 
       // Enquiries carry preferredCampus rather than branch, so the campus
@@ -6711,8 +6969,8 @@ app.get('/api/admin1/analytics', authenticateToken, requireRole('admin1', 'clerk
 
       Teacher.aggregate([...match, { $group: { _id: null, count: { $sum: 1 }, salary: { $sum: { $ifNull: ['$salary', 0] } }, teaching: { $sum: { $cond: [{ $eq: ['$classification', 'Teaching'] }, 1, 0] } } } }]),
       WorkerPayment.aggregate([...match, { $group: { _id: null, amount: { $sum: '$amount' }, count: { $sum: 1 } } }]),
-      Payment.aggregate([...match, { $group: { _id: '$paymentMode', amount: { $sum: '$amount' }, count: { $sum: 1 } } }, { $sort: { amount: -1 } }]),
-      Payment.find(scope).sort({ date: -1 }).limit(8).select('receiptNumber studentName amount date paymentMode branch').lean()
+      Payment.aggregate([...payMatch, { $group: { _id: '$paymentMode', amount: { $sum: '$amount' }, count: { $sum: 1 } } }, { $sort: { amount: -1 } }]),
+      Payment.find({ ...scope, ...LIVE_PAYMENT }).sort({ date: -1 }).limit(8).select('receiptNumber studentName amount date paymentMode branch').lean()
     ]);
 
     const s = studentAgg[0] || {};
@@ -6809,7 +7067,7 @@ app.get('/api/admin1/reports', authenticateToken, requireRole('admin1', 'clerk',
 
     const [enrollment, revenue, expenses] = await Promise.all([
       Student.aggregate([...(scope.branch ? [{ $match: scope }] : []), { $group: { _id: '$branch', students: { $sum: 1 } } }]),
-      Payment.aggregate([...(scope.branch ? [{ $match: scope }] : []), { $group: { _id: '$branch', revenue: { $sum: '$amount' } } }]),
+      Payment.aggregate([{ $match: { ...scope, ...LIVE_PAYMENT } }, { $group: { _id: '$branch', revenue: { $sum: '$amount' } } }]),
       Expenditure.aggregate([...(scope.branch ? [{ $match: scope }] : []), { $group: { _id: '$branch', expenses: { $sum: '$amount' } } }])
     ]);
 

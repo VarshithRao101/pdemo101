@@ -42,7 +42,22 @@ const paymentSchema = new mongoose.Schema({
   // double-click from producing two receipts — an application-level findOne()
   // check cannot, because two concurrent requests both read "not found"
   // before either inserts. `sparse` keeps legacy rows with no key valid.
-  idempotencyKey: { type: String, index: true, unique: true, sparse: true }
+  idempotencyKey: { type: String, index: true, unique: true, sparse: true },
+
+  // --- Reversal ----------------------------------------------------------
+  //
+  // A payment taken in error is REVERSED, never deleted. A clerk who types
+  // 25,000 instead of 2,500 needs the money put back; the college needs to be
+  // able to see afterwards that it happened, who did it and why. Deleting the
+  // row would satisfy the first and destroy the second.
+  //
+  // A reversed payment stops counting towards what a family has paid — every
+  // total in the system filters on `reversed` — but the row, its receipt
+  // number and its original amount stay exactly where they were.
+  reversed: { type: Boolean, default: false, index: true },
+  reversedAt: { type: Date, default: null },
+  reversedBy: { type: String, default: '', trim: true },
+  reversalReason: { type: String, default: '', trim: true }
 }, {
   timestamps: true
 });
