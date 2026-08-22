@@ -545,10 +545,19 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))', gap: '8px', marginBottom: '10px' }}>
               {roleCards.map(rc => {
-                const isSelected = 
-                  (rc.id === 'admin1' && (userId === 'admin1' || userId === 'admin')) ||
-                  (rc.id === 'clerk' && isClerkMode) ||
-                  (rc.id === 'accountant' && userId.includes('accountant'));
+                // Which card is lit comes from which card was CLICKED, not from
+                // guessing at the text in the ID box.
+                //
+                // It used to read `userId === 'admin1'` and
+                // `userId.includes('accountant')`, which made the highlight a
+                // function of what the accounts happen to be named. Both had
+                // already broken: the Rector account was renamed to sriram, so the
+                // Admin card stopped lighting up, and the Accountant card went the
+                // same way the moment its ID stopped being pre-filled.
+                //
+                // A sign-in screen must not know anyone's name. That is the whole
+                // point of letting the Rector rename these accounts.
+                const isSelected = rc.id === roleChoice;
                 return (
                   <button
                     key={rc.id}

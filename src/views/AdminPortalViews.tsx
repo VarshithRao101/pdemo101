@@ -7499,12 +7499,24 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   </GlassCard>
                 )}
 
-                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('security'); } }} onClick={() => setActivePage('security')} style={styles.moduleCardNew} className="press-interactive">
-                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(37,99,235,0.07)', border: '1px solid rgba(37,99,235,0.18)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                {/* Fee reminders, the same panel the Rector uses.
+                    /api/fees/outstanding already serves admin1, clerk and accountant,
+                    and the panel pins itself to the clerk's own campus, so this needed
+                    no new route and no new permission - only a way in.
+
+                    Deliberately NOT behind a clerk permission: chasing an unpaid fee
+                    is the job, not a privilege, and a clerk who cannot see who owes
+                    money cannot do the collecting they are there to do.
+
+                    The 'My Password & Sign-ins' tile that stood here was removed on
+                    request. A clerk's credentials are set by the Rector on the Clerks
+                    screen, which is the single place they are managed. */}
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('outstanding_fees'); } }} onClick={() => setActivePage('outstanding_fees')} style={styles.moduleCardNew} className="press-interactive">
+                  <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--critical)" strokeWidth="2"><path d="M12 2v20" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                   </div>
-                  <h4 style={styles.moduleTitle}>My Password & Sign-ins</h4>
-                  <p style={styles.moduleDesc}>Change your own password or PIN, and check where you are signed in.</p>
+                  <h4 style={styles.moduleTitle}>Outstanding Fees</h4>
+                  <p style={styles.moduleDesc}>Students at {loggedInCampus} with a balance, largest first, with a one-tap WhatsApp reminder.</p>
                 </div>
 
                 <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('profile'); } }} onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">

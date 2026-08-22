@@ -12,6 +12,7 @@ import collegeLogo from '../assets/college logo.webp';
 import * as accountantService from '../services/accountantService';
 import { CAMPUS_LIST } from '../constants/campuses';
 import { useDataFreshness } from '../hooks/useDataFreshness';
+import { OutstandingFeesPanel } from '../components/common/OutstandingFeesPanel';
 
 
 // --- RENDER BACKGROUND DESIGN WITH CUSTOM COLOR ACCENT GLOWS ---
@@ -322,7 +323,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
   const [isLoading, setIsLoading] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
-  const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'reports' | 'profile'>(
+  const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'reports' | 'profile' | 'outstanding_fees'>(
     restrictTo || 'menu'
   );
 
@@ -3537,6 +3538,35 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
   //  SUBPAGE 7: SCHOLARSHIPS SETTINGS (Sub-page)
 
   //  SUBPAGE 8: ACCOUNTANT PROFILE (Sub-page)
+  // Fee reminders. The same panel the Rector and the clerks use - one
+  // implementation, so a change to the reminder wording reaches every portal
+  // at once rather than three copies drifting apart.
+  //
+  // fixedCampus pins it to this accountant's own campus. /api/fees/outstanding
+  // already scopes by the caller anyway, so this is what the screen SAYS rather
+  // than what it is allowed to read.
+  if (activeSubPage === 'outstanding_fees') {
+    return (
+      <div style={styles.container} className="view-container anim-slide-up">
+        {renderBackgroundDesign('ruby')}
+        <header style={styles.header}>
+          <button onClick={() => { setActiveSubPage('menu'); }} style={styles.backArrowBtn} className="press-interactive">
+             Back to Cockpit
+          </button>
+          <div style={{ marginTop: '8px' }}>
+            <h1 style={styles.title}>Outstanding Fees</h1>
+            <p style={styles.subtitle}>Students at {loggedInCampus} with a balance — largest first</p>
+          </div>
+        </header>
+        <OutstandingFeesPanel
+          campuses={CAMPUS_LIST}
+          fixedCampus={loggedInCampus}
+          onToast={triggerToast}
+        />
+      </div>
+    );
+  }
+
   if (activeSubPage === 'profile') {
     return (
       <div style={styles.container} className="view-container anim-slide-up">
@@ -3649,6 +3679,14 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
               </div>
               <h4 style={styles.moduleTitle}>Fee Collection</h4>
               <p style={styles.moduleDesc}>Search student records and log term payments.</p>
+            </div>
+
+            <div onClick={() => setActiveSubPage('outstanding_fees')} style={styles.moduleCardNew} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--critical)" strokeWidth="2"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </div>
+              <h4 style={styles.moduleTitle}>Outstanding Fees</h4>
+              <p style={styles.moduleDesc}>Students with a balance, largest first, with a one-tap WhatsApp reminder.</p>
             </div>
 
             <div onClick={() => setActiveSubPage('reports')} style={styles.moduleCardNew} className="press-interactive">
