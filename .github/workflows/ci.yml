@@ -149,6 +149,16 @@ jobs:
       JWT_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
       BACKUP_ENCRYPTION_KEY: ci-only-backup-key-not-used-anywhere-else-0123456789
       NODE_ENV: test
+      # A bcrypt hash of a throwaway string, and it has to be HERE rather than
+      # left unset. verifyOpsPassword refuses with 503 "not configured" before
+      # it looks at the supplied password at all, so with this absent the four
+      # refusal assertions in verify-destructive never reach the guard they
+      # exist to test — they bounce off the unconfigured door in front of it
+      # and fail expecting 401. Present, they test the real thing.
+      #
+      # No suite needs the matching plaintext: every one of them checks that a
+      # wipe, purge or restore is REFUSED. Nothing here can authorise one.
+      OPS_PASSWORD_HASH: "$2b$10$sUOxWU0MeFQmDsPSxhGM0uY1yow/kFlJVXB1EeoxWr7SKOoWq1gTe"
 
     steps:
       - uses: actions/checkout@v4
