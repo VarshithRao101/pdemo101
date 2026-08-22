@@ -4489,10 +4489,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   the server query, not hidden here, and are managed on the
                   Clerks screen where they can also be added and removed.
 
-                  The authenticator is editable from this screen on the
-                  operator's explicit instruction. It used to be refused, so
-                  that the account auditing the Rector sat outside the Rector's
-                  control; server/app.cjs records what that cost.
+                  The authenticator is listed but NOT editable here. It sets its
+                  own password and PIN from its own portal, under Settings. That
+                  keeps the account which audits the Rector outside the Rector's
+                  control, while still leaving someone able to rotate it.
                 */}
                 {credAccounts.map(account => {
                   const editing = credEditing === account.id;
@@ -4567,7 +4567,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                                   {revealed ? 'Hide' : 'Show'}
                                 </button>
                               )}
-                              {(
+                              {account.role !== 'authenticator' && (
                                 <button
                                   onClick={() => {
                                     setCredEditing(account.id);
@@ -4602,6 +4602,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                         </div>
                       </div>
 
+
+                      {account.role === 'authenticator' && (
+                        <div style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)', marginTop: '8px', fontWeight: 700 }}>
+                          The security authenticator changes its own password and PIN from its own portal, under Settings.
+                        </div>
+                      )}
                     </GlassCard>
                   );
                 })}

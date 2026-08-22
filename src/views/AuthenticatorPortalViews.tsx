@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AccountSecurityPanel } from '../components/common/AccountSecurityPanel';
 import { LIMITS } from '../constants/fieldLimits';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
@@ -494,7 +495,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   now states plainly that Drive snapshots are the only source
                   a restore can read. This heading was still selling it.
                 */}
-                {activeTab === 'settings' && 'Configure database backups, emergency data purges, and restore from Drive snapshots.'}
+                {activeTab === 'settings' && 'Change your own password and PIN, configure database backups, emergency data purges, and restore from Drive snapshots.'}
               </p>
             </div>
           </div>
@@ -1029,7 +1030,23 @@ export const AuthenticatorDashboardView: React.FC = () => {
         {/* â”€â”€â”€ TAB 5: SYSTEM SETTINGS (GOOGLE DRIVE BACKUP & RESTORE ENGINE) â”€â”€â”€ */}
         {activeTab === 'settings' && (
           <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            
+
+            {/*
+              The authenticator's own password and PIN.
+
+              This is the ONLY way this account's credentials can be changed,
+              and that is deliberate. The Rector can set every other portal's
+              credentials but not this one, because this is the account that
+              audits the Rector. /api/account/password has never been
+              role-restricted, so the capability already existed - there was
+              simply no way to reach it from this portal, which is why it
+              looked like the account could not be changed at all.
+            */}
+            <AccountSecurityPanel
+              onToast={(message) => setToast(message)}
+              onSignOut={(reason) => { (window as any).endSession?.(reason); }}
+            />
+
             {/* SUB-SECTION 1: AUTOMATED GOOGLE DRIVE BACKUP ENGINE */}
             <GlassCard hoverable={false} style={{ padding: '24px', backgroundColor: 'var(--surface)', border: '2.5px solid var(--ink)', boxShadow: '4px 4px 0px var(--ink)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '2px solid var(--line)', paddingBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>

@@ -193,46 +193,60 @@ const req = (method, p, token, body, headers = {}) => new Promise((resolve, reje
     // =================================================================
     section('The account that audits everyone else');
 
-    // This section used to assert the OPPOSITE: that the Rector could not
-    // change the authenticator, so the account auditing the Rector sat outside
-    // the Rector's control. That separation was removed on the operator's
-    // explicit instruction, and these assertions were rewritten rather than
-    // deleted so the change reads as a decision instead of a gap.
+    // The rule, stated once: the Rector may set every portal's credentials
+    // EXCEPT the authenticator's, because that is the account which audits the
+    // Rector. The authenticator rotates its own, from its own portal, proving
+    // identity with its current password.
     //
-    // What is still worth pinning: the change must SUCCEED, must actually take
-    // effect, and must leave a trail. That trail is now the only control on
-    // this path, so a silent success would be worse than the old refusal.
+    // All four doors are checked here. Three must stay shut and one must be
+    // open, and it is the combination that matters: shutting the fourth as well
+    // leaves an account nobody can rotate, which is how this started.
     const auth = await users.findOne({ username: AUTHR.username });
+
+    // Door 1 - the Rector, via the credentials screen. SHUT.
     const seize = await req('PUT', `/api/admin1/credentials/${auth._id}`, rector,
       { password: 'RectorTakesOver1' }, withPin(RECTOR_PIN));
     const authAfter = await users.findOne({ username: AUTHR.username });
+    ok('the Rector cannot change an authenticator credential',
+      seize.status === 403 && authAfter.password === AUTHR.password,
+      `status ${seize.status}, password ${authAfter.password === AUTHR.password ? 'unchanged' : 'CHANGED'} - `
+      + 'the Rector could take the account that audits them');
 
-    ok('the Rector can now change an authenticator credential',
-      seize.status === 200 || seize.status === 201,
-      `status ${seize.status}: the operator asked for this path to be open`);
-    ok('the new authenticator password actually took effect',
-      authAfter.password === 'RectorTakesOver1',
-      `stored password is ${authAfter.password === AUTHR.password ? 'still the old one' : 'something unexpected'}`);
+    const denied = await awaitAudit(db, { outcome: 'denied', entityId: AUTHR.username });
+    ok('the refusal is recorded in the audit trail', !!denied, 'an attempted seizure left no trace');
 
-    // The audit entry is load-bearing now in a way it was not before. With the
-    // refusal gone, this record is the ONLY thing that says a Rector reached
-    // the account that audits them.
-    const trail = await awaitAudit(db, { entityId: AUTHR.username, action: /credential/ });
-    ok('taking the authenticator is recorded in the audit trail', !!trail,
-      'the one remaining control on this path left no trace');
-    ok('the trail names who did it', trail && trail.actorUsername === RECTOR.username,
-      `actor ${trail && trail.actorUsername} - a role is not accountable, a person is`);
-
-    // The password-reset panel was NOT opened. Only the credentials route was
-    // asked for, so that asymmetry is deliberate and is pinned here: if someone
-    // later opens that one too, this fails and they have to mean it.
-    // Password must clear 12 characters or the route answers 400 for length
-    // and the assertion would pass without testing the role guard at all.
+    // Door 2 - the password-reset panel. SHUT.
     const resetAuth = await req('POST', '/api/authenticator/reset-password', rector,
       { username: AUTHR.username, password: 'ResetTakesOverCompletely1' }, withPin(RECTOR_PIN));
-    ok('the password-reset panel still refuses the authenticator',
-      resetAuth.status === 403 || resetAuth.status === 404,
-      `status ${resetAuth.status}`);
+    ok('the password-reset panel refuses the authenticator',
+      resetAuth.status === 403, `status ${resetAuth.status}`);
+
+    // Door 3 - the authenticator accounts route. SHUT for the fixed account.
+    const viaAccounts = await req('PUT', `/api/authenticator/accounts/${auth._id}`, rector,
+      { username: AUTHR.username, password: 'AccountsTakesOver1' }, withPin(RECTOR_PIN));
+    const afterAccounts = await users.findOne({ username: AUTHR.username });
+    ok('the accounts route does not change the authenticator password',
+      afterAccounts.password === AUTHR.password,
+      `status ${viaAccounts.status}, password CHANGED`);
+
+    // Door 4 - the authenticator changing its OWN credentials. OPEN.
+    const authToken = (await req('POST', '/api/auth/login', null,
+      { username: AUTHR.username, password: AUTHR.password, pin: AUTHR.pin })).json?.token;
+    ok('the authenticator can sign in', !!authToken, 'no token');
+
+    const selfChange = await req('POST', '/api/account/password', authToken,
+      { currentPassword: AUTHR.password, newPassword: 'AuthRotatesItself1' });
+    const afterSelf = await users.findOne({ username: AUTHR.username });
+    ok('the authenticator can rotate its own password',
+      selfChange.status === 200 && afterSelf.password === 'AuthRotatesItself1',
+      `status ${selfChange.status}: ${String(selfChange.raw).slice(0, 120)}`);
+
+    // And the current password is still required, so an unattended open session
+    // is not enough to lock the real holder out.
+    const noCurrent = await req('POST', '/api/account/password', authToken,
+      { currentPassword: 'not-the-password', newPassword: 'ShouldNotApply1' });
+    ok('rotating without the current password is refused',
+      noCurrent.status !== 200, `status ${noCurrent.status}`);
 
     // =================================================================
     section('Nothing is written down in the repository');

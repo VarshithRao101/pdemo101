@@ -6452,8 +6452,23 @@ app.put('/api/authenticator/accounts/:id', authenticateToken, requireRole('authe
     const { username: bodyUsername, password, name, email, mobile, department } = req.body || {};
     const normalizedUsername = String(bodyUsername || '').trim().toLowerCase();
 
-    if (id === FIXED_AUTHENTICATOR_USERNAME || normalizedUsername === FIXED_AUTHENTICATOR_USERNAME) {
-      return res.status(403).json({ status: 'error', message: 'Authenticator credentials cannot be modified.' });
+    // Refused by ROLE, and by the fixed username, and by the role of whatever
+    // account :id actually resolves to.
+    //
+    // This used to compare the fixed username ALONE, and a test written to
+    // check it found the hole: the guard never fired for an authenticator
+    // account with any other username, and admin1 can reach this route. So a
+    // Rector could change a second authenticator's password outright, and could
+    // have changed the first one's the moment it was renamed. Every other door
+    // to this account checks the role; this one only looked like it did.
+    const targetAccount = await User.findById(id).select('role username').lean().catch(() => null);
+    if (id === FIXED_AUTHENTICATOR_USERNAME
+        || normalizedUsername === FIXED_AUTHENTICATOR_USERNAME
+        || (targetAccount && normalizeRole(targetAccount.role) === 'authenticator')) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'The security authenticator can only change its own credentials, from its own portal.'
+      });
     }
 
     const updateFields = {};
@@ -8182,27 +8197,35 @@ app.put('/api/admin1/credentials/:id', authenticateToken, requireRole('admin1'),
       return res.status(404).json({ status: 'error', message: 'That account was not found.' });
     }
 
-    // The authenticator USED TO BE refused here, on the reasoning that the one
-    // account which audits the Rector must sit outside the Rector's control.
-    // That separation was removed on the operator's explicit instruction, given
-    // after the tradeoff was put to them plainly and then restated. The Rector
-    // now holds credential control over every portal without exception,
-    // including the account that audits the Rector.
+    // Refused by ROLE, not only by the fixed username. Recognising the
+    // authenticator solely by that literal stops protecting it the moment the
+    // account is renamed, and never covered a second authenticator at all.
     //
-    // What that costs, so nobody has to rediscover it: an admin1 who can set the
-    // authenticator's password can sign in as the authenticator, and the
-    // authenticator is what backups, restores and credential rotation answer to.
-    // There is no longer any account a compromised or malicious Rector cannot
-    // reach. The audit entry written below is what remains, and it is now the
-    // ONLY control on this path, so it must not be weakened.
+    // This was briefly opened, on request, and then closed again the same day
+    // once it became clear the actual need was for the authenticator to set its
+    // OWN credentials - not for the Rector to set them. That need is met by the
+    // security panel in the authenticator portal, which posts to
+    // /api/account/password and has never been role-restricted.
     //
-    // NOTE the asymmetry this leaves: the password-reset panel above still
-    // refuses the authenticator by role. Only THIS route was opened, because
-    // only this one was asked for. Removing that one too is a separate decision.
-    //
-    // To restore the separation: reinstate a 403 for
-    // normalizeRole(target.role) === 'authenticator' here, and the matching
-    // assertions in tests/verify-credentials.cjs.
+    // So the separation stands: the Rector holds credential control over every
+    // portal except the one account that audits the Rector. Opening this again
+    // means an admin1 can sign in as the authenticator, and the authenticator is
+    // what backups, restores and credential rotation answer to.
+    if (target.username === FIXED_AUTHENTICATOR_USERNAME
+        || normalizeRole(target.role) === 'authenticator') {
+      recordAudit(req, {
+        action: 'credentials.update',
+        entityType: 'account',
+        entityId: target.username,
+        outcome: 'denied',
+        summary: `Refused: ${req.user.username} tried to change the security authenticator's credentials.`,
+        details: {}
+      });
+      return res.status(403).json({
+        status: 'error',
+        message: 'The security authenticator can only change its own credentials, from its own portal.'
+      });
+    }
 
     const changed = [];
 
@@ -8878,12 +8901,20 @@ app.post('/api/account/password', authenticateToken, mongoRateLimiter, requireDa
       return res.status(404).json({ status: 'error', message: 'Account not found.' });
     }
 
-    if (normalizeRole(me.role) === 'authenticator' || me.username === FIXED_AUTHENTICATOR_USERNAME) {
-      return res.status(403).json({
-        status: 'error',
-        message: 'The security authenticator\'s credentials are not changed from a portal.'
-      });
-    }
+    // The authenticator USED TO BE refused here too, on the rule that its
+    // credentials are not changed from a portal at all but rotated out of band.
+    // That left the account with no way to change its own password anywhere:
+    // the Rector is refused on /api/admin1/credentials, the reset panel is
+    // refused, the accounts route is refused, and this was the fourth door.
+    // The only remaining path was rotateCredentials.cjs, which REPLACES the
+    // whole users collection and would take all twenty-five clerks with it.
+    //
+    // So this door, and only this door, is open: the authenticator changes its
+    // OWN credentials, from its own portal, proving identity with its CURRENT
+    // password below. That is not the thing the other three guards exist to
+    // prevent. They stop the Rector reaching the account that audits the
+    // Rector, and they all still stand.
+
 
     // The current password, every time, even though the session is already
     // valid. A session left open on a counter must not be enough to lock the
