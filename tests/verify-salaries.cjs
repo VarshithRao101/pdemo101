@@ -30,6 +30,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const app = require('../server/app.cjs');
 const Teacher = require('../server/models/Teacher.cjs');
+const { awaitAudit } = require('./lib/audit.cjs');
 
 const PORT = 4613;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -128,7 +129,7 @@ let seq = 0;
       !!teacher?.salaryLedger?.['2026-2027']?.June,
       `ledger: ${JSON.stringify(teacher?.salaryLedger || {}).slice(0, 200)}`);
     ok('the audit trail records it',
-      !!await db.collection('auditlogs').findOne({ entityId: t1 }), 'no audit record');
+      !!await awaitAudit(db, { entityId: t1 }), 'no audit record');
 
     const REJECT = [
       ['no month', { academicYear: '2026-2027', amountPaid: 1000 }],

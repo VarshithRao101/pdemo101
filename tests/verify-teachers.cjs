@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const app = require('../server/app.cjs');
 const Teacher = require('../server/models/Teacher.cjs');
+const { awaitAudit } = require('./lib/audit.cjs');
 
 const PORT = 4614;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -108,7 +109,7 @@ const teacherBody = (over = {}) => {
     ok('it is filed at the right campus', t?.branch === CAMPUS, `branch ${t?.branch}`);
     ok('the salary is stored', t?.salary === 40000, `salary ${t?.salary}`);
     ok('the entry is audited',
-      !!await db.collection('auditlogs').findOne({ entityId: body.id }), 'no audit record');
+      !!await awaitAudit(db, { entityId: body.id }), 'no audit record');
 
     // A clerk is pinned to its own campus even when it names another. Unlike
     // students, staff are not a shared register.
@@ -217,7 +218,7 @@ const teacherBody = (over = {}) => {
     ok('a teacher can be deleted', del.status < 300, `status ${del.status}`);
     ok('the record is gone', await Teacher.countDocuments({ id: withLedger.id }) === 0);
     ok('the deletion is audited',
-      !!await db.collection('auditlogs').findOne({ entityId: withLedger.id, action: /teacher\.delete/ }),
+      !!await awaitAudit(db, { entityId: withLedger.id, action: /teacher\.delete/ }),
       'a deleted staff member with no trail is unaccountable');
 
     const delMissing = await req('DELETE', '/api/admin1/teachers/ZZ-nope', tokens.admin1);

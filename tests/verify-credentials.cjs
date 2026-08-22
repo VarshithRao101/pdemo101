@@ -24,6 +24,7 @@ const http = require('http');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const app = require('../server/app.cjs');
+const { awaitAudit } = require('./lib/audit.cjs');
 
 const PORT = 4618;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -205,7 +206,7 @@ const req = (method, p, token, body, headers = {}) => new Promise((resolve, reje
       `status ${seize.status}, password ${authAfter.password === AUTHR.password ? 'unchanged' : 'CHANGED'} — `
       + 'the Rector could take the account that audits them');
 
-    const denied = await db.collection('auditlogs').findOne({ outcome: 'denied', entityId: AUTHR.username });
+    const denied = await awaitAudit(db, { outcome: 'denied', entityId: AUTHR.username });
     ok('the refusal is recorded in the audit trail', !!denied, 'an attempted seizure left no trace');
 
     // =================================================================

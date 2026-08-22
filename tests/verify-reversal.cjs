@@ -29,6 +29,7 @@ const mongoose = require('mongoose');
 const app = require('../server/app.cjs');
 const Student = require('../server/models/Student.cjs');
 const Payment = require('../server/models/Payment.cjs');
+const { awaitAudit } = require('./lib/audit.cjs');
 
 const PORT = 4626;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -166,7 +167,7 @@ let seq = 0;
     ok('the receipt is off the student\'s list, so it cannot be reprinted',
       r.receipts === 0, `${r.receipts} receipts remain`);
 
-    const audit = await db.collection('auditlogs').findOne({ action: 'payment.reverse' });
+    const audit = await awaitAudit(db, { action: 'payment.reverse' });
     ok('the reversal is in the audit trail', !!audit, 'a reversal with no trail is unaccountable');
     ok('the audit entry carries the amount', Number(audit?.amount) === 25000, `${audit?.amount}`);
     ok('the audit entry carries the reason',

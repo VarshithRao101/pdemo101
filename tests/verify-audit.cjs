@@ -22,6 +22,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const app = require('../server/app.cjs');
 const { loadRoutes, rolesFor } = require('./lib/routes.cjs');
+const { awaitAudit, awaitAuditCount } = require('./lib/audit.cjs');
 
 const PORT = 4619;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -112,10 +113,13 @@ let seq = 0;
     const before = await logs.countDocuments();
     const s = await newStudent();
     await req('POST', `/api/accountant/students/${s.studentId}/payments`, clerk, { amount: 5000 });
-    const after = await logs.countDocuments();
+    // Two entries are expected — the student and the payment — but the
+    // assertion only needs one, and awaitAuditCount returns whatever it
+    // reached, so a partial arrival still reports a true number.
+    const after = await awaitAuditCount(logs, before + 2);
     ok(`actions add entries (${before} -> ${after})`, after > before, 'nothing was recorded');
 
-    const created = await logs.findOne({ entityId: s.studentId, action: /student\.create/ });
+    const created = await awaitAudit(logs, { entityId: s.studentId, action: /student\.create/ });
     ok('the student creation is recorded', !!created, 'no student.create entry');
     ok('it names the person who did it', created?.actorUsername === CLERK.username,
       `actor ${created?.actorUsername} — a role is not accountable, a person is`);
@@ -127,7 +131,7 @@ let seq = 0;
     ok('it is timestamped', !!created?.createdAt, 'no timestamp');
     ok('it is marked successful', created?.outcome === 'success', `outcome ${created?.outcome}`);
 
-    const payLog = await logs.findOne({ action: 'payment.collect' });
+    const payLog = await awaitAudit(logs, { action: 'payment.collect' });
     ok('the payment is recorded', !!payLog, 'money moved with no entry');
     ok('the payment entry carries the amount', Number(payLog?.amount) === 5000,
       `amount ${payLog?.amount}`);
@@ -147,7 +151,7 @@ let seq = 0;
     // entry it writes names the POWER that was refused rather than the student
     // the caller was aiming at. Querying by student id found nothing and made
     // a working audit look absent.
-    const deniedLog = await logs.findOne({ outcome: 'denied', actorUsername: CLERK.username });
+    const deniedLog = await awaitAudit(logs, { outcome: 'denied', actorUsername: CLERK.username });
     ok('the refusal is recorded', !!deniedLog, 'a refused write-off left no trace');
     ok('it says which power was refused',
       deniedLog?.entityType === 'permission' && !!deniedLog?.entityId,

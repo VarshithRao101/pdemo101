@@ -25,6 +25,7 @@ const mongoose = require('mongoose');
 const app = require('../server/app.cjs');
 const Student = require('../server/models/Student.cjs');
 const Payment = require('../server/models/Payment.cjs');
+const { awaitAudit } = require('./lib/audit.cjs');
 
 const PORT = 4610;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -225,7 +226,7 @@ let seq = 0;
     ok('the refused waiver left the student in the first year',
       wAfter.studentYear === 'First Year', `got ${wAfter.studentYear}`);
 
-    const denied = await db.collection('auditlogs').findOne({
+    const denied = await awaitAudit(db, {
       entityId: w.studentId, outcome: 'denied'
     });
     ok('the refusal is written to the audit trail', !!denied,

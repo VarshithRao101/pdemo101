@@ -17,6 +17,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const app = require('../server/app.cjs');
 const Expenditure = require('../server/models/Expenditure.cjs');
+const { awaitAudit } = require('./lib/audit.cjs');
 
 const PORT = 4611;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -94,7 +95,7 @@ const req = (method, path, token, body) => new Promise((resolve, reject) => {
     ok('it is booked to the clerk\'s own campus', exp?.branch === CAMPUS, `branch ${exp?.branch}`);
     ok('the amount is stored as given', exp?.amount === 2500, `amount ${exp?.amount}`);
 
-    const logged = await db.collection('auditlogs').findOne({ entityId: exp?.id, action: 'expenditure.create' });
+    const logged = await awaitAudit(db, { entityId: exp?.id, action: 'expenditure.create' });
     ok('the entry is written to the audit trail', !!logged, 'no audit record');
 
     // =================================================================
@@ -164,7 +165,7 @@ const req = (method, path, token, body) => new Promise((resolve, reject) => {
     const edited = await Expenditure.findOne({ id: exp.id }).lean();
     ok('the edit persisted', edited?.amount === 3000, `amount ${edited?.amount}`);
     ok('the edit is audited',
-      !!await db.collection('auditlogs').findOne({ entityId: exp.id, action: /expenditure\.(update|edit)/ }),
+      !!await awaitAudit(db, { entityId: exp.id, action: /expenditure\.(update|edit)/ }),
       'no audit record for the edit');
 
     const badEdit = await req('PATCH', `/api/admin2/expenditure/${exp.id}`, tokens.clerk, { amount: -5 });
@@ -184,7 +185,7 @@ const req = (method, path, token, body) => new Promise((resolve, reject) => {
     ok('an expenditure can be deleted', del.status < 300, `status ${del.status}`);
     ok('the row is gone', await Expenditure.countDocuments({ id: exp.id }) === 0);
     ok('the deletion is audited',
-      !!await db.collection('auditlogs').findOne({ entityId: exp.id, action: /expenditure\.delete/ }),
+      !!await awaitAudit(db, { entityId: exp.id, action: /expenditure\.delete/ }),
       'a deleted spend with no trail is unaccountable');
 
     const delMissing = await req('DELETE', '/api/admin2/expenditure/EXP-nope', tokens.clerk);

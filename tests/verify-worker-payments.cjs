@@ -21,6 +21,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const app = require('../server/app.cjs');
 const WorkerPayment = require('../server/models/WorkerPayment.cjs');
+const { awaitAudit } = require('./lib/audit.cjs');
 
 const PORT = 4612;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -102,7 +103,7 @@ const valid = (over = {}) => ({
     ok("it is booked to the clerk's own campus", wp?.branch === CAMPUS, `branch ${wp?.branch}`);
     ok('the amount is stored as given', wp?.amount === 8000, `amount ${wp?.amount}`);
     ok('the entry is audited',
-      !!await db.collection('auditlogs').findOne({ entityId: wp?.id }), 'no audit record');
+      !!await awaitAudit(db, { entityId: wp?.id }), 'no audit record');
 
     // =================================================================
     section('Paid, or not paid');
@@ -172,7 +173,7 @@ const valid = (over = {}) => ({
     ok('the amount edit persisted', edited?.amount === 9000, `amount ${edited?.amount}`);
     ok('the paid flag can be turned off', edited?.paid === false, `paid ${edited?.paid}`);
     ok('the edit is audited',
-      !!await db.collection('auditlogs').findOne({ entityId: wp.id, action: /worker.*update|update.*worker/i }),
+      !!await awaitAudit(db, { entityId: wp.id, action: /worker.*update|update.*worker/i }),
       'no audit record for the edit');
 
     const badEdit = await req('PATCH', `/api/admin2/worker-payments/${wp.id}`, tokens.clerk, { amount: -1 });
@@ -198,7 +199,7 @@ const valid = (over = {}) => ({
     ok('a worker payment can be deleted', del.status < 300, `status ${del.status}`);
     ok('the row is gone', await WorkerPayment.countDocuments({ id: wp.id }) === 0);
     ok('the deletion is audited',
-      !!await db.collection('auditlogs').findOne({ entityId: wp.id, action: /worker.*delete|delete.*worker/i }),
+      !!await awaitAudit(db, { entityId: wp.id, action: /worker.*delete|delete.*worker/i }),
       'a deleted wage with no trail is unaccountable');
 
     const delMissing = await req('DELETE', '/api/admin2/worker-payments/WRK-nope', tokens.clerk);
