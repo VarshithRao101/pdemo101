@@ -390,6 +390,18 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
   const [regStuError, setRegStuError] = useState('');
   const [isSubmittingStudent, setIsSubmittingStudent] = useState(false);
   const [auditPage, setAuditPage] = useState(1);
+  /**
+   * The collection report's rows, from the payments collection.
+   *
+   * Held separately from `students` because it is a different question. This
+   * screen used to derive its list from the receipt arrays of whatever
+   * students were loaded, which quietly limited a report about the college's
+   * takings to the students on the first page of the register.
+   */
+  const [auditTx, setAuditTx] = useState<accountantService.CollectedPayment[]>([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditCollected, setAuditCollected] = useState(0);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   const initialNewStudent = {
     admissionNumber: '',
@@ -667,6 +679,33 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
   }, [fetchDashboardSummary, fetchAllStudents]);
 
   const { triggerRefetch: triggerFreshnessRefetch } = useDataFreshness(loggedInCampus, accountantRefetch);
+
+  /**
+   * Load one page of the collection report whenever that screen is open.
+   *
+   * Keyed on the page as well as the screen, so the pager below asks the
+   * server for the next fifty receipts rather than slicing an array that was
+   * never the whole record in the first place.
+   */
+  useEffect(() => {
+    if (activeSubPage !== 'reports') return;
+    let cancelled = false;
+    (async () => {
+      setAuditLoading(true);
+      try {
+        const { items, meta } = await accountantService.getCollectedPayments(auditPage, 50);
+        if (cancelled) return;
+        setAuditTx(items);
+        setAuditTotal(meta.total);
+        setAuditCollected(meta.totalAmount ?? 0);
+      } catch {
+        if (!cancelled) { setAuditTx([]); setAuditTotal(0); setAuditCollected(0); }
+      } finally {
+        if (!cancelled) setAuditLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeSubPage, auditPage]);
 
   useEffect(() => {
     // Keep storage/custom-event sync for same-browser-tab coordination
@@ -3395,13 +3434,12 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
 
   //  SUBPAGE 4: COLLECTION REPORTS (Sub-page)
   if (activeSubPage === 'reports') {
-    const allTransactions = students
-      .flatMap(s => s.receipts.map(r => ({ student: s, receipt: r })))
-      .sort((a, b) => new Date(b.receipt.date).getTime() - new Date(a.receipt.date).getTime());
+    // Server-paged, newest first, over the payments collection — see
+    // getCollectedPayments for why this is no longer derived from `students`.
     const AUDIT_PER_PAGE = 50;
-    const auditTotalPages = Math.max(1, Math.ceil(allTransactions.length / AUDIT_PER_PAGE));
+    const auditTotalPages = Math.max(1, Math.ceil(auditTotal / AUDIT_PER_PAGE));
     const auditCurrentPage = Math.min(auditPage, auditTotalPages);
-    const auditPagedTx = allTransactions.slice((auditCurrentPage - 1) * AUDIT_PER_PAGE, auditCurrentPage * AUDIT_PER_PAGE);
+    const auditPagedTx = auditTx;
 
     return (
       <div style={styles.container} className="view-container anim-slide-up">
@@ -3413,7 +3451,8 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', marginTop: '8px' }}>
             <div>
               <h1 style={styles.title}>Audit Report Compiler</h1>
-              <p style={styles.subtitle}>Transaction audit stream — {allTransactions.length} records total</p>
+              {/* The server's count for the whole ledger, not the page. */}
+              <p style={styles.subtitle}>Transaction audit stream — {auditTotal} records total</p>
             </div>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               {/* CSV alongside the PDF. They are not the same thing: the PDF is
@@ -3455,9 +3494,34 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                 Students CSV
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
+                  // An audit report is the WHOLE ledger, not the fifty rows on
+                  // screen. The list is server-paged now, so the pages are
+                  // walked here before the document is built — printing
+                  // `auditTx` would silently produce a report of page one and
+                  // put a "Total" under it.
+                  let allTransactions: accountantService.CollectedPayment[] = [];
+                  try {
+                    const PER = 1000; // the server's own ceiling
+                    const first = await accountantService.getCollectedPayments(1, PER);
+                    allTransactions = first.items;
+                    const pages = Math.ceil((first.meta.total || 0) / PER);
+                    for (let p = 2; p <= pages; p++) {
+                      const next = await accountantService.getCollectedPayments(p, PER);
+                      allTransactions = allTransactions.concat(next.items);
+                    }
+                  } catch {
+                    triggerToast('Could not load the full ledger for the report.');
+                    return;
+                  }
                   if (allTransactions.length === 0) { triggerToast('No transactions to export.'); return; }
-                  const totalAmount = allTransactions.reduce((sum, tx) => sum + Number(tx.receipt.amount || 0), 0);
+
+                  // Reversed receipts are listed but do not count towards what
+                  // was collected — the same rule the server applies to its
+                  // own totals, and the reason this is not a plain sum.
+                  const live = allTransactions.filter(tx => !tx.reversed);
+                  const totalAmount = live.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+                  const reversedCount = allTransactions.length - live.length;
 
                   const body = [
                     pdfHeader({
@@ -3468,6 +3532,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                     }),
                     pdfTiles([
                       { label: 'Transactions', value: String(allTransactions.length) },
+                      { label: 'Reversed', value: String(reversedCount) },
                       { label: 'Total Collected', value: money(totalAmount), tone: 'good' }
                     ]),
                     pdfSection('Transaction Ledger'),
@@ -3476,14 +3541,16 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                       numeric: [8],
                       rows: allTransactions.map((tx, idx) => [
                         String(idx + 1),
-                        `<strong>${escapeHtml(tx.receipt.receiptNumber)}</strong>`,
-                        escapeHtml(tx.student.name),
-                        escapeHtml(tx.student.admissionNumber),
-                        escapeHtml(tx.receipt.category),
-                        escapeHtml(tx.receipt.installment),
-                        escapeHtml(tx.receipt.mode),
-                        dateStr(tx.receipt.date),
-                        `<span class="pdf-strong">${money(tx.receipt.amount)}</span>`
+                        `<strong>${escapeHtml(tx.receiptNumber)}</strong>`,
+                        escapeHtml(tx.studentName),
+                        escapeHtml(tx.admissionNumber),
+                        escapeHtml(tx.category),
+                        escapeHtml(tx.installment),
+                        escapeHtml(tx.paymentMode),
+                        dateStr(tx.date),
+                        tx.reversed
+                          ? `<span class="pdf-strong" style="text-decoration:line-through">${money(tx.amount)}</span>`
+                          : `<span class="pdf-strong">${money(tx.amount)}</span>`
                       ]),
                       footer: ['', '', '', '', '', '', '', 'Total', money(totalAmount)]
                     }),
@@ -3514,7 +3581,8 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
           {auditTotalPages > 1 && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
               <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
-                Showing {((auditCurrentPage - 1) * AUDIT_PER_PAGE) + 1}–{Math.min(auditCurrentPage * AUDIT_PER_PAGE, allTransactions.length)} of {allTransactions.length}
+                Showing {((auditCurrentPage - 1) * AUDIT_PER_PAGE) + 1}–{Math.min(auditCurrentPage * AUDIT_PER_PAGE, auditTotal)} of {auditTotal}
+                {auditCollected > 0 && <> &middot; {money(auditCollected)} collected</>}
               </span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => setAuditPage(p => Math.max(1, p - 1))} disabled={auditCurrentPage === 1}
@@ -3532,20 +3600,40 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
 
           <h4 style={styles.sectionSubtitle}>Collection Audit Logs</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
+            {/* "Loading" and "there are none" must not look the same. */}
             {auditPagedTx.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted-gray)', fontSize: '0.9286rem', backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: '16px' }}>
-                No transactions recorded yet.
+                {auditLoading ? 'Loading transactions…' : 'No transactions recorded yet.'}
               </div>
             )}
             {auditPagedTx.map((tx, idx) => (
-              <div key={idx} style={styles.receiptRowItem}>
+              <div key={tx.receiptNumber || idx} style={styles.receiptRowItem}>
                 <div>
-                  <strong>{tx.receipt.receiptNumber} — {tx.student.name}</strong>
-                  <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)' }}>{tx.receipt.category} · {tx.receipt.installment} · Adm: {tx.student.admissionNumber}</div>
+                  <strong>{tx.receiptNumber} — {tx.studentName}</strong>
+                  <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)' }}>
+                    {tx.category} · {tx.installment} · Adm: {tx.admissionNumber}
+                  </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontWeight: 850, color: 'var(--good)' }}>+ Rs.{tx.receipt.amount.toLocaleString('en-IN')}</span>
-                  <div style={{ fontSize: '0.5714rem', color: 'var(--muted-gray)' }}>{tx.receipt.date} · {tx.receipt.mode}</div>
+                  {/*
+                    A reversed receipt is shown struck through rather than
+                    hidden. It is still a row in the ledger and its receipt
+                    number was still issued; dropping it would leave an
+                    unexplained gap in a report people reconcile against a
+                    bank statement. It is already excluded from the collected
+                    total, which the server sums with `reversed` filtered out.
+                  */}
+                  <span style={{
+                    fontWeight: 850,
+                    color: tx.reversed ? 'var(--muted-gray)' : 'var(--good)',
+                    textDecoration: tx.reversed ? 'line-through' : 'none'
+                  }}>
+                    + Rs.{Number(tx.amount || 0).toLocaleString('en-IN')}
+                  </span>
+                  <div style={{ fontSize: '0.5714rem', color: 'var(--muted-gray)' }}>
+                    {new Date(tx.date).toLocaleDateString('en-IN')} · {tx.paymentMode}
+                    {tx.reversed ? ' · REVERSED' : ''}
+                  </div>
                 </div>
               </div>
             ))}

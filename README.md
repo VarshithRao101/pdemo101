@@ -114,9 +114,27 @@ That makes the CI run on a **pull request** the one that prevents anything, and
 the run on `main` a tripwire that tells you what is already live is broken.
 Work on a branch and open a PR.
 
-`server.js` starts the app under a supervisor so a crash is followed by a
-restart rather than an outage lasting until somebody notices. `DISABLE_SUPERVISOR=1`
-turns that off without a redeploy, if it ever misbehaves.
+`server.js` starts the app **in its own process**, and supervision is opt-in via
+`ENABLE_SUPERVISOR=1`. This is the opposite of what it once did, and the
+inversion is deliberate: Hostinger requires the process it started to call
+`listen()` within three seconds, the supervisor forks a child and never listens
+in the parent, so the platform concluded the app had failed and started a second
+instance whose child then collided on port 3000. That produced 105 `EADDRINUSE`
+exits between 14 and 22 August and read for a week like a port bug. Hostinger
+restarts the app itself, so nothing is lost by not supervising. **Do not
+re-invert this default**, and note that `DISABLE_SUPERVISOR=1` is no longer the
+escape hatch — it was set in the panel and never reached the process, which is
+why the default had to change rather than the setting.
+
+Environment variables set in the hPanel do not arrive. `NODE_OPTIONS` in
+particular is owned by the platform, so the heap ceiling in `package.json` is
+never applied — the platform runs `server.js` directly, not through `npm`.
+
+**The frontend is built, and `dist/` is gitignored.** The server serves it only
+`if (fs.existsSync(distPath))`, so a deploy that does not run `npm run build`
+leaves whatever `dist/` was already on the host — the API updates and the UI
+does not, silently. Confirm the host builds on deploy, or build and upload
+`dist/` as part of releasing.
 
 ## Two things to know before changing anything
 

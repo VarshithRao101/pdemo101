@@ -230,3 +230,37 @@ export const getDashboardSummary = async (): Promise<DashboardSummary> => {
   return res.data;
 };
 
+/** One receipt as the collection-report screen lists it. */
+export interface CollectedPayment {
+  receiptNumber: string;
+  studentName: string;
+  admissionNumber: string;
+  amount: number;
+  category: string;
+  installment: string;
+  paymentMode: string;
+  cashier: string;
+  branch: string;
+  date: string;
+  reversed?: boolean;
+}
+
+/**
+ * A page of collected payments, campus-scoped by the caller's own account.
+ *
+ * The collection report used to build this list in the browser, by flattening
+ * the `receipts` array off every student the registry happened to have
+ * loaded. That made it a report about the first page of the register rather
+ * than about the college: a payment taken from a student further down simply
+ * was not in it, and the screen gave no sign that anything was missing. It
+ * also meant every student row had to carry its full receipt history for a
+ * screen most sessions never open.
+ *
+ * The payments collection is the actual record of money received, it is
+ * indexed, and the route pages it and sums it in the database.
+ */
+export const getCollectedPayments = async (page = 1, limit = 50): Promise<ListPage<CollectedPayment>> => {
+  const res = await apiClient.get<any>(`/accountant/payments?page=${page}&limit=${limit}`);
+  return asListPage<CollectedPayment>(res);
+};
+

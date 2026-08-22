@@ -30,6 +30,19 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
   const [rows, setRows] = useState<OutstandingStudent[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
   const [withoutContact, setWithoutContact] = useState(0);
+  /**
+   * How many students owe money in total, and whether this list is all of
+   * them.
+   *
+   * `rows.length` is the number that came back, which is no longer the same
+   * question now that the route is bounded like every other list. The tile
+   * below asks "students owing" and must answer from the server's count over
+   * the whole filter — a page length there would read as the college being
+   * owed money by fewer families than it is, and would look entirely credible
+   * while doing it.
+   */
+  const [owingCount, setOwingCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [branch, setBranch] = useState(fixedCampus && fixedCampus !== 'All' ? fixedCampus : 'All');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -42,6 +55,8 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
       setRows(items);
       setTotalAmount(meta.totalAmount ?? 0);
       setWithoutContact((meta as any).withoutContact ?? 0);
+      setOwingCount(meta.total ?? items.length);
+      setHasMore(Boolean(meta.hasMore));
       setError('');
     } catch (err: any) {
       setError(err?.message || 'Could not load outstanding fees.');
@@ -123,7 +138,7 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
         gap: 10
       }}>
         {[
-          { label: 'Students owing', value: String(rows.length) },
+          { label: 'Students owing', value: String(owingCount) },
           { label: 'Total outstanding', value: money(totalAmount) },
           { label: 'No contact on file', value: String(withoutContact) }
         ].map(tile => (
@@ -142,6 +157,24 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
           </div>
         ))}
       </div>
+
+      {/*
+        A capped list must never look like a complete one.
+        The route returns the largest debts first and stops at a ceiling, so
+        the totals above are right for the whole college while the rows below
+        are only the top of it. Saying so is the difference between a working
+        list and one that quietly stops mentioning the families at the bottom.
+      */}
+      {hasMore && (
+        <div style={{
+          fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink-secondary)',
+          border: '1px solid var(--card-border)', background: 'var(--card-bg)',
+          borderRadius: 10, padding: '9px 13px'
+        }}>
+          Listing the {rows.length} largest balances of {owingCount}. The totals above
+          cover every student who owes money; narrow by campus to see the rest.
+        </div>
+      )}
 
       {/* --- Controls --- */}
       <div style={{

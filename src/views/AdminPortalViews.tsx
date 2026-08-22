@@ -381,6 +381,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
    */
   const [studentTotal, setStudentTotal] = useState(0);
   const [studentsTruncated, setStudentsTruncated] = useState(false);
+  /**
+   * The last registry page fetched from the server, and whether another is on
+   * its way.
+   *
+   * The registry list is capped server-side. Everything on this screen — the
+   * pager, the search box, the duplicate check on the admission form, the fee
+   * editor's list — reads the `students` array, so the cap was not just a
+   * shorter list: it was the boundary past which those features silently
+   * stopped seeing students at all. Appending further pages onto the same
+   * array widens that boundary without changing what any of them assume they
+   * are looking at.
+   */
+  const [studentsLoadedPage, setStudentsLoadedPage] = useState(1);
+  const [loadingMoreStudents, setLoadingMoreStudents] = useState(false);
   const [expenditureByBranch, setExpenditureByBranch] = useState<Record<string, number> | null>(null);
   const [workerTotalAmount, setWorkerTotalAmount] = useState<number | null>(null);
   const [workerPaidAmount, setWorkerPaidAmount] = useState<number | null>(null);
@@ -1527,6 +1541,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
       setStudents(items);
       setStudentTotal(meta.total);
       setStudentsTruncated(meta.hasMore);
+      setStudentsLoadedPage(1);
     } catch (err: any) {
       // On 404/503 (Vercel cold-start or transient error), retry once silently after a short delay
       if (err?.status === 404 || err?.status === 503) {
@@ -1536,12 +1551,72 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
           setStudents(items);
           setStudentTotal(meta.total);
           setStudentsTruncated(meta.hasMore);
+          setStudentsLoadedPage(1);
           return;
         } catch { /* fall through to toast below */ }
       }
       if (!suppressToast) {
         triggerToast(err.message || 'Failed to load students.');
       }
+    }
+  };
+
+  /**
+   * The COMPLETE record for a student, given a row from the registry list.
+   *
+   * List responses no longer carry `receipts` or `yearHistory`. Those two
+   * fields were a quarter of the payload and are read by exactly one kind of
+   * screen — the one showing a single student — so every list paid for them
+   * on every row and used them on none. The detail route still returns the
+   * whole document, so a screen that needs the receipt history asks for it
+   * when a student is actually opened.
+   *
+   * Falls back to the row it was given. A failed lookup should cost the
+   * receipt list on a panel, not the ability to open the student at all.
+   */
+  const hydrateStudent = async (row: any) => {
+    const key = row && (row._id || row.studentId || row.admissionNumber);
+    if (!key) return row;
+    try {
+      const full = await admin1Service.findStudent(String(key));
+      return full ? { ...row, ...(full as any) } : row;
+    } catch {
+      return row;
+    }
+  };
+
+  /**
+   * Pull the next server page of the registry and append it.
+   *
+   * Appends rather than replaces, because the array is the whole registry as
+   * far as every other part of this screen is concerned. Replacing it would
+   * page the list and simultaneously narrow the fee editor and the admission
+   * form's duplicate check to whichever page happened to be on screen, which
+   * is a worse bug than the one being fixed.
+   *
+   * De-duplicated on the way in. A student added by someone else between two
+   * fetches shifts the ordering, and the same record can arrive on two
+   * consecutive pages; without this it appears twice in the list and twice in
+   * anything counting it.
+   */
+  const loadMoreStudents = async (query = '') => {
+    if (loadingMoreStudents) return;
+    setLoadingMoreStudents(true);
+    try {
+      const nextPage = studentsLoadedPage + 1;
+      const { items, meta } = await admin1Service.getStudents(query, '', nextPage);
+      setStudents(prev => {
+        const seen = new Set(prev.map(s => String(s._id || s.admissionNumber || s.studentId)));
+        const fresh = items.filter(s => !seen.has(String(s._id || s.admissionNumber || s.studentId)));
+        return [...prev, ...(fresh as unknown as Student[])];
+      });
+      setStudentTotal(meta.total);
+      setStudentsTruncated(meta.hasMore);
+      setStudentsLoadedPage(nextPage);
+    } catch (err: any) {
+      triggerToast(err.message || 'Could not load more students.');
+    } finally {
+      setLoadingMoreStudents(false);
     }
   };
 
@@ -1767,25 +1842,60 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
 
 
 
-  const handleSearchStudent = () => {
+  /**
+   * Find one student by what a person typed, and open them.
+   *
+   * Looks in the loaded registry first because that answers instantly for the
+   * common case, then ASKS THE DATABASE before giving up. The second half is
+   * the point: the registry response is capped, so this used to search only
+   * the rows that happened to have come back and told the Rector "Student
+   * record not found" for students who were plainly there — the further down
+   * the register a student sat, the more certainly they were unreachable. On
+   * a college of a few hundred that never showed; past the cap it is every
+   * student beyond it, and the message actively misinforms, because a search
+   * that says "not found" is normally taken to mean the record does not exist.
+   */
+  const handleSearchStudent = async () => {
     if (!searchAdm || !searchAdm.trim()) {
       triggerToast('Please type an Admission or Registration number.');
       return;
     }
     const q = searchAdm.toUpperCase().trim();
-    const match = students.find(s =>
+    const open = (match: Student) => {
+      setSelectedStudent(match);
+      setEditStudent({ ...match });
+      triggerToast(`Loaded student ${match.name} (Adm No: ${match.admissionNumber || match.studentId}).`);
+    };
+
+    const local = students.find(s =>
       (s.admissionNumber || '').toUpperCase().trim() === q ||
       (s.registrationNumber || '').toUpperCase().trim() === q ||
       (s.studentId || '').toUpperCase().trim() === q ||
       (s.name || '').toUpperCase().trim().includes(q)
     );
-    if (match) {
-      setSelectedStudent(match);
-      setEditStudent({ ...match });
-      triggerToast(`Loaded student ${match.name} (Adm No: ${match.admissionNumber || match.studentId}).`);
-    } else {
-      triggerToast('Student record not found for: ' + searchAdm);
+    if (local) {
+      open(local);
+      return;
     }
+
+    // Exact identifier lookup, then a search over every student in the
+    // database rather than every student on this page.
+    try {
+      const exact = await admin1Service.findStudent(searchAdm.trim());
+      if (exact) {
+        open(exact as unknown as Student);
+        return;
+      }
+      const { items } = await admin1Service.getStudents(searchAdm.trim(), '');
+      if (items.length > 0) {
+        open(items[0] as unknown as Student);
+        return;
+      }
+    } catch {
+      // Fall through to the not-found message; a failed lookup and a genuine
+      // miss read the same to the person at the counter.
+    }
+    triggerToast('Student record not found for: ' + searchAdm);
   };
 
   const handleStudentSave = async (updated: Student, keyToUse?: string) => {
@@ -2886,10 +2996,46 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
               <div style={{
                 fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink-secondary)',
                 background: 'var(--surface)', border: '1px solid var(--muted-gray)',
-                borderRadius: '8px', padding: '8px 12px'
+                borderRadius: '8px', padding: '8px 12px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: '12px', flexWrap: 'wrap'
               }}>
-                Showing the first {students.length} of {studentTotal} students. Search by name,
-                admission number or mobile to find one that is not listed here.
+                <span>
+                  Showing the first {students.length} of {studentTotal} students. Search reaches
+                  every student, not only the ones listed here.
+                </span>
+                {/*
+                  The message on its own used to be the whole feature: it named
+                  a number the screen could not reach and left it at that, so a
+                  registry larger than one response had students no screen in
+                  the application could open. This loads the next page onto the
+                  end of the list.
+                */}
+                {/*
+                  Deliberately requests the NEXT PAGE OF THE SAME QUERY the
+                  loaded rows came from, which is the unfiltered registry —
+                  fetchStudents is called with no search term, and the box
+                  above narrows those rows in the browser. Passing the search
+                  term here instead would page a different result set onto the
+                  end of this one: page 1 of every student followed by page 2
+                  of the matches, which is neither list and skips students in
+                  between.
+                */}
+                <button
+                  onClick={() => loadMoreStudents()}
+                  disabled={loadingMoreStudents}
+                  className="press-interactive"
+                  style={{
+                    padding: '6px 14px', borderRadius: '6px', fontWeight: 800,
+                    fontSize: '0.7857rem', whiteSpace: 'nowrap',
+                    border: '1px solid var(--muted-gray)',
+                    background: loadingMoreStudents ? 'var(--muted-gray)' : 'var(--ink-primary)',
+                    color: loadingMoreStudents ? 'var(--ink-secondary)' : 'var(--surface)',
+                    cursor: loadingMoreStudents ? 'wait' : 'pointer'
+                  }}
+                >
+                  {loadingMoreStudents ? 'Loading…' : `Load next ${Math.min(500, studentTotal - students.length)}`}
+                </button>
               </div>
             )}
 
@@ -2902,9 +3048,16 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                 <GlassCard
                   key={student._id || student.admissionNumber || student.studentId}
                   hoverable={true}
-                  onClick={() => {
+                  onClick={async () => {
+                    // Shown immediately from the row, then filled in with the
+                    // receipt history once the detail arrives. Opening the
+                    // panel should not wait on a round trip; everything above
+                    // the receipts is already here.
                     setSelectedStudent(student);
                     setEditStudent({ ...student });
+                    const full = await hydrateStudent(student);
+                    setSelectedStudent(full);
+                    setEditStudent({ ...full });
                   }}
                   style={{
                     padding: '14px 16px',
@@ -2951,10 +3104,13 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       type="button"
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
                         setSelectedStudent(student);
                         setEditStudent({ ...student });
+                        const full = await hydrateStudent(student);
+                        setSelectedStudent(full);
+                        setEditStudent({ ...full });
                       }}
                       style={{
                         padding: '8px 12px',
@@ -5696,6 +5852,9 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
         setSelectedFeeStudent(student);
         setFeeBreakdownData(null);
         setEditSlotWaivers({});
+        // The complete record, because "Download Complete Statement" on this
+        // screen prints the receipt history, and list rows no longer carry it.
+        hydrateStudent(student).then(full => setSelectedFeeStudent(full));
         const targetBranch = student.branch || loggedInCampus;
         const studentKey = student._id || student.studentId || student.admissionNumber;
         const breakdown = await admin2Service.getFeeBreakdown(studentKey, targetBranch);

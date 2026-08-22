@@ -237,13 +237,42 @@ export const admin1Service = {
   // asListPage absorbs a malformed or empty response into an empty page, so
   // the old "return [] rather than crash with a TypeError" guard is kept
   // without every caller having to repeat it.
-  async getStudents(search = '', branch = ''): Promise<ListPage<StudentProfile>> {
+  //
+  // `page` reaches the registry's pager. The response has always been capped,
+  // and the screen said so, but there was no way to ask for the SECOND page —
+  // so a college with more students than the cap had students that no screen
+  // in the application could reach. `search` has the same history: the
+  // parameter existed here and the box that should have filled it filtered the
+  // loaded rows in the browser instead, which is why searching for a real
+  // admission number past the cap answered "Student record not found".
+  async getStudents(search = '', branch = '', page = 1): Promise<ListPage<StudentProfile>> {
     const params: string[] = [];
     if (search) params.push(`search=${encodeURIComponent(search)}`);
     if (branch && branch !== 'All') params.push(`branch=${encodeURIComponent(branch)}`);
+    if (page > 1) params.push(`page=${page}`);
     const query = params.length > 0 ? `?${params.join('&')}` : '';
     const res = await apiClient.get<any>(`/admin1/students${query}`);
     return asListPage<StudentProfile>(res);
+  },
+
+  /**
+   * One student, looked up by admission number, student id or _id, straight
+   * from the database rather than from whatever the registry happens to hold.
+   *
+   * The route is the accountant's; admin1 and clerk are both allowed on it,
+   * so this is the existing lookup rather than a new surface.
+   */
+  async findStudent(idOrAdmissionNumber: string): Promise<StudentProfile | null> {
+    const key = String(idOrAdmissionNumber || '').trim();
+    if (!key) return null;
+    try {
+      const res = await apiClient.get<any>(`/accountant/students/${encodeURIComponent(key)}`);
+      return (res && res.data) || null;
+    } catch {
+      // A 404 is the ordinary "no such student" answer, not a fault worth
+      // surfacing as an error toast — the caller reports the miss itself.
+      return null;
+    }
   },
 
   // The create route used to also return a `credential` with a generated

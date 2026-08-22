@@ -13,6 +13,20 @@
 // Run this after any schema change, and after provisioning a fresh database.
 //
 //   node scripts/ensureIndexes.cjs
+//
+// --- THIS IS NO LONGER THE ONLY THING THAT BUILDS INDEXES ----------------
+//
+// server/db.cjs now guarantees the CORRECTNESS-critical subset — every unique
+// constraint and TTL — on every boot, after listen() and without dropping
+// anything. It had to: this script is run by hand, Hostinger deploys by
+// pulling `main` and starting the process, and there is no step in between,
+// so a database nobody remembered to run it against went into service with no
+// unique index behind its receipt numbers or its payment idempotency key.
+//
+// This script is still the more thorough of the two and still worth running
+// after a schema change, because syncIndexes() also DROPS indexes that the
+// schemas no longer declare — which is the part that must stay manual and
+// deliberate rather than happening unattended against production.
 
 require('dotenv').config();
 const mongoose = require('mongoose');

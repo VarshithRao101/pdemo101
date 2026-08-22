@@ -12,6 +12,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "--port", "4318", "--strictPort"],
       "port": 4318
+    },
+    {
+      "name": "loadtest-server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scratch/dev-loadtest.cjs"],
+      "port": 3210
     }
   ]
 }

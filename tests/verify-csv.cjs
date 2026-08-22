@@ -39,16 +39,28 @@ const ok = (name, cond, detail = '') => {
 };
 const section = t => console.log(`\n${t}\n${'-'.repeat(t.length)}`);
 
-const req = (method, path, token) => new Promise((resolve, reject) => {
+// `body` is optional, and `json` is the parsed response when there is one.
+// Every existing call passes neither and is unaffected; the write below needs
+// both, because asserting that an export prints a field is only half the
+// question — the other half is whether the route ever wrote it.
+const req = (method, path, token, body) => new Promise((resolve, reject) => {
+  const data = body === undefined ? null : JSON.stringify(body);
   const r = http.request(`${BASE}${path}`, {
     method,
-    headers: token ? { Authorization: `Bearer ${token}` } : {}
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {})
+    }
   }, res => {
     let raw = '';
     res.on('data', c => raw += c);
-    res.on('end', () => resolve({ status: res.statusCode, raw, headers: res.headers }));
+    res.on('end', () => resolve({
+      status: res.statusCode, raw, headers: res.headers,
+      json: (() => { try { return JSON.parse(raw); } catch { return null; } })()
+    }));
   });
   r.on('error', reject);
+  if (data) r.write(data);
   r.end();
 });
 
@@ -144,9 +156,9 @@ const parseCsv = (body) => {
 
     await db.collection('expenditures').insertMany([
       { id: `${TAG}-E1`, category: 'Maintenance', amount: 2500, description: 'Fan, repair "urgent"',
-        date: new Date(), branch: CAMPUS },
+        date: new Date(), branch: CAMPUS, recordedBy: 'exp-test' },
       { id: `${TAG}-E2`, category: 'Stationery', amount: 900, description: 'Registers',
-        date: new Date(), branch: OTHER }
+        date: new Date(), branch: OTHER, recordedBy: 'exp-test' }
     ]);
 
     // =================================================================
@@ -239,6 +251,25 @@ const parseCsv = (body) => {
       `status ${payments.status}, ${pRows.length} lines`);
     ok('a payment amount is present', payments.raw.includes('10000'), 'amount missing');
 
+    // WHO TOOK THE MONEY, and who spent it.
+    //
+    // Both of these columns were populated from property names that no
+    // document has ever carried — `collectedBy` on a payment, whose field is
+    // `cashier`, and `loggedBy` on an expenditure, which had no such field at
+    // all. Each therefore exported as an empty string on every row, and the
+    // suite did not notice because it only ever asserted amounts and quoting.
+    // A blank column reads as "not recorded for this row" rather than as a
+    // bug, which is what let it survive: this is the file the office
+    // reconciles against a bank statement, and attribution is half its
+    // purpose. Asserted on the VALUE, not on the column merely existing.
+    const pHeader = pRows[0];
+    const pCashierCol = pHeader.indexOf('Collected By');
+    ok('the payments export has a Collected By column', pCashierCol !== -1, pHeader.join('|'));
+    ok('and it carries the cashier who raised the receipt',
+      pCashierCol !== -1 && pRows.slice(1).some(r => r[pCashierCol] === 'csv-test'),
+      pCashierCol === -1 ? 'no column' :
+        `values: ${JSON.stringify([...new Set(pRows.slice(1).map(r => r[pCashierCol]))])}`);
+
     const exp = await req('GET', '/api/export/expenditures.csv', tokens.admin1);
     const eRows = parseCsv(exp.raw);
     ok('the expenditures export returns rows', exp.status === 200 && eRows.length > 1,
@@ -246,6 +277,28 @@ const parseCsv = (body) => {
     ok('a description with a comma and quotes survives intact',
       eRows.some(r => r.includes('Fan, repair "urgent"')),
       'the quoted description did not round-trip');
+
+    const eHeader = eRows[0];
+    const eByCol = eHeader.indexOf('Logged By');
+    ok('the expenditures export has a Logged By column', eByCol !== -1, eHeader.join('|'));
+    ok('and it carries the account that entered the expenditure',
+      eByCol !== -1 && eRows.slice(1).some(r => r[eByCol] === 'exp-test'),
+      eByCol === -1 ? 'no column' :
+        `values: ${JSON.stringify([...new Set(eRows.slice(1).map(r => r[eByCol]))])}`);
+
+    // The field is written by the route, not only accepted from a fixture.
+    const liveExp = await req('POST', '/api/admin2/expenditure', tokens.admin1,
+      { category: 'Utilities', amount: 1234, description: 'attribution check', branch: CAMPUS });
+    // Compared lower-cased: the schema stores usernames lower-case, so that is
+    // what the signed-in identity carries back.
+    const adminUsername = String(ACCOUNTS[0].username).toLowerCase();
+    ok('a newly created expenditure records who entered it',
+      liveExp.status === 201 &&
+      String(liveExp.json?.data?.recordedBy || '').toLowerCase() === adminUsername,
+      `status ${liveExp.status}, recordedBy=${JSON.stringify(liveExp.json?.data?.recordedBy)}, expected ${adminUsername}`);
+    if (liveExp.json?.data?.id) {
+      await db.collection('expenditures').deleteOne({ id: liveExp.json.data.id });
+    }
 
     console.log(`\n${'='.repeat(60)}`);
     console.log(`CSV EXPORTS: ${pass} passed, ${fail} failed`);
