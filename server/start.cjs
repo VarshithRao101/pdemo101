@@ -218,24 +218,24 @@ cron.schedule('0 0 * * *', async () => {
 
 // --- HTTP server ---------------------------------------------------------
 
-// How long to keep trying to bind before accepting that the port is not
-// coming free. A redeploy overlap clears in seconds; ninety of them is a
-// generous ceiling that still surfaces a genuine conflict well inside the
-// time it used to take somebody to notice the site was down.
-const BIND_RETRY_WINDOW_MS = 90_000;
-const BIND_RETRY_DELAY_MS = 3_000;
-let bindDeadline = null;
-
 async function startServer() {
-  try {
-    await connectToDatabase();
-    console.log('✅ [Database]: Initial connection established at startup.');
-  } catch (dbErr) {
-    // Not fatal: requireDatabase returns a clean 503 per request until the
-    // database comes back, which is better than refusing to boot at all.
-    console.warn('⚠️ [Database]: Initial connection warning at startup:', dbErr.message);
-  }
-
+  // BIND FIRST. Nothing may be awaited before this line.
+  //
+  // Hostinger's watchdog declares the app failed if listen() has not been
+  // called within THREE SECONDS of process start, and starts another instance.
+  // That instance then collides on the port, and the loser exits — which is
+  // the whole EADDRINUSE epidemic in the lifecycle collection: 105 exits since
+  // the 14th, and never once a bug about ports.
+  //
+  // The database connect used to sit here, awaited, in front of the bind. Its
+  // own serverSelectionTimeoutMS is 5000. A five-second timeout in front of a
+  // three-second deadline does not sometimes lose; it loses every time the
+  // database is not immediately available, which the runtime log shows it
+  // repeatedly is not.
+  //
+  // Binding first is safe and was already the intended design: requireDatabase
+  // answers a clean 503 per request until the database is up, so a server
+  // listening without one is strictly better than no server at all.
   server = app.listen(PORT);
 
   server.on('listening', () => {
@@ -257,50 +257,34 @@ async function startServer() {
 
   // The handler whose absence caused the outages.
   //
-  // EADDRINUSE is RETRIED rather than treated as fatal, and that is a
-  // correction to the fix described at the top of this file. Exiting loudly
-  // solved the zombie, but it over-corrected: on a redeploy the old process
-  // holds the port for a few seconds, so the new one exits ~1.5s after boot,
-  // the supervisor restarts it, it exits again, and ten of those take about
-  // twenty seconds — after which the supervisor gives up for good and nothing
-  // is left trying to bind. A five-second overlap became a permanent outage
-  // that stayed down until someone restarted it by hand, which is precisely
-  // the outcome this file exists to prevent. It is on record: 105 EADDRINUSE
-  // exits in the `lifecycle` collection, 57 of them in one day.
-  //
-  // The port being held is TRANSIENT and it is the one listener error that
-  // waiting actually fixes. So wait — for a bounded window, loudly, and then
-  // still die if it never frees, because a permanent conflict is a real fault
-  // and must not be sat on silently.
+  // EADDRINUSE exits IMMEDIATELY, and a retry loop was tried here and reverted
+  // within the hour. Waiting looked right — the port is held transiently on a
+  // redeploy — but a process that is retrying has not called listen(), so it
+  // trips the same three-second watchdog every three seconds and Hostinger
+  // answers by starting yet more instances. It converted a fast collision into
+  // a ninety-second one and made the outage worse, live. On a platform that
+  // restarts the app for you, losing the race and exiting promptly IS the
+  // correct move; the fix for colliding at all is binding first, above.
   server.on('error', (err) => {
     if (err && err.code === 'EADDRINUSE') {
-      if (bindDeadline === null) bindDeadline = Date.now() + BIND_RETRY_WINDOW_MS;
-
-      const msLeft = bindDeadline - Date.now();
-      if (msLeft > 0) {
-        console.warn(
-          `⚠️ [Server]: Port ${PORT} is still held by the previous instance. ` +
-          `Retrying in ${(BIND_RETRY_DELAY_MS / 1000).toFixed(0)}s ` +
-          `(giving up in ${(msLeft / 1000).toFixed(0)}s).`
-        );
-        // Deliberately NOT unref'd: retrying is the only thing this process is
-        // doing, and an unref'd timer would let it exit as though it had
-        // finished.
-        setTimeout(() => server.listen(PORT), BIND_RETRY_DELAY_MS);
-        return;
-      }
-
       console.error(
-        `❌ [Server]: Port ${PORT} was still in use after ` +
-        `${(BIND_RETRY_WINDOW_MS / 1000).toFixed(0)}s of retrying — this is not a redeploy ` +
-        'overlap, something else owns the port. Exiting rather than leaving a process ' +
-        'alive that is listening on nothing.'
+        `❌ [Server]: Port ${PORT} is already in use — another instance is still running. ` +
+        'Exiting so the platform starts a single clean process instead of leaving a ' +
+        'process alive that is listening on nothing.'
       );
     } else {
       console.error('❌ [Server]: Listener error:', err && err.stack ? err.stack : err);
     }
     die(1, err && err.code ? err.code : 'listen error');
   });
+
+  // The database, AFTER the bind and deliberately not awaited. Every route is
+  // already behind requireDatabase, so requests arriving before this resolves
+  // are answered 503 rather than hanging.
+  connectToDatabase()
+    .then(() => console.log('✅ [Database]: Initial connection established at startup.'))
+    .catch((dbErr) => console.warn(
+      '⚠️ [Database]: Initial connection warning at startup:', dbErr.message));
 
   // Timeouts, so a stalled upstream call cannot hold sockets open indefinitely
   // behind the platform's proxy. Node's defaults leave a hung request occupying
