@@ -93,7 +93,17 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       setUserId('');
       setClerkCampus('');
     } else if (roleId === 'accountant') {
-      setUserId('accountant_erragattugutta_c1_1');
+      // Left EMPTY on purpose. This used to seed
+      // 'accountant_erragattugutta_c1_1', which was wrong twice over: it
+      // pinned every accountant to one campus until they noticed the picker,
+      // and no such account has ever existed - the real IDs have no _1 suffix,
+      // and the alias map does not carry that spelling either. Choosing a
+      // campus therefore submitted a username that resolves to nobody.
+      //
+      // An accountant now types their own portal ID, like every other role, and
+      // the campus comes from the account. Renaming one in the Credentials
+      // screen takes effect immediately, because nothing here knows their name.
+      setUserId('');
       setClerkCampus('');
     } else {
       setUserId('admin1');
@@ -628,37 +638,6 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
               </div>
             )}
 
-            {userId.includes('accountant') && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: 'var(--surface-sunken)', padding: '10px', borderRadius: '12px', border: '1px solid var(--line)' }}>
-                <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase' }}>Select Accountant Campus:</span>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '6px' }}>
-                  {[
-                    { id: 'accountant_erragattugutta_c1_1', label: 'Erragattugutta C1' },
-                    { id: 'accountant_erragattugutta_c2_1', label: 'Erragattugutta C2' },
-                    { id: 'accountant_beemaram_c1_1', label: 'Beemaram C1' },
-                    { id: 'accountant_beemaram_c2_1', label: 'Beemaram C2' }
-                  ].map(c => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => { setUserId(c.id); setPasswordInput(''); }}
-                      style={{
-                        padding: '6px 8px',
-                        borderRadius: '8px',
-                        fontSize: '0.7857rem',
-                        fontWeight: 800,
-                        border: userId === c.id ? '1.5px solid #6366F1' : '1px solid var(--line-strong)',
-                        backgroundColor: userId === c.id ? 'var(--accent)' : 'var(--surface)',
-                        color: userId === c.id ? 'var(--surface)' : 'var(--ink-secondary)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 

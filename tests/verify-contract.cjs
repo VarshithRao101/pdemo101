@@ -81,7 +81,24 @@ section('Authorization');
 // same reason as PUBLIC: the exception has to be written down to exist.
 const ROLE_FREE = [
   [/^GET (\/api)?(\/auth)?\/me$/, 'an account reading itself; the token already names it'],
-  [/^GET \/api\/system\/last-changed$/, 'a freshness timestamp for every portal, campus scoped in the handler']
+  [/^GET \/api\/system\/last-changed$/, 'a freshness timestamp for every portal, campus scoped in the handler'],
+
+  // Both of these have always been role-free and neither was ever declared,
+  // so this assertion has been failing quietly - verify-contract needs a live
+  // database and therefore never runs in CI, which is exactly the gap that
+  // lets a red suite sit unread.
+  //
+  // They are correct as they are. An account reading or changing its OWN
+  // credentials is not a role question: the token names the account, and the
+  // handler acts on that account and no other. Adding requireRole would mean
+  // listing every role in the system and updating it whenever one is added.
+  [/^GET \/api\/account\/session$/, 'an account reading its own session; the token names it'],
+
+  // This one matters more than it looks. It is now the ONLY way the security
+  // authenticator can rotate its credentials - the Rector is refused on all
+  // three of the other doors - so a requireRole here that omitted
+  // 'authenticator' would silently strand that account again.
+  [/^POST \/api\/account\/password$/, 'an account changing its own password and PIN, proving identity with the current password']
 ];
 const roleFree = r => ROLE_FREE.some(([re]) => re.test(`${r.method} ${r.path}`));
 
