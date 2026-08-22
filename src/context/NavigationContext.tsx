@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { STAFF_GATE, AUTH_GATE } from '../constants/gates';
 import { clearTokens, setTokens, getAccessToken, getRefreshToken, SESSION_IDLE_TIMEOUT_MS, IDLE_MESSAGE } from '../services/session';
 import { apiClient , clearGlobalSecurityKey } from '../services/apiClient';
 
@@ -157,7 +158,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
   const login = async (identifier: string, pin: string, loginContext?: string, password?: string, campus?: string) => {
     setIsAuthLoading(true);
     try {
-      const resolvedContext = loginContext || (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
+      const resolvedContext = loginContext || (window.location.hash === AUTH_GATE || window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
       // A clerk signs in by campus: the server resolves which of that
       // campus's clerks the password belongs to. Sending an identifier
       // as well would contradict it, so it is one or the other.
@@ -188,7 +189,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
   const forceLogin = async (identifier: string, pin: string, loginContext?: string, password?: string, campus?: string) => {
     setIsAuthLoading(true);
     try {
-      const resolvedContext = loginContext || (window.location.hash.includes('sec-auth-sys-9i0j7k8l') || window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
+      const resolvedContext = loginContext || (window.location.hash === AUTH_GATE || window.location.hash.includes('authenticator') ? 'authenticator' : 'universal');
       const response = await apiClient.post('/auth/force-login', campus
         ? { campus, password: password || pin, pin, loginContext: resolvedContext }
         : { identifier, password: password || pin, pin, loginContext: resolvedContext });
@@ -240,8 +241,8 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       const response = await apiClient.get('/auth/me');
       const { user: userData } = response;
       
-      const isExplicitAuthGate = window.location.hash.includes('sec-auth-sys-9i0j7k8l');
-      const isExplicitUniversalGate = window.location.hash.includes('v1-portal-gate-x89f2a7b');
+      const isExplicitAuthGate = window.location.hash === AUTH_GATE;
+      const isExplicitUniversalGate = window.location.hash === STAFF_GATE;
 
       if (isExplicitAuthGate && userData.role !== 'authenticator') {
         console.warn('Clearing saved non-authenticator session on Authenticator URL');
@@ -345,7 +346,7 @@ export const NavigationProvider: React.FC<{ children: ReactNode; defaultRole?: P
       try {
         if (reason) sessionStorage.setItem('session_end_reason', reason);
       } catch { /* ignore */ }
-      window.location.hash = '#/v1-portal-gate-x89f2a7b';
+      window.location.hash = STAFF_GATE;
     };
     // Kept for older call sites; same behaviour.
     (window as any).logoutUser = () => (window as any).endSession();

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { STAFF_GATE, AUTH_GATE } from '../constants/gates';
 import { LIMITS } from '../constants/fieldLimits';
 import PinEntry from '../components/common/PinEntry';
 import { useNavigation } from '../context/NavigationContext';
@@ -38,7 +39,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const [portalMode, setPortalMode] = useState<'universal' | 'authenticator'>(() => {
     if (mode) return mode;
     const hash = window.location.hash;
-    if (hash.includes('sec-auth-sys-9i0j7k8l') || hash.includes('authenticator')) return 'authenticator';
+    if (hash === AUTH_GATE || hash.includes('authenticator')) return 'authenticator';
     return 'universal';
   });
 
@@ -47,11 +48,11 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
   const handlePortalSwitch = (newMode: 'universal' | 'authenticator') => {
     setPortalMode(newMode);
     if (newMode === 'authenticator') {
-      window.location.hash = '#/sec-auth-sys-9i0j7k8l';
+      window.location.hash = AUTH_GATE;
       setUserId('9059068384');
       setPasswordInput('');
     } else {
-      window.location.hash = '#/v1-portal-gate-x89f2a7b';
+      window.location.hash = STAFF_GATE;
       setUserId('');
       setPasswordInput('');
     }

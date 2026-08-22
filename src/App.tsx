@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { STAFF_GATE, AUTH_GATE, isAnyGate } from './constants/gates';
 import { NavigationProvider, useNavigation } from './context/NavigationContext';
 import { ResponsiveLayout } from './components/layout/ResponsiveLayout';
 import { PinView } from './views/PinView';
@@ -7,8 +8,9 @@ const AdminDashboardView = React.lazy(() => import('./views/AdminPortalViews').t
 const AccountantDashboardView = React.lazy(() => import('./views/AccountantPortalViews').then(m => ({ default: m.AccountantDashboardView })));
 const AuthenticatorDashboardView = React.lazy(() => import('./views/AuthenticatorPortalViews').then(m => ({ default: m.AuthenticatorDashboardView })));
 
-const UNIVERSAL_HASH = '#/secure-gateway-portal-v2-x9k84m2n7p1q3w5r8z-inspire';
-const AUTHENTICATOR_HASH = '#/sec-auth-sys-9i0j7k8l';
+// The two ERP addresses live in src/constants/gates.ts, which also sets out what
+// an unlisted address does and does not protect. Imported, not re-declared:
+// local aliases are how eleven copies of two strings happened in the first place.
 
 import { HorizontalProgressBarLoader } from './components/common/HorizontalProgressBarLoader';
 import { PortalErrorBoundary } from './components/common/PortalErrorBoundary';
@@ -30,11 +32,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'a
       const hash = window.location.hash;
       setCurrentHash(hash);
 
-      const isAuthGateHash = hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l');
-      const isUnivGateHash = hash === UNIVERSAL_HASH || hash.includes('secure-gateway-portal-v2') || hash.includes('v1-portal-gate-x89f2a7b');
-      const isGenericLoginHash = hash.includes('login') || hash.includes('portal-gate');
-
-      if (isAuthGateHash || isUnivGateHash || isGenericLoginHash) {
+      if (isAnyGate(hash)) {
         setFlowStage('pin');
         return;
       }
@@ -95,12 +93,9 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'a
     checkSession()
       .then((isValid) => {
         const hash = window.location.hash;
-        const isAuthGateHash = hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l');
-        const isUnivGateHash = hash === UNIVERSAL_HASH || hash.includes('secure-gateway-portal-v2') || hash.includes('v1-portal-gate-x89f2a7b');
-
         if (isValid || authStateRef.current) {
           setFlowStage('authenticated');
-        } else if (isAuthGateHash || isUnivGateHash || hash.includes('login') || hash.includes('portal-gate')) {
+        } else if (isAnyGate(hash)) {
           setFlowStage('pin');
         } else {
           setFlowStage('portfolio');
@@ -110,9 +105,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'a
         // Session check failed (network error, server down, etc.)
         // Fall back gracefully based on the current hash
         const hash = window.location.hash;
-        const isAuthGateHash = hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l');
-        const isUnivGateHash = hash === UNIVERSAL_HASH || hash.includes('secure-gateway-portal-v2') || hash.includes('v1-portal-gate-x89f2a7b');
-        if (isAuthGateHash || isUnivGateHash || hash.includes('login') || hash.includes('portal-gate')) {
+        if (isAnyGate(hash)) {
           setFlowStage('pin');
         } else {
           setFlowStage('portfolio');
@@ -142,7 +135,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'a
       try {
         if (reason) sessionStorage.setItem('session_end_reason', reason);
       } catch { /* ignore */ }
-      window.location.hash = '#/v1-portal-gate-x89f2a7b';
+      window.location.hash = STAFF_GATE;
       setFlowStage('pin');
     };
     (window as any).endSession = end;
@@ -160,7 +153,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'a
     }
 
     const hash = window.location.hash;
-    if (hash === AUTHENTICATOR_HASH || hash.includes('sec-auth-sys-9i0j7k8l') || hash === UNIVERSAL_HASH || hash.includes('v1-portal-gate-x89f2a7b')) {
+    if (isAnyGate(hash)) {
       setFlowStage('pin');
     } else {
       setFlowStage('portfolio');
@@ -258,7 +251,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'a
   }
 
   if (flowStage === 'pin') {
-    const isAuthMode = currentHash.includes('sec-auth-sys-9i0j7k8l') || currentHash.includes('authenticator');
+    const isAuthMode = currentHash === AUTH_GATE || currentHash.includes('authenticator');
     return <PinView mode={isAuthMode ? 'authenticator' : 'universal'} onComplete={() => setFlowStage('authenticated')} />;
   }
 

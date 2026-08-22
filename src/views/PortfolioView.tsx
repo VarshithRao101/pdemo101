@@ -953,7 +953,10 @@ export const PortfolioView: React.FC = () => {
     touchStartXRef.current = null;
   };
 
-  const portalHash = '#/v1-portal-gate-x89f2a7b';
+  // The Staff ERP Portal link was removed from the footer. The ERP is reached
+  // by a private address given to staff directly, not by a button on a public
+  // page that every visitor, crawler and screenshot carries to the sign-in
+  // screen. Nothing on this site links to it any more.
   const orgPhone = '+91 74163 80320, +91 91776 57274';
   const orgEmail = 'Inspirehnk@gmail.com';
 
@@ -2154,13 +2157,6 @@ export const PortfolioView: React.FC = () => {
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.1)'; e.currentTarget.style.transform = ''; }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
                     Admissions
-                  </a>
-                  <a href={portalHash}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.3)', borderRadius: 10, fontSize: '0.8929rem', fontWeight: 800, color: '#93C5FD', textDecoration: 'none', transition: 'background 0.2s, transform 0.2s' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.22)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.12)'; e.currentTarget.style.transform = ''; }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                    Staff ERP Portal
                   </a>
                 </div>
               </div>
