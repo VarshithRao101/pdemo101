@@ -111,7 +111,13 @@ const rows = (r) => {
   for (const [c, f] of [
     ['users', { username: new RegExp(`^${TAG}`) }],
     ['students', { admissionNumber: new RegExp(`^${TAG}`) }],
-    ['payments', { receiptNumber: new RegExp(`^${TAG}`) }],
+    // Payments are cleaned by STUDENT, not by receipt number. The server names
+    // receipts REC-<digits>-<hex>, so matching `^zzph1` on receiptNumber matched
+    // nothing and every run's receipts piled up against a student that phase 1
+    // recreates with totalPaid back at zero. Phase 3's reconciliation then read
+    // 220100 in live receipts against a totalPaid of 12100 and reported the app
+    // inconsistent, when the app was right and the cleanup was not.
+    ['payments', { studentId: new RegExp(`^${TAG}`) }],
     ['teachers', { id: new RegExp(`^${TAG}`) }],
     ['expenditures', { id: new RegExp(`^${TAG}`) }],
     ['enquiries', { studentName: new RegExp(`^${TAG}`) }],
@@ -598,7 +604,7 @@ const rows = (r) => {
       for (const [c, f] of [
         ['users', { username: new RegExp(`^${TAG}`) }],
         ['students', { admissionNumber: new RegExp(`^${TAG}`) }],
-        ['payments', { receiptNumber: new RegExp(`^${TAG}`) }],
+        ['payments', { studentId: new RegExp(`^${TAG}`) }],
         ['teachers', { id: new RegExp(`^${TAG}`) }],
         ['expenditures', { description: new RegExp(`^${TAG}`) }],
         ['enquiries', { studentName: new RegExp(`^${TAG}`) }]

@@ -87,7 +87,13 @@ const rows = (r) => {
   for (const [c, f] of [
     ['users', { username: new RegExp(`^${TAG}`) }],
     ['students', { admissionNumber: new RegExp(`^${TAG}`) }],
-    ['payments', { receiptNumber: new RegExp(`^${TAG}`) }]
+    // Payments are cleaned by STUDENT, not by receipt number. The server names
+    // receipts REC-<digits>-<hex>, so matching `^zzph1` on receiptNumber matched
+    // nothing and every run's receipts piled up against a student that phase 1
+    // recreates with totalPaid back at zero. Phase 3's reconciliation then read
+    // 220100 in live receipts against a totalPaid of 12100 and reported the app
+    // inconsistent, when the app was right and the cleanup was not.
+    ['payments', { studentId: new RegExp(`^${TAG}`) }]
   ]) { try { await db.collection(c).deleteMany(f); } catch {} }
 
   const tok = {};
@@ -255,35 +261,42 @@ const rows = (r) => {
     if (made.length) {
       const victim = made[0];
 
-      // An accountant may ADD a student but may not DELETE one. The route lives
-      // at /api/accountant/students/:id and yet admits only admin1 and clerk,
-      // with the editStudent permission - the path name and the role gate
-      // disagree, and the gate is what runs.
-      //
-      // Asserted as it is, not as it might be. Widening who can delete a
-      // student is an authorisation change and belongs to whoever owns the
-      // college, not to a test that found the asymmetry.
+      // An accountant may now delete a student, and the deletion must be
+      // undoable. Both halves matter: the operator asked for the first, and the
+      // second is what makes it safe to have asked.
       const del = await req('DELETE', `/api/accountant/students/${victim.id}`, tok[victim.campus], undefined, withPin());
-      ok('an accountant is REFUSED student deletion (add yes, delete no)',
-        del.status === 403, `status ${del.status}: ${del.raw.slice(0, 130)}`);
-      const stillListed = await req('GET', '/api/accountant/students?limit=200', tok[victim.campus], undefined, withPin());
-      ok('and the student is still there afterwards',
-        rows(stillListed).some(s => s.admissionNumber === victim.adm),
-        'refused, yet the student vanished');
+      ok('an accountant CAN delete a student', del.status < 300,
+        `status ${del.status}: ${del.raw.slice(0, 130)}`);
 
-      // The Rector can, and that deletion must be undoable.
+      const gone = await req('GET', '/api/accountant/students?limit=200', tok[victim.campus], undefined, withPin());
+      ok('the deleted student leaves the live list',
+        !rows(gone).some(st => st.admissionNumber === victim.adm), 'still listed after deletion');
+
+      const stillInDb = await db.collection('students').findOne({ admissionNumber: victim.adm });
+      ok('the record survives soft-deleted, not destroyed', !!stillInDb,
+        'hard-deleted — a mistaken deletion could not be undone');
+
+      // The Rector puts it back. A delete with no route home is data loss with
+      // extra steps.
       const rector = await db.collection('users').findOne({ role: 'admin1', username: new RegExp('^zzph1') });
       if (rector) {
         const rl = await req('POST', '/api/auth/login', null,
           { username: rector.username, password: rector.password, pin: rector.pin });
         const rtok = rl.json?.token;
-        const rdel = await req('DELETE', `/api/admin1/students/${victim.id}`, rtok, undefined,
+        const bin = await req('GET', '/api/admin1/recently-deleted', rtok, undefined,
           { 'x-security-pin': rector.pin });
-        ok('the Rector CAN delete that student', rdel.status < 300,
-          `status ${rdel.status}: ${rdel.raw.slice(0, 120)}`);
-        const stillInDb = await db.collection('students').findOne({ admissionNumber: victim.adm });
-        ok('the record survives for the recycle bin', !!stillInDb,
-          'hard-deleted — a mistaken deletion could not be undone');
+        const binRow = rows(bin).find(b => String(b.reference || '').startsWith(victim.adm));
+        ok('the deletion shows in the recycle bin', !!binRow,
+          `${rows(bin).length} rows, none referencing ${victim.adm}`);
+
+        if (binRow) {
+          const back = await req('POST', `/api/admin1/recently-deleted/${binRow.type || 'student'}/${binRow.id}/restore`,
+            rtok, {}, { 'x-security-pin': rector.pin });
+          const relisted = await req('GET', '/api/accountant/students?limit=200', tok[victim.campus], undefined, withPin());
+          ok('and it can be restored',
+            back.status < 300 && rows(relisted).some(st => st.admissionNumber === victim.adm),
+            `status ${back.status}: ${back.raw.slice(0, 120)}`);
+        }
       }
     }
 

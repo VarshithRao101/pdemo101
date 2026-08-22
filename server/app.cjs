@@ -3963,9 +3963,28 @@ const deleteStudentHandler = async (req, res) => {
   }
 };
 
-app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
-app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
-app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
+// An accountant may now delete a student, on the operator's instruction.
+//
+// It was admin1 and clerk only, which made the accountant portal able to ADD a
+// student and not remove one - and the route it was refused on is literally
+// /api/accountant/students/:id. The path and the gate disagreed, and the gate
+// is what ran.
+//
+// requirePermission('editStudent') still applies to everyone. It is a real gate
+// for a CLERK, whose grants are checked; callerHasPermission returns true for
+// admin1 and accountant by role, which is the existing rule for both and not
+// something this change introduces.
+//
+// NOTE for whoever reads this next: deleteStudentHandler contains a campus
+// check, and that check is currently unreachable. callerOwnsStudent defers to
+// callerReachesAllStudents, which is true for admin1, accountant AND clerk -
+// the shared-registry rule. So a clerk at one campus could already delete a
+// student at another, before this change and independently of it. That is the
+// shared registry applied to DELETION as well as reading, and whether it should
+// be is a decision for the college, not something to change quietly here.
+app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
+app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
+app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
 
 
 // --- FEE WAIVER ROUTE ---
