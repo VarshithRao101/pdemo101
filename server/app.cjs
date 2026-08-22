@@ -3435,7 +3435,19 @@ app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'clerk'
     // in the college. withReceiptTokens already handles a plain object, so
     // there is nothing to give up by not hydrating them.
     const [rows, total] = await Promise.all([
-      Student.find(filter).select(STUDENT_LIST_OMIT).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      // `_id` is the TIEBREAKER, and it is not decoration.
+      //
+      // skip/limit paging is only coherent if the sort is a total order. Two
+      // students created in the same millisecond — a bulk intake, or an import
+      // — compare equal on `createdAt` alone, and Mongo is then free to return
+      // them in either order on either page. The observable result is that a
+      // record appears on page one AND page two, or on NEITHER: paging from
+      // 500 to 1000 returned 999 distinct students against this dataset before
+      // this line, and the missing one was not reported anywhere.
+      //
+      // `_id` is unique, so appending it makes the order total and every
+      // record fall on exactly one page.
+      Student.find(filter).select(STUDENT_LIST_OMIT).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean(),
       Student.countDocuments(filter)
     ]);
 
@@ -4712,7 +4724,7 @@ const getExpendituresHandler = async (req, res) => {
     // heading — so the breakdown is computed here and the screen reads the
     // campus it is displaying straight out of it.
     const [rows, total, totalAmount, branchRows] = await Promise.all([
-      Expenditure.find(filter).sort({ date: -1 }).skip(skip).limit(limit).lean(),
+      Expenditure.find(filter).sort({ date: -1, _id: -1 }).skip(skip).limit(limit).lean(),
       Expenditure.countDocuments(filter),
       sumField(Expenditure, filter, 'amount'),
       Expenditure.aggregate([
@@ -4938,7 +4950,7 @@ app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 
     // unpaid-must-not-store-as-paid fix turns on, so the second sum has to
     // filter on it rather than assume every row counts.
     const [rows, total, totalAmount, paidAmount] = await Promise.all([
-      WorkerPayment.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      WorkerPayment.find(filter).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean(),
       WorkerPayment.countDocuments(filter),
       sumField(WorkerPayment, filter, 'amount'),
       sumField(WorkerPayment, { ...filter, paid: true }, 'amount')
@@ -5172,7 +5184,10 @@ app.get('/api/accountant/students', authenticateToken, requireRole('accountant',
     const { limit, page, skip } = readPaging(req);
 
     const [rows, total] = await Promise.all([
-      Student.find(filter).select(STUDENT_LIST_OMIT).sort({ name: 1 }).skip(skip).limit(limit).lean(),
+      // Tiebroken on `_id` — see the registry route above. Sorting by name
+      // alone is worse than by date, not better: students genuinely share a
+      // name, so the ties are guaranteed rather than incidental.
+      Student.find(filter).select(STUDENT_LIST_OMIT).sort({ name: 1, _id: 1 }).skip(skip).limit(limit).lean(),
       Student.countDocuments(filter)
     ]);
 
@@ -8115,7 +8130,10 @@ app.get(['/api/admin1/logs', '/api/admin1/audit-logs'], authenticateToken, requi
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
 
     const [entries, total] = await Promise.all([
-      AuditLog.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      // Tiebroken on `_id`: audit rows are written in bursts and share a
+      // millisecond readily, and a paged audit trail that can drop an entry
+      // is worse than no paging at all.
+      AuditLog.find(filter).sort({ createdAt: -1, _id: -1 }).skip((page - 1) * limit).limit(limit).lean(),
       AuditLog.countDocuments(filter)
     ]);
 
@@ -9141,7 +9159,7 @@ app.get(['/api/admin1/payments', '/api/accountant/payments'], authenticateToken,
     const { limit, page, skip } = readPaging(req);
 
     const [rows, total, totalAmount] = await Promise.all([
-      Payment.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Payment.find(filter).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean(),
       Payment.countDocuments(filter),
       sumField(Payment, { ...filter, reversed: { $ne: true } }, 'amount')
     ]);
@@ -9166,7 +9184,7 @@ app.get(['/api/admin1/expenditures', '/api/accountant/expenditures'], authentica
     const { limit, page, skip } = readPaging(req);
 
     const [rows, total, totalAmount] = await Promise.all([
-      Expenditure.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Expenditure.find(filter).sort({ createdAt: -1, _id: -1 }).skip(skip).limit(limit).lean(),
       Expenditure.countDocuments(filter),
       sumField(Expenditure, filter, 'amount')
     ]);
