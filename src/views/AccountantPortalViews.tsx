@@ -13,6 +13,7 @@ import * as accountantService from '../services/accountantService';
 import { CAMPUS_LIST } from '../constants/campuses';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 import { OutstandingFeesPanel } from '../components/common/OutstandingFeesPanel';
+import { downloadCsv } from '../services/accountService';
 
 
 // --- RENDER BACKGROUND DESIGN WITH CUSTOM COLOR ACCENT GLOWS ---
@@ -3414,7 +3415,45 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
               <h1 style={styles.title}>Audit Report Compiler</h1>
               <p style={styles.subtitle}>Transaction audit stream — {allTransactions.length} records total</p>
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {/* CSV alongside the PDF. They are not the same thing: the PDF is
+                  what gets filed and signed, the CSV is what gets opened in a
+                  spreadsheet and reconciled against a bank statement.
+
+                  The accountant portal had no CSV at all, even though
+                  /api/export/students.csv and payments.csv have always served
+                  this role. Expenditures is deliberately NOT offered here - that
+                  route is admin1 and clerk only, and a button that answers 403
+                  is worse than no button. verify-csv asserts that refusal so
+                  this stays true. */}
+              <button
+                onClick={async () => {
+                  try {
+                    await downloadCsv('payments');
+                    triggerToast('Payments CSV downloaded.');
+                  } catch (e: any) {
+                    triggerToast(e?.message || 'Could not download the CSV.', 'error');
+                  }
+                }}
+                style={{ ...styles.sheetBtn, backgroundColor: 'var(--surface-sunken)', color: 'var(--ink)', border: '1.5px solid var(--line)', fontWeight: 800, padding: '10px 16px' }}
+                className="press-interactive"
+              >
+                Payments CSV
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await downloadCsv('students');
+                    triggerToast('Students CSV downloaded.');
+                  } catch (e: any) {
+                    triggerToast(e?.message || 'Could not download the CSV.', 'error');
+                  }
+                }}
+                style={{ ...styles.sheetBtn, backgroundColor: 'var(--surface-sunken)', color: 'var(--ink)', border: '1.5px solid var(--line)', fontWeight: 800, padding: '10px 16px' }}
+                className="press-interactive"
+              >
+                Students CSV
+              </button>
               <button
                 onClick={() => {
                   if (allTransactions.length === 0) { triggerToast('No transactions to export.'); return; }

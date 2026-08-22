@@ -2869,6 +2869,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                 {studentsTruncated && <> &middot; {studentTotal} in total</>}
               </span>
               <CsvExportButton kind="students" label="Export CSV" />
+              {/* payments.csv had a route, a role gate and a rate limiter, and
+                  no button anywhere in the app - so the one export that
+                  reconciles against a bank statement could not be reached. */}
+              <CsvExportButton kind="payments" label="Payments CSV" />
             </div>
 
             {/*
