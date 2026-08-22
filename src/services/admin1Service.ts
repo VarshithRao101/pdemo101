@@ -357,20 +357,7 @@ export const admin1Service = {
     });
   },
 
-  // Teacher Monthly Salary
-  async updateTeacherMonthlySalary(id: string, payload: {
-    academicYear?: string;
-    monthKey?: string;
-    expectedSalary?: number;
-    paidAmount?: number;
-    paymentDate?: string;
-    paymentMode?: string;
-    referenceNumber?: string;
-    notes?: string;
-    approvedBy?: string;
-    isHoliday?: boolean;
-  }): Promise<any> {
-    const res = await apiClient.post<any>(`/teachers/${id}/salary-month`, payload);
-    return res;
-  }
+  // updateTeacherMonthlySalary was removed with the route it called: it
+  // posted to /teachers/:id/salary-month, which discarded every write. Use
+  // payTeacherSalary above, which is what the portal uses.
 };

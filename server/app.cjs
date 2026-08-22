@@ -6998,33 +6998,20 @@ app.get('/api/system/last-changed', authenticateToken, rejectForeignCampusParam,
 // ============================================================
 
 // --- TEACHER MONTHLY SALARY ---
-app.post('/api/teachers/:id/salary-month', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
-  try {
-    await connectToDatabase();
-    const { id } = req.params;
-    const isObjId = isValidObjectId(id);
-    const teacher = await Teacher.findOne({ $or: [{ _id: isObjId ? id : null }, { id }] });
-    if (!teacher) return res.status(404).json({ status: 'error', message: 'Teacher not found.' });
-    const { monthKey, paidAmount, salaryStatus, paymentDate, paymentMode, referenceNumber, notes } = req.body || {};
-    if (!teacher.salaryHistory) teacher.salaryHistory = {};
-    if (monthKey) {
-      teacher.salaryHistory[monthKey] = { paidAmount: Number(paidAmount || 0), salaryStatus: salaryStatus || 'paid', paymentDate, paymentMode, referenceNumber, notes };
-      teacher.markModified('salaryHistory');
-    }
-    if (salaryStatus) teacher.salaryStatus = salaryStatus;
-    await teacher.save();
-    recordAudit(req, {
-      action: 'salary.record',
-      entityType: 'teacher',
-      entityId: String(req.params.id),
-      campus: req.user && req.user.campus || '',
-      summary: `Recorded a salary month for teacher ${req.params.id}.`
-    });
-    return res.json({ status: 'success', data: teacher });
-  } catch (err) {
-    return failRequest(req, res, err);
-  }
-});
+// REMOVED: app.post('/api/teachers/:id/salary-month')
+//
+// It wrote teacher.salaryHistory, and salaryHistory is not declared in the
+// Teacher schema. Mongoose runs strict by default, so every write was silently
+// discarded on save - the route answered 200, recorded an audit entry, and
+// persisted nothing. Proven by writing the field and reading it back: undefined.
+//
+// The real salary ledger is salaryLedger[academicYear][month], written by
+// app.post(['/api/admin1/teachers/:id/salary-month', ...]) above, which is what
+// the portal actually calls. This was a second, broken copy reachable only
+// through admin1Service.updateTeacherMonthlySalary, which no view called.
+//
+// Both are gone. A route that reports success and stores nothing is worse than
+// no route: nothing fails, and the salary simply is not there next month.
 
 // --- FEE BREAKDOWN ---
 app.get(['/api/admin1/students/:studentId/fee-breakdown', '/api/admin2/students/:studentId/fee-breakdown', '/api/admin/students/:studentId/fee-breakdown'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
@@ -7587,14 +7574,15 @@ app.get('/api/admin1/reports', authenticateToken, requireRole('admin1', 'clerk',
  * limit — anyone can post past it — and counting after the write would let
  * two simultaneous requests both see fourteen and both create a fifteenth.
  */
-// Raised from 15 on the operator's instruction to allow "as many as they
-// want". Deliberately not removed outright: list responses in this codebase
-// are capped and paginated, so an unbounded roster would silently truncate
-// the very screen used to manage it, and a runaway create loop would fill the
-// collection with nothing to stop it. A hundred a campus is four hundred
-// clerks against a present twenty-five - far past any real roster, while
-// still being a number.
-const MAX_CLERKS_PER_CAMPUS = 100;
+// 25 a campus, set by the operator. It was 15, then briefly 100 - and a cap of
+// a hundred against a real roster of seven is not a cap, it is an absence of
+// one. 25 is generous against the roster and small enough that the screen
+// used to manage them stays readable.
+//
+// It stays a NUMBER rather than unlimited for the original reason: list
+// responses are capped and paginated, so an unbounded count would silently
+// truncate the very screen the Rector manages clerks from.
+const MAX_CLERKS_PER_CAMPUS = 25;
 
 /** Every clerk at one campus, in a stable order, with credentials readable. */
 async function readCampusClerks(campus) {
