@@ -401,7 +401,17 @@ const PRINT_CSS = (() => {
 const LETTERHEAD_URL = (() => {
   try {
     const dir = path.join(__dirname, '..', 'dist', 'assets');
-    const hit = fs.readdirSync(dir).find(f => /^college.*logo.*\.png$/i.test(f));
+    // Any raster extension, not .png alone.
+    //
+    // This matched .png only, and the logo was converted to WebP with the rest
+    // of the images. The lookup then found nothing, LETTERHEAD_URL went null,
+    // and every parent-facing receipt silently lost its letterhead - the one
+    // document in this system that goes to someone outside the college.
+    // Nothing errored; the img simply stopped being emitted.
+    //
+    // Preferring .webp keeps it deterministic if both ever sit in dist at once.
+    const logos = fs.readdirSync(dir).filter(f => /^college.*logo.*\.(webp|png|jpe?g|avif)$/i.test(f));
+    const hit = logos.find(f => /\.webp$/i.test(f)) || logos[0];
     return hit ? '/assets/' + encodeURIComponent(hit) : null;
   } catch {
     return null;
