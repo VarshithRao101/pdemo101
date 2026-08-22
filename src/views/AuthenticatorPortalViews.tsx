@@ -4,6 +4,7 @@ import { LIMITS } from '../constants/fieldLimits';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
 import { authenticatorService, BACKUP_CATEGORIES } from '../services/authenticatorService';
+import { CAMPUS_LIST } from '../constants/campuses';
 import type {
   AccountInfo,
   ActiveSessionInfo,
@@ -17,19 +18,17 @@ export const AuthenticatorDashboardView: React.FC = () => {
   const [toast, setToast] = useState<string | null>(null);
   
   // Tab control
-  const activeTab = (globalActiveTab === 'keys' || globalActiveTab === 'accounts' || globalActiveTab === 'sync_integrity' || globalActiveTab === 'settings') 
+  const activeTab = (globalActiveTab === 'sync_integrity' || globalActiveTab === 'settings') 
     ? globalActiveTab 
     : 'dashboard';
 
-  const setActiveTab = (tab: 'dashboard' | 'keys' | 'accounts' | 'sync_integrity' | 'settings') => {
+  const setActiveTab = (tab: 'dashboard' | 'sync_integrity' | 'settings') => {
     setGlobalActiveTab(tab);
   };
 
   // Backend state
-  const [keysData, setKeysData] = useState<any>(null);
   // Newly issued PINs, held in component state only. Never persisted to
   // localStorage: they are the live credentials for every portal account.
-  const [issuedPins, setIssuedPins] = useState<Record<string, string> | null>(null);
   const [, setIsRestoring] = useState(false);
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
   const [stats, setStats] = useState<AuthenticatorStats>({
@@ -67,14 +66,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [showModalPassword, setShowModalPassword] = useState<boolean>(false);
 
-  const copyTextToClipboard = (text: string, label: string) => {
-    if (!text) {
-      triggerToast(`No ${label} available to copy.`);
-      return;
-    }
-    navigator.clipboard.writeText(text);
-    triggerToast(`Copied ${label} to clipboard!`);
-  };
 
   // Settings State 1: Make Google Drive Backup
   const [backupPasscode, setBackupPasscode] = useState<string>('');
@@ -90,15 +81,19 @@ export const AuthenticatorDashboardView: React.FC = () => {
   const [availableBackups, setAvailableBackups] = useState<any>(
     Object.fromEntries(BACKUP_CATEGORIES.map(c => [c.key, {}]))
   );
-  const [isLoadingBackups, setIsLoadingBackups] = useState<boolean>(false);
-  const [activeRestoreCategory, setActiveRestoreCategory] = useState<BackupCategoryKey>('Students_Data');
-  const [restoringCampus] = useState<string | null>(null);
-  const [restoreProgress] = useState<number>(0);
-  const [restoreStatusText] = useState<string>('Initializing restoration pipeline...');
+  // The restore selection. One button opens this; the operator ticks what to
+  // put back and from which campus.
+  //
+  // Categories are a SET, not one active tab. Backups are written per category,
+  // and features have been added since some of the older files were taken - so
+  // a file may simply not contain a collection that exists now. Restoring
+  // everything blindly would either fail or quietly put back less than the
+  // operator believes. Choosing is the point.
+  const [restoreCampus, setRestoreCampus] = useState<string>('');
+  const [restorePicked, setRestorePicked] = useState<BackupCategoryKey[]>([]);
 
   // Fetch Available Backups from Server/Google Drive
   const loadAvailableBackups = async () => {
-    setIsLoadingBackups(true);
     try {
       // Campus-scoped tree: Backup/<Type>/<Campus>/. The old call returned a
       // single flat folder with every campus mixed together.
@@ -107,7 +102,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
     } catch (err: any) {
       console.warn('Failed to load available backups:', err.message);
     } finally {
-      setIsLoadingBackups(false);
     }
   };
 
@@ -217,69 +211,108 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Restoring from a locally-uploaded file used to be offered here; there was
   // never a backend for it, so that path has been removed. Restores come from
   // Drive, which is where the encrypted backups actually live.
-  const handleExecuteDataRestore = async (
-    fileId: string,
-    fileName: string,
-    category: BackupCategoryKey,
-    campus: string
-  ) => {
-    const backupType = authenticatorService.categoryToBackupType(category);
+  /**
+   * Restore every category the operator ticked, from one button.
+   *
+   * The shape that matters: PREVIEW EVERYTHING FIRST, confirm once against real
+   * numbers, ask for the password once, then apply. Previewing per category and
+   * confirming per category would mean an operator clicking through six dialogs,
+   * and the sixth gets clicked without reading - which is how a restore goes
+   * wrong quietly.
+   *
+   * Each preview is a server-side dry run: it decrypts the file, checks the
+   * checksum, confirms the type and campus, and counts what would change.
+   * Nothing is written until the apply step.
+   *
+   * A category with no backup file for the chosen campus is REPORTED, not
+   * skipped in silence. "Nothing happened" and "there was nothing to restore"
+   * look identical afterwards and need opposite responses.
+   */
+  const handleRestoreSelected = async () => {
+    if (!restoreCampus) { triggerToast('Choose a campus first.'); return; }
+    if (restorePicked.length === 0) { triggerToast('Tick at least one category to restore.'); return; }
 
     setIsRestoring(true);
     try {
-      // Step 1 — dry run. The server decrypts the file, checks the checksum,
-      // confirms the type and campus match what was asked for, and counts what
-      // would change. Nothing is written. An operator should never be asked to
-      // confirm a restore whose contents nobody has looked at.
-      let preview: any;
-      try {
-        preview = await authenticatorService.previewRestore(fileId, backupType, campus);
-      } catch (err: any) {
-        const rejected = err?.data?.data?.validation;
-        triggerToast(
-          rejected?.errors?.length
-            ? `Backup rejected: ${rejected.errors.join(' ')}`
-            : (err?.message || 'Could not read that backup. Nothing was changed.')
-        );
+      const jobs: Array<{ category: BackupCategoryKey; label: string; type: string; file: any; preview: any }> = [];
+      const missing: string[] = [];
+      const unreadable: string[] = [];
+
+      for (const category of restorePicked) {
+        const label = (BACKUP_CATEGORIES.find(c => c.key === category) || { label: category }).label;
+        const files = ((availableBackups || {})[category] || {})[restoreCampus] || [];
+        if (!files.length) { missing.push(label); continue; }
+
+        // Newest first is how getBackupsByCategory sorts them.
+        const file = files[0];
+        const type = authenticatorService.categoryToBackupType(category);
+        try {
+          const preview = await authenticatorService.previewRestore(file.id, type, restoreCampus);
+          jobs.push({ category, label, type, file, preview });
+        } catch (err: any) {
+          const rejected = err?.data?.data?.validation;
+          unreadable.push(`${label}: ${rejected?.errors?.length ? rejected.errors.join(' ') : (err?.message || 'could not be read')}`);
+        }
+      }
+
+      if (unreadable.length) {
+        triggerToast(`Backup rejected — ${unreadable[0]}. Nothing was changed.`);
+        return;
+      }
+      if (!jobs.length) {
+        triggerToast(`No backup files exist for ${restoreCampus} in the categories you picked. Nothing was changed.`);
         return;
       }
 
-      const summary = preview?.validation?.summary || {};
-      const plan = preview?.plan || {};
-      const warnings: string[] = preview?.validation?.warnings || [];
+      const lines = jobs.map(j => {
+        const sum = j.preview?.validation?.summary || {};
+        const plan = j.preview?.plan || {};
+        return `  • ${j.label} — ${sum.recordCount ?? 0} in backup: ` +
+               `${plan.willUpdate ?? 0} updated, ${plan.willInsert ?? 0} added, ` +
+               `${plan.presentButNotInBackup ?? 0} left alone`;
+      });
+      const warnings = jobs.flatMap(j => (j.preview?.validation?.warnings || []).map((w: string) => `${j.label}: ${w}`));
 
-      // Step 2 — show what was actually found in the file, not a generic
-      // warning. The counts below come from the server's read of the real
-      // backup against the real database.
       const confirmed = window.confirm(
-        `Restore ${summary.backupType || backupType} records for ${summary.campus || campus}\n\n` +
-        `File: ${fileName}\n` +
-        `Taken: ${summary.createdAt ? new Date(summary.createdAt).toLocaleString() : 'unknown'}\n` +
-        `Records in backup: ${summary.recordCount ?? 0}\n\n` +
-        `This will UPDATE ${plan.willUpdate ?? 0} existing record(s) and ADD ${plan.willInsert ?? 0} new one(s).\n` +
-        `${plan.presentButNotInBackup ?? 0} record(s) currently in ${campus} are not in this backup and will be LEFT AS THEY ARE.\n\n` +
+        `Restore ${jobs.length} categor${jobs.length === 1 ? 'y' : 'ies'} for ${restoreCampus}\n\n` +
+        lines.join('\n') + '\n\n' +
+        (missing.length ? `No backup found for: ${missing.join(', ')} — these will be left untouched.\n\n` : '') +
         (warnings.length ? `Warnings:\n- ${warnings.join('\n- ')}\n\n` : '') +
-        `Only ${campus} is touched. Overwritten values cannot be recovered.`
+        `Only ${restoreCampus} is touched. Records already there but absent from a backup are LEFT AS THEY ARE.\n` +
+        `Overwritten values cannot be recovered.`
       );
       if (!confirmed) return;
 
-      // Step 3 — apply. Password on top of the security PIN: two different
-      // secrets, both verified server-side with bcrypt.
+      // Asked once for the whole run, not once per category. It is verified
+      // server-side with bcrypt on every single call regardless.
       const password = window.prompt('Enter YOUR account password to confirm this restore:');
       if (!password || !password.trim()) return;
 
-      const result = await authenticatorService.applyRestore(fileId, backupType, campus, password.trim());
-      const applied = result?.applied || {};
-      triggerToast(
-        `Restore complete — ${applied.inserted ?? 0} added, ${applied.updated ?? 0} updated. ` +
-        `${applied.campus || campus} now holds ${applied.campusTotalAfter ?? 0} ${applied.backupType || backupType} record(s).`,
-        'success'
-      );
+      let inserted = 0, updated = 0;
+      const failed: string[] = [];
+      for (const j of jobs) {
+        try {
+          const result = await authenticatorService.applyRestore(j.file.id, j.type, restoreCampus, password.trim());
+          const applied = result?.applied || {};
+          inserted += applied.inserted ?? 0;
+          updated += applied.updated ?? 0;
+        } catch (err: any) {
+          failed.push(`${j.label} (${err?.message || 'failed'})`);
+        }
+      }
+
+      if (failed.length) {
+        triggerToast(`Restored ${jobs.length - failed.length} of ${jobs.length}. Failed: ${failed.join('; ')}`);
+      } else {
+        triggerToast(
+          `Restore complete — ${inserted} added, ${updated} updated across ` +
+          `${jobs.length} categor${jobs.length === 1 ? 'y' : 'ies'} at ${restoreCampus}.`,
+          'success'
+        );
+      }
       await loadData();
       await loadAvailableBackups();
     } catch (err: any) {
-      // Surface the real reason; a failed restore that looks like a success is
-      // exactly the failure mode this replaced.
       triggerToast(err?.message || 'Restore failed. No data was changed.');
     } finally {
       setIsRestoring(false);
@@ -315,13 +348,14 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Load Initial Data
   const loadData = async () => {
     try {
-      const [keysRes, accountsRes, statsRes, syncRes] = await Promise.all([
-        authenticatorService.getKeys(),
+      // getKeys() is no longer fetched: the Security Keys tab it fed has been
+      // removed, and pulling PINs this portal never displays put credentials on
+      // the wire for nothing.
+      const [accountsRes, statsRes, syncRes] = await Promise.all([
         authenticatorService.getAccounts(),
         authenticatorService.getStats(),
         authenticatorService.getSyncJournal()
       ]);
-      setKeysData(keysRes);
       setAccounts(accountsRes);
       // The server reads the real newest file out of Google Drive. A value
       // cached in this browser's localStorage used to take priority over it,
@@ -346,29 +380,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
   // Issue fresh PINs. Requires the authenticator to confirm with their own PIN,
   // which the server verifies with bcrypt — the client cannot self-authorise.
-  const handleManualRegeneratePins = async () => {
-    const securityPin = window.prompt('Enter YOUR security PIN to confirm issuing new PINs for all portal accounts:');
-    if (!securityPin || !securityPin.trim()) return;
-
-    try {
-      const data = await authenticatorService.regenerateKeys(securityPin.trim());
-      const pins = (data && data.dailyPins) || {};
-      const count = Object.keys(pins).length;
-
-      if (count === 0) {
-        triggerToast('No PINs were issued. Nothing has changed.');
-        return;
-      }
-
-      setIssuedPins(pins);
-      await loadData();
-      triggerToast(`${count} new PIN(s) issued. Copy them now — they cannot be shown again.`, 'success');
-    } catch (err: any) {
-      // Surface the real reason (wrong PIN, rate limited, database down)
-      // rather than a generic failure the operator cannot act on.
-      triggerToast(err?.message || 'Failed to issue new PINs. No PIN was changed.');
-    }
-  };
 
 
 
@@ -413,11 +424,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    triggerToast('Copied security PIN to clipboard!');
-  };
 
   const activeSessions = (stats.activeSessions || []) as ActiveSessionInfo[];
 
@@ -478,15 +484,11 @@ export const AuthenticatorDashboardView: React.FC = () => {
             <div>
               <h1 style={styles.workspaceTitle}>
                 {activeTab === 'dashboard' && 'Security Shield Overview'}
-                {activeTab === 'keys' && '6-Digit Security PINs'}
-                {activeTab === 'accounts' && 'Staff Accounts Control'}
                 {activeTab === 'sync_integrity' && 'Transaction Ledger'}
                 {activeTab === 'settings' && 'System Settings'}
               </h1>
               <p style={styles.workspaceSubtitle}>
                 {activeTab === 'dashboard' && 'Real-time security metrics, active web sessions, and system status.'}
-                {activeTab === 'keys' && 'Manage active 6-digit login PINs for administrative accounts with manual regeneration.'}
-                {activeTab === 'accounts' && 'Provision, update, and manage login authorization credentials for staff.'}
                 {activeTab === 'sync_integrity' && 'Audit real-time transaction journal for successful commits and system actions.'}
                 {/*
                   This said "and bulk CSV file uploads". There is no such
@@ -623,315 +625,17 @@ export const AuthenticatorDashboardView: React.FC = () => {
           PIN on page load, and fell back to a hardcoded literal when the API
           returned nothing.
         */}
-        {activeTab === 'keys' && keysData && (
-          <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <GlassCard hoverable={false} style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', backgroundColor: 'var(--surface)', border: '2.5px solid var(--ink)', boxShadow: '4px 4px 0px var(--ink)' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.1429rem', fontWeight: 900, color: 'var(--ink)' }}>
-                  Account Security PINs
-                </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)', maxWidth: '520px' }}>
-                  PINs are stored as one-way hashes and cannot be displayed. Issue a new PIN to see its value — it is shown once only.
-                </p>
-              </div>
+        {/* The Security Keys and Staff Accounts tabs used to sit here.
 
-              <button
-                onClick={handleManualRegeneratePins}
-                style={{
-                  padding: '12px 20px', borderRadius: '12px', border: '2px solid var(--warning)',
-                  backgroundColor: 'var(--warning)', color: 'var(--surface)', fontWeight: 900, fontSize: '0.9286rem',
-                  boxShadow: '3px 3px 0px var(--warning)', cursor: 'pointer', display: 'flex',
-                  alignItems: 'center', gap: '8px', fontFamily: 'var(--font-family)'
-                }}
-                className="press-interactive"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                </svg>
-                <span>Issue New PINs</span>
-              </button>
-            </GlassCard>
+            Both were credential management, and credential management already
+            exists in the Rector portal under Credentials - which is the single
+            place it belongs. Two screens that both set a password are two
+            screens that disagree about who last set it.
 
-            {/* Freshly issued PINs — visible only until this view reloads. */}
-            {issuedPins && Object.keys(issuedPins).length > 0 && (
-              <GlassCard hoverable={false} style={{ padding: '20px 24px', border: '2.5px solid var(--warning)', backgroundColor: 'var(--warning-wash)', boxShadow: '4px 4px 0px var(--warning)' }}>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', fontWeight: 900, color: 'var(--warning)' }}>
-                  New PINs — shown once
-                </h4>
-                <p style={{ margin: '0 0 16px 0', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--warning)' }}>
-                  Copy and distribute these now. They cannot be retrieved again; the only way to recover an account is to issue another PIN.
-                </p>
-                <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '16px' }}>
-                  {Object.entries(issuedPins).map(([username, pin]) => (
-                    <GlassCard key={username} hoverable={false} style={styles.keyCard}>
-                      <span style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>{username}</span>
-                      <div style={styles.keyDisplayBlock}>
-                        <strong style={{ ...styles.keyValue, color: 'var(--warning)' }}>{String(pin)}</strong>
-                      </div>
-                      <button onClick={() => copyToClipboard(String(pin))} style={styles.copyBtn} className="press-interactive">
-                        Copy 6-Digit PIN
-                      </button>
-                    </GlassCard>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setIssuedPins(null)}
-                  style={{ marginTop: '16px', padding: '10px 16px', borderRadius: '10px', border: '2px solid var(--warning)', backgroundColor: 'transparent', color: 'var(--warning)', fontWeight: 900, fontSize: '0.8571rem', cursor: 'pointer', fontFamily: 'var(--font-family)' }}
-                  className="press-interactive"
-                >
-                  I have saved these — hide them
-                </button>
-              </GlassCard>
-            )}
-
-            {/* Status of every portal account. */}
-            <div>
-              <h4 style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                Portal Accounts
-              </h4>
-              <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '16px' }}>
-                {(keysData.accounts || []).map((acc: any) => (
-                  <GlassCard key={acc.username} hoverable={false} style={styles.keyCard}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--ink)' }}>{acc.name || acc.username}</span>
-                      <span style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>{acc.role}</span>
-                    </div>
-                    <span style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-muted)' }}>{acc.username}</span>
-                    <div style={styles.keyDisplayBlock}>
-                      <strong style={{ ...styles.keyValue, fontSize: '0.9286rem', color: acc.pinConfigured ? 'var(--good)' : 'var(--critical)' }}>
-                        {acc.pinConfigured ? 'PIN SET' : 'NO PIN'}
-                      </strong>
-                    </div>
-                    <span style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-muted)' }}>
-                      {acc.campus || '—'}
-                      {acc.lastUpdatedAt ? ` · updated ${new Date(acc.lastUpdatedAt).toLocaleDateString('en-IN')}` : ''}
-                    </span>
-                  </GlassCard>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
+            What this portal keeps is what only it can do: backups, restore,
+            wiping the database, and the transaction journal. */}
 
         {/* â”€â”€â”€ TAB 3: ACCOUNT CONTROL â”€â”€â”€ */}
-        {activeTab === 'accounts' && (
-          <section className="anim-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1429rem', fontWeight: 900, color: 'var(--ink)' }}>Staff Accounts Registry</h3>
-            </div>
-
-            <div style={{ padding: '12px 14px', borderRadius: '14px', border: '1.5px solid var(--line-strong)', backgroundColor: 'var(--surface-sunken)', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
-              Portal slots are fixed. Update the existing accounts only. Creating or deleting IDs is disabled.
-            </div>
-
-            <div style={styles.accountsGrid}>
-              {accounts.map((acc, idx) => {
-                const accId = acc.id || (acc as any)._id || `acc-${acc.username}-${idx}`;
-
-                let roleLabel = 'Accountant';
-                let roleBadgeBg = '#1D4ED8';
-                let roleCode = 'AC';
-
-                if (acc.role === 'admin1') {
-                  roleLabel = 'Rector (Admin 1)';
-                  roleBadgeBg = 'var(--warning)';
-                  roleCode = 'A1';
-                } else if (acc.role === 'clerk') {
-                  roleLabel = 'Campus Clerk';
-                  roleBadgeBg = 'var(--good)';
-                  roleCode = 'A2';
-                } else if (acc.role === 'authenticator') {
-                  roleLabel = 'Security Authenticator';
-                  roleBadgeBg = '#7C3AED';
-                  roleCode = 'AU';
-                }
-
-                return (
-                  <div
-                    key={accId}
-                    style={{
-                      padding: '16px 20px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '14px',
-                      border: '2.5px solid var(--ink)',
-                      borderRadius: '16px',
-                      backgroundColor: 'var(--surface)',
-                      boxShadow: '4px 4px 0px var(--ink)'
-                    }}
-                  >
-                    {/* Top Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                          width: '42px',
-                          height: '42px',
-                          borderRadius: '12px',
-                          backgroundColor: roleBadgeBg,
-                          color: 'var(--surface)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 900,
-                          fontSize: '1rem',
-                          border: '2px solid var(--ink)',
-                          boxShadow: '2px 2px 0px var(--ink)'
-                        }}>
-                          {roleCode}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '1.0714rem', fontWeight: 900, color: 'var(--ink)' }}>
-                            {acc.name || acc.username}
-                          </div>
-                          <div style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
-                            {acc.email || `${acc.username}@inspire.edu`} | {acc.mobile || 'No Mobile'}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{
-                          padding: '4px 10px',
-                          borderRadius: '20px',
-                          backgroundColor: roleBadgeBg + '1A',
-                          color: roleBadgeBg,
-                          border: `1.5px solid ${roleBadgeBg}`,
-                          fontWeight: 900,
-                          fontSize: '0.7857rem',
-                          textTransform: 'uppercase'
-                        }}>
-                          {roleLabel}
-                        </span>
-                        <span style={{
-                          padding: '4px 10px',
-                          borderRadius: '20px',
-                          backgroundColor: 'var(--surface-sunken)',
-                          color: 'var(--ink-secondary)',
-                          border: '1.5px solid var(--line-strong)',
-                          fontWeight: 800,
-                          fontSize: '0.7857rem'
-                        }}>
-                          {acc.campus || 'All Campuses'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Credentials Display & Copy Box */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
-                      gap: '12px',
-                      padding: '12px',
-                      backgroundColor: 'var(--surface-sunken)',
-                      borderRadius: '12px',
-                      border: '2px solid var(--line)'
-                    }}>
-                      {/* ID / Username Row */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', backgroundColor: 'var(--surface)', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid var(--line-strong)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>User ID:</span>
-                          <code style={{ fontSize: '0.9286rem', fontWeight: 900, fontFamily: 'monospace', color: 'var(--ink)', backgroundColor: 'var(--line)', padding: '3px 8px', borderRadius: '6px' }}>
-                            {acc.username}
-                          </code>
-                        </div>
-                        <button
-                          onClick={() => copyTextToClipboard(acc.username, 'User ID')}
-                          style={{
-                            padding: '5px 10px',
-                            borderRadius: '6px',
-                            border: '1.5px solid var(--ink)',
-                            backgroundColor: 'var(--accent)',
-                            color: 'var(--surface)',
-                            fontSize: '0.7857rem',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                          className="press-interactive"
-                          title="Copy Username ID to clipboard"
-                        >
-                          Copy ID
-                        </button>
-                      </div>
-
-                      {/* Credential Row.
-                          Shows whether a credential exists, never its value —
-                          the server only ever sends these two booleans. The
-                          caption used to be hardcoded, so an account with no
-                          usable password was indistinguishable from a healthy
-                          one. */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', backgroundColor: 'var(--surface)', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid var(--line-strong)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>Password</span>
-                            {acc.passwordSet !== false ? (
-                              <code title="A password is set. Its value cannot be displayed — only a bcrypt hash is stored."
-                                    style={{ fontSize: '0.9286rem', letterSpacing: '2px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--ink)', backgroundColor: 'var(--surface-sunken)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--line)' }}>
-                                ••••••••
-                              </code>
-                            ) : (
-                              <code title="No usable password hash is stored for this account."
-                                    style={{ fontSize: '0.7857rem', fontWeight: 800, fontFamily: 'monospace', color: 'var(--critical)', backgroundColor: 'var(--critical-wash)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--critical)' }}>
-                                NOT SET
-                              </code>
-                            )}
-                          </span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>PIN</span>
-                            {acc.pinSet !== false ? (
-                              <code style={{ fontSize: '0.9286rem', letterSpacing: '2px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--ink)', backgroundColor: 'var(--surface-sunken)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--line)' }}>
-                                ••••••
-                              </code>
-                            ) : (
-                              <code style={{ fontSize: '0.7857rem', fontWeight: 800, fontFamily: 'monospace', color: 'var(--critical)', backgroundColor: 'var(--critical-wash)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--critical)' }}>
-                                NOT SET
-                              </code>
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bottom Actions */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
-                      <button
-                        onClick={() => {
-                          setEditingAccountId(accId);
-                          setAccountUsername(acc.username);
-                          setAccountPassword('');
-                          setAccountRole(acc.role);
-                          setAccountName(acc.name || '');
-                          setAccountEmail(acc.email || '');
-                          setAccountMobile(acc.mobile || '');
-                          setAccountDepartment(acc.department || '');
-                          setAccountAddress(acc.address || '');
-                          setAccountCampus(acc.campus || '');
-                          setIsEditModalOpen(true);
-                        }}
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: '10px',
-                          border: '2px solid var(--ink)',
-                          backgroundColor: 'var(--surface)',
-                          color: 'var(--ink)',
-                          fontSize: '0.8571rem',
-                          fontWeight: 900,
-                          boxShadow: '2px 2px 0px var(--ink)',
-                          cursor: 'pointer'
-                        }}
-                        className="press-interactive"
-                      >
-                        Edit Credentials
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
 
         {/* --- TAB 4: TRANSACTION LEDGER CONSOLE --- */}
         {activeTab === 'sync_integrity' && (
@@ -1210,181 +914,132 @@ export const AuthenticatorDashboardView: React.FC = () => {
               )}
             </GlassCard>
 
-            {/* SUB-SECTION 3: DATA RESTORATION SYSTEM (CATEGORIES & CAMPUSES) */}
+            {/* SUB-SECTION 3: RESTORE FROM BACKUP
+                One button, then a choice of what to put back.
+
+                This replaced a browser: a row of category tabs, a campus list
+                under each, and a file list under that, with a Restore button on
+                every row. It showed everything and decided nothing, and the
+                operator had to understand the backup layout before they could
+                use it.
+
+                Now: pick the campus, tick what to restore, press once. The
+                newest backup for each ticked category is used. Categories still
+                have to be CHOSEN rather than assumed - features have been added
+                since some older files were taken, so a backup may not contain a
+                collection that exists today, and "restore everything" would
+                quietly put back less than it appears to. */}
             <GlassCard hoverable={false} style={{ padding: '24px', backgroundColor: 'var(--surface)', border: '2.5px solid var(--ink)', boxShadow: '4px 4px 0px var(--ink)' }}>
-              <div style={{ marginBottom: '18px', borderBottom: '2px solid var(--line)', paddingBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.2143rem', fontWeight: 900, color: 'var(--ink)' }}>3. Data Restoration & Import Engine</h3>
-                <p style={{ margin: '3px 0 0', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
-                  Select a category to view active Google Drive backups or drag-and-drop local backup files for each of the 4 campuses.
-                </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', borderBottom: '2px solid var(--line)', paddingBottom: '12px' }}>
+                <div style={{ color: 'var(--good)', backgroundColor: 'var(--good-wash, rgba(5,150,105,0.08))', padding: '10px', borderRadius: '12px', border: '2px solid var(--good)' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 7v6h6" /><path d="M3.51 13a9 9 0 1 0 2.13-9.36L3 7" /></svg>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.0714rem', fontWeight: 900, color: 'var(--ink)' }}>Restore from Backup</h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.7857rem', color: 'var(--ink-secondary)', fontWeight: 600 }}>
+                    Puts saved records back. Nothing is written until you confirm what it found.
+                  </p>
+                </div>
               </div>
 
-              {/* Category selector tabs, one per backup type.
-                  Driven by BACKUP_CATEGORIES so a new data type appears here
-                  automatically instead of needing a fourth copy of this block. */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))', gap: '12px', marginBottom: '24px' }}>
+              {/* Campus */}
+              <label style={{ display: 'block', fontSize: '0.7143rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ink-secondary)', marginBottom: '6px' }}>
+                1. Which campus
+              </label>
+              <select
+                value={restoreCampus}
+                onChange={(e) => setRestoreCampus(e.target.value)}
+                style={{ width: '100%', padding: '11px 12px', borderRadius: '10px', border: '2px solid var(--line)', backgroundColor: 'var(--surface-sunken)', color: 'var(--ink)', fontWeight: 700, fontSize: '0.9286rem', marginBottom: '18px' }}
+              >
+                <option value="">Select a campus…</option>
+                {CAMPUS_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+
+              {/* Categories */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '8px' }}>
+                <label style={{ fontSize: '0.7143rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--ink-secondary)' }}>
+                  2. What to restore
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setRestorePicked(
+                    restorePicked.length === BACKUP_CATEGORIES.length
+                      ? []
+                      : BACKUP_CATEGORIES.map(c => c.key)
+                  )}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent)', fontWeight: 800, fontSize: '0.7857rem', cursor: 'pointer', padding: 0 }}
+                >
+                  {restorePicked.length === BACKUP_CATEGORIES.length ? 'Clear all' : 'Select all'}
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '8px', marginBottom: '18px' }}>
                 {BACKUP_CATEGORIES.map(cat => {
-                  const active = activeRestoreCategory === cat.key;
+                  const picked = restorePicked.includes(cat.key);
+                  const count = ((availableBackups || {})[cat.key] || {})[restoreCampus]?.length || 0;
+                  const newest = ((availableBackups || {})[cat.key] || {})[restoreCampus]?.[0];
+                  const none = !!restoreCampus && count === 0;
                   return (
                     <button
                       key={cat.key}
-                      onClick={() => setActiveRestoreCategory(cat.key)}
+                      type="button"
+                      onClick={() => setRestorePicked(picked
+                        ? restorePicked.filter(k => k !== cat.key)
+                        : [...restorePicked, cat.key])}
                       style={{
-                        padding: '14px',
-                        borderRadius: '14px',
-                        border: active ? `2.5px solid var(--${cat.tone})` : '2px solid var(--line-strong)',
-                        backgroundColor: active ? `var(--${cat.tone}-wash)` : 'var(--surface)',
-                        color: active ? `var(--${cat.tone})` : 'var(--ink-secondary)',
-                        fontWeight: 900,
-                        fontSize: '0.9286rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        boxShadow: active ? `3px 3px 0px var(--${cat.tone})` : 'none'
+                        textAlign: 'left', padding: '12px 14px', borderRadius: '12px', cursor: 'pointer',
+                        border: picked ? '2px solid var(--accent)' : '2px solid var(--line)',
+                        backgroundColor: picked ? 'var(--accent-wash, rgba(37,99,235,0.07))' : 'var(--surface-sunken)',
+                        opacity: none ? 0.55 : 1
                       }}
-                      className="press-interactive"
                     >
-                      {cat.label}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                        <span style={{
+                          width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                          border: picked ? '2px solid var(--accent)' : '2px solid var(--ink-secondary)',
+                          backgroundColor: picked ? 'var(--accent)' : 'transparent',
+                          color: '#fff', fontSize: 12, fontWeight: 900, lineHeight: '15px', textAlign: 'center'
+                        }}>{picked ? '✓' : ''}</span>
+                        <span style={{ fontWeight: 800, fontSize: '0.8571rem', color: 'var(--ink)' }}>{cat.label}</span>
+                      </div>
+                      <div style={{ fontSize: '0.7143rem', color: 'var(--ink-secondary)', marginTop: '5px', fontWeight: 600 }}>
+                        {!restoreCampus
+                          ? 'Choose a campus to see backups'
+                          : none
+                            ? 'No backup for this campus'
+                            : `Newest: ${newest?.createdAt ? new Date(newest.createdAt).toLocaleDateString() : 'unknown'} · ${count} file${count === 1 ? '' : 's'}`}
+                      </div>
                     </button>
                   );
                 })}
               </div>
 
-              {/* 4 Campus Drop Zones for Selected Category */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '18px' }}>
-                {[
-                  { name: 'Erragattugutta C1' },
-                  { name: 'Erragattugutta C2' },
-                  { name: 'Beemaram C1' },
-                  { name: 'Beemaram C2' }
-                ].map(camp => {
-                  const campBackups = (availableBackups[activeRestoreCategory] && availableBackups[activeRestoreCategory][camp.name]) || [];
+              {/* The one button */}
+              <button
+                onClick={handleRestoreSelected}
+                disabled={!restoreCampus || restorePicked.length === 0}
+                style={{
+                  width: '100%', padding: '14px', borderRadius: '12px', border: '2.5px solid var(--ink)',
+                  backgroundColor: (!restoreCampus || restorePicked.length === 0) ? 'var(--surface-sunken)' : 'var(--good)',
+                  color: (!restoreCampus || restorePicked.length === 0) ? 'var(--ink-secondary)' : '#FFFFFF',
+                  fontWeight: 900, fontSize: '0.9286rem', letterSpacing: '0.02em',
+                  cursor: (!restoreCampus || restorePicked.length === 0) ? 'not-allowed' : 'pointer',
+                  boxShadow: (!restoreCampus || restorePicked.length === 0) ? 'none' : '3px 3px 0px var(--ink)'
+                }}
+                className="press-interactive"
+              >
+                {restorePicked.length === 0
+                  ? 'Restore from Backup'
+                  : `Restore ${restorePicked.length} categor${restorePicked.length === 1 ? 'y' : 'ies'}`}
+              </button>
 
-                  return (
-                    <div
-                      key={camp.name}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        // Both handlers stay even though uploading is not offered.
-                        // Without them the browser treats a dropped .enc file as a
-                        // navigation and leaves the page — losing a half-finished
-                        // restore, at the exact moment someone is trying to recover
-                        // data. Preventing that is worth two lines.
-                        e.preventDefault();
-                        triggerToast('Restores run from the Google Drive snapshots listed here. Pick one below.');
-                      }}
-                      style={{
-                        padding: '18px',
-                        borderRadius: '16px',
-                        border: '2px solid var(--ink)',
-                        backgroundColor: 'var(--surface-sunken)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '12px'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--ink)' }}>Campus: {camp.name}</span>
-                        </div>
-                        <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)', backgroundColor: 'var(--line)', padding: '4px 8px', borderRadius: '6px' }}>
-                          {isLoadingBackups ? 'Loading Drive...' : `${campBackups.length} Drive Snapshot(s)`}
-                        </span>
-                      </div>
-
-                      {/* Active Drive Backups List for Campus */}
-                      {campBackups.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {campBackups.slice(0, 2).map((bk: any, bkIdx: number) => (
-                            <div key={bk.id || bk.fileName || `bk-${bkIdx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid var(--line-strong)', backgroundColor: 'var(--surface)' }}>
-                              <div>
-                                <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)' }}>{bk.fileName}</div>
-                                <div style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
-                                  Google Drive | {bk.createdAt ? new Date(bk.createdAt).toLocaleString() : 'date unknown'}
-                                  {bk.size ? ` | ${Math.max(1, Math.round(Number(bk.size) / 1024))} KB` : ''}
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => handleExecuteDataRestore(bk.id, bk.fileName, activeRestoreCategory, camp.name)}
-                                style={{
-                                  padding: '6px 12px',
-                                  borderRadius: '8px',
-                                  border: '1.5px solid var(--accent)',
-                                  backgroundColor: 'var(--accent)',
-                                  color: 'var(--surface)',
-                                  fontWeight: 800,
-                                  fontSize: '0.7857rem',
-                                  cursor: 'pointer'
-                                }}
-                                className="press-interactive"
-                              >
-                                Restore
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink-muted)', fontStyle: 'italic', padding: '8px' }}>
-                          No Drive backup snapshots found for {camp.name} yet. Run a backup for this campus to create one.
-                        </div>
-                      )}
-
-                      {/*
-                        A drag-and-drop zone sat here offering "Drag & Drop or
-                        Click to Select Backup (.json / .xlsx)", with a working
-                        file input, that did nothing but raise a toast saying the
-                        feature was unsupported — there has never been a backend
-                        for it, and the restore handler above says so.
-
-                        A dead control is worse than a missing one in this panel
-                        specifically: it would be found by someone mid-recovery,
-                        dragging in the file they had just downloaded, at the
-                        worst possible moment to discover a button is a decoy.
-                        It now states what actually works.
-                      */}
-                      <div style={{
-                        padding: '10px 12px',
-                        borderRadius: '10px',
-                        backgroundColor: 'var(--surface)',
-                        border: '1px solid var(--ink-muted)',
-                        fontSize: '0.7143rem',
-                        fontWeight: 700,
-                        color: 'var(--ink-secondary)',
-                        textAlign: 'center'
-                      }}>
-                        Restores read from the encrypted Drive snapshots above, and cover{' '}
-                        {(BACKUP_CATEGORIES.find(c => c.key === activeRestoreCategory)?.label || activeRestoreCategory)}
-                        {' '}records for {camp.name} only.
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <p style={{ fontSize: '0.7143rem', color: 'var(--ink-secondary)', marginTop: '10px', marginBottom: 0, fontWeight: 600, lineHeight: 1.6 }}>
+                You will be shown exactly what the backup contains and what would change, before anything
+                is written, and asked for your account password to confirm. Records already present but
+                absent from the backup are left alone.
+              </p>
             </GlassCard>
 
-            {/* RESTORATION PROGRESS MODAL OVERLAY */}
-            {restoringCampus && (
-              <div style={styles.modalOverlay} className="anim-fade-in">
-                <div style={{ ...styles.modalContent, maxWidth: '480px', backgroundColor: 'var(--ink)', color: 'var(--surface)', border: '3px solid var(--accent)', textAlign: 'center' }} className="anim-scale-in">
-                  <h3 style={{ margin: '0 0 6px', fontSize: '1.2857rem', fontWeight: 900, color: 'var(--surface)' }}>
-                    Restoring Data for {restoringCampus}
-                  </h3>
-                  <p style={{ margin: '0 0 18px', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-muted)' }}>
-                    {restoreStatusText}
-                  </p>
-
-                  <div style={{ width: '100%', height: '10px', backgroundColor: 'var(--ink)', borderRadius: '5px', overflow: 'hidden', marginBottom: '12px' }}>
-                    <div style={{ width: `${restoreProgress}%`, height: '100%', backgroundColor: 'var(--accent)', transition: 'width 0.3s ease' }}></div>
-                  </div>
-
-                  <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: '#60A5FA' }}>
-                    Extraction & Schema Sync: {restoreProgress}%
-                  </div>
-                </div>
-              </div>
-            )}
           </section>
         )}
         {/* Footer */}

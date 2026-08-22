@@ -63,8 +63,6 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
   const drawerMenuItems = portalRole === 'authenticator'
     ? [
         { label: 'Dashboard Overview', type: 'dashboard', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
-        { label: 'Security Keys (OTP)', type: 'keys', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('keys'); } },
-        { label: 'Staff Accounts Control', type: 'accounts', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('accounts'); } },
         { label: 'Sync Integrity Console', type: 'sync_integrity', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('sync_integrity'); } },
         { label: 'Settings', type: 'settings', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('settings'); } },
       ]
