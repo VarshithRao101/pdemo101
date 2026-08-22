@@ -218,6 +218,22 @@ cron.schedule('0 0 * * *', async () => {
 
 // --- HTTP server ---------------------------------------------------------
 
+/**
+ * The boot record, held until there is a connection to write it to.
+ *
+ * Written from two places — the moment the listener comes up, in case the
+ * database is already there, and again when the connection resolves — and
+ * cleared on the first success so it lands exactly once.
+ */
+let pendingBoot = null;
+
+function flushPendingBoot() {
+  if (!pendingBoot || mongoose.connection.readyState !== 1) return;
+  const facts = pendingBoot;
+  pendingBoot = null;
+  recordLifecycle('boot', facts);
+}
+
 async function startServer() {
   // BIND FIRST. Nothing may be awaited before this line.
   //
@@ -252,7 +268,20 @@ async function startServer() {
     // process was killed outright — SIGKILL, or the platform stopping it —
     // rather than exiting on a fault it noticed. Those need opposite fixes,
     // and without both records they are indistinguishable.
-    recordLifecycle('boot', { port: PORT });
+    // Captured HERE and written later. recordLifecycle drops anything it is
+    // given while the connection is down, and binding first means this handler
+    // now runs seconds BEFORE the database is up — so writing the record from
+    // here silently lost every boot, which is how a blind lifecycle collection
+    // came to look like a healthy fifteen minutes of quiet. The facts are
+    // frozen at listen time so the record still describes the boot and not the
+    // moment the connection happened to arrive.
+    pendingBoot = {
+      port: PORT,
+      at: new Date(),
+      uptimeSeconds: Number(process.uptime().toFixed(1)),
+      rssMb: Number((process.memoryUsage().rss / 1048576).toFixed(1))
+    };
+    flushPendingBoot();
   });
 
   // The handler whose absence caused the outages.
@@ -282,7 +311,10 @@ async function startServer() {
   // already behind requireDatabase, so requests arriving before this resolves
   // are answered 503 rather than hanging.
   connectToDatabase()
-    .then(() => console.log('✅ [Database]: Initial connection established at startup.'))
+    .then(() => {
+      console.log('✅ [Database]: Initial connection established at startup.');
+      flushPendingBoot();
+    })
     .catch((dbErr) => console.warn(
       '⚠️ [Database]: Initial connection warning at startup:', dbErr.message));
 
