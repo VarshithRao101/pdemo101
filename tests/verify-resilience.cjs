@@ -15,7 +15,20 @@
  *
  * Everything created is removed at the end.
  */
-require('dotenv').config();
+// Scratch database. This suite CREATES A ROLE=ADMIN1 ACCOUNT and only removes
+// it if it reaches its own cleanup - and on 2026-08-19 it did not, leaving a
+// live Rector account in the production database for three days.
+//
+// It never needed production. It seeds everything it uses. The reason it went
+// there anyway is subtle and worth writing down: MONGODB_URI carries
+// /jc_erp_prod in its PATH, and mongoose.connect below passed no dbName, so
+// the URI path won even when MONGODB_DB_NAME said otherwise. Setting the env
+// var alone does not fix this; the dbName option has to be passed too, and the
+// guard after it is what makes a regression fail loudly instead of quietly
+// writing to the live database again.
+process.env.MONGODB_DB_NAME = 'jc_erp_verify';
+require('dotenv').config({ override: false });
+process.env.MONGODB_DB_NAME = 'jc_erp_verify';
 
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
@@ -71,7 +84,13 @@ async function main() {
   await new Promise(r => { server = app.listen(process.env.PORT, r); });
   BASE = `http://127.0.0.1:${process.env.PORT}`;
 
-  await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 20000 });
+  await mongoose.connect(process.env.MONGODB_URI, { dbName: 'jc_erp_verify', serverSelectionTimeoutMS: 20000 });
+  if (mongoose.connection.name !== 'jc_erp_verify') throw new Error('wrong database');
+
+  // This suite deliberately hammers every route shape, which spends the rate
+  // limiter's budget. Clear it first so a previous run does not turn crash
+  // containment into a wall of 429s that proves nothing.
+  try { await mongoose.connection.collection('ratelimits').deleteMany({}); } catch {}
   User = require('../server/models/User.cjs');
   Student = require('../server/models/Student.cjs');
   Payment = require('../server/models/Payment.cjs');
