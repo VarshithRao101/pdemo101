@@ -8,7 +8,7 @@ import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { InspireLogo } from '../components/common/InspireLogo';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
-import collegeLogo from '../assets/college logo.png';
+import collegeLogo from '../assets/college logo.webp';
 import * as accountantService from '../services/accountantService';
 import { CAMPUS_LIST } from '../constants/campuses';
 import { useDataFreshness } from '../hooks/useDataFreshness';

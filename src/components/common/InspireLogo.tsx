@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import collegeLogo from '../../assets/college logo.png';
+import collegeLogo from '../../assets/college logo.webp';
 
 interface InspireLogoProps {
   size?: 'sm' | 'md' | 'lg';

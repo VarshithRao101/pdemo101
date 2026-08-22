@@ -3,7 +3,7 @@ import { LIMITS } from '../constants/fieldLimits';
 import PinEntry from '../components/common/PinEntry';
 import { useNavigation } from '../context/NavigationContext';
 import { InspireLogo } from '../components/common/InspireLogo';
-import abstractBg from '../assets/minimalist_portal_bg.png';
+import abstractBg from '../assets/minimalist_portal_bg.webp';
 import { apiClient } from '../services/apiClient';
 
 interface PinViewProps {

@@ -1,35 +1,35 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { LIMITS, digitsOnly } from '../constants/fieldLimits';
-import collegeLogo from '../assets/college logo.png';
-import heroImg from '../assets/heroimage.jpeg';
+import collegeLogo from '../assets/college logo.webp';
+import heroImg from '../assets/heroimage.webp';
 
-import clip1 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.02 PM (1).jpeg';
-import clip2 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.02 PM.jpeg';
-import clip3 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM (1).jpeg';
-import clip4 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM (2).jpeg';
-import clip5 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM (3).jpeg';
-import clip6 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM.jpeg';
-import clip7 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.04 PM.jpeg';
-import clip8 from '../assets/paperclips/clip8.png';
-import clip9 from '../assets/paperclips/22.jpeg';
-import clip10 from '../assets/paperclips/234.jpeg';
-import clip11 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1..jpeg';
-import clip12 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.44 PM.jpeg';
-import clip13 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.45 PM.jpeg';
-import clip14 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.46 PM.jpeg';
-import clip15 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.46.jpeg';
-import clip16 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.47 PM.jpeg';
-import clip17 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.48 PM.jpeg';
-import clip18 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.49 .jpeg';
-import clip19 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.49 PM.jpeg';
-import clip20 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.50 PM.jpeg';
-import clip21 from '../assets/paperclips/WhatsApp Image 2026-08-07 at.jpeg';
-import clip22 from '../assets/paperclips/aa.jpeg';
-import clip23 from '../assets/paperclips/g.jpeg';
-import clip24 from '../assets/paperclips/h.jpeg';
-import clip25 from '../assets/paperclips/lpoki.jpeg';
-import clip26 from '../assets/paperclips/pp.jpeg';
-import clip27 from '../assets/paperclips/qw.jpeg';
+import clip1 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.02 PM (1).webp';
+import clip2 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.02 PM.webp';
+import clip3 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM (1).webp';
+import clip4 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM (2).webp';
+import clip5 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM (3).webp';
+import clip6 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.03 PM.webp';
+import clip7 from '../assets/paperclips/WhatsApp Image 2026-08-03 at 1.29.04 PM.webp';
+import clip8 from '../assets/paperclips/clip8.webp';
+import clip9 from '../assets/paperclips/22.webp';
+import clip10 from '../assets/paperclips/234.webp';
+import clip11 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1..webp';
+import clip12 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.44 PM.webp';
+import clip13 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.45 PM.webp';
+import clip14 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.46 PM.webp';
+import clip15 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.46.webp';
+import clip16 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.47 PM.webp';
+import clip17 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.48 PM.webp';
+import clip18 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.49 .webp';
+import clip19 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.49 PM.webp';
+import clip20 from '../assets/paperclips/WhatsApp Image 2026-08-07 at 1.41.50 PM.webp';
+import clip21 from '../assets/paperclips/WhatsApp Image 2026-08-07 at.webp';
+import clip22 from '../assets/paperclips/aa.webp';
+import clip23 from '../assets/paperclips/g.webp';
+import clip24 from '../assets/paperclips/h.webp';
+import clip25 from '../assets/paperclips/lpoki.webp';
+import clip26 from '../assets/paperclips/pp.webp';
+import clip27 from '../assets/paperclips/qw.webp';
 // Campus Highlights Media Imports
 import videoPonnamPrabhakar from '../assets/campus_highlights/Minister Ponnam Prabhakar goud garu.mp4';
 import videoHigh1 from '../assets/campus_highlights/WhatsApp Video 2026-08-07 at 1.51.01 PM.mp4';
@@ -41,31 +41,31 @@ import videoHigh6 from '../assets/campus_highlights/WhatsApp Video 2026-08-07 at
 import videoHigh7 from '../assets/campus_highlights/WhatsApp Video 2026-08-07 at 1.51.31 PM.mp4';
 import videoHigh8 from '../assets/campus_highlights/WhatsApp Video 2026-08-07 at 1.55.06 PM.mp4';
 
-import photoRaoPadma from '../assets/campus_highlights/BJP Dist President Rao Padma garu.jpeg';
-import photoEatalaRajender from '../assets/campus_highlights/Malkajgiri MP Eatala Rajender garu.jpeg';
-import photoBandiSanjay from '../assets/campus_highlights/Union Minister Bandi Sanjay garu.jpeg';
-import photoNainiRajender from '../assets/campus_highlights/Warangal west mla Nanini Rajendar reddy.jpeg';
-import photoNagaraju from '../assets/campus_highlights/Wardhannapet mla Nagaraju garu.jpeg';
-import photoHarishRao from '../assets/campus_highlights/state topper Teegala Sai Shreshtitha  Felicitation by ex minister Harish Rao.jpeg';
-import photoResultsPoster from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 1.41..jpeg';
-import photoTrioAchievers from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 1.41.4.jpeg';
-import photoStateNews from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 1.41.42 PM.jpeg';
-import photoArchanaPoster from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 1.41.44 PM.jpeg';
-import photoPonnamFelicitation from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 2.46.25 PM.jpeg';
+import photoRaoPadma from '../assets/campus_highlights/BJP Dist President Rao Padma garu.webp';
+import photoEatalaRajender from '../assets/campus_highlights/Malkajgiri MP Eatala Rajender garu.webp';
+import photoBandiSanjay from '../assets/campus_highlights/Union Minister Bandi Sanjay garu.webp';
+import photoNainiRajender from '../assets/campus_highlights/Warangal west mla Nanini Rajendar reddy.webp';
+import photoNagaraju from '../assets/campus_highlights/Wardhannapet mla Nagaraju garu.webp';
+import photoHarishRao from '../assets/campus_highlights/state topper Teegala Sai Shreshtitha  Felicitation by ex minister Harish Rao.webp';
+import photoResultsPoster from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 1.41..webp';
+import photoTrioAchievers from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 1.41.4.webp';
+import photoStateNews from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 1.41.42 PM.webp';
+import photoArchanaPoster from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 1.41.44 PM.webp';
+import photoPonnamFelicitation from '../assets/campus_highlights/WhatsApp Image 2026-08-07 at 2.46.25 PM.webp';
 
 
-import mpcLab from '../assets/generated/mpc_lab.png';
-import bipcLab from '../assets/generated/bipc_lab.png';
-import mecHall from '../assets/generated/mec_hall.png';
-import mentorshipImg from '../assets/generated/mentorship.png';
-import campusImg from '../assets/generated/campus.png';
+import mpcLab from '../assets/generated/mpc_lab.webp';
+import bipcLab from '../assets/generated/bipc_lab.webp';
+import mecHall from '../assets/generated/mec_hall.webp';
+import mentorshipImg from '../assets/generated/mentorship.webp';
+import campusImg from '../assets/generated/campus.webp';
 
-import galleryI1 from '../assets/campusgallery/i1.jpeg';
-import galleryI2 from '../assets/campusgallery/i2.jpeg';
-import galleryI3 from '../assets/campusgallery/i3.jpeg';
-import galleryI4 from '../assets/campusgallery/i4.jpeg';
-import galleryI5 from '../assets/campusgallery/i5.jpeg';
-import galleryI6 from '../assets/campusgallery/i6.jpeg';
+import galleryI1 from '../assets/campusgallery/i1.webp';
+import galleryI2 from '../assets/campusgallery/i2.webp';
+import galleryI3 from '../assets/campusgallery/i3.webp';
+import galleryI4 from '../assets/campusgallery/i4.webp';
+import galleryI5 from '../assets/campusgallery/i5.webp';
+import galleryI6 from '../assets/campusgallery/i6.webp';
 
 /* ═══════════════════════════════════════════════════════════════
    INSPIRE JUNIOR COLLEGE — Premium Institutional Portfolio

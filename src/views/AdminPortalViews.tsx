@@ -12,7 +12,7 @@ import {
 import { admin2Service } from '../services/admin2Service';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import { AnalyticsDashboard } from '../components/AnalyticsDashboard';
-import collegeLogo from '../assets/college logo.png';
+import collegeLogo from '../assets/college logo.webp';
 import {
   openPrintDocument, pdfHeader, pdfFooter, pdfSection, pdfTable, pdfTiles,
   pdfDetailCard, money, dateStr, escapeHtml
