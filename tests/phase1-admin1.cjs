@@ -71,7 +71,20 @@ const req = (method, path, token, body, headers = {}) => new Promise((resolve, r
 
 const PIN = '445566';
 const withPin = () => ({ 'x-security-pin': PIN });
-const rows = r => (r.json?.data?.items) || (Array.isArray(r.json?.data) ? r.json.data : []);
+// Rows out of a list response, whatever shape the route uses.
+//
+// Every candidate is Array.isArray-checked. `data.entries` is not optional
+// caution: when data is itself an ARRAY, data.entries is Array.prototype.entries
+// - a function, and truthy - so a bare `||` chain returns the method instead of
+// the rows, and the next .some() throws.
+const rows = (r) => {
+  const d = r.json?.data;
+  if (Array.isArray(d?.items)) return d.items;
+  if (Array.isArray(d?.entries)) return d.entries;
+  if (Array.isArray(d?.students)) return d.students;
+  if (Array.isArray(d)) return d;
+  return [];
+};
 
 (async () => {
   const server = http.createServer(app).listen(PORT);
@@ -104,6 +117,14 @@ const rows = r => (r.json?.data?.items) || (Array.isArray(r.json?.data) ? r.json
     await db.collection('users').insertOne({
       username: RECTOR.username, password: RECTOR.password, pin: PIN,
       role: 'admin1', campus: 'All', name: 'Phase1 Rector', status: 'active',
+      permissions: {}, activeSessionId: null, createdAt: new Date(), updatedAt: new Date()
+    });
+
+    // An accountant to practise a credential change on. The Rector may change
+    // this one; the authenticator is the account it may not, asserted below.
+    await db.collection('users').insertOne({
+      username: `${TAG}acct`, password: `Pw-${crypto.randomBytes(9).toString('hex')}`, pin: '242526',
+      role: 'accountant', campus: CAMPUS, name: 'Phase1 Accountant', status: 'active',
       permissions: {}, activeSessionId: null, createdAt: new Date(), updatedAt: new Date()
     });
     const login = await req('POST', '/api/auth/login', null, {
@@ -160,10 +181,18 @@ const rows = r => (r.json?.data?.items) || (Array.isArray(r.json?.data) ? r.json
     ok('the fee structure can be read', feeGet.status === 200, `status ${feeGet.status}`);
 
     const feeSet = await req('PATCH', `/api/admin2/fee-settings?branch=${encodeURIComponent(CAMPUS)}`, token, {
-      branch: CAMPUS, course: 'MPC', tuitionFee: 62000, hostelFee: 31000
+      branch: CAMPUS, tuition: 62000, hostel: 31000, transport: 6000, misc: 2500
     }, withPin());
-    ok('the fee structure accepts an update', feeSet.status < 300 || feeSet.status === 404,
+    ok('the fee structure accepts an update', feeSet.status < 300,
       `status ${feeSet.status}: ${feeSet.raw.slice(0, 140)}`);
+
+    // Read from the DATABASE, not from the response. The earlier version of
+    // this check accepted a 404 as success and used field names the route does
+    // not read, so it passed while nothing was written at all.
+    const feeDoc = await db.collection('feesettings').findOne({ branch: CAMPUS });
+    ok('the fee structure is actually PERSISTED',
+      feeDoc && Number(feeDoc.tuition) === 62000 && Number(feeDoc.hostel) === 31000,
+      feeDoc ? `stored tuition ${feeDoc.tuition}, hostel ${feeDoc.hostel}` : 'no feesettings document was written');
 
     // =================================================================
     section('Faculty — add, edit salary, delete');
@@ -333,6 +362,213 @@ const rows = r => (r.json?.data?.items) || (Array.isArray(r.json?.data) ? r.json
     const leaked = await db.collection('auditlogs')
       .countDocuments({ actorUsername: RECTOR.username, summary: new RegExp(RECTOR.password) });
     ok('no password reached the audit trail', leaked === 0, `${leaked} entries contain the password`);
+
+    // =================================================================
+    section('A full twelve-month salary ledger');
+
+    // One month proves the route works. Twelve proves the LEDGER works - that
+    // months accumulate instead of overwriting each other, which is the fault
+    // that would only show up in March.
+    const MONTHS = ['June','July','August','September','October','November',
+                    'December','January','February','March','April','May'];
+    let monthsOk = 0;
+    for (const mth of MONTHS) {
+      const r = await req('POST', `/api/admin1/teachers/${teacherId}/salary-month`, token, {
+        academicYear: '2026-2027', month: mth, amountPaid: 45000, paymentMode: 'Bank Transfer'
+      }, withPin());
+      if (r.status < 300) monthsOk++;
+    }
+    ok('all twelve months are accepted', monthsOk === 12, `${monthsOk} of 12 accepted`);
+
+    const tYear = await db.collection('teachers').findOne({ id: teacherId });
+    const storedMonths = Object.keys((tYear?.salaryLedger || {})['2026-2027'] || {});
+    ok('all twelve are held in the ledger at once', storedMonths.length === 12,
+      `${storedMonths.length} stored: ${storedMonths.join(', ')}`);
+
+    const totalPaid = Object.values((tYear?.salaryLedger || {})['2026-2027'] || {})
+      .reduce((t, m) => t + Number(m.paidAmount || m.amountPaid || 0), 0);
+    ok('the year totals to twelve months of salary', totalPaid === 12 * 45000,
+      `total ${totalPaid}, expected ${12 * 45000}`);
+
+    // =================================================================
+    section('Fee waiver and the next year');
+
+    const waiver = await req('PATCH', `/api/admin1/students/${studentId}/fee-override`, token, {
+      tuitionWaiver: 5000, reason: 'phase 1 sibling concession'
+    }, withPin());
+    const afterWaiver = await db.collection('students').findOne({ admissionNumber: admNo });
+    ok('a fee waiver is applied and stored',
+      waiver.status < 300 && Number(afterWaiver.tuitionWaiver) === 5000,
+      `status ${waiver.status}, stored waiver ${afterWaiver && afterWaiver.tuitionWaiver}`);
+
+    const breakdown = await req('GET', `/api/admin1/students/${studentId}/fee-breakdown`, token, undefined, withPin());
+    ok('the fee breakdown loads and reflects the waiver',
+      breakdown.status === 200 && /5000/.test(breakdown.raw),
+      `status ${breakdown.status}: ${breakdown.raw.slice(0, 120)}`);
+
+    // The upgrade is the actual "next year" action, not just its eligibility.
+    //
+    // It is refused while fees are outstanding - a real guard, and the right
+    // one, so this clears the balance rather than working around it. The 409
+    // that surfaced it is worth asserting in its own right.
+    const lockedTry = await req('POST', `/api/accountant/students/${studentId}/upgrade`, token, {
+      tuitionFee: 65000, hostelFee: 32000, transportFee: 0, miscellaneousFee: 2000
+    }, withPin());
+    ok('the next year is REFUSED while fees are outstanding',
+      lockedTry.status === 409, `status ${lockedTry.status}: ${lockedTry.raw.slice(0, 120)}`);
+
+    const owing = await db.collection('students').findOne({ admissionNumber: admNo });
+    const due = Number(owing.remainingBalance || 0);
+    if (due > 0) {
+      await req('POST', `/api/accountant/students/${studentId}/payments`, token, {
+        amount: due, category: 'Tuition', installment: 'Final', paymentMode: 'Cash'
+      }, withPin());
+    }
+    const cleared = await db.collection('students').findOne({ admissionNumber: admNo });
+    ok('the balance clears to zero once paid in full',
+      Number(cleared.remainingBalance || 0) === 0,
+      `remaining ${cleared && cleared.remainingBalance} after paying ${due}`);
+
+    const beforeYear = cleared.studentYear;
+    const upgrade = await req('POST', `/api/accountant/students/${studentId}/upgrade`, token, {
+      tuitionFee: 65000, hostelFee: 32000, transportFee: 0, miscellaneousFee: 2000
+    }, withPin());
+    const afterUp = await db.collection('students').findOne({ admissionNumber: admNo });
+    ok('the student is moved to the next year',
+      upgrade.status < 300 && afterUp.studentYear !== beforeYear,
+      `status ${upgrade.status}: ${upgrade.raw.slice(0, 140)} — year "${beforeYear}" -> "${afterUp && afterUp.studentYear}"`);
+    ok('last year is kept in the history rather than lost',
+      Array.isArray(afterUp?.yearHistory) ? afterUp.yearHistory.length > 0 : !!afterUp?.yearHistory,
+      `yearHistory ${JSON.stringify(afterUp?.yearHistory || null).slice(0, 100)}`);
+
+    // =================================================================
+    section('Reversing a payment');
+
+    const pay2 = await req('POST', `/api/accountant/students/${studentId}/payments`, token, {
+      amount: 5000, category: 'Tuition', installment: 'Installment 2', paymentMode: 'UPI'
+    }, withPin());
+    const rcpt = pay2.json?.data?.payment?.receiptNumber
+      || pay2.json?.data?.receiptNumber || pay2.json?.data?.receipt?.receiptNumber;
+    ok('a second payment is taken', pay2.status < 300 && !!rcpt,
+      `status ${pay2.status}: ${pay2.raw.slice(0, 140)}`);
+
+    if (rcpt) {
+      const beforeRev = await db.collection('students').findOne({ admissionNumber: admNo });
+      const rev = await req('POST', `/api/accountant/students/${studentId}/payments/${rcpt}/reverse`, token,
+        { reason: 'phase 1 — entered twice' }, withPin());
+      const afterRev = await db.collection('students').findOne({ admissionNumber: admNo });
+      ok('the payment can be reversed', rev.status < 300, `status ${rev.status}: ${rev.raw.slice(0, 140)}`);
+      ok('the money comes back off the student',
+        Number(afterRev.totalPaid) === Number(beforeRev.totalPaid) - 5000,
+        `totalPaid ${beforeRev.totalPaid} -> ${afterRev.totalPaid}`);
+
+      const revDoc = await db.collection('payments').findOne({ receiptNumber: rcpt });
+      ok('the reversal is marked on the receipt, not deleted',
+        revDoc && revDoc.reversed === true,
+        'a reversed receipt must survive as evidence, flagged');
+    }
+
+    // =================================================================
+    section('Worker payments');
+
+    const wp = await req('POST', '/api/admin2/worker-payments', token, {
+      workerName: `${TAG} Gardener`, role: 'Gardener', amount: 8000,
+      monthPeriod: 'August 2026', paid: true, branch: CAMPUS
+    }, withPin());
+    ok('a worker payment is recorded', wp.status === 201 || wp.status < 300,
+      `status ${wp.status}: ${wp.raw.slice(0, 140)}`);
+    const wpId = wp.json?.data?.id;
+
+    const wpList = await req('GET', `/api/admin2/worker-payments?branch=${encodeURIComponent(CAMPUS)}`, token, undefined, withPin());
+    ok('it appears in the worker payment list',
+      wpList.status === 200 && rows(wpList).some(w => String(w.workerName || '').startsWith(TAG)),
+      `status ${wpList.status}, ${rows(wpList).length} rows`);
+
+    if (wpId) {
+      const wpEdit = await req('PATCH', `/api/admin2/worker-payments/${wpId}`, token, { amount: 8500 }, withPin());
+      const wpDoc = await db.collection('workerpayments').findOne({ id: wpId });
+      ok('a worker payment can be corrected',
+        wpEdit.status < 300 && Number(wpDoc.amount) === 8500,
+        `status ${wpEdit.status}, amount ${wpDoc && wpDoc.amount}`);
+
+      const wpDel = await req('DELETE', `/api/admin2/worker-payments/${wpId}`, token, undefined, withPin());
+      ok('a worker payment can be removed', wpDel.status < 300, `status ${wpDel.status}`);
+    }
+
+    // =================================================================
+    section('Editing and removing an expenditure');
+
+    if (expId) {
+      const expEdit = await req('PATCH', `/api/admin2/expenditure/${expId}`, token,
+        { amount: 4000, description: `${TAG} ceiling fan (revised)` }, withPin());
+      const expDoc = await db.collection('expenditures').findOne({ id: expId });
+      ok('an expenditure can be corrected',
+        expEdit.status < 300 && Number(expDoc.amount) === 4000,
+        `status ${expEdit.status}, amount ${expDoc && expDoc.amount}`);
+
+      const expDel = await req('DELETE', `/api/admin2/expenditure/${expId}`, token, undefined, withPin());
+      ok('an expenditure can be removed', expDel.status < 300, `status ${expDel.status}`);
+    }
+
+    // =================================================================
+    section('Changing a credential');
+
+    // The screen loading is not the same as it working. This changes one for
+    // real and signs in with the new password.
+    const accts = creds.json?.data?.accounts || creds.json?.data || [];
+    const victim = accts.find(a => a.role === 'accountant');
+    if (victim) {
+      const newPw = `Ph1-${crypto.randomBytes(6).toString('hex')}`;
+      const changed = await req('PUT', `/api/admin1/credentials/${victim.id}`, token,
+        { password: newPw }, withPin());
+      ok('the Rector can change an accountant password', changed.status < 300,
+        `status ${changed.status}: ${changed.raw.slice(0, 140)}`);
+
+      const relog = await req('POST', '/api/auth/login', null,
+        { username: victim.username, password: newPw });
+      ok('the new password actually signs in', !!relog.json?.token,
+        `status ${relog.status}: ${relog.raw.slice(0, 120)}`);
+    } else {
+      ok('an accountant exists to change', false, 'no accountant account in the scratch database');
+    }
+
+    // =================================================================
+    section('Removing a teacher');
+
+    const tDel = await req('DELETE', `/api/admin1/teachers/${teacherId}`, token, undefined, withPin());
+    ok('a teacher can be deleted', tDel.status < 300, `status ${tDel.status}: ${tDel.raw.slice(0, 140)}`);
+
+    const tList = await req('GET', '/api/admin1/teachers', token, undefined, withPin());
+    ok('the teacher leaves the live list',
+      tList.status === 200 && !rows(tList).some(t => t.id === teacherId),
+      `status ${tList.status}, ${rows(tList).length} rows`);
+
+    // Soft deletion: the record must still be recoverable, not destroyed.
+    const tStillThere = await db.collection('teachers').findOne({ id: teacherId });
+    ok('the teacher record survives for the recycle bin', !!tStillThere,
+      'hard-deleted — a mistaken deletion could not be undone');
+
+    // =================================================================
+    section('The audit log the Rector actually reads');
+
+    const logs = await req('GET', '/api/admin1/logs?limit=50', token, undefined, withPin());
+    ok('the activity log loads', logs.status === 200, `status ${logs.status}`);
+    ok('it contains this session\'s actions',
+      rows(logs).some(l => l.actorUsername === RECTOR.username),
+      `${rows(logs).length} rows, none by ${RECTOR.username}`);
+
+    const logFilters = await req('GET', '/api/admin1/logs/filters', token, undefined, withPin());
+    ok('the log filter options load', logFilters.status === 200, `status ${logFilters.status}`);
+
+    // =================================================================
+    section('Exports the Rector can take away');
+
+    for (const kind of ['students', 'payments', 'expenditures']) {
+      const r = await req('GET', `/api/export/${kind}.csv`, token, undefined, withPin());
+      ok(`the ${kind} CSV downloads`,
+        r.status === 200 && r.raw.charCodeAt(0) === 0xFEFF,
+        `status ${r.status}, BOM ${r.raw.charCodeAt(0) === 0xFEFF}`);
+    }
 
     // =================================================================
     section('What the next phases will read');
