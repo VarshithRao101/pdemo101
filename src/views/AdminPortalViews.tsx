@@ -535,7 +535,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   const [clerkAddStep, setClerkAddStep] = useState<0 | 1 | 2>(0);
   const emptyClerkDraft = {
     name: '', username: '', password: '', pin: '', mobile: '', email: '',
-    permissions: { addStudent: false, editStudent: false, editFees: false, collectFees: false, logExpenditures: false, manageStaff: false } as ClerkPermissions
+    permissions: { addStudent: false, editStudent: false, editFees: false, collectFees: false, logExpenditures: false, manageStaff: false, manageEnquiries: false } as ClerkPermissions
   };
   const [clerkAddDraft, setClerkAddDraft] = useState(emptyClerkDraft);
   const [clerkAddError, setClerkAddError] = useState('');
@@ -5463,8 +5463,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
 
   // SUBPAGE: ADMISSION ENQUIRIES DESK
   if (activePage === 'enquiries') {
-    // Admission enquiries are not among the five clerk powers.
-    if (role !== 'admin1') { setActivePage('menu'); return null; }
+    // Admission enquiries are now a granted clerk power, not the Rector's
+    // alone. The server scopes a clerk to their own campus on both the list
+    // and the update, so this guard is about whether the Rector granted it -
+    // not about what the clerk would be able to see if they got in.
+    if (role !== 'admin1' && !clerkCan('manageEnquiries')) { setActivePage('menu'); return null; }
 
     const filteredEnquiries = enquiriesList.filter(e => {
       const matchSearch = !searchEnquiry ||
@@ -7518,6 +7521,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   <h4 style={styles.moduleTitle}>Outstanding Fees</h4>
                   <p style={styles.moduleDesc}>Students at {loggedInCampus} with a balance, largest first, with a one-tap WhatsApp reminder.</p>
                 </div>
+
+                {/* Admission enquiries, behind the Rector's grant. The routes are
+                    campus-scoped server-side for a clerk, so a granted clerk sees
+                    only their own campus's enquiries and can only update those. */}
+                {clerkCan('manageEnquiries') && (
+                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('enquiries'); } }} onClick={() => setActivePage('enquiries')} style={styles.moduleCardNew} className="press-interactive">
+                    <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.18)' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><path d="M4 4h16v12H5.17L4 17.17V4z" /><line x1="8" y1="9" x2="16" y2="9" /><line x1="8" y1="12" x2="13" y2="12" /></svg>
+                    </div>
+                    <h4 style={styles.moduleTitle}>Admission Enquiries</h4>
+                    <p style={styles.moduleDesc}>Enquiries for {loggedInCampus}, with status and notes.</p>
+                  </div>
+                )}
+
 
                 <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('profile'); } }} onClick={() => setActivePage('profile')} style={styles.moduleCardNew} className="press-interactive">
                   <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>

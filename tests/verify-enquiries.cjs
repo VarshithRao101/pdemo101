@@ -76,7 +76,10 @@ const enquiry = (over = {}) => {
   const TAG = crypto.randomBytes(3).toString('hex');
   const ACCOUNTS = [
     { key: 'admin1', role: 'admin1', campus: 'All' },
-    { key: 'clerk', role: 'clerk', campus: CAMPUS }
+    // Holds every power EXCEPT manageEnquiries, so the refusals below prove
+    // the grant is what gates the inbox and not the role.
+    { key: 'clerk', role: 'clerk', campus: CAMPUS },
+    { key: 'granted', role: 'clerk', campus: CAMPUS, enquiries: true }
   ];
   const tokens = {};
 
@@ -88,7 +91,8 @@ const enquiry = (over = {}) => {
         username: a.username, password: a.password, pin: '161718',
         role: a.role, campus: a.campus, name: `Enq ${a.key}`, status: 'active',
         permissions: { addStudent: true, editStudent: true, editFees: true,
-                       collectFees: true, logExpenditures: true, manageStaff: true },
+                       collectFees: true, logExpenditures: true, manageStaff: true,
+                       manageEnquiries: a.enquiries === true },
         activeSessionId: null, createdAt: new Date(), updatedAt: new Date()
       });
       const login = await req('POST', '/api/auth/login', null,
@@ -191,7 +195,22 @@ const enquiry = (over = {}) => {
     ok('a stranger cannot read the inbox', anonList.status === 401, `status ${anonList.status}`);
 
     const clerkList = await req('GET', '/api/enquiries', tokens.clerk);
-    ok('a clerk cannot read the inbox', clerkList.status === 403, `status ${clerkList.status}`);
+    ok('a clerk WITHOUT the enquiries grant cannot read the inbox',
+      clerkList.status === 403, `status ${clerkList.status}`);
+
+    // Admission enquiries became a grantable clerk power. What must hold is
+    // that the GRANT is the gate - not the role, and not the campus alone.
+    const grantedList = await req('GET', '/api/enquiries', tokens.granted);
+    ok('a clerk WITH the enquiries grant can read the inbox',
+      grantedList.status === 200, `status ${grantedList.status}: ${String(grantedList.raw).slice(0, 140)}`);
+
+    const grantedRows = grantedList.json?.data || [];
+    const foreign = grantedRows.filter(e =>
+      !String(e.preferredCampus || '').toLowerCase().includes(CAMPUS.split(' ')[0].toLowerCase()));
+    ok('the granted clerk sees only its own campus',
+      foreign.length === 0,
+      `${foreign.length} enquiries for another campus leaked: `
+      + foreign.slice(0, 3).map(e => e.preferredCampus).join(', '));
 
     const first = (list.json?.data || [])[0];
     const update = await req('PATCH', `/api/enquiries/${first?._id || first?.id}`, tokens.admin1,
@@ -201,7 +220,17 @@ const enquiry = (over = {}) => {
 
     const clerkUpdate = await req('PATCH', `/api/enquiries/${first?._id || first?.id}`, tokens.clerk,
       { status: 'Closed' });
-    ok('a clerk cannot update an enquiry', clerkUpdate.status === 403, `status ${clerkUpdate.status}`);
+    ok('a clerk WITHOUT the grant cannot update an enquiry',
+      clerkUpdate.status === 403, `status ${clerkUpdate.status}`);
+
+    const ownRow = (grantedList.json?.data || [])[0];
+    if (ownRow) {
+      const grantedUpdate = await req('PATCH', `/api/enquiries/${ownRow._id || ownRow.id}`,
+        tokens.granted, { status: 'Contacted', notes: 'Clerk followed up' });
+      ok('a clerk WITH the grant can update its own campus enquiry',
+        grantedUpdate.status < 300,
+        `status ${grantedUpdate.status}: ${String(grantedUpdate.raw).slice(0, 140)}`);
+    }
 
     const badStatus = await req('PATCH', `/api/enquiries/${first?._id || first?.id}`, tokens.admin1,
       { status: 'NotARealStatus' });

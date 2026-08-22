@@ -1883,7 +1883,11 @@ async function authenticateToken(req, res, next) {
  * This list is the single source of truth: the model's `permissions` fields,
  * the clerk manager UI and requirePermission all key off these names.
  */
-const CLERK_PERMISSIONS = ['addStudent', 'editStudent', 'editFees', 'collectFees', 'logExpenditures', 'manageStaff'];
+// manageEnquiries was added last: admission enquiries used to be the Rector's
+// alone. Both enquiry routes were ALREADY campus-scoped for a non-admin1
+// caller - resolveReadCampus on the list, an explicit campus check on the
+// update - so opening them to clerks needed a grant, not new scoping.
+const CLERK_PERMISSIONS = ['addStudent', 'editStudent', 'editFees', 'collectFees', 'logExpenditures', 'manageStaff', 'manageEnquiries'];
 
 /**
  * One spelling for the clerk role.
@@ -6846,7 +6850,7 @@ app.post('/api/enquiries', mongoRateLimiter, async (req, res) => {
 // The frontend has always called PATCH /api/enquiries/:id to move an enquiry
 // through its lifecycle, but no such route existed — every status change 404'd.
 // Enquiry is a real model, so this is implemented properly rather than stubbed.
-app.patch('/api/enquiries/:id', authenticateToken, requireRole('admin1'), requireDatabase, async (req, res) => {
+app.patch('/api/enquiries/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageEnquiries'), requireDatabase, async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes } = req.body || {};
@@ -6898,7 +6902,7 @@ app.patch('/api/enquiries/:id', authenticateToken, requireRole('admin1'), requir
 // prospective student's name, their parent's name, mobile and email —
 // personal data about people who are not even enrolled — while being
 // unable to do anything with it.
-app.get('/api/enquiries', authenticateToken, requireRole('admin1'), async (req, res) => {
+app.get('/api/enquiries', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageEnquiries'), async (req, res) => {
   try {
     await connectToDatabase();
     // Took ?branch straight from the query with no check against the caller,

@@ -70,7 +70,13 @@ const userSchema = new mongoose.Schema({
     // every box unticked could still create, edit and delete teachers and
     // record salary payments. Defaults false like the rest, so it has to
     // be granted deliberately.
-    manageStaff: { type: Boolean, default: false }
+    manageStaff: { type: Boolean, default: false },
+    // Admission enquiries. This schema is the reason the grant has to be
+    // declared HERE as well as in CLERK_PERMISSIONS: Mongoose strips any key
+    // the schema does not name, so a permission added everywhere else would
+    // be silently dropped on write and read back false. The Rector would tick
+    // the box, the box would save, and the clerk would still be refused.
+    manageEnquiries: { type: Boolean, default: false }
   },
   name: {
     type: String,

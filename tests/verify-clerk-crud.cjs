@@ -2,13 +2,33 @@
  * Clerks are created, not allocated.
  *
  * The seven fixed slots are gone. The Rector picks a campus, fills in details,
- * and the account exists — up to fifteen per campus.
+ * and the account exists — up to the per-campus cap the server reports.
  *
  * The assertion that matters most is the cap. A limit enforced only by the
- * form is not a limit: anyone can post past it. This creates fifteen and then
- * checks the sixteenth is refused BY THE SERVER.
+ * form is not a limit: anyone can post past it. This fills the campus to the
+ * cap the SERVER reports and checks the one past it is refused BY THE SERVER.
+ *
+ * The cap is read from the API rather than written here. It was 15, it is now
+ * 100, and a test that hardcodes the number fails for the wrong reason every
+ * time the operator changes it - which says nothing about whether the cap is
+ * actually ENFORCED, which is the only thing this section is checking.
  */
-require('dotenv').config();
+// Scratch database, dropped by the suite's own cleanup.
+//
+// This used to run against whatever MONGODB_DB_NAME pointed at, which is the
+// LIVE database by default - while creating a Rector, creating clerks up to
+// the campus cap, and deleting them again. It cleaned up after itself when it
+// finished, and that is exactly the problem: verify-resilience does the same
+// thing and did NOT finish once, leaving a live admin1 account sitting in
+// production for three days.
+//
+// Nothing here needs real data. It seeds its own Rector, so pinning it to the
+// scratch database costs nothing - and naming the scratch database is what
+// run-all.cjs uses to decide a suite is safe for CI, so this now runs there
+// too instead of only on someone's machine.
+process.env.MONGODB_DB_NAME = 'jc_erp_verify';
+require('dotenv').config({ override: false });
+process.env.MONGODB_DB_NAME = 'jc_erp_verify';
 
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
@@ -65,7 +85,21 @@ async function main() {
   await new Promise(r => { server = app.listen(process.env.PORT, r); });
   BASE = `http://127.0.0.1:${process.env.PORT}`;
 
-  await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 20000 });
+  // dbName is passed explicitly. MONGODB_URI carries /jc_erp_prod in its path,
+  // and without this option that path wins - which is how this suite reached
+  // the live database even with MONGODB_DB_NAME set to the scratch one.
+  await mongoose.connect(process.env.MONGODB_URI, { dbName: 'jc_erp_verify', serverSelectionTimeoutMS: 20000 });
+  if (mongoose.connection.name !== 'jc_erp_verify') throw new Error('wrong database');
+
+  // Clear this suite's rate-limit budget before it starts.
+  //
+  // mongoRateLimiter keys on the caller and persists in the database with a
+  // 900s TTL, so a previous run - or another suite that shares this scratch
+  // database - leaves the budget spent and every write here answers 429. The
+  // suite then reports a dozen failures that say nothing about clerks. Real
+  // protection, wrong test: rate limiting has its own suite.
+  try { await mongoose.connection.collection('ratelimits').deleteMany({}); } catch {}
+
   User = require('../server/models/User.cjs');
   AuditLog = require('../server/models/AuditLog.cjs');
 
@@ -97,7 +131,8 @@ async function main() {
   ok('the right PIN opens it', listed.status === 200, `HTTP ${listed.status}`);
   const startingCount = (listed.json?.data?.clerks || []).length;
   const max = listed.json?.data?.maxPerCampus;
-  ok('the cap is reported as fifteen', max === 15, String(max));
+  ok('a per-campus cap is reported', Number.isInteger(max) && max > 0, String(max));
+  console.log(`        (the server reports a cap of ${max} per campus)`);
 
   console.log(`\nCreating clerks (campus already has ${startingCount})\n`);
 
@@ -188,25 +223,45 @@ async function main() {
   const afterRestore = (restored.json?.data?.clerks || []).find(c => c.id === id);
   ok('access can be given back', afterRestore && afterRestore.status === 'active');
 
-  console.log('\nThe fifteen-per-campus cap, enforced by the SERVER\n');
+  console.log(`\nThe ${max}-per-campus cap, enforced by the SERVER\n`);
 
   const current = (restored.json?.data?.clerks || []).length;
-  const room = 15 - current;
-  let madeMore = 0;
-  for (let i = 0; i < room; i++) {
-    const r = await call('POST', '/api/admin1/clerks', { token, pin: rectorPin, body: clerkBody(100 + i) });
-    if (r.status === 201) madeMore++;
+
+  // The campus is filled by INSERTING straight into Mongo, not by posting the
+  // cap's worth of clerks through the API.
+  //
+  // It used to post them, which worked while the cap was 15. At 100 that is
+  // ninety-odd writes in a burst and mongoRateLimiter answers 429 long before
+  // the cap is reached - so the suite started failing on the rate limiter and
+  // reported it as the cap not being enforced. Two real protections, and the
+  // test could not tell which one it was looking at.
+  //
+  // The filler rows only have to EXIST for the server to count them. The one
+  // request that matters is the single POST below, which is the assertion.
+  const filler = [];
+  for (let i = current; i < max; i++) {
+    filler.push({
+      username: `${TAG}_fill${i}`, password: 'ClerkPass2026', pin: String(100000 + i),
+      role: 'clerk', campus: CAMPUS, name: `Filler ${i}`, status: 'active',
+      permissions: {}, activeSessionId: null, createdAt: new Date(), updatedAt: new Date()
+    });
   }
-  ok(`filled the campus to fifteen`, current + madeMore === 15, `${current + madeMore} clerks`);
+  if (filler.length) await User.collection.insertMany(filler);
 
-  const sixteenth = await call('POST', '/api/admin1/clerks', { token, pin: rectorPin, body: clerkBody(200) });
-  ok('the sixteenth is REFUSED', sixteenth.status === 409, `HTTP ${sixteenth.status}`);
+  const atCap = await User.countDocuments({ campus: CAMPUS, role: { $in: ['clerk', 'admin2'] } });
+  ok(`filled the campus to the cap (${max})`, atCap === max, `${atCap} clerks`);
+
+  const overCap = await call('POST', '/api/admin1/clerks', { token, pin: rectorPin, body: clerkBody(200) });
+  ok('the one past the cap is REFUSED', overCap.status === 409, `HTTP ${overCap.status}`);
   ok('the refusal explains the limit',
-    /limit is 15|already has 15/i.test(String(sixteenth.json?.message || '')),
-    String(sixteenth.json?.message || '').slice(0, 70));
+    new RegExp(`limit is ${max}|already has ${max}`, 'i').test(String(overCap.json?.message || '')),
+    String(overCap.json?.message || '').slice(0, 70));
 
-  const countInDb = await User.countDocuments({ campus: CAMPUS, role: 'clerk', username: new RegExp(`^${TAG}`) });
-  ok('no sixteenth account reached the database', countInDb <= 15, `${countInDb} created by this run`);
+  const countInDb = await User.countDocuments({ campus: CAMPUS, role: { $in: ['clerk', 'admin2'] } });
+  ok('no account past the cap reached the database', countInDb === max, `${countInDb} at the campus`);
+
+  // Put it back under the cap so the checks that follow can still add one.
+  await User.deleteMany({ username: new RegExp(`^${TAG}_fill`) });
 
   console.log('\nRemoving a clerk frees a place\n');
 
