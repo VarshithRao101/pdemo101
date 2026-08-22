@@ -17,11 +17,22 @@
  * here also", and the only way to check that is to not clean up between phases.
  * Pass --clean to drop it.
  *
- * Scratch database. Never production.
+ * ITS OWN DATABASE, jc_erp_phase - not the jc_erp_verify the verify-* suites
+ * share.
+ *
+ * Because this suite deliberately leaves its data behind for the next phase,
+ * and the verify-* suites assume nobody else is writing. Running phase 1 and
+ * then `npm run test:ci` against one scratch database made verify-audit and
+ * verify-collection fail on documents this suite had left there - suites that
+ * pass perfectly well on their own. Two tests disagreeing about who owns the
+ * database is a fault in the tests, not the app, and it wastes the time of
+ * whoever reads the red.
+ *
+ * Never production.
  */
-process.env.MONGODB_DB_NAME = 'jc_erp_verify';
+process.env.MONGODB_DB_NAME = 'jc_erp_phase';
 require('dotenv').config({ override: false });
-process.env.MONGODB_DB_NAME = 'jc_erp_verify';
+process.env.MONGODB_DB_NAME = 'jc_erp_phase';
 
 const http = require('http');
 const crypto = require('crypto');
@@ -91,8 +102,8 @@ const rows = (r) => {
   await new Promise(r => server.once('listening', r));
   console.log('\nPHASE 1 — THE RECTOR (admin1)   [scratch database]\n');
 
-  await mongoose.connect(process.env.MONGODB_URI, { dbName: 'jc_erp_verify', serverSelectionTimeoutMS: 20000 });
-  if (mongoose.connection.name !== 'jc_erp_verify') throw new Error('wrong database');
+  await mongoose.connect(process.env.MONGODB_URI, { dbName: 'jc_erp_phase', serverSelectionTimeoutMS: 20000 });
+  if (mongoose.connection.name !== 'jc_erp_phase') throw new Error('wrong database');
   const db = mongoose.connection.db;
   try { await db.collection('ratelimits').deleteMany({}); } catch {}
 
