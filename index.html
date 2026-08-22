@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-IN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
@@ -23,11 +23,16 @@
     <!--CSP-->
 
     <!-- Primary Meta Tags -->
-    <title>Inspire Educational Institutions | Junior College in Hanamkonda</title>
-    <meta name="title" content="Inspire Educational Institutions | Junior College in Hanamkonda" />
-    <meta name="description" content="Inspire Educational Institutions — MPC, BiPC and MEC junior college programmes across four campuses in Hanamkonda and Warangal, Telangana, with residential facilities, expert faculty and dedicated mentorship." />
+    <title>Inspire Junior College, Hanamkonda | MPC, BiPC &amp; MEC</title>
+    <meta name="title" content="Inspire Junior College, Hanamkonda | MPC, BiPC &amp; MEC" />
+    <meta name="description" content="MPC, BiPC and MEC at Inspire Junior College, Hanamkonda. Four campuses across Hanamkonda and Warangal with hostels, expert faculty and IIT-JEE &amp; NEET mentorship." />
     <meta name="theme-color" content="#087FBC" />
     <link rel="canonical" href="https://inspirehnk.org/" />
+
+    <!-- Local signals. Small weight on their own; they cost nothing and they
+         agree with the address in the structured data below. -->
+    <meta name="geo.region" content="IN-TG" />
+    <meta name="geo.placename" content="Hanamkonda, Warangal, Telangana" />
 
     <!--
       The title and description above describe the COLLEGE, not the login
@@ -40,18 +45,23 @@
 
     <!-- Open Graph — what WhatsApp, Facebook and LinkedIn render for a shared link -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Inspire Educational Institutions" />
+    <meta property="og:site_name" content="Inspire Junior College" />
     <meta property="og:url" content="https://inspirehnk.org/" />
-    <meta property="og:title" content="Inspire Educational Institutions | Junior College in Hanamkonda" />
-    <meta property="og:description" content="MPC, BiPC and MEC programmes across four campuses in Hanamkonda and Warangal, Telangana, with residential facilities, expert faculty and dedicated mentorship." />
+    <meta property="og:title" content="Inspire Junior College, Hanamkonda | MPC, BiPC &amp; MEC" />
+    <meta property="og:description" content="MPC, BiPC and MEC at Inspire Junior College, Hanamkonda. Four campuses across Hanamkonda and Warangal with hostels, expert faculty and IIT-JEE &amp; NEET mentorship." />
     <meta property="og:image" content="https://inspirehnk.org/og-preview.png" />
-    <meta property="og:image:alt" content="Inspire Educational Institutions campus" />
+    <meta property="og:image:alt" content="Inspire Junior College, Hanamkonda — MPC, BiPC and MEC" />
+    <!-- Declared so a share card renders at the right shape immediately, instead of
+         the platform guessing and cropping while it fetches the file. -->
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:locale" content="en_IN" />
 
     <!-- Twitter/X -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Inspire Educational Institutions | Junior College in Hanamkonda" />
-    <meta name="twitter:description" content="MPC, BiPC and MEC programmes across four campuses in Hanamkonda and Warangal, Telangana, with residential facilities, expert faculty and dedicated mentorship." />
+    <meta name="twitter:title" content="Inspire Junior College, Hanamkonda | MPC, BiPC &amp; MEC" />
+    <meta name="twitter:description" content="MPC, BiPC and MEC at Inspire Junior College, Hanamkonda. Four campuses across Hanamkonda and Warangal with hostels, expert faculty and IIT-JEE &amp; NEET mentorship." />
     <meta name="twitter:image" content="https://inspirehnk.org/og-preview.png" />
 
     <!--
@@ -78,12 +88,12 @@
       "@context": "https://schema.org",
       "@type": "EducationalOrganization",
       "@id": "https://inspirehnk.org/#organization",
-      "name": "Inspire Educational Institutions",
-      "alternateName": "Inspire Junior College",
+      "name": "Inspire Junior College",
+      "alternateName": ["Inspire Junior College Hanamkonda", "Inspire Educational Institutions"],
       "url": "https://inspirehnk.org/",
       "logo": "https://inspirehnk.org/og-preview.png",
       "image": "https://inspirehnk.org/og-preview.png",
-      "description": "MPC, BiPC and MEC junior college programmes across four campuses in Hanamkonda and Warangal, Telangana, with residential facilities, expert faculty and dedicated mentorship.",
+      "description": "Inspire Junior College offers MPC, BiPC and MEC intermediate programmes across four campuses in Hanamkonda and Warangal, Telangana, with residential hostels, expert faculty and IIT-JEE and NEET mentorship.",
       "email": "Inspirehnk@gmail.com",
       "telephone": "+91-7416380320",
       "address": {
@@ -125,6 +135,50 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <!--
+      A crawler that does not run JavaScript sees an empty document, because
+      every word on this site is rendered by React into #root above. Google
+      does execute JS, but it does so on a second pass and not always promptly,
+      and most other crawlers - Bing, and the link previewers behind WhatsApp
+      and Facebook - do far less.
+
+      So the essentials are stated here in plain HTML as well. This is NOT
+      cloaking: every claim below is on the rendered page too, in the same
+      words. It is the same content, available without a render.
+
+      The real fix is server-rendered or pre-rendered HTML for the marketing
+      sections. That is a structural change, not a meta tag, and it is what to
+      do if these pages ever need to rank on their own.
+    -->
+    <noscript>
+      <h1>Inspire Junior College, Hanamkonda</h1>
+      <p>
+        MPC, BiPC and MEC intermediate programmes across four campuses in
+        Hanamkonda and Warangal, Telangana &mdash; with residential hostels,
+        expert faculty, and IIT-JEE and NEET mentorship.
+      </p>
+      <h2>Programmes</h2>
+      <ul>
+        <li>MPC &mdash; Mathematics, Physics, Chemistry (with IIT-JEE preparation)</li>
+        <li>BiPC &mdash; Biology, Physics, Chemistry (with NEET preparation)</li>
+        <li>MEC &mdash; Mathematics, Economics, Commerce</li>
+      </ul>
+      <h2>Campuses</h2>
+      <ul>
+        <li>Erragattugutta Campus 1, Hanamkonda</li>
+        <li>Erragattugutta Campus 2, Hanamkonda</li>
+        <li>Beemaram Campus 1, Warangal</li>
+        <li>Beemaram Campus 2, Warangal</li>
+      </ul>
+      <h2>Admissions</h2>
+      <p>
+        Inspire Junior College Campus HQ, Hanamkonda, Warangal, Telangana.
+        Phone <a href="tel:+917416380320">+91 74163 80320</a>.
+        Email <a href="mailto:Inspirehnk@gmail.com">Inspirehnk@gmail.com</a>.
+      </p>
+      <p>This site needs JavaScript for the full experience. Please enable it, or call the number above.</p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
