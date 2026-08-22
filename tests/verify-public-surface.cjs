@@ -119,7 +119,18 @@ const req = (method, p) => new Promise(resolve => {
 
     const { execSync } = require('child_process');
     const tracked = execSync('git ls-files', { cwd: ROOT }).toString().split('\n').filter(Boolean);
+    // .env.example is tracked ON PURPOSE and is the one exception.
+    //
+    // It used to be caught by `*.env*` in .gitignore and had never been
+    // committed - which is how OPS_PASSWORD_HASH came to be set on the live
+    // server and absent from the template, leaving wipe, purge and restore
+    // quietly answering 503 on any deployment built from it. It carries names
+    // and comments, never values; the secret scan below runs over every tracked
+    // file and is what actually guards that.
+    const ENV_TEMPLATE = /(^|\/)\.env\.example$/;
+
     const dangerous = tracked.filter(f =>
+      ENV_TEMPLATE.test(f) ? false :
       /(^|\/)\.env($|\.)/.test(f) ||
       /\.(pem|key|p12|pfx)$/.test(f) ||
       /(^|\/)(credentials|service-account|serviceAccount)\.json$/i.test(f));

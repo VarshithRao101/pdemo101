@@ -23,9 +23,9 @@
     <!--CSP-->
 
     <!-- Primary Meta Tags -->
-    <title>Inspire Educational Institutions | Junior College in Hyderabad</title>
-    <meta name="title" content="Inspire Educational Institutions | Junior College in Hyderabad" />
-    <meta name="description" content="Inspire Educational Institutions — MPC, BiPC and MEC junior college programmes across four campuses in Hyderabad, with residential facilities, expert faculty and dedicated mentorship." />
+    <title>Inspire Educational Institutions | Junior College in Hanamkonda</title>
+    <meta name="title" content="Inspire Educational Institutions | Junior College in Hanamkonda" />
+    <meta name="description" content="Inspire Educational Institutions — MPC, BiPC and MEC junior college programmes across four campuses in Hanamkonda and Warangal, Telangana, with residential facilities, expert faculty and dedicated mentorship." />
     <meta name="theme-color" content="#087FBC" />
     <link rel="canonical" href="https://inspirehnk.org/" />
 
@@ -42,17 +42,86 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Inspire Educational Institutions" />
     <meta property="og:url" content="https://inspirehnk.org/" />
-    <meta property="og:title" content="Inspire Educational Institutions | Junior College in Hyderabad" />
-    <meta property="og:description" content="MPC, BiPC and MEC programmes across four campuses in Hyderabad, with residential facilities, expert faculty and dedicated mentorship." />
+    <meta property="og:title" content="Inspire Educational Institutions | Junior College in Hanamkonda" />
+    <meta property="og:description" content="MPC, BiPC and MEC programmes across four campuses in Hanamkonda and Warangal, Telangana, with residential facilities, expert faculty and dedicated mentorship." />
     <meta property="og:image" content="https://inspirehnk.org/og-preview.png" />
     <meta property="og:image:alt" content="Inspire Educational Institutions campus" />
     <meta property="og:locale" content="en_IN" />
 
     <!-- Twitter/X -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Inspire Educational Institutions | Junior College in Hyderabad" />
-    <meta name="twitter:description" content="MPC, BiPC and MEC programmes across four campuses in Hyderabad, with residential facilities, expert faculty and dedicated mentorship." />
+    <meta name="twitter:title" content="Inspire Educational Institutions | Junior College in Hanamkonda" />
+    <meta name="twitter:description" content="MPC, BiPC and MEC programmes across four campuses in Hanamkonda and Warangal, Telangana, with residential facilities, expert faculty and dedicated mentorship." />
     <meta name="twitter:image" content="https://inspirehnk.org/og-preview.png" />
+
+    <!--
+      Structured data.
+
+      There was none, which for a school is the single biggest omission in this
+      file: it is what lets a search engine understand that this page IS an
+      institution with an address, a phone number and courses, rather than
+      guessing from prose. It is what feeds the knowledge panel and local
+      results for "junior college Hanamkonda".
+
+      Every value here is copied from what the site itself already displays -
+      the contact block, the campus list and the programmes section. Nothing is
+      invented, because structured data that disagrees with the visible page is
+      a manual-action risk, not just a wasted tag.
+
+      This is `application/ld+json`, a DATA block. The CSP sets
+      script-src 'self' with no 'unsafe-inline', which blocks scripts that would
+      be EXECUTED; a non-executable MIME type is not executed and is not blocked.
+      Verified in a browser against the real built page, not assumed.
+    -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "EducationalOrganization",
+      "@id": "https://inspirehnk.org/#organization",
+      "name": "Inspire Educational Institutions",
+      "alternateName": "Inspire Junior College",
+      "url": "https://inspirehnk.org/",
+      "logo": "https://inspirehnk.org/og-preview.png",
+      "image": "https://inspirehnk.org/og-preview.png",
+      "description": "MPC, BiPC and MEC junior college programmes across four campuses in Hanamkonda and Warangal, Telangana, with residential facilities, expert faculty and dedicated mentorship.",
+      "email": "Inspirehnk@gmail.com",
+      "telephone": "+91-7416380320",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Inspire Junior College Campus HQ",
+        "addressLocality": "Hanamkonda",
+        "addressRegion": "Telangana",
+        "addressCountry": "IN"
+      },
+      "areaServed": [
+        { "@type": "City", "name": "Hanamkonda" },
+        { "@type": "City", "name": "Warangal" }
+      ],
+      "contactPoint": [{
+        "@type": "ContactPoint",
+        "contactType": "admissions",
+        "telephone": "+91-7416380320",
+        "email": "Inspirehnk@gmail.com",
+        "areaServed": "IN",
+        "availableLanguage": ["en", "te"]
+      }],
+      "department": [
+        { "@type": "EducationalOrganization", "name": "Inspire Erragattugutta Campus 1" },
+        { "@type": "EducationalOrganization", "name": "Inspire Erragattugutta Campus 2" },
+        { "@type": "EducationalOrganization", "name": "Inspire Beemaram Campus 1" },
+        { "@type": "EducationalOrganization", "name": "Inspire Beemaram Campus 2" }
+      ],
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Intermediate Programmes",
+        "itemListElement": [
+          { "@type": "Course", "name": "MPC — Mathematics, Physics, Chemistry", "description": "Two-year intermediate programme with IIT-JEE preparation.", "provider": { "@id": "https://inspirehnk.org/#organization" } },
+          { "@type": "Course", "name": "BiPC — Biology, Physics, Chemistry", "description": "Two-year intermediate programme with NEET preparation.", "provider": { "@id": "https://inspirehnk.org/#organization" } },
+          { "@type": "Course", "name": "MEC — Mathematics, Economics, Commerce", "description": "Two-year intermediate programme in commerce and economics.", "provider": { "@id": "https://inspirehnk.org/#organization" } }
+        ]
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
