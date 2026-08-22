@@ -279,7 +279,26 @@ async function startServer() {
       port: PORT,
       at: new Date(),
       uptimeSeconds: Number(process.uptime().toFixed(1)),
-      rssMb: Number((process.memoryUsage().rss / 1048576).toFixed(1))
+      rssMb: Number((process.memoryUsage().rss / 1048576).toFixed(1)),
+
+      // --- What the process was actually handed -------------------------
+      //
+      // Recorded because every one of these has been guessed at during this
+      // outage and none of them can be seen from outside the host. The
+      // runtime log answers them, but only for whoever is looking at the
+      // panel at that moment; here they survive, and a deployment that
+      // silently did not pick up a setting stops being invisible.
+      //
+      // portSource is the sharp one. `process.env.PORT || 3000` records 3000
+      // either way, so a platform-assigned port and no port at all have been
+      // indistinguishable in every record above this line.
+      portSource: process.env.PORT ? 'env' : 'default-3000',
+      heapCeilingMb: Math.round(v8.getHeapStatistics().heap_size_limit / 1048576),
+      heapCeilingConfigured: process.execArgv.some(a => a.includes('max-old-space-size'))
+        || String(process.env.NODE_OPTIONS || '').includes('max-old-space-size'),
+      nodeOptions: String(process.env.NODE_OPTIONS || ''),
+      supervisorDisabled: String(process.env.DISABLE_SUPERVISOR || '').trim() === '1',
+      execArgv: process.execArgv.join(' ')
     };
     flushPendingBoot();
   });
