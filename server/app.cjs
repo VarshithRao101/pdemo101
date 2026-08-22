@@ -7558,7 +7558,14 @@ app.get('/api/admin1/reports', authenticateToken, requireRole('admin1', 'clerk',
  * limit — anyone can post past it — and counting after the write would let
  * two simultaneous requests both see fourteen and both create a fifteenth.
  */
-const MAX_CLERKS_PER_CAMPUS = 15;
+// Raised from 15 on the operator's instruction to allow "as many as they
+// want". Deliberately not removed outright: list responses in this codebase
+// are capped and paginated, so an unbounded roster would silently truncate
+// the very screen used to manage it, and a runaway create loop would fill the
+// collection with nothing to stop it. A hundred a campus is four hundred
+// clerks against a present twenty-five - far past any real roster, while
+// still being a number.
+const MAX_CLERKS_PER_CAMPUS = 100;
 
 /** Every clerk at one campus, in a stable order, with credentials readable. */
 async function readCampusClerks(campus) {
@@ -8087,7 +8094,16 @@ app.post('/api/admin1/credentials', authenticateToken, requireRole('admin1'), ve
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.set('Pragma', 'no-cache');
 
-    const docs = await User.find({}).lean();
+    // Clerks are deliberately EXCLUDED. They are managed on their own screen,
+    // which already returns their passwords and PINs, and two screens editing
+    // one credential is how the two drift apart. This screen is the fixed
+    // portals only: the four campus accountants, the Rector accounts and the
+    // authenticator.
+    //
+    // Excluded in the QUERY rather than hidden in the client, because the
+    // alternative ships twenty-five plaintext clerk passwords to a browser that
+    // was never going to display them.
+    const docs = await User.find({ role: { $nin: ['clerk', 'admin2'] } }).lean();
 
     const accounts = docs
       .map(doc => {
@@ -8166,27 +8182,27 @@ app.put('/api/admin1/credentials/:id', authenticateToken, requireRole('admin1'),
       return res.status(404).json({ status: 'error', message: 'That account was not found.' });
     }
 
-    // Refused by ROLE, not only by the fixed username — the same reasoning as
-    // the reset-password route. Recognising the authenticator solely by that
-    // literal means the protection stops applying the moment the account is
-    // renamed, and it never covered a second authenticator account at all. The
-    // Rector holds credential control over every portal by design; the one
-    // account that must stay outside it is the one that audits the Rector.
-    if (target.username === FIXED_AUTHENTICATOR_USERNAME
-        || normalizeRole(target.role) === 'authenticator') {
-      recordAudit(req, {
-        action: 'credentials.update',
-        entityType: 'account',
-        entityId: target.username,
-        outcome: 'denied',
-        summary: `Refused: ${req.user.username} tried to change the security authenticator's credentials.`,
-        details: {}
-      });
-      return res.status(403).json({
-        status: 'error',
-        message: 'The security authenticator\'s credentials cannot be changed from this portal.'
-      });
-    }
+    // The authenticator USED TO BE refused here, on the reasoning that the one
+    // account which audits the Rector must sit outside the Rector's control.
+    // That separation was removed on the operator's explicit instruction, given
+    // after the tradeoff was put to them plainly and then restated. The Rector
+    // now holds credential control over every portal without exception,
+    // including the account that audits the Rector.
+    //
+    // What that costs, so nobody has to rediscover it: an admin1 who can set the
+    // authenticator's password can sign in as the authenticator, and the
+    // authenticator is what backups, restores and credential rotation answer to.
+    // There is no longer any account a compromised or malicious Rector cannot
+    // reach. The audit entry written below is what remains, and it is now the
+    // ONLY control on this path, so it must not be weakened.
+    //
+    // NOTE the asymmetry this leaves: the password-reset panel above still
+    // refuses the authenticator by role. Only THIS route was opened, because
+    // only this one was asked for. Removing that one too is a separate decision.
+    //
+    // To restore the separation: reinstate a 403 for
+    // normalizeRole(target.role) === 'authenticator' here, and the matching
+    // assertions in tests/verify-credentials.cjs.
 
     const changed = [];
 

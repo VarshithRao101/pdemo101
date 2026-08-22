@@ -193,21 +193,46 @@ const req = (method, p, token, body, headers = {}) => new Promise((resolve, reje
     // =================================================================
     section('The account that audits everyone else');
 
-    // Named something other than the hardcoded constant on purpose. A
-    // protection that recognises the authenticator only by that literal
-    // stops applying the moment the account is renamed, and never covered a
-    // second authenticator at all.
+    // This section used to assert the OPPOSITE: that the Rector could not
+    // change the authenticator, so the account auditing the Rector sat outside
+    // the Rector's control. That separation was removed on the operator's
+    // explicit instruction, and these assertions were rewritten rather than
+    // deleted so the change reads as a decision instead of a gap.
+    //
+    // What is still worth pinning: the change must SUCCEED, must actually take
+    // effect, and must leave a trail. That trail is now the only control on
+    // this path, so a silent success would be worse than the old refusal.
     const auth = await users.findOne({ username: AUTHR.username });
     const seize = await req('PUT', `/api/admin1/credentials/${auth._id}`, rector,
       { password: 'RectorTakesOver1' }, withPin(RECTOR_PIN));
     const authAfter = await users.findOne({ username: AUTHR.username });
-    ok('the Rector cannot change an authenticator credential',
-      seize.status === 403 && authAfter.password === AUTHR.password,
-      `status ${seize.status}, password ${authAfter.password === AUTHR.password ? 'unchanged' : 'CHANGED'} — `
-      + 'the Rector could take the account that audits them');
 
-    const denied = await awaitAudit(db, { outcome: 'denied', entityId: AUTHR.username });
-    ok('the refusal is recorded in the audit trail', !!denied, 'an attempted seizure left no trace');
+    ok('the Rector can now change an authenticator credential',
+      seize.status === 200 || seize.status === 201,
+      `status ${seize.status}: the operator asked for this path to be open`);
+    ok('the new authenticator password actually took effect',
+      authAfter.password === 'RectorTakesOver1',
+      `stored password is ${authAfter.password === AUTHR.password ? 'still the old one' : 'something unexpected'}`);
+
+    // The audit entry is load-bearing now in a way it was not before. With the
+    // refusal gone, this record is the ONLY thing that says a Rector reached
+    // the account that audits them.
+    const trail = await awaitAudit(db, { entityId: AUTHR.username, action: /credential/ });
+    ok('taking the authenticator is recorded in the audit trail', !!trail,
+      'the one remaining control on this path left no trace');
+    ok('the trail names who did it', trail && trail.actorUsername === RECTOR.username,
+      `actor ${trail && trail.actorUsername} - a role is not accountable, a person is`);
+
+    // The password-reset panel was NOT opened. Only the credentials route was
+    // asked for, so that asymmetry is deliberate and is pinned here: if someone
+    // later opens that one too, this fails and they have to mean it.
+    // Password must clear 12 characters or the route answers 400 for length
+    // and the assertion would pass without testing the role guard at all.
+    const resetAuth = await req('POST', '/api/authenticator/reset-password', rector,
+      { username: AUTHR.username, password: 'ResetTakesOverCompletely1' }, withPin(RECTOR_PIN));
+    ok('the password-reset panel still refuses the authenticator',
+      resetAuth.status === 403 || resetAuth.status === 404,
+      `status ${resetAuth.status}`);
 
     // =================================================================
     section('Nothing is written down in the repository');
