@@ -143,9 +143,27 @@ function decryptPayload(encryptedJsonString) {
 async function buildBackupPayload(triggeredBy = 'system') {
   const [students, teachers, feeSettings, expenditures, workerPayments, payments, users] =
     await Promise.all([
-      Student.find({}), Teacher.find({}), FeeSettings.find({}),
-      Expenditure.find({}), WorkerPayment.find({}), Payment.find({}),
-      User.find({}).select('-password -pin')
+      // withDeleted, so the RECYCLE BIN is in the backup too.
+      //
+      // Without it the soft-delete plugin quietly appends `deletedAt: null` to
+      // every one of these, so a backup captured only live rows. A wipe and
+      // restore then came back one record short and said nothing: everything a
+      // clerk had deleted-but-not-purged was gone for good, and the recycle bin
+      // a Rector relies on to undo a mistake was empty on the other side.
+      //
+      // Found by phase 4, which deletes a teacher in phase 1 and then counts
+      // what survives a full wipe-and-restore: 3 of 4 came back.
+      //
+      // Restoring these does not resurrect them as live records. Their
+      // deletedAt travels with them, so they land back in the recycle bin,
+      // which is exactly where they were.
+      Student.find({}).setOptions({ withDeleted: true }),
+      Teacher.find({}).setOptions({ withDeleted: true }),
+      FeeSettings.find({}).setOptions({ withDeleted: true }),
+      Expenditure.find({}).setOptions({ withDeleted: true }),
+      WorkerPayment.find({}).setOptions({ withDeleted: true }),
+      Payment.find({}).setOptions({ withDeleted: true }),
+      User.find({}).select('-password -pin').setOptions({ withDeleted: true })
     ]);
 
   return {
@@ -206,14 +224,29 @@ async function generateAndUploadBackup(triggeredBy = 'system') {
       driveFileId: driveResult.id,
       driveUploaded: true,
       timestamp: backupData.timestamp,
+      // Counted off backupData.collections, which is what this function
+      // actually has.
+      //
+      // These read `students.length`, `teachers.length` and so on - names that
+      // are local to buildBackupPayload and do not exist in this scope. So the
+      // return statement threw ReferenceError on EVERY successful upload, the
+      // catch below swallowed it, and the result was reported as
+      // "Google Drive upload failed: students is not defined" - a backup that
+      // had in fact uploaded, reported as a failure.
+      //
+      // Worse, the wipe route takes a pre-wipe backup first and refuses to
+      // continue if it fails. So this made POST /api/authenticator/wipe-database
+      // answer 500 and wipe nothing, every time. Nothing caught it because the
+      // wipe suite calls wipeDataCollections() directly rather than through the
+      // route, and the nightly cron logs a failure nobody reads at 00:00.
       recordCounts: {
-        students: students.length,
-        teachers: teachers.length,
-        feeSettings: feeSettings.length,
-        expenditures: expenditures.length,
-        workerPayments: workerPayments.length,
-        payments: payments.length,
-        users: users.length
+        students: (backupData.collections.students || []).length,
+        teachers: (backupData.collections.teachers || []).length,
+        feeSettings: (backupData.collections.feeSettings || []).length,
+        expenditures: (backupData.collections.expenditures || []).length,
+        workerPayments: (backupData.collections.workerPayments || []).length,
+        payments: (backupData.collections.payments || []).length,
+        users: (backupData.collections.users || []).length
       }
     };
   } catch (driveErr) {

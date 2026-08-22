@@ -3881,7 +3881,21 @@ const deleteStudentHandler = async (req, res) => {
 
     const label = `${student.name} (${student.admissionNumber || student.studentId})`;
 
-    if (!callerOwnsStudent(req, student.branch)) {
+    // callerOwnsCampus, NOT callerOwnsStudent.
+    //
+    // callerOwnsStudent defers to callerReachesAllStudents, which is true for
+    // admin1, accountant AND clerk - the shared-registry rule. Using it here
+    // made this entire block unreachable: every role that could reach the route
+    // passed the check, so a clerk at one campus could delete a student at
+    // another and the refusal below had never once fired.
+    //
+    // The block was clearly written to prevent exactly that, so the intent was
+    // campus-scoped deletion and only the wiring was wrong. Fixed rather than
+    // deleted, because the shared registry is about SERVING a student from any
+    // counter - reading them, editing them, taking their fee. Removing one is a
+    // different act, and the campus that owns the record should be the campus
+    // that removes it. admin1 has campus 'All' and so still reaches every one.
+    if (!callerOwnsCampus(req, student.branch)) {
       // A refused attempt to delete another campus's student is exactly what a
       // Rector needs to see. Recorded at the point of refusal, so the trail
       // shows the attempt as well as the block.
