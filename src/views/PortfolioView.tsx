@@ -2228,7 +2228,17 @@ export const PortfolioView: React.FC = () => {
             {/* Bottom bar */}
             <div className="footer-bottom" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
               <span style={{ fontSize: '0.8929rem', color: '#64748B' }}>© 2026 Inspire Junior College. All Rights Reserved. Hanumakonda, Telangana.</span>
-              <span style={{ fontSize: '0.8929rem', color: '#475569' }}>IIT-JEE · NEET · Intermediate Board</span>
+              {/* Real links, not hash routes. The legal pages are standalone
+                  documents served straight from dist, so they have stable URLs,
+                  work without JavaScript, and can be cited or bookmarked - which
+                  is the whole point of a policy page. */}
+              <span style={{ fontSize: '0.8929rem', color: '#475569', display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+                <a href="/privacy.html" style={{ color: '#94A3B8', textDecoration: 'none' }}>Privacy Policy</a>
+                <span style={{ color: '#334155' }}>·</span>
+                <a href="/terms.html" style={{ color: '#94A3B8', textDecoration: 'none' }}>Terms of Use</a>
+                <span style={{ color: '#334155' }}>·</span>
+                <a href="/cookies.html" style={{ color: '#94A3B8', textDecoration: 'none' }}>Cookies</a>
+              </span>
             </div>
           </div>
         </footer>
