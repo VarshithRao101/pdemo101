@@ -3789,8 +3789,32 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
     const body = req.body || {};
 
     // Waivers: Rector only, whatever else the caller has been granted.
+    //
+    // Refused on a CHANGE, not on the field being present.
+    //
+    // This used to reject any request that merely CARRIED a waiver key, and
+    // both editor screens PATCH the whole student object — they read the
+    // record, let someone edit a field, and send the record back. So every
+    // one of those requests arrived carrying the four waiver values it had
+    // just been given, unchanged, and was refused. The practical effect was
+    // that an accountant or a clerk could not edit a student AT ALL: correcting
+    // a misspelt father's name failed with "Fee waivers can only be set by the
+    // Rector", which names something they had not touched, and the whole
+    // update — name, mobile, course, everything — was discarded with it.
+    //
+    // Comparing against what is stored is the honest test of "did you try to
+    // change a waiver". Echoing back the current value is not an attempt to
+    // set one; typing a new number is, and that is still refused and still
+    // audited. The upgrade route already reasons this way (see the
+    // STUDENT_WAIVER_FIELDS check there), so the two now agree.
     if (req.user.role !== 'admin1') {
-      const attempted = STUDENT_WAIVER_FIELDS.filter(f => body[f] !== undefined);
+      const changed = (f) => {
+        if (body[f] === undefined) return false;
+        const submitted = Number(body[f]) || 0;
+        const stored = Number(student[f]) || 0;
+        return submitted !== stored;
+      };
+      const attempted = STUDENT_WAIVER_FIELDS.filter(changed);
       if (attempted.length > 0) {
         recordAudit(req, {
           action: 'student.fee_waiver',
@@ -3810,8 +3834,33 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
     }
 
     // Fee amounts need the separate `editFees` grant.
+    //
+    // Refused on a CHANGE, for the same reason as the waiver guard above: the
+    // editor screens PATCH the whole student record, so a request arrives
+    // carrying every fee field whether or not any of them was touched. Testing
+    // for presence meant a clerk granted "edit student details" but not "edit
+    // fees" could not edit a student AT ALL — the two permissions are offered
+    // separately on the Clerks screen precisely so they can be granted
+    // separately, and that combination was the one that did not work.
+    //
+    // customFeeSlots is compared by its content rather than by identity, since
+    // it arrives as a fresh array on every request and would otherwise always
+    // look changed. Only the name and amount of each slot matter here; the id
+    // is generated and carries no meaning of its own.
+    const sameFee = (f) => {
+      if (body[f] === undefined) return true;
+      if (f === 'customFeeSlots') {
+        const shape = (v) => JSON.stringify(
+          (Array.isArray(v) ? v : [])
+            .map(s => [String(s && s.name || ''), Number(s && s.amount) || 0])
+            .sort((a, b) => a[0].localeCompare(b[0]))
+        );
+        return shape(body[f]) === shape(student[f]);
+      }
+      return (Number(body[f]) || 0) === (Number(student[f]) || 0);
+    };
     if (!callerHasPermission(req, 'editFees')) {
-      const attempted = STUDENT_FEE_FIELDS.filter(f => body[f] !== undefined);
+      const attempted = STUDENT_FEE_FIELDS.filter(f => !sameFee(f));
       if (attempted.length > 0) {
         return res.status(403).json({
           status: 'error',

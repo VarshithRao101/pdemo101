@@ -86,7 +86,11 @@ const validStudent = (over = {}) => ({
   const ACCOUNTS = [
     { key: 'admin1', role: 'admin1', campus: 'All', perms: true },
     { key: 'clerk', role: 'clerk', campus: CAMPUS, perms: true },
-    { key: 'bare', role: 'clerk', campus: CAMPUS, perms: false }
+    { key: 'bare', role: 'clerk', campus: CAMPUS, perms: false },
+    // Granted edit-details but NOT edit-fees. The Clerks screen offers the
+    // two separately, and this combination is the one that used to be unable
+    // to edit a student at all.
+    { key: 'nofees', role: 'clerk', campus: CAMPUS, perms: true, noEditFees: true }
   ];
   const tokens = {};
 
@@ -98,7 +102,7 @@ const validStudent = (over = {}) => ({
       await db.collection('users').insertOne({
         username: a.username, password: a.password, pin: '445566',
         role: a.role, campus: a.campus, name: `CRUD ${a.key}`, status: 'active',
-        permissions: { addStudent: on, editStudent: on, editFees: on,
+        permissions: { addStudent: on, editStudent: on, editFees: a.noEditFees ? false : on,
                        collectFees: on, logExpenditures: on, manageStaff: on },
         activeSessionId: null, createdAt: new Date(), updatedAt: new Date()
       });
@@ -201,6 +205,63 @@ const validStudent = (over = {}) => ({
     const bareEdit = await req('PATCH', `/api/accountant/students/${student.studentId}/bio`,
       tokens.bare, { name: 'Should Not Apply' });
     ok('a clerk without editStudent cannot edit', bareEdit.status === 403, `status ${bareEdit.status}`);
+
+    // --- The WHOLE-RECORD edit, which is what the editor screens actually do.
+    //
+    // Both student editors read the record, let someone change a field, and
+    // PATCH the record back — so the request carries the four waiver values it
+    // was just given, unchanged. The waiver guard used to refuse any request
+    // that merely CARRIED a waiver key, which meant an accountant or clerk
+    // could not edit a student at all: correcting a father's name failed with
+    // "Fee waivers can only be set by the Rector", naming something they had
+    // not touched, and the entire update was discarded with it.
+    //
+    // Only the /bio route was covered here, and it sends two fields, so it
+    // never carried a waiver and never saw this. That gap is the reason the
+    // bug reached production.
+    const whole = await Student.findOne({ studentId: student.studentId }).lean();
+    const echoed = await req('PATCH', `/api/accountant/students/${whole._id}`,
+      tokens.clerk, { ...whole, fatherName: 'Father Renamed' });
+    ok('a whole-record edit that echoes unchanged waivers is accepted',
+      echoed.status === 200, `status ${echoed.status}: ${echoed.raw.slice(0, 150)}`);
+    const echoedAfter = await Student.findOne({ studentId: student.studentId }).lean();
+    ok('and it persisted', echoedAfter?.fatherName === 'Father Renamed',
+      `fatherName is ${echoedAfter?.fatherName}`);
+
+    // The guard must still hold for an actual attempt to grant one.
+    const grab = await req('PATCH', `/api/accountant/students/${whole._id}`,
+      tokens.clerk, { ...whole, tuitionWaiver: Number(whole.tuitionWaiver || 0) + 5000 });
+    ok('a real waiver change by a non-Rector is still refused', grab.status === 403,
+      `status ${grab.status}: ${grab.raw.slice(0, 120)}`);
+    const noWaiver = await Student.findOne({ studentId: student.studentId }).lean();
+    ok('the refused waiver did not land',
+      Number(noWaiver?.tuitionWaiver || 0) === Number(whole.tuitionWaiver || 0),
+      `tuitionWaiver is ${noWaiver?.tuitionWaiver}`);
+
+    // --- editStudent WITHOUT editFees, the pairing the Clerks screen allows.
+    const cur = await Student.findOne({ studentId: student.studentId }).lean();
+    const detailsOnly = await req('PATCH', `/api/accountant/students/${cur._id}`,
+      tokens.nofees, { ...cur, motherName: 'Mother Renamed' });
+    ok('a clerk with editStudent but not editFees can still edit details',
+      detailsOnly.status === 200, `status ${detailsOnly.status}: ${detailsOnly.raw.slice(0, 150)}`);
+    const detailsAfter = await Student.findOne({ studentId: student.studentId }).lean();
+    ok('that detail edit persisted', detailsAfter?.motherName === 'Mother Renamed',
+      `motherName is ${detailsAfter?.motherName}`);
+
+    const feeGrab = await req('PATCH', `/api/accountant/students/${cur._id}`,
+      tokens.nofees, { ...cur, tuitionFee: Number(cur.tuitionFee || 0) + 1000 });
+    ok('but changing a fee without editFees is still refused', feeGrab.status === 403,
+      `status ${feeGrab.status}: ${feeGrab.raw.slice(0, 120)}`);
+    const feeAfter = await Student.findOne({ studentId: student.studentId }).lean();
+    ok('the refused fee change did not land',
+      Number(feeAfter?.tuitionFee || 0) === Number(cur.tuitionFee || 0),
+      `tuitionFee is ${feeAfter?.tuitionFee}`);
+
+    // A custom slot is a fee too, and arrives as a fresh array every time.
+    const slotGrab = await req('PATCH', `/api/accountant/students/${cur._id}`,
+      tokens.nofees, { ...cur, customFeeSlots: [{ name: 'Sneaky', amount: 999 }] });
+    ok('adding a custom fee slot without editFees is refused', slotGrab.status === 403,
+      `status ${slotGrab.status}`);
 
     // =================================================================
     section('Deleting');
