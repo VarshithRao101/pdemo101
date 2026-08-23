@@ -10,6 +10,7 @@ import { InspireLogo } from '../components/common/InspireLogo';
 import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import collegeLogo from '../assets/college logo.webp';
 import * as accountantService from '../services/accountantService';
+import { FeeSlotEditor, freshRegFeeSlots, feeSlotsToPayload, slotsFromStudentFees, sumFeeSlots, type FeeSlot } from '../components/common/FeeSlotEditor';
 import { CAMPUS_LIST } from '../constants/campuses';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 import { OutstandingFeesPanel } from '../components/common/OutstandingFeesPanel';
@@ -449,7 +450,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
     setNewStudentAdmissionError('');
     setNewStudentMobileError('');
     setNewStudentParentMobileError('');
-    setNewStuCustomSlots([]);
+    setNewStuFeeSlots(freshRegFeeSlots());
     setNewStuFormPage(1);
   };
 
@@ -481,34 +482,11 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
     return () => clearTimeout(timer);
   }, [newStudentData.admissionNumber, isAddStudentModalOpen]);
 
-  // Custom Fee Section Slots for Accountant Registration
-  const [newStuCustomSlots, setNewStuCustomSlots] = useState<Array<{ id: string; name: string; amount: number }>>([]);
-  const [newStuIsAddingSlot, setNewStuIsAddingSlot] = useState(false);
-  const [newStuSlotName, setNewStuSlotName] = useState('');
-  const [newStuSlotAmount, setNewStuSlotAmount] = useState('');
+  // The fee table's rows. Same component, same initial sections, and the
+  // same submit mapping as the Rector's admission form.
+  const [newStuFeeSlots, setNewStuFeeSlots] = useState<FeeSlot[]>(freshRegFeeSlots);
 
-  const handleAddNewStuCustomSlot = () => {
-    if (!newStuSlotName.trim()) {
-      triggerToast('Please enter fee section description.');
-      return;
-    }
-    const amt = parseFloat(newStuSlotAmount) || 0;
-    const newSlot = {
-      id: 'slot_' + Date.now(),
-      name: newStuSlotName.trim(),
-      amount: amt
-    };
-    setNewStuCustomSlots(prev => [...prev, newSlot]);
-    setNewStuSlotName('');
-    setNewStuSlotAmount('');
-    setNewStuIsAddingSlot(false);
-    triggerToast(`Fee section slot "${newSlot.name}" added.`);
-  };
 
-  const handleRemoveNewStuCustomSlot = (slotId: string) => {
-    setNewStuCustomSlots(prev => prev.filter(s => s.id !== slotId));
-    triggerToast('Fee section slot removed.');
-  };
 
   // Search parameters (Local Edit Buffer state)
   const [searchAdmNo, setSearchAdmNo] = useState('');
@@ -558,7 +536,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
   const [upgradeInfo, setUpgradeInfo] = useState<accountantService.UpgradeEligibility | null>(null);
   const [isCheckingUpgrade, setIsCheckingUpgrade] = useState(false);
   const [isUpgrading, setIsUpgrading] = useState(false);
-  const [upgradeFees, setUpgradeFees] = useState<any>(null);
+  const [upgradeSlots, setUpgradeSlots] = useState<FeeSlot[]>([]);
   const [isPayOtpModalOpen, setIsPayOtpModalOpen] = useState(false);
   const [, setPayOtpInput] = useState('');
   const [pendingPayType, setPendingPayType] = useState<'partial' | 'full' | 'collect'>('collect');
@@ -772,13 +750,8 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
         return;
       }
       const f = info.currentFees;
-      setUpgradeFees({
-        // No waiver keys: this screen cannot set them, and sending them —
-        // even as zeros — would imply it could.
-        tuitionFee: f.tuitionFee, hostelFee: f.hostelFee,
-        transportFee: f.transportFee, miscellaneousFee: f.miscellaneousFee,
-        customFeeSlots: (f.customFeeSlots || []).map(s => ({ name: s.name, amount: s.amount }))
-      });
+      // Last year's numbers as editable rows, for typing next year's over.
+      setUpgradeSlots(slotsFromStudentFees(f));
       setActiveOverlay('upgrade_year');
     } catch (err: any) {
       triggerToast(err?.message || 'Could not check upgrade eligibility.', 'error');
@@ -790,15 +763,12 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
   // Gross IS payable here. Waivers are the Rector's and are applied after the
   // upgrade, so this screen has nothing that reduces the total.
   const upgradeTotals = React.useMemo(() => {
-    if (!upgradeFees) return { gross: 0, payable: 0 };
-    const slots = (upgradeFees.customFeeSlots || []).reduce((a: number, s: any) => a + (Number(s.amount) || 0), 0);
-    const gross = Number(upgradeFees.tuitionFee || 0) + Number(upgradeFees.hostelFee || 0)
-      + Number(upgradeFees.transportFee || 0) + Number(upgradeFees.miscellaneousFee || 0) + slots;
+    const gross = sumFeeSlots(upgradeSlots);
     return { gross, payable: gross };
-  }, [upgradeFees]);
+  }, [upgradeSlots]);
 
   const handleConfirmUpgrade = async () => {
-    if (!selectedStudent || !upgradeFees) return;
+    if (!selectedStudent || upgradeSlots.length === 0) return;
     const confirmed = window.confirm(
       `Move ${selectedStudent.name} to Second Year?\n\n` +
       `New fees payable: Rs.${upgradeTotals.payable.toLocaleString('en-IN')}\n\n` +
@@ -809,15 +779,16 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
 
     setIsUpgrading(true);
     try {
+      const { grossTotal: _gross, ...nextFees } = feeSlotsToPayload(upgradeSlots);
       const updated = await accountantService.upgradeStudentYear(
         selectedStudent.studentId || selectedStudent.admissionNumber,
-        upgradeFees
+        nextFees as any
       );
       setSelectedStudent(updated as any);
       setEditStudent(updated as any);
       setActiveOverlay(null);
       setUpgradeInfo(null);
-      setUpgradeFees(null);
+      setUpgradeSlots([]);
       triggerToast(`${selectedStudent.name} is now in Second Year. New balance Rs.${upgradeTotals.payable.toLocaleString('en-IN')}.`, 'success');
       await triggerFreshnessRefetch();
     } catch (err: any) {
@@ -842,9 +813,14 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
   const handleCreateStudent = async () => {
     setIsLoading(true);
     try {
+      // The same mapping the Rector's form uses, so a student admitted here
+      // and one admitted there carry identical fee fields.
+      const { grossTotal, ...feeFields } = feeSlotsToPayload(newStuFeeSlots);
       const created = await accountantService.createStudent({
         ...newStudentData,
-        customFeeSlots: newStuCustomSlots,
+        ...feeFields,
+        totalPaid: 0,
+        remainingBalance: grossTotal,
         branch: loggedInCampus,
         studentId: newStudentData.admissionNumber,
         registrationNumber: newStudentData.admissionNumber
@@ -1902,137 +1878,19 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                 </div>
               ) : (
                 <div>
-                  {/* Screen 3: Fee Structure */}
-                  <div style={{
-                    background: 'var(--surface)',
-                    border: '1.5px solid var(--line-strong)',
-                    borderRadius: '16px',
-                    padding: '18px',
-                    boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid var(--line)', paddingBottom: '10px' }}>
-                      <div>
-                        <span style={{ fontSize: '0.6786rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                          INSPIRE JUNIOR COLLEGE
-                        </span>
-                        <h4 style={{ margin: '2px 0 0', fontSize: '1rem', fontWeight: 900, color: 'var(--ink)' }}>
-                          Fee Structure & Bill Format
-                        </h4>
-                      </div>
-                      <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--good)', backgroundColor: 'var(--good-wash)', padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--good-wash)' }}>
-                        Gross Base Fee: Rs.{(
-                          (Number(newStudentData.tuitionFee) || 0) +
-                          (Number(newStudentData.hostelFee) || 0) +
-                          (Number(newStudentData.miscellaneousFee) || 0) +
-                          newStuCustomSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
-                        ).toLocaleString('en-IN')}
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '10px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <label style={styles.formLabel}>Tuition Fee (Rs)</label>
-                        <input min={0} max={999999999} type="number" value={newStudentData.tuitionFee} onChange={(e) => setNewStudentData({ ...newStudentData, tuitionFee: Number(e.target.value) })} style={styles.textInputBox} />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <label style={styles.formLabel}>Hostel Fee (Rs)</label>
-                        <input min={0} max={999999999} type="number" value={newStudentData.hostelFee} onChange={(e) => setNewStudentData({ ...newStudentData, hostelFee: Number(e.target.value) })} style={styles.textInputBox} />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <label style={styles.formLabel}>Misc Fee (Rs)</label>
-                        <input min={0} max={999999999} type="number" value={newStudentData.miscellaneousFee} onChange={(e) => setNewStudentData({ ...newStudentData, miscellaneousFee: Number(e.target.value) })} style={styles.textInputBox} />
-                      </div>
-
-                      {newStuCustomSlots.map((slot) => (
-                        <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <label style={styles.formLabel}>
-                              {slot.name} <span style={{ fontSize: '0.6429rem', color: 'var(--royal-gold)', fontWeight: 800 }}>(Custom)</span>
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveNewStuCustomSlot(slot.id)}
-                              style={{ background: 'none', border: 'none', color: 'var(--critical)', cursor: 'pointer', fontSize: '0.7857rem', padding: '0 2px' }}
-                              title="Remove section slot"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                          <input min={0} max={999999999}
-                            type="number"
-                            value={slot.amount}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              setNewStuCustomSlots(prev => prev.map(s => s.id === slot.id ? { ...s, amount: val } : s));
-                            }}
-                            style={styles.textInputBox}
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    {newStuIsAddingSlot ? (
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '6px', padding: '10px', backgroundColor: 'var(--surface-sunken)', borderRadius: '10px', border: '1px dashed var(--line-strong)' }}>
-                        <input maxLength={LIMITS.feeSlotName}
-                          type="text"
-                          placeholder="Fee Section Description"
-                          value={newStuSlotName}
-                          onChange={(e) => setNewStuSlotName(e.target.value)}
-                          style={{ ...styles.textInputBox, flex: 2, fontSize: '0.8571rem' }}
-                        />
-                        <input min={0} max={999999999}
-                          type="number"
-                          placeholder="Amount (Rs)"
-                          value={newStuSlotAmount}
-                          onChange={(e) => setNewStuSlotAmount(e.target.value)}
-                          style={{ ...styles.textInputBox, flex: 1, fontSize: '0.8571rem' }}
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddNewStuCustomSlot}
-                          style={{ ...styles.actionItemBtn, backgroundColor: 'var(--good)', color: '#fff', border: 'none', padding: '6px 12px' }}
-                          className="press-interactive"
-                        >
-                          Add
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setNewStuIsAddingSlot(false); setNewStuSlotName(''); setNewStuSlotAmount(''); }}
-                          style={{ ...styles.actionItemBtn, backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none', padding: '6px 10px' }}
-                          className="press-interactive"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setNewStuIsAddingSlot(true)}
-                        style={{
-                          marginTop: '4px',
-                          alignSelf: 'flex-start',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '6px 12px',
-                          borderRadius: '8px',
-                          border: '1px dashed var(--royal-gold)',
-                          backgroundColor: 'var(--surface-sunken)',
-                          // See above: amber on the sunken surface is unreadable.
-                          color: 'var(--royal-gold)',
-                          fontSize: '0.8214rem',
-                          fontWeight: 800,
-                          cursor: 'pointer'
-                        }}
-                        className="press-interactive"
-                      >
-                        + Add Fee Section Slot
-                      </button>
-                    )}
-                  </div>
+                  {/* Screen 3: Fee Structure.
+                      The SAME table the Rector's admission form renders. This
+                      screen used to offer three boxes — tuition, hostel, misc —
+                      so a student admitted here could not be given a books fee
+                      or a bus fee at all, and the college ended up holding two
+                      shapes of fee record depending on who typed it in. */}
+                  <FeeSlotEditor
+                    slots={newStuFeeSlots}
+                    onChange={setNewStuFeeSlots}
+                    inputStyle={styles.textInputBox}
+                    buttonStyle={styles.actionItemBtn}
+                    onNotify={(m) => triggerToast(m)}
+                  />
 
                   <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <button
@@ -3139,7 +2997,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
             Every figure here is a starting point read from the server; the
             server recomputes the total and re-checks eligibility on submit,
             so nothing shown below is trusted as an input to the decision. */}
-        {activeOverlay === 'upgrade_year' && selectedStudent && upgradeFees && (
+        {activeOverlay === 'upgrade_year' && selectedStudent && upgradeSlots.length > 0 && (
           <div style={styles.overlayOverlay} className="anim-fade-in">
             <div style={{ ...styles.overlaySheet, position: 'relative', maxWidth: '560px' }} className="glass-panel-heavy">
               <div style={{ marginBottom: '14px', borderBottom: '2px solid var(--line)', paddingBottom: '10px' }}>
@@ -3161,88 +3019,24 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                 visible in the history below.
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '10px' }}>
-                {/* Fees only. The four waiver fields that used to sit here
-                    were a way to write off next year's charges from this
-                    screen, bypassing the Rector-only waiver route — the server
-                    now refuses them, so showing the inputs would only produce
-                    a guaranteed error. Waivers are applied by the Rector after
-                    the upgrade. */}
-                {[
-                  ['tuitionFee', 'Tuition Fee'],
-                  ['hostelFee', 'Hostel Fee'],
-                  ['transportFee', 'Transport Fee'],
-                  ['miscellaneousFee', 'Miscellaneous Fee']
-                ].map(([key, label]) => (
-                  <div key={key}>
-                    <label style={{ display: 'block', fontSize: '0.7143rem', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                      {label}
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={999999999}
-                      value={upgradeFees[key] ?? 0}
-                      onChange={(e) => setUpgradeFees((p: any) => ({ ...p, [key]: Math.max(0, Number(e.target.value) || 0) }))}
-                      style={styles.textInputBox}
-                    />
-                  </div>
-                ))}
-              </div>
+              {/* The same fee table as both admission forms.
+                  This screen used to show four fixed boxes with custom rows in a
+                  separate block underneath — a third arrangement of the same
+                  question, so next year's fees were typed into a different shape
+                  from the one they were first entered in.
 
-              {(upgradeFees.customFeeSlots || []).length > 0 && (
-                <div style={{ marginTop: '12px' }}>
-                  <div style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                    Additional Fees
-                  </div>
-                  {upgradeFees.customFeeSlots.map((slot: any, i: number) => (
-                    <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
-                      <input
-                        type="text"
-                        maxLength={LIMITS.feeSlotName}
-                        value={slot.name}
-                        onChange={(e) => setUpgradeFees((p: any) => {
-                          const next = [...p.customFeeSlots];
-                          next[i] = { ...next[i], name: e.target.value };
-                          return { ...p, customFeeSlots: next };
-                        })}
-                        style={{ ...styles.textInputBox, flex: 2 }}
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        max={999999999}
-                        value={slot.amount}
-                        onChange={(e) => setUpgradeFees((p: any) => {
-                          const next = [...p.customFeeSlots];
-                          next[i] = { ...next[i], amount: Math.max(0, Number(e.target.value) || 0) };
-                          return { ...p, customFeeSlots: next };
-                        })}
-                        style={{ ...styles.textInputBox, flex: 1 }}
-                      />
-                      <button
-                        onClick={() => setUpgradeFees((p: any) => ({
-                          ...p, customFeeSlots: p.customFeeSlots.filter((_: any, j: number) => j !== i)
-                        }))}
-                        style={{ ...styles.actionItemBtn, border: '1.5px solid var(--critical)', color: 'var(--critical)', background: 'transparent' }}
-                        className="press-interactive"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <button
-                onClick={() => setUpgradeFees((p: any) => ({
-                  ...p, customFeeSlots: [...(p.customFeeSlots || []), { name: '', amount: 0 }]
-                }))}
-                style={{ ...styles.actionItemBtn, marginTop: '8px', border: '1.5px dashed var(--line-strong)', color: 'var(--ink-secondary)', background: 'transparent' }}
-                className="press-interactive"
-              >
-                + Add a fee line
-              </button>
+                  Waivers are deliberately absent: they belong to the Rector and
+                  the server refuses them here, so showing the inputs would only
+                  produce a guaranteed error. */}
+              <FeeSlotEditor
+                slots={upgradeSlots}
+                onChange={setUpgradeSlots}
+                inputStyle={styles.textInputBox}
+                buttonStyle={styles.actionItemBtn}
+                onNotify={(m) => triggerToast(m)}
+                title="Next Year's Fee Structure"
+                framed={false}
+              />
 
               <div style={{
                 marginTop: '16px', padding: '12px', borderRadius: '10px',
@@ -3262,7 +3056,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
                 <button
-                  onClick={() => { setActiveOverlay(null); setUpgradeFees(null); setUpgradeInfo(null); }}
+                  onClick={() => { setActiveOverlay(null); setUpgradeSlots([]); setUpgradeInfo(null); }}
                   disabled={isUpgrading}
                   style={{ ...styles.actionItemBtn, flex: 1, border: '1.5px solid var(--line-strong)', color: 'var(--ink-secondary)', background: 'transparent' }}
                   className="press-interactive"

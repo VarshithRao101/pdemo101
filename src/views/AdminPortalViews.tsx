@@ -18,6 +18,7 @@ import {
   pdfDetailCard, money, dateStr, escapeHtml
 } from '../utils/pdfDocument';
 import { useDataFreshness } from '../hooks/useDataFreshness';
+import { FeeSlotEditor, freshRegFeeSlots, feeSlotsToPayload, type FeeSlot } from '../components/common/FeeSlotEditor';
 import { AccountSecurityPanel } from '../components/common/AccountSecurityPanel';
 import { RecentlyDeletedPanel } from '../components/common/RecentlyDeletedPanel';
 import { OutstandingFeesPanel } from '../components/common/OutstandingFeesPanel';
@@ -437,24 +438,8 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   const [newStuAddress, setNewStuAddress] = useState('');
 
   // Itemized Fee Breakdown & Slots for New Student Registration
-  const INITIAL_REG_FEE_SLOTS = [
-    { id: 'tuitionFee', key: 'tuitionFee', name: 'Tuition Fee', amount: '' },
-    { id: 'booksFee', key: 'booksFee', name: 'Books Fee', amount: '' },
-    { id: 'uniformFees', key: 'uniformFees', name: 'Uniform Fees', amount: '' },
-    { id: 'hndFees', key: 'hndFees', name: 'HND Fees', amount: '' },
-    { id: 'internalExamFees', key: 'internalExamFees', name: 'Internal Exam Fee', amount: '' },
-    { id: 'annualExamFees', key: 'annualExamFees', name: 'Annual Exam Fee', amount: '' },
-    { id: 'partyFees', key: 'partyFees', name: 'Party / Event Fees', amount: '' },
-    { id: 'busFees', key: 'busFees', name: 'Bus Transport Fees', amount: '' },
-    { id: 'labFees', key: 'labFees', name: 'Lab Fees', amount: '' },
-    { id: 'handLoan', key: 'handLoan', name: 'Hand Loan', amount: '' },
-    { id: 'othersFee', key: 'othersFee', name: 'Others Fee', amount: '' },
-  ];
 
-  const [newStuFeeSlots, setNewStuFeeSlots] = useState<Array<{ id: string; key?: string; name: string; amount: string | number; isCustom?: boolean }>>(INITIAL_REG_FEE_SLOTS);
-  const [newStuIsAddingSlot, setNewStuIsAddingSlot] = useState(false);
-  const [newStuSlotName, setNewStuSlotName] = useState('');
-  const [newStuSlotAmount, setNewStuSlotAmount] = useState('');
+  const [newStuFeeSlots, setNewStuFeeSlots] = useState<FeeSlot[]>(freshRegFeeSlots);
 
   const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
   const [, setRegStuOtpInput] = useState('');
@@ -476,29 +461,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
     }
   }, [globalActiveTab]);
 
-  const handleAddNewStuCustomSlot = () => {
-    if (!newStuSlotName.trim()) {
-      triggerToast('Please enter fee section description.');
-      return;
-    }
-    const amt = parseFloat(newStuSlotAmount) || 0;
-    const newSlot = {
-      id: 'slot_' + Date.now(),
-      name: newStuSlotName.trim(),
-      amount: amt,
-      isCustom: true
-    };
-    setNewStuFeeSlots(prev => [...prev, newSlot]);
-    setNewStuSlotName('');
-    setNewStuSlotAmount('');
-    setNewStuIsAddingSlot(false);
-    triggerToast(`Fee section slot "${newSlot.name}" added.`);
-  };
 
-  const handleRemoveNewStuFeeSlot = (slotId: string) => {
-    setNewStuFeeSlots(prev => prev.filter(s => s.id !== slotId));
-    triggerToast('Fee section slot deleted.');
-  };
 
   // Faculty Management & 12-Month Ledger States
   const [searchFac, setSearchFac] = useState('');
@@ -2010,31 +1973,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
 
     const newAdm = newStuAdmissionNumber.trim();
 
-    const activeSlots = newStuFeeSlots.filter(s => Number(s.amount) > 0);
-    const grossFeeTotal = activeSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+    // Shared with the accountant's admission form, so both produce the same
+    // shape of fee record. See feeSlotsToPayload.
+    const { grossTotal: grossFeeTotal, ...feeFields } = feeSlotsToPayload(newStuFeeSlots);
 
     // Fee cap validation
     if (grossFeeTotal > MAX_STUDENT_FEE) {
       triggerToast(`Total fees (Rs. ${grossFeeTotal.toLocaleString('en-IN')}) exceed the maximum allowed per student (Rs. ${MAX_STUDENT_FEE.toLocaleString('en-IN')}).`);
       return;
     }
-
-    const stdKeys = ['tuitionFee', 'hostelFee', 'transportFee', 'miscellaneousFee', 'previousPending'];
-    const finalCustomSlots = activeSlots
-      // `key` is optional on a slot, and includes() will not accept undefined.
-      // An absent key simply cannot collide with a standard key.
-      .filter(s => s.isCustom || (!stdKeys.includes(s.id) && !stdKeys.includes(s.key ?? '')))
-      .map(s => ({
-        id: s.id,
-        key: s.key,
-        name: s.name,
-        amount: Number(s.amount) || 0
-      }));
-
-    const getSlotAmt = (k: string) => {
-      const found = activeSlots.find(s => s.key === k);
-      return found ? (Number(found.amount) || 0) : 0;
-    };
 
     const newStu: any = {
       admissionNumber: newAdm,
@@ -2053,22 +2000,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
       previousBoard: newStuPreviousBoard.trim(),
       address: newStuAddress.trim(),
       status: 'Active',
-      tuitionFee: getSlotAmt('tuitionFee'),
-      booksFee: getSlotAmt('booksFee'),
-      uniformFees: getSlotAmt('uniformFees'),
-      hndFees: getSlotAmt('hndFees'),
-      internalExamFees: getSlotAmt('internalExamFees'),
-      annualExamFees: getSlotAmt('annualExamFees'),
-      partyFees: getSlotAmt('partyFees'),
-      busFees: getSlotAmt('busFees'),
-      labFees: getSlotAmt('labFees'),
-      handLoan: getSlotAmt('handLoan'),
-      othersFee: getSlotAmt('othersFee'),
-      customFeeSlots: finalCustomSlots,
-      hostelFee: 0,
-      transportFee: 0,
-      miscellaneousFee: 0,
-      previousPending: 0,
+      ...feeFields,
       totalPaid: 0,
       remainingBalance: grossFeeTotal
     };
@@ -2715,142 +2647,19 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                     </div>
                   ) : (
                     <div>
-                      {/* Screen 3: Fee Structure */}
-                      <div style={{
-                        backgroundColor: 'var(--surface)',
-                        border: '1.5px solid var(--line-strong)',
-                        borderRadius: '16px',
-                        padding: '16px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid var(--line)', paddingBottom: '8px', marginBottom: '4px' }}>
-                          <div>
-                            <span style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                              INSPIRE JUNIOR COLLEGE
-                            </span>
-                            <h4 style={{ margin: '1px 0 0', fontSize: '1rem', fontWeight: 900, color: 'var(--ink)' }}>
-                              Fee Structure & Bill Format Breakdown
-                            </h4>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '0.7143rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>Live Accumulated Total:</span>
-                            <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--good)', marginLeft: '6px' }}>
-                              Rs.{newStuFeeSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0).toLocaleString('en-IN')}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 160px) 32px', gap: '8px', paddingBottom: '4px', borderBottom: '1px solid var(--line-strong)' }}>
-                          <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>
-                            Fee Section Description
-                          </span>
-                          <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--ink-secondary)', textTransform: 'uppercase', textAlign: 'right' }}>
-                            Amount (Rs)
-                          </span>
-                          <span></span>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '320px', overflowY: 'auto' }}>
-                          {newStuFeeSlots.length === 0 ? (
-                            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--ink-secondary)', fontSize: '0.8571rem', fontStyle: 'italic' }}>
-                              All fee slots removed. Click "+ Add Fee Section Slot" below to add slots.
-                            </div>
-                          ) : (
-                            newStuFeeSlots.map((slot) => (
-                              <div key={slot.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 160px) 32px', gap: '8px', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <label style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink)' }}>{slot.name}</label>
-                                  {slot.isCustom && (
-                                    <span style={{ fontSize: '0.6429rem', fontWeight: 800, color: 'var(--royal-gold)', backgroundColor: 'var(--surface-sunken)', padding: '1px 4px', borderRadius: '4px' }}>Custom</span>
-                                  )}
-                                </div>
-                                <input min={0} max={999999999}
-                                  type="number"
-                                  placeholder="0"
-                                  value={slot.amount}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setNewStuFeeSlots(prev => prev.map(s => s.id === slot.id ? { ...s, amount: val } : s));
-                                  }}
-                                  style={{ ...styles.textInputBox, textAlign: 'right', fontWeight: 700, padding: '4px 8px', fontSize: '0.8571rem' }}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveNewStuFeeSlot(slot.id)}
-                                  style={{ backgroundColor: 'var(--critical-wash)', color: 'var(--critical)', border: '1px solid var(--critical-wash)', borderRadius: '4px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 800, fontSize: '0.7857rem' }}
-                                  title="Delete Fee Slot"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            ))
-                          )}
-                        </div>
-
-                        {newStuIsAddingSlot ? (
-                          <div style={{ display: 'flex', gap: '8px', padding: '8px', backgroundColor: 'var(--surface-sunken)', borderRadius: '8px', border: '1px dashed var(--line-strong)', marginTop: '4px' }}>
-                            <input maxLength={LIMITS.feeSlotName}
-                              type="text"
-                              placeholder="Fee Section Description"
-                              value={newStuSlotName}
-                              onChange={(e) => setNewStuSlotName(e.target.value)}
-                              style={{ ...styles.textInputBox, flex: 2, fontSize: '0.8571rem' }}
-                            />
-                            <input min={0} max={999999999}
-                              type="number"
-                              placeholder="Amount (Rs)"
-                              value={newStuSlotAmount}
-                              onChange={(e) => setNewStuSlotAmount(e.target.value)}
-                              style={{ ...styles.textInputBox, flex: 1, textAlign: 'right', fontSize: '0.8571rem' }}
-                            />
-                            <button
-                              type="button"
-                              onClick={handleAddNewStuCustomSlot}
-                              style={{ ...styles.actionItemBtn, backgroundColor: 'var(--good)', color: '#fff', border: 'none', padding: '4px 12px', fontSize: '0.8571rem', fontWeight: 800 }}
-                            >
-                              Add
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { setNewStuIsAddingSlot(false); setNewStuSlotName(''); setNewStuSlotAmount(''); }}
-                              style={{ ...styles.actionItemBtn, backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none', padding: '4px 8px', fontSize: '0.8571rem' }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setNewStuIsAddingSlot(true)}
-                            style={{
-                              marginTop: '4px',
-                              alignSelf: 'flex-start',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
-                              border: '1px dashed var(--royal-gold)',
-                              backgroundColor: 'var(--surface-sunken)',
-                              color: 'var(--warning)',
-                              fontSize: '0.7857rem',
-                              fontWeight: 800,
-                              cursor: 'pointer'
-                            }}
-                            className="press-interactive"
-                          >
-                            + Add Fee Section Slot
-                          </button>
-                        )}
-
-                        <div style={{ borderTop: '2px solid var(--ink)', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)' }}>
-                            GROSS BASE FEES TOTAL:
-                          </span>
-                          <span style={{ fontSize: '1.1429rem', fontWeight: 900, color: 'var(--good)', backgroundColor: 'var(--good-wash)', padding: '4px 14px', borderRadius: '8px', border: '1px solid var(--good-wash)' }}>
-                            Rs. {newStuFeeSlots.reduce((sum, s) => sum + (Number(s.amount) || 0), 0).toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                      </div>
+                      {/* Screen 3: Fee Structure.
+                          The table itself is FeeSlotEditor, which the
+                          accountant's admission form and year-upgrade sheet
+                          also render. It used to be written out here and
+                          nowhere else, which is why each of those screens
+                          grew its own smaller, different version. */}
+                      <FeeSlotEditor
+                        slots={newStuFeeSlots}
+                        onChange={setNewStuFeeSlots}
+                        inputStyle={styles.textInputBox}
+                        buttonStyle={styles.actionItemBtn}
+                        onNotify={triggerToast}
+                      />
 
                       <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <button
