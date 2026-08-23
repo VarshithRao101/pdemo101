@@ -860,21 +860,27 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.2143rem', fontWeight: 900, color: 'var(--critical)' }}>2. Emergency Database Wipe (Purge All Schema Collections)</h3>
                   <p style={{ margin: '2px 0 0', fontSize: '0.8571rem', fontWeight: 700, color: 'var(--critical)' }}>
-                    Protected behind Authenticator Account Password Verification. Clears all student, faculty, payment & expense collections.
+                    Protected by the OPERATIONS password. Takes a Drive backup first, then clears all student, faculty, payment &amp; expense collections.
                   </p>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', maxWidth: '680px' }}>
                 <div style={{ flex: 1, minWidth: '240px' }}>
+                  {/* The label, the placeholder and the line above all said
+                      "Authenticator / Account Password". The server checks the
+                      OPERATIONS password — a different secret — so all three
+                      pointed at the one password guaranteed to be refused. The
+                      toast was corrected first; this is what is actually on
+                      screen while somebody types. */}
                   <label style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--critical)', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
-                    Authenticator Password Verification
+                    Operations Password
                   </label>
                   <input maxLength={LIMITS.password}
                     type="password"
                     value={wipePasscode}
                     onChange={(e) => setWipePasscode(e.target.value)}
-                    placeholder="Enter Security Authenticator Password"
+                    placeholder="Operations password — not your account password"
                     style={{
                       width: '100%',
                       padding: '12px 14px',
