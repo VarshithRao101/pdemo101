@@ -68,7 +68,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
 
   // Settings State 1: Make Google Drive Backup
-  const [backupPasscode, setBackupPasscode] = useState<string>('');
+  // (backupPasscode removed — it was collected and never sent; see the note
+  // in the backup panel below.)
   const [isCreatingBackup, setIsCreatingBackup] = useState<boolean>(false);
   const [backupProgress, setBackupProgress] = useState<number>(0);
 
@@ -111,10 +112,8 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
   // Handler: Run Google Drive 24h Rolling Backup Now
   const handleRunGoogleDriveBackup = async () => {
-    if (!backupPasscode.trim()) {
-      triggerToast('Please enter Authenticator account password to run Google Drive backup.');
-      return;
-    }
+    // No password gate: the backup routes take none and the server verifies
+    // none. See the note where the input used to be.
     setIsCreatingBackup(true);
     setBackupProgress(15);
 
@@ -167,7 +166,13 @@ export const AuthenticatorDashboardView: React.FC = () => {
   // Handler: Wipe Entire Database
   const handleExecuteDatabaseWipe = async () => {
     if (!wipePasscode.trim()) {
-      triggerToast('Please enter Security Authenticator Account Password to confirm database wipe.');
+      // The OPERATIONS password, which is a different secret from this
+      // account's own. The server checks it against OPS_PASSWORD_HASH, and
+      // this message used to name the account password — so an operator did
+      // exactly as told, typed the password they had just signed in with, and
+      // got "Incorrect operations password" with nothing to say which other
+      // password was wanted.
+      triggerToast('Enter the OPERATIONS password (not your account password) to confirm the wipe.');
       return;
     }
 
@@ -285,7 +290,15 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
       // Asked once for the whole run, not once per category. It is verified
       // server-side with bcrypt on every single call regardless.
-      const password = window.prompt('Enter YOUR account password to confirm this restore:');
+      // The OPERATIONS password — the shared secret behind restore, purge and
+      // wipe — and NOT this account's own. The server verifies it against
+      // OPS_PASSWORD_HASH; naming it "YOUR account password" sent operators to
+      // the one password guaranteed to be refused.
+      const password = window.prompt(
+        'Enter the OPERATIONS password to confirm this restore.\n\n' +
+        'This is the shared operations secret used for restore, purge and wipe — ' +
+        'not the password you signed in with.'
+      );
       if (!password || !password.trim()) return;
 
       let inserted = 0, updated = 0;
@@ -497,7 +510,12 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   now states plainly that Drive snapshots are the only source
                   a restore can read. This heading was still selling it.
                 */}
-                {activeTab === 'settings' && 'Change your own password and PIN, configure database backups, emergency data purges, and restore from Drive snapshots.'}
+                {/* "emergency data purges" was listed here and there is no such
+                    control on this screen — the only destructive action is the
+                    wipe. Describing a button that does not exist sends whoever
+                    needs it hunting for it during the incident that made them
+                    open this page. */}
+                {activeTab === 'settings' && 'Change your own password and PIN, back up to Drive, restore from a Drive snapshot, or wipe the database.'}
               </p>
             </div>
           </div>
@@ -774,31 +792,24 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Security PIN verification for Backup */}
-              <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', maxWidth: '680px', marginBottom: '18px' }}>
-                <div style={{ flex: 1, minWidth: '240px' }}>
-                  <label style={{ fontSize: '0.7857rem', fontWeight: 900, color: 'var(--ink-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
-                    Authenticator Password Verification
-                  </label>
-                  <input maxLength={LIMITS.password}
-                    type="password"
-                    value={backupPasscode}
-                    onChange={(e) => setBackupPasscode(e.target.value)}
-                    placeholder="Enter Authenticator Password"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      borderRadius: '12px',
-                      border: '2px solid var(--line-strong)',
-                      fontSize: '0.9286rem',
-                      fontWeight: 800,
-                      color: 'var(--ink)',
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
-                  />
-                </div>
+              {/*
+                NO PASSWORD BOX HERE ANY MORE, deliberately.
 
+                There was one, labelled "Authenticator Password Verification",
+                and the value it collected was never sent anywhere: the backup
+                routes take no password, and the server checks none — being
+                signed in as the authenticator IS the authorisation, which is
+                right, because a backup only reads data and writes a copy to
+                the college's own Drive. It destroys nothing.
+
+                So the box refused to start a backup until something was typed
+                and then accepted literally any text. That is worse than having
+                no box: it looks like a check, it teaches whoever uses this
+                screen that these prompts are decoration, and the next prompt
+                they meet — the wipe — is a real one guarding an irreversible
+                action.
+              */}
+              <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', maxWidth: '680px', marginBottom: '18px' }}>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '18px', flexWrap: 'wrap' }}>
                   <button
                     onClick={handleRunGoogleDriveBackup}

@@ -234,10 +234,24 @@ export const authenticatorService = {
   },
 
   // Purge all student and faculty data
-  async purgeStudentFacultyData(confirmationPass: string): Promise<{ students: number; teachers: number; payments: number }> {
+  /**
+   * Purge every student and faculty record.
+   *
+   * The field is `password`, and it has to be. The server gate for all three
+   * destructive actions — purge, wipe and restore — is one shared function
+   * that reads `req.body.password`. This sent `confirmationPass`, a name
+   * nothing on the server has ever looked for, so the gate saw no password at
+   * all and answered "The operations password is required for this action."
+   * every single time, whatever the operator typed. The purge could not
+   * succeed and there was no combination of inputs that would have made it.
+   *
+   * The value is the OPERATIONS password from the host's OPS_PASSWORD_HASH,
+   * not the signed-in account's own password.
+   */
+  async purgeStudentFacultyData(operationsPassword: string): Promise<{ students: number; teachers: number; payments: number }> {
     const res = await apiClient.request<{ status: string; message: string; data: { students: number; teachers: number; payments: number } }>('/authenticator/purge-student-faculty-data', {
       method: 'DELETE',
-      body: JSON.stringify({ confirmationPass })
+      body: JSON.stringify({ password: operationsPassword })
     });
     return res.data;
   }
