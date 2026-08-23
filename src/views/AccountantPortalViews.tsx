@@ -1313,10 +1313,15 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
       body,
       buttonLabel: 'Print / Save Receipt as PDF',
       framed: true,
-      // Authored at full size and scaled onto half an A4 sheet, cut across the
-      // short edge. The document is the statement's, the paper is the
-      // college's — the fitter reconciles the two.
-      halfA4: true,
+      // ONE A4 sheet carrying the receipt twice: the parent's half on top, the
+      // student's underneath, with a cut line between them. The clerk prints
+      // one page, cuts once, and hands over the top half.
+      //
+      // Not `halfA4: true` twice — that declares two 148.5mm PAGES, which a
+      // printer puts on two sheets unless somebody sets two-up by hand, and
+      // nobody does that at a fee counter. The page here stays A4 and the two
+      // copies are stacked inside it.
+      copies: ['PARENT COPY', 'STUDENT COPY'],
       onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to print the receipt.')
     });
     if (opened) triggerToast('Receipt opened for printing.');

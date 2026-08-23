@@ -3179,16 +3179,29 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
 
   // SUBPAGE 2: STAFF & FACULTY REGISTRY (WITH 12-MONTH SALARY LEDGER)
   if (activePage === 'teachers' || activePage === 'salary_status' || activePage === 'worker_payments') {
-    // Staff and salaries are not among the five clerk powers, so these pages
-    // are the Rector's. A clerk who still has the old URL is sent back.
-    if (role !== 'admin1') { setActivePage('menu'); return null; }
+    // Staff, salaries and worker payments belong to `manageStaff`, which the
+    // Clerks screen offers and the server already enforces on every one of
+    // these routes. This used to read `role !== 'admin1'`, which locked the
+    // page to the Rector — so granting a clerk "Manage staff" changed nothing
+    // they could reach, and the switch appeared to do nothing.
+    //
+    // The list itself is campus-scoped for a clerk in fetchTeachers, and the
+    // server scopes it again, so a clerk with this power sees their own campus
+    // and no other.
+    if (role !== 'admin1' && !clerkCan('manageStaff')) { setActivePage('menu'); return null; }
 
     const monthsList = ["June", "July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May"];
     const currentMonth = "July";
 
     const filteredStaff = teachers.filter(t => {
-      // Role & campus isolation
-      // Campus filtering is gone with the clerk: only the Rector reaches this
+      // A clerk sees their own campus and nothing else.
+      //
+      // fetchTeachers already asks only for their campus and the server scopes
+      // it again, so this is the third of three. It is here anyway because it
+      // is the cheap one: if either of the other two is ever loosened, a clerk
+      // silently gains sight of every campus's staff and salaries, and nothing
+      // on screen would look wrong.
+      if (role !== 'admin1' && t.branch !== loggedInCampus) return false;
       if (filterFacCampus !== 'All' && t.branch !== filterFacCampus) return false;
       if (filterStaffClassification !== 'All' && (t.classification || 'Teaching') !== filterStaffClassification) return false;
       if (filterFacSubject !== 'All') {
@@ -7464,7 +7477,23 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   </div>
                 )}
 
-                {!clerkCan('addStudent') && !clerkCan('editStudent') && !clerkCan('collectFees') && !clerkCan('logExpenditures') && (
+                {/* Faculty, for a clerk who has been given `manageStaff`.
+                    The permission has always existed — it is offered on the
+                    Clerks screen and the server honours it on every teacher,
+                    salary and worker-payment route — but this grid never
+                    offered a way in, so granting it did nothing a clerk could
+                    see. The page itself scopes to the clerk's own campus. */}
+                {clerkCan('manageStaff') && (
+                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('teachers'); } }} onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="module-card press-interactive">
+                    <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+                    </div>
+                    <h4 style={styles.moduleTitle}>Faculty Management</h4>
+                    <p style={styles.moduleDesc}>Lecturers, subjects and salaries for {loggedInCampus}.</p>
+                  </div>
+                )}
+
+                {!clerkCan('addStudent') && !clerkCan('editStudent') && !clerkCan('collectFees') && !clerkCan('logExpenditures') && !clerkCan('manageStaff') && !clerkCan('manageEnquiries') && (
                   <GlassCard hoverable={false} style={{ padding: '24px', gridColumn: '1 / -1' }}>
                     <h4 style={{ ...styles.moduleTitle, marginBottom: '6px' }}>No permissions yet</h4>
                     <p style={styles.moduleDesc}>

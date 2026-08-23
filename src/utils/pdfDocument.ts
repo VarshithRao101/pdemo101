@@ -213,6 +213,30 @@ export interface OpenPrintOptions {
    */
   halfA4?: boolean;
   /**
+   * Print the SAME document twice on one A4 sheet, top and bottom, each
+   * labelled — for a receipt where the parent keeps one half and the student
+   * or the office keeps the other.
+   *
+   * Give the two captions in order, top first: `['PARENT COPY', 'STUDENT COPY']`.
+   *
+   * WHY THIS IS NOT `halfA4` TWICE
+   *
+   * `halfA4` declares a 210 x 148.5mm PAGE. Two of those are two pages, and a
+   * printer given two pages puts them on two sheets unless somebody remembers
+   * to ask for two-up — which nobody does at a fee counter on a busy morning.
+   * This keeps ONE A4 page and stacks two copies inside it, so what comes out
+   * of the tray is a single sheet the clerk cuts once across the middle.
+   *
+   * Each copy is measured against HALF the printable height, so the fitter
+   * shrinks the content to fit its own half rather than the whole sheet.
+   *
+   * The previous two-copy layout was removed for looking like a till slip at
+   * 9.5px. This one is the current receipt design at whatever scale it takes
+   * to fit — usually around 0.8 — so the two halves read like the statement
+   * they belong with.
+   */
+  copies?: [string, string];
+  /**
    * Draws the decorative double border.
    *
    * Only for documents that fit on one page — a receipt, payslip or bill. A
@@ -254,9 +278,23 @@ interface Sheet { heightMm: number; widthMm: number; }
  * closer; four is comfortably more than enough to settle.
  */
 const fitToSinglePage = (win: Window, sheet: Sheet): void => {
-  const shell = win.document.querySelector<HTMLElement>('.pdf-fit-shell');
-  const fit = win.document.querySelector<HTMLElement>('.pdf-fit');
-  if (!shell || !fit) return;
+  // Every copy on the sheet. A one-copy document has a single pair and behaves
+  // exactly as before; a two-copy receipt has two, and they are measured and
+  // scaled INDEPENDENTLY rather than sharing a scale computed from the first.
+  //
+  // They hold identical content, so in practice both settle on the same number
+  // — but only in practice. Reusing one measurement would mean that if they
+  // ever diverge (a longer name wrapping in one and not the other, a browser
+  // rounding a millimetre differently) the second copy overflows its half and
+  // prints across the cut line, and nothing on screen would explain why.
+  const shells = Array.from(win.document.querySelectorAll<HTMLElement>('.pdf-fit-shell'));
+  for (const shell of shells) {
+    const fit = shell.querySelector<HTMLElement>('.pdf-fit');
+    if (fit) fitOne(shell, fit, sheet);
+  }
+};
+
+const fitOne = (shell: HTMLElement, fit: HTMLElement, sheet: Sheet): void => {
 
   // The sheet this document is actually going onto, less its @page margins.
   // Passed in rather than assumed: this used to hardcode A4, so a half-A4
@@ -349,7 +387,39 @@ const whenMeasurable = (win: Window, cb: () => void): void => {
  * fresh page — printing a blank first sheet with the letterhead nowhere in
  * the preview. Keeping a document to one sheet is the fitter's job.
  */
-export const pageGeometry = (halfA4: boolean, landscape: boolean): { css: string; sheet: Sheet } => {
+export const pageGeometry = (halfA4: boolean, landscape: boolean, twoCopies = false): { css: string; sheet: Sheet } => {
+  // Two copies on one sheet. The PAGE stays A4 — see `copies` in the options
+  // for why this is not two half-A4 pages — and each copy is measured against
+  // half of what is printable, less the strip the cut line sits in.
+  //
+  // 297 - 16 (margins) = 281mm printable. The cut rule and its label take 9mm,
+  // leaving 272 for the two copies: 136mm each.
+  if (twoCopies) {
+    return {
+      css: `@page { size: A4 portrait; margin: 8mm; }
+            .page { max-width: 194mm; }
+            .pdf-copy { height: 136mm; overflow: hidden; }
+            .pdf-copy + .pdf-cut { margin: 0; }
+            /* The cut line, and the only thing between the two copies. */
+            .pdf-cut {
+              height: 9mm; display: flex; align-items: center; gap: 6px;
+              color: #6b7785; font-size: 8px; letter-spacing: 0.12em;
+              text-transform: uppercase; font-weight: 700;
+            }
+            .pdf-cut::before, .pdf-cut::after {
+              content: ''; flex: 1; border-top: 1px dashed #9aa7b4;
+            }
+            /* Which copy this is. Printed at the very top of each half so it
+               survives the cut on whichever piece it belongs to. */
+            .pdf-copy-label {
+              font-size: 8px; font-weight: 800; letter-spacing: 0.14em;
+              text-transform: uppercase; color: #087FBC; text-align: right;
+              margin-bottom: 2mm;
+            }
+            @media print { .pdf-print-btn { display: none; } }`,
+      sheet: { heightMm: 136, widthMm: 194 }
+    };
+  }
   // Half A4 wins over landscape if both are asked for — a receipt is a
   // receipt whatever else was requested.
   if (halfA4) {
@@ -377,9 +447,28 @@ export const pageGeometry = (halfA4: boolean, landscape: boolean): { css: string
  * actually renders, given browsers block popups outside a click.
  */
 export const buildPrintDocument = (
-  { title, body, buttonLabel = 'Print / Save as PDF', framed = false, css = '' }:
-  { title: string; body: string; buttonLabel?: string; framed?: boolean; css?: string }
-): string => `<!DOCTYPE html>
+  { title, body, buttonLabel = 'Print / Save as PDF', framed = false, css = '', copies }:
+  { title: string; body: string; buttonLabel?: string; framed?: boolean; css?: string; copies?: [string, string] }
+): string => {
+  const wrapped = framed ? `<div class="pdf-frame">${body}</div>` : body;
+
+  // One copy, or the same document twice with a cut line between.
+  //
+  // The body is emitted verbatim both times — the two halves must be the same
+  // receipt, not two documents that could drift apart. Only the caption above
+  // each differs, and it is the caption that tells the clerk which half to
+  // hand over.
+  const inner = copies
+    ? `<div class="pdf-copy"><div class="pdf-fit-shell"><div class="pdf-fit">` +
+      `<div class="pdf-copy-label">${escapeHtml(copies[0])}</div>${wrapped}` +
+      `</div></div></div>` +
+      `<div class="pdf-cut">cut here</div>` +
+      `<div class="pdf-copy"><div class="pdf-fit-shell"><div class="pdf-fit">` +
+      `<div class="pdf-copy-label">${escapeHtml(copies[1])}</div>${wrapped}` +
+      `</div></div></div>`
+    : `<div class="pdf-fit-shell"><div class="pdf-fit">${wrapped}</div></div>`;
+
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -390,16 +479,15 @@ export const buildPrintDocument = (
 <body>
 <div class="page">
 <button class="pdf-print-btn" type="button">${escapeHtml(buttonLabel)}</button>
-<div class="pdf-fit-shell"><div class="pdf-fit">
-${framed ? `<div class="pdf-frame">${body}</div>` : body}
-</div></div>
+${inner}
 </div>
 </body>
 </html>`;
+};
 
 export const openPrintDocument = ({
   title, body, buttonLabel = 'Print / Save as PDF', onBlocked, landscape = false, framed = false,
-  halfA4 = false
+  halfA4 = false, copies
 }: OpenPrintOptions): boolean => {
   const win = window.open('', '_blank');
   if (!win) {
@@ -407,9 +495,9 @@ export const openPrintDocument = ({
     return false;
   }
 
-  const { css, sheet } = pageGeometry(halfA4, landscape);
+  const { css, sheet } = pageGeometry(halfA4, landscape, Boolean(copies));
 
-  win.document.write(buildPrintDocument({ title, body, buttonLabel, framed, css }));
+  win.document.write(buildPrintDocument({ title, body, buttonLabel, framed, css, copies }));
   win.document.close();
 
   // The button's handler is attached from here rather than written into the
