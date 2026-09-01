@@ -154,11 +154,20 @@ let seq = 0;
       { academicYear: '2026-2027', month: 'August', amountPaid: 1000 });
     ok('a clerk without manageStaff cannot record a month', noPerm.status === 403, `status ${noPerm.status}`);
 
+    // Staff are one shared registry across the four campuses, so a clerk
+    // pays whoever is in front of them. This asserted a 403 until 2026-09-01.
+    // The salary is still BOOKED against the staff member's own campus, which
+    // is what the assertion below actually checks - widening who may record a
+    // payment must not move which campus's payroll it lands in.
     const tOther = await newTeacher(30000, OTHER);
     const crossCampus = await payMonth(tOther, tokens.clerk,
       { academicYear: '2026-2027', month: 'June', amountPaid: 1000 });
-    ok('a clerk cannot pay staff at another campus', crossCampus.status === 403,
-      `status ${crossCampus.status}`);
+    ok('a clerk may pay staff at another campus', crossCampus.status < 300,
+      `status ${crossCampus.status}: ${(crossCampus.raw || '').slice(0, 160)}`);
+
+    const bookedAt = await Teacher.findOne({ id: tOther }).lean();
+    ok('the payment is booked against the campus the staff member belongs to',
+      bookedAt?.branch === OTHER, `booked at ${bookedAt?.branch}`);
 
     // =================================================================
     section('The year lock');

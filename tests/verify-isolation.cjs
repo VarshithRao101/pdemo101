@@ -148,11 +148,15 @@ const countIn = res => {
     // =================================================================
     section('Everything else stays on its own campus');
 
+    // STAFF LEFT THIS LIST on 2026-09-01, along with the staff-salary read
+    // that is the same records seen from another screen. They joined the
+    // shared registry with students, at the college's request - see THE
+    // SHARED STAFF REGISTRY in server/app.cjs. The money books did not move:
+    // worker payments and expenditure are per-campus ledgers and a clerk
+    // still sees only their own.
     const SCOPED = [
       ['/api/admin2/worker-payments', 'worker payments'],
-      ['/api/admin2/expenditure', 'expenditure'],
-      ['/api/admin1/teachers', 'teachers'],
-      ['/api/admin2/staff-salaries', 'staff salaries']
+      ['/api/admin2/expenditure', 'expenditure']
     ];
     for (const [path, label] of SCOPED) {
       const res = await reqRetry('GET', path, tokens.clerk);
@@ -173,9 +177,25 @@ const countIn = res => {
     const exp = await reqRetry('GET', '/api/admin2/expenditure', tokens.clerk);
     ok(`expenditure: a clerk sees none of the ${otherExpenditure} rows at ${OTHER}`,
       countIn(exp) === 0, `got ${countIn(exp)}`);
+    // Staff are shared, so the OPPOSITE of the expenditure check above holds:
+    // the other campus's staff must be reachable. Asserted only when there is
+    // somebody there to see - on a freshly wiped database there is not, and an
+    // assertion that fails for want of a fixture teaches nobody anything.
     const tch = await reqRetry('GET', '/api/admin1/teachers', tokens.clerk);
-    ok(`teachers: a clerk sees none of the ${otherTeachers} at ${OTHER}`,
-      countIn(tch) === 0, `got ${countIn(tch)}`);
+    if (otherTeachers > 0) {
+      ok(`teachers: a clerk reaches the ${otherTeachers} at ${OTHER}`,
+        campusesIn(tch).includes(OTHER),
+        `saw only: ${campusesIn(tch).join(', ')}`);
+    } else {
+      ok(`teachers: a clerk can read the shared staff registry`,
+        tch.status === 200, `status ${tch.status}`);
+    }
+
+    // Shared does not mean unbounded: a campus that does not exist is still
+    // refused rather than quietly widening the list back to all four.
+    const tchBad = await reqRetry('GET', '/api/admin1/teachers?branch=Nowhere', tokens.clerk);
+    ok('teachers: an unknown campus is still refused', tchBad.status === 400,
+      `status ${tchBad.status}`);
 
     // =================================================================
     section('Asking for another campus');

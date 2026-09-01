@@ -339,6 +339,41 @@ export const admin1Service = {
     return res;
   },
 
+  /**
+   * Take one month's salary back off a staff member's ledger.
+   *
+   * The PIN is not optional here and is not defaulted: the route refuses
+   * without it, and passing it explicitly keeps the failure a clear "wrong
+   * PIN" from the server rather than something this layer guessed at.
+   */
+  async deleteTeacherSalaryMonth(
+    id: string,
+    payload: { academicYear: string; month: string; reason?: string },
+    pin: string
+  ): Promise<{ status: string; message: string; data?: any }> {
+    const res = await apiClient.request<{ status: string; message: string; data?: any }>(
+      `/admin1/teachers/${id}/salary-month`,
+      { method: 'DELETE', body: JSON.stringify(payload), headers: { 'x-security-pin': pin } }
+    );
+    return res;
+  },
+
+  /**
+   * The faculty history log.
+   *
+   * Omit `teacherId` for the whole faculty — which is the only way to see what
+   * happened to somebody who has since been deleted.
+   */
+  async getFacultyHistory(params: { teacherId?: string; kind?: 'all' | 'added' | 'deleted' | 'updated'; limit?: number } = {}): Promise<any[]> {
+    const query = new URLSearchParams();
+    if (params.teacherId) query.set('teacherId', params.teacherId);
+    if (params.kind && params.kind !== 'all') query.set('kind', params.kind);
+    if (params.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    const res = await apiClient.get<{ status: string; data: any[] }>(`/admin1/faculty-history${qs ? `?${qs}` : ''}`);
+    return Array.isArray(res.data) ? res.data : [];
+  },
+
   // Bulletins Desk
   // Admission Enquiries
   async getEnquiries(): Promise<any[]> {

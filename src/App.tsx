@@ -222,6 +222,18 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'a
     }
 
     if (portalRole === 'accountant') {
+      // Faculty is the admin portal's screen, borrowed — the same arrangement
+      // as the Rector and clerks borrowing the accountant's fee collection
+      // above. Staff are one registry across the four campuses now, so an
+      // accountant is entitled to the same roster, and reusing the screen
+      // keeps one implementation of the twelve-month ledger.
+      if (activeTab === 'teachers') {
+        return (
+          <PortalErrorBoundary portalLabel="Accountant Portal — Faculty">
+            <AdminDashboardView role="accountant" restrictTo="teachers" />
+          </PortalErrorBoundary>
+        );
+      }
       return (
         <PortalErrorBoundary portalLabel="Accountant Portal">
           <AccountantDashboardView />

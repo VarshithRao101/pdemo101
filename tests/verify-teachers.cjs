@@ -111,14 +111,23 @@ const teacherBody = (over = {}) => {
     ok('the entry is audited',
       !!await awaitAudit(db, { entityId: body.id }), 'no audit record');
 
-    // A clerk is pinned to its own campus even when it names another. Unlike
-    // students, staff are not a shared register.
-    const pinned = teacherBody({ branch: OTHER });
-    const pinnedRes = await create(tokens.clerk, pinned);
-    const pinnedRow = await Teacher.findOne({ id: pinned.id }).lean();
-    ok('a clerk naming another campus does not file staff there',
-      !pinnedRow || pinnedRow.branch === CAMPUS,
-      `status ${pinnedRes.status}, filed at ${pinnedRow?.branch}`);
+    // Staff joined the SHARED REGISTRY on 2026-09-01, so the campus named on
+    // the form is the campus the record is filed at — for a clerk too.
+    //
+    // This used to assert the opposite, and the old behaviour was worse than
+    // merely restrictive: the campus was silently OVERWRITTEN with the
+    // clerk's own, so a clerk who deliberately chose another campus got a
+    // success and a record filed somewhere they did not choose. Whatever the
+    // rule is, the answer must not disagree with the form.
+    const elsewhere = teacherBody({ branch: OTHER });
+    const elsewhereRes = await create(tokens.clerk, elsewhere);
+    const elsewhereRow = await Teacher.findOne({ id: elsewhere.id }).lean();
+    ok('a clerk may file staff at another campus',
+      elsewhereRes.status < 300 && !!elsewhereRow,
+      `status ${elsewhereRes.status}: ${elsewhereRes.raw.slice(0, 160)}`);
+    ok('the campus named on the form is the campus used',
+      elsewhereRow?.branch === OTHER,
+      `asked for ${OTHER}, filed at ${elsewhereRow?.branch}`);
 
     // =================================================================
     section('Duplicates');
@@ -231,9 +240,24 @@ const teacherBody = (over = {}) => {
     const list = await req('GET', '/api/admin1/teachers', tokens.clerk);
     ok('a clerk can list staff', list.status === 200, `status ${list.status}`);
     const rows = list.json?.data || [];
+
+    // One registry: a clerk sees the other campus's staff too. The row filed
+    // at OTHER a few sections above is the one that must come back.
     const foreign = rows.filter(x => x.branch && x.branch !== CAMPUS);
-    ok('the list holds no other campus', foreign.length === 0,
-      `leaked: ${foreign.map(x => x.branch).join(', ')}`);
+    ok('a clerk sees every campus\'s staff', foreign.length > 0,
+      `only ${CAMPUS} came back, out of ${rows.length} row(s)`);
+
+    // Narrowing still works, and still refuses a campus that does not exist —
+    // a typo must not quietly widen the list back to all four.
+    const narrowed = await req('GET', `/api/admin1/teachers?branch=${encodeURIComponent(OTHER)}`, tokens.clerk);
+    const narrowedRows = narrowed.json?.data || [];
+    ok('a clerk may narrow the list to one campus',
+      narrowed.status === 200 && narrowedRows.length > 0 && narrowedRows.every(x => x.branch === OTHER),
+      `status ${narrowed.status}, campuses: ${[...new Set(narrowedRows.map(x => x.branch))].join(', ')}`);
+
+    const badCampus = await req('GET', '/api/admin1/teachers?branch=Nowhere', tokens.clerk);
+    ok('an unknown campus is refused, not ignored', badCampus.status === 400,
+      `status ${badCampus.status}`);
 
     const adminList = await req('GET', '/api/admin1/teachers', tokens.admin1);
     ok('the Rector sees every campus', (adminList.json?.data || []).length >= rows.length,

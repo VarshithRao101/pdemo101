@@ -349,7 +349,19 @@ const MAX_STUDENT_FEE = 1_000_000; // Rs. 10,00,000
 /** A PIN is six digits and nothing else — strip anything that is not one. */
 const digitsOnlyPin = (value: string) => String(value).replace(/\D/g, '').slice(0, 6);
 
-export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ role = 'admin1' }) => {
+/**
+ * `restrictTo` pins this view to a single module, the same way
+ * AccountantDashboardView's does when a clerk borrows fee collection.
+ *
+ * An ACCOUNTANT borrows the faculty screen through it. Staff are one shared
+ * registry now, so an accountant is entitled to the same roster the Rector
+ * and the clerks see — but they must not land on the Rector's cockpit, and
+ * "Back to Cockpit" has to return them to their own.
+ */
+export const AdminDashboardView: React.FC<{
+  role?: 'admin1' | 'clerk' | 'accountant';
+  restrictTo?: 'teachers';
+}> = ({ role = 'admin1', restrictTo }) => {
   const { user, activeTab: globalActiveTab, setActiveTab } = useNavigation();
   const loggedInCampus = user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1';
 
@@ -365,7 +377,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
 
   const [isLoading, setIsLoading] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
-  const [activePage, setActivePage] = useState<string>('menu');
+  const [activePage, setActivePage] = useState<string>(restrictTo || 'menu');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [, setLivePulseKey] = useState<'students' | 'attendance' | 'bulletins' | 'fees' | 'finance' | null>(null);
   const [securityKey, setSecurityKey] = useState('');
@@ -841,6 +853,24 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   const [staffMonthMode, setStaffMonthMode] = useState('Bank Transfer');
   const [staffMonthNote, setStaffMonthNote] = useState('');
   const [filterStaffClassification, setFilterStaffClassification] = useState('All');
+
+  // --- Faculty history log -------------------------------------------------
+  // Who added or removed a staff record or a month's salary, read from the
+  // append-only audit trail rather than kept here. `facHistoryKind` is the
+  // Added / Deleted switch on the ledger screen.
+  const [facHistory, setFacHistory] = useState<any[]>([]);
+  const [facHistoryKind, setFacHistoryKind] = useState<'all' | 'added' | 'deleted'>('all');
+  const [isFacHistoryLoading, setIsFacHistoryLoading] = useState(false);
+  const [isFacHistoryOpen, setIsFacHistoryOpen] = useState(false);
+
+  // --- Removing a paid month ----------------------------------------------
+  // The month awaiting removal, and the PIN typed to authorise it. The PIN is
+  // component state and is never persisted anywhere.
+  const [monthPendingDelete, setMonthPendingDelete] = useState<string | null>(null);
+  const [deleteMonthPin, setDeleteMonthPin] = useState('');
+  const [deleteMonthReason, setDeleteMonthReason] = useState('');
+  const [deleteMonthError, setDeleteMonthError] = useState('');
+  const [isDeletingMonth, setIsDeletingMonth] = useState(false);
 
   // Notices Composer States
 
@@ -1586,8 +1616,12 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
 
   const fetchTeachers = async () => {
     try {
-      const branchParam = role === 'clerk' ? loggedInCampus : undefined;
-      const data = await admin1Service.getTeachers(branchParam);
+      // No campus parameter. Staff are ONE registry across the four campuses,
+      // the same as students — this used to ask for `loggedInCampus` when a
+      // clerk was signed in, so a clerk could not see, let alone correct, a
+      // record filed at another campus. The screen's own Campus buttons still
+      // narrow the list for whoever wants it narrowed.
+      const data = await admin1Service.getTeachers(undefined);
       if (Array.isArray(data)) {
         const uniqueMap = new Map();
         data.forEach((t: any) => {
@@ -1664,6 +1698,21 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
       setIsLoading(true);
       try {
         const branchParam = role === 'clerk' ? loggedInCampus : undefined;
+
+        // A BORROWED mount fetches only what its one screen reads.
+        //
+        // This list is the whole cockpit's opening load, and an accountant
+        // here for the faculty roster is entitled to none of it: the
+        // expenditure route is admin1/clerk only, so the fetch came back 403
+        // and `fetchExpenditures` put an "access forbidden" toast on screen
+        // before the roster had even rendered. Nothing was broken, but the
+        // first thing the screen did was report a failure at something the
+        // user had not asked for.
+        if (restrictTo === 'teachers') {
+          await Promise.all([fetchWorkerPaymentsHistory(), fetchStaffSalaries()]);
+          return;
+        }
+
         const tasks: Promise<any>[] = [
           fetchStudents('', true), // suppressToast=true: cold-start 404s silently retry
           fetchFeeSettings(branchParam, true),
@@ -3214,14 +3263,10 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
     const currentMonth = new Date().toLocaleString('en-US', { month: 'long' });
 
     const filteredStaff = teachers.filter(t => {
-      // A clerk sees their own campus and nothing else.
-      //
-      // fetchTeachers already asks only for their campus and the server scopes
-      // it again, so this is the third of three. It is here anyway because it
-      // is the cheap one: if either of the other two is ever loosened, a clerk
-      // silently gains sight of every campus's staff and salaries, and nothing
-      // on screen would look wrong.
-      if (role !== 'admin1' && t.branch !== loggedInCampus) return false;
+      // Every staffed role sees every campus's staff. The clerk-only cut that
+      // used to sit here was removed with the campus scoping on the server:
+      // leaving it would have quietly kept the old behaviour on the one screen
+      // that matters while the API said otherwise.
       if (filterFacCampus !== 'All' && t.branch !== filterFacCampus) return false;
       if (filterStaffClassification !== 'All' && (t.classification || 'Teaching') !== filterStaffClassification) return false;
       if (filterFacSubject !== 'All') {
@@ -3283,6 +3328,70 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
       setIsFacOtpModalOpen(true);
     };
 
+    /**
+     * Load the faculty history.
+     *
+     * Called with a teacher for the ledger's own panel, and without one for
+     * the whole-faculty view — which is the only place a deleted staff
+     * member's history can still be read.
+     */
+    const loadFacultyHistory = async (
+      kind: 'all' | 'added' | 'deleted' = facHistoryKind,
+      teacherId?: string
+    ) => {
+      setIsFacHistoryLoading(true);
+      try {
+        const rows = await admin1Service.getFacultyHistory({ teacherId, kind, limit: 100 });
+        setFacHistory(rows);
+      } catch (err: any) {
+        setFacHistory([]);
+        triggerToast(err.message || 'Could not load the faculty history.');
+      } finally {
+        setIsFacHistoryLoading(false);
+      }
+    };
+
+    /**
+     * Remove one paid month from the ledger.
+     *
+     * The PIN is the account's own six-digit sign-in PIN and the server checks
+     * it; a wrong one comes back as the server's own message rather than a
+     * guess made here, so the operator learns whether they mistyped or whether
+     * they are out of attempts.
+     */
+    const handleConfirmDeleteMonth = async () => {
+      if (!editTeacher || !monthPendingDelete) return;
+      if (!/^\d{6}$/.test(deleteMonthPin)) {
+        setDeleteMonthError('Enter your six-digit PIN.');
+        return;
+      }
+      setIsDeletingMonth(true);
+      setDeleteMonthError('');
+      try {
+        const res = await admin1Service.deleteTeacherSalaryMonth(
+          String(editTeacher._id || editTeacher.id),
+          { academicYear: selectedAcademicYear, month: monthPendingDelete, reason: deleteMonthReason.trim() },
+          deleteMonthPin
+        );
+        triggerToast(res.message || `Removed the ${monthPendingDelete} salary.`);
+        setMonthPendingDelete(null);
+        setDeleteMonthPin('');
+        setDeleteMonthReason('');
+        setSelectedStaffMonthForEdit(null);
+        await fetchTeachers();
+        await fetchStaffSalaries();
+        await fetchWorkerPaymentsHistory();
+        // Refresh the panel so the removal it just made is visible in it —
+        // a history that needs a manual refresh to show your own action reads
+        // as the feature not having worked.
+        await loadFacultyHistory(facHistoryKind, String(editTeacher.id || ''));
+      } catch (err: any) {
+        setDeleteMonthError(err.message || 'Could not remove this month.');
+      } finally {
+        setIsDeletingMonth(false);
+      }
+    };
+
     const handleSaveNewStaffMember = async () => {
       if (!newFacName.trim() || !newFacSal.trim() || !newFacMobile.trim()) {
         triggerToast('Please complete Employee Name, Mobile, and Monthly Salary.');
@@ -3336,11 +3445,25 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
       <div style={styles.container} className="anim-slide-up">
         {renderBackgroundDesign('gold')}
         <header style={styles.header}>
-          <button onClick={() => { setActivePage('menu'); setSelectedTeacher(null); setEditTeacher(null); }} style={styles.backArrowBtn} className="press-interactive">
+          {/* A borrowing account (an accountant here for the faculty roster)
+              must land back on ITS OWN cockpit, not the Rector's. Same reason
+              the fee-collection screen moves the global tab when a clerk is
+              borrowing it: this view is only mounted for them while the tab
+              says so, and resetting a local page would leave them stranded. */}
+          <button
+            onClick={() => {
+              setSelectedTeacher(null);
+              setEditTeacher(null);
+              if (restrictTo) { setActiveTab('dashboard'); return; }
+              setActivePage('menu');
+            }}
+            style={styles.backArrowBtn}
+            className="press-interactive"
+          >
             Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Staff & Faculty Registry</h1>
-          <p style={styles.subtitle}>Register teaching & non-teaching staff, track custom roles, and manage 12-month salary ledgers</p>
+          <p style={styles.subtitle}>Register teaching &amp; non-teaching staff across all 4 campuses, track custom roles, and manage 12-month salary ledgers</p>
         </header>
 
         <main style={styles.content}>
@@ -3835,7 +3958,17 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))', gap: '10px' }}>
                     {monthsList.map(mName => {
-                      const mRec: MonthlySalaryRecord = monthRecordFor(editTeacher, selectedAcademicYear, mName)
+                      // The stored record, and separately the placeholder used to
+                      // DRAW an unpaid square. Keeping them apart matters: the
+                      // placeholder carries em-dashes, and the editor below
+                      // seeded its fields from `mRec.paymentMode || ...`, where
+                      // the dash is truthy. So opening an unpaid month pre-filled
+                      // the mode with "—" and saving stored it — every salary
+                      // recorded that way read "via —" on the payslip and in the
+                      // disbursement log. A fallback has to test for a real value,
+                      // not for the truthiness of something drawn on screen.
+                      const stored = monthRecordFor(editTeacher, selectedAcademicYear, mName);
+                      const mRec: MonthlySalaryRecord = stored
                         || { status: 'Unpaid', amountPaid: 0, paymentDate: '—', paymentMode: '—' };
                       const isPaid = isMonthPaid(mRec);
                       const amtPaid = Number(mRec.amountPaid || (isPaid ? editTeacher.salary || 0 : 0));
@@ -3847,11 +3980,11 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                           onClick={() => {
                             if (!canEditFaculty) return;
                             setSelectedStaffMonthForEdit(mName);
-                            setStaffMonthStatus(mRec.status || 'Paid');
+                            setStaffMonthStatus(stored?.status || 'Paid');
                             setStaffMonthAmount(String(amtPaid || editTeacher.salary || 0));
-                            setStaffMonthDate(mRec.paymentDate || todayLocalISO());
-                            setStaffMonthMode(mRec.paymentMode || 'Bank Transfer');
-                            setStaffMonthNote(mRec.note || '');
+                            setStaffMonthDate(stored?.paymentDate || todayLocalISO());
+                            setStaffMonthMode(stored?.paymentMode || 'Bank Transfer');
+                            setStaffMonthNote(stored?.note || '');
                           }}
                           style={{
                             padding: '12px',
@@ -3895,6 +4028,118 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                       );
                     })}
                   </div>
+                </div>
+
+                {/*
+                  SALARY HISTORY.
+
+                  The ledger squares show the CURRENT state — paid or unpaid,
+                  and for how much. They cannot show what was there before, so
+                  a month that was paid and then removed is indistinguishable
+                  from one that was never paid at all. This panel is that
+                  missing half: who added a payment, who took one back, when,
+                  and the reason they gave.
+
+                  Added and Deleted are separate buttons rather than one merged
+                  list because those are the two questions actually asked, and
+                  a removal is easy to miss inside a column of ordinary
+                  payments.
+                */}
+                <div style={{ marginTop: '18px', borderTop: '1.5px solid var(--line)', paddingTop: '14px' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: '0.8571rem', fontWeight: 900, color: 'var(--dark-charcoal)' }}>Salary History</div>
+                      <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)', fontWeight: 700, marginTop: '2px' }}>
+                        Every payment added or removed for this staff member, and the account that did it.
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {([
+                        { key: 'added', label: 'Added' },
+                        { key: 'deleted', label: 'Deleted' },
+                        { key: 'all', label: 'Everything' }
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.key}
+                          onClick={() => {
+                            setFacHistoryKind(opt.key);
+                            setIsFacHistoryOpen(true);
+                            loadFacultyHistory(opt.key, String(editTeacher.id || ''));
+                          }}
+                          style={{
+                            padding: '6px 16px',
+                            borderRadius: '999px',
+                            fontSize: '0.7857rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            border: isFacHistoryOpen && facHistoryKind === opt.key ? '1.5px solid var(--ink)' : '1px solid rgba(0,0,0,0.12)',
+                            backgroundColor: isFacHistoryOpen && facHistoryKind === opt.key ? 'var(--ink)' : '#fff',
+                            color: isFacHistoryOpen && facHistoryKind === opt.key ? 'var(--surface)' : 'var(--dark-charcoal)'
+                          }}
+                          className="press-interactive"
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {isFacHistoryOpen && (
+                    <div style={{ marginTop: '12px' }}>
+                      {isFacHistoryLoading ? (
+                        <div style={{ padding: '18px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '0.8571rem', fontWeight: 700 }}>
+                          Loading history…
+                        </div>
+                      ) : facHistory.length === 0 ? (
+                        <div style={{ padding: '18px', textAlign: 'center', color: 'var(--muted-gray)', fontSize: '0.8571rem', fontWeight: 700 }}>
+                          {/* Says which question came back empty. A bare "no
+                              records" leaves the reader unsure whether nothing
+                              happened or the filter is wrong. */}
+                          {facHistoryKind === 'deleted'
+                            ? 'Nothing has been removed from this staff member\u2019s ledger.'
+                            : facHistoryKind === 'added'
+                              ? 'No salary payments have been recorded for this staff member yet.'
+                              : 'No history recorded for this staff member yet.'}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
+                          {facHistory.map((h: any) => {
+                            const removed = String(h.action || '').endsWith('.delete');
+                            return (
+                              <div
+                                key={String(h._id)}
+                                style={{
+                                  padding: '10px 12px',
+                                  borderRadius: '10px',
+                                  border: '1px solid var(--line)',
+                                  borderLeft: `4px solid ${removed ? 'var(--critical)' : 'var(--good)'}`,
+                                  backgroundColor: removed ? 'var(--critical-wash)' : '#F0FDF4'
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                                  <span style={{
+                                    fontSize: '0.6429rem', fontWeight: 900, textTransform: 'uppercase',
+                                    color: removed ? 'var(--critical)' : 'var(--good)'
+                                  }}>
+                                    {removed ? 'Removed' : 'Added'}
+                                  </span>
+                                  <span style={{ fontSize: '0.6786rem', color: 'var(--muted-gray)', fontWeight: 700 }}>
+                                    {h.createdAt ? new Date(h.createdAt).toLocaleString('en-GB') : ''}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: '0.8214rem', fontWeight: 700, color: 'var(--dark-charcoal)', marginTop: '4px' }}>
+                                  {h.summary}
+                                </div>
+                                <div style={{ fontSize: '0.6786rem', color: 'var(--muted-gray)', fontWeight: 700, marginTop: '4px' }}>
+                                  by {h.actorName || h.actorUsername} ({h.actorUsername}) · {h.actorRole || 'account'}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* MONTH PAYMENT EDITOR (Appears when a month is clicked) */}
@@ -3973,7 +4218,28 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                       />
                     </div>
 
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '12px', justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '12px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      {/* Offered only for a month that is actually paid.
+                          Removing an unpaid month is a no-op the server
+                          refuses, and a button that only ever produces an
+                          error is worse than no button. */}
+                      {isMonthPaid(monthRecordFor(editTeacher, selectedAcademicYear, selectedStaffMonthForEdit)) && (
+                        <button
+                          onClick={() => {
+                            setMonthPendingDelete(selectedStaffMonthForEdit);
+                            setDeleteMonthPin('');
+                            setDeleteMonthReason('');
+                            setDeleteMonthError('');
+                          }}
+                          style={{
+                            ...styles.modalCancelBtn, width: 'auto', padding: '8px 16px',
+                            borderColor: 'var(--critical)', color: 'var(--critical)', fontWeight: 800
+                          }}
+                          className="press-interactive"
+                        >
+                          Remove This Month
+                        </button>
+                      )}
                       <button onClick={() => setSelectedStaffMonthForEdit(null)} style={{ ...styles.modalCancelBtn, width: 'auto', padding: '8px 16px' }} className="press-interactive">Cancel</button>
                       <button onClick={handleSaveStaffMonthPayment} style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '8px 22px' }} className="press-interactive">
                         Save Month Payment
@@ -4164,6 +4430,83 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/*
+            REMOVING A PAID MONTH.
+
+            Its own dialog, and the only faculty action that costs a PIN. Every
+            other confirmation on this screen is a plain yes/no, because every
+            other one either creates a record or can be corrected by editing it
+            again. Taking back a payment that has already been made is the one
+            that rewrites what the college believes it has paid out, so it asks
+            for the same six digits the account signed in with — the server is
+            what checks them, against a bcrypt hash, with a five-guess budget.
+          */}
+          {monthPendingDelete && editTeacher && (
+            <div style={{ ...styles.overlayOverlay, zIndex: 1200 }}>
+              <GlassCard hoverable={false} style={{ width: '100%', maxWidth: '420px', padding: '26px', borderRadius: '16px', border: '1px solid var(--card-border)' }} className="anim-slide-up">
+                <h3 style={{ margin: '0 0 6px', fontWeight: 900, fontSize: '1.0714rem', color: 'var(--critical)' }}>
+                  Remove {monthPendingDelete}&rsquo;s salary?
+                </h3>
+                <p style={{ margin: '0 0 14px', fontSize: '0.8214rem', color: 'var(--muted-gray)', lineHeight: 1.5, fontWeight: 600 }}>
+                  {(() => {
+                    const rec = monthRecordFor(editTeacher, selectedAcademicYear, monthPendingDelete);
+                    const amt = Number(rec?.amountPaid || 0);
+                    return `Rs. ${amt.toLocaleString('en-IN')} recorded for ${editTeacher.name} in ${monthPendingDelete} (${selectedAcademicYear}) will be taken off the ledger and out of the disbursement log. It stays in the salary history, against your name.`;
+                  })()}
+                </p>
+
+                <label style={styles.formLabel}>Reason (optional)</label>
+                <input
+                  type="text"
+                  maxLength={LIMITS.notes}
+                  value={deleteMonthReason}
+                  onChange={(e) => setDeleteMonthReason(e.target.value)}
+                  placeholder="e.g. Entered against the wrong month"
+                  style={{ ...styles.textInputBox, marginBottom: '10px' }}
+                />
+
+                <label style={styles.formLabel}>Your 6-digit PIN</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={deleteMonthPin}
+                  onChange={(e) => { setDeleteMonthPin(e.target.value.replace(/\D/g, '')); setDeleteMonthError(''); }}
+                  placeholder="••••••"
+                  style={{ ...styles.textInputBox, letterSpacing: '0.3em', fontWeight: 900 }}
+                />
+
+                {deleteMonthError && (
+                  <div style={{ marginTop: '8px', fontSize: '0.7857rem', color: 'var(--critical)', fontWeight: 800 }}>
+                    {deleteMonthError}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                  <button
+                    onClick={() => { setMonthPendingDelete(null); setDeleteMonthPin(''); setDeleteMonthReason(''); setDeleteMonthError(''); }}
+                    style={{ ...styles.modalCancelBtn, flex: 1 }}
+                    className="press-interactive"
+                  >
+                    Keep it
+                  </button>
+                  <button
+                    onClick={handleConfirmDeleteMonth}
+                    disabled={isDeletingMonth}
+                    style={{
+                      ...styles.saveSubmitBtn, marginTop: 0, flex: 1.3,
+                      backgroundColor: 'var(--critical)', color: '#FFFFFF', fontWeight: 900,
+                      opacity: isDeletingMonth ? 0.6 : 1
+                    }}
+                    className="press-interactive"
+                  >
+                    {isDeletingMonth ? 'Removing…' : 'Remove Salary'}
+                  </button>
+                </div>
+              </GlassCard>
             </div>
           )}
 
@@ -7509,14 +7852,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                     Clerks screen and the server honours it on every teacher,
                     salary and worker-payment route — but this grid never
                     offered a way in, so granting it did nothing a clerk could
-                    see. The page itself scopes to the clerk's own campus. */}
+                    see. Staff are one registry across the four campuses now,
+                    so the page no longer narrows to the clerk's own. */}
                 {clerkCan('manageStaff') && (
                   <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('teachers'); } }} onClick={() => setActivePage('teachers')} style={styles.moduleCardNew} className="module-card press-interactive">
                     <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
                     </div>
                     <h4 style={styles.moduleTitle}>Faculty Management</h4>
-                    <p style={styles.moduleDesc}>Lecturers, subjects and salaries for {loggedInCampus}.</p>
+                    <p style={styles.moduleDesc}>Lecturers, subjects and salaries across all 4 campuses.</p>
                   </div>
                 )}
 

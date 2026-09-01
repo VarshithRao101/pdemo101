@@ -3645,6 +3645,23 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
               <p style={styles.moduleDesc}>Students with a balance, largest first, with a one-tap WhatsApp reminder.</p>
             </div>
 
+            {/*
+              Faculty Management is the SAME screen the Rector and the clerks
+              use, reached by moving the global tab — App.tsx mounts it for an
+              accountant when the tab says 'teachers'. Staff became one shared
+              registry across the four campuses, so an accountant sees and
+              edits the same roster everyone else does; a second copy of this
+              screen would be a second place for the salary ledger arithmetic
+              to drift.
+            */}
+            <div onClick={() => setActiveTab('teachers')} style={styles.moduleCardNew} className="press-interactive">
+              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M22 11h-4"/></svg>
+              </div>
+              <h4 style={styles.moduleTitle}>Faculty Management</h4>
+              <p style={styles.moduleDesc}>Staff across all 4 campuses, their salary ledgers, and the history of every change.</p>
+            </div>
+
             <div onClick={() => setActiveSubPage('reports')} style={styles.moduleCardNew} className="press-interactive">
               <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--critical)" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>

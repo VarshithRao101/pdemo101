@@ -2107,9 +2107,17 @@ function callerOwnsCampus(req, recordCampus) {
  * are booked and which campus they belong to on the Rector's screens — it
  * simply no longer limits which student they can serve.
  *
- * This is deliberately about STUDENTS only. Expenditures, staff salaries and
- * campus fee settings stay campus-scoped: those are per-campus books, and
- * merging them would make a campus expenditure report meaningless.
+ * STAFF RECORDS JOINED THIS REGISTRY on 2026-09-01, at the college's request
+ * and for the same reason. A lecturer teaches at more than one campus, and the
+ * person standing at a counter asking about their salary is not always at the
+ * campus that happens to hold their record. Hunting for the right campus first
+ * was an obstacle, not a boundary. See `callerReachesAllTeachers` below.
+ *
+ * MONEY BOOKS STAY CAMPUS-SCOPED. Expenditures and campus fee settings are
+ * per-campus ledgers, and merging them would make a campus expenditure report
+ * meaningless. A staff member's `branch` still says which campus they belong
+ * to and which campus their salary is booked against — it simply no longer
+ * decides who may look at them.
  */
 function callerReachesAllStudents(req) {
   const role = normalizeRole(req.user && req.user.role);
@@ -2176,6 +2184,63 @@ function scopedCampusFilter(req, res, label) {
 function callerOwnsStudent(req, studentCampus) {
   if (callerReachesAllStudents(req)) return true;
   return callerOwnsCampus(req, studentCampus);
+}
+
+/**
+ * --- THE SHARED STAFF REGISTRY --------------------------------------------
+ *
+ * The same rule as students, and deliberately the same three roles: the
+ * Rector, every accountant and every clerk reach every staff member at every
+ * campus.
+ *
+ * Before this, a clerk saw only their own campus's staff and a `403 Campus
+ * Isolation Violation` came back if they touched anyone else's — and an
+ * accountant could not reach the faculty routes at all. That made a shared
+ * teacher, or a correction to a record filed at the wrong campus, somebody
+ * else's job to fix.
+ *
+ * What did NOT change: `branch` is still required on every staff record, it
+ * still decides which campus the salary is booked against, and every
+ * expenditure and fee-settings route is still scoped exactly as before.
+ * Widening who may READ and EDIT a staff record does not widen anything else.
+ */
+function callerReachesAllTeachers(req) {
+  const role = normalizeRole(req.user && req.user.role);
+  return role === 'admin1' || role === 'accountant' || role === 'clerk';
+}
+
+/** Mongo filter for a STAFF query. Empty for the shared-registry roles. */
+function teacherScopeFilter(req) {
+  if (callerReachesAllTeachers(req)) return {};
+  return campusScopeFilter(req);
+}
+
+/** Whether this caller may act on a staff member belonging to `teacherCampus`. */
+function callerOwnsTeacher(req, teacherCampus) {
+  if (callerReachesAllTeachers(req)) return true;
+  return callerOwnsCampus(req, teacherCampus);
+}
+
+/**
+ * The campus narrowing a STAFF list may ask for.
+ *
+ * Everyone who reaches the registry may narrow it to one campus with
+ * ?branch=, and asking for a campus that does not exist is still refused —
+ * a typo must not silently return all four. Returns a filter, or null when it
+ * has already answered the request.
+ */
+function teacherListFilter(req, res) {
+  const asked = String(req.query.branch || req.query.campus || '').trim();
+  if (!callerReachesAllTeachers(req)) return campusScopeFilter(req);
+  if (!asked || asked.toLowerCase() === 'all') return {};
+  if (!isValidCampus(asked)) {
+    res.status(400).json({
+      status: 'error',
+      message: `Invalid campus branch [${asked}]. Must be one of: ${VALID_CAMPUSES.join(', ')}`
+    });
+    return null;
+  }
+  return { branch: normalizeCampus(asked) };
 }
 
 // Makes a string safe to interpolate into a RegExp. Any value from a request
@@ -4229,22 +4294,16 @@ app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students
 
 // --- FACULTY / TEACHER ROUTES ---
 
-// GET Teachers list (Admin1 sees all or filtered by branch; Admin2 sees only their assigned campus)
-app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
+// GET Teachers list.
+//
+// One registry across all four campuses - see THE SHARED STAFF REGISTRY above.
+// A clerk was pinned to `req.user.campus` here with no way to widen; now every
+// staffed role sees every staff member and may narrow with ?branch=.
+app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
   try {
     await connectToDatabase();
-    let filter = {};
-    if (req.user.role === 'clerk') {
-      filter.branch = req.user.campus;
-    } else {
-      const { branch } = req.query;
-      if (branch && String(branch).toLowerCase() !== 'all') {
-        if (!isValidCampus(branch)) {
-          return res.status(400).json({ status: 'error', message: `Invalid campus branch [${branch}]. Must be one of: ${VALID_CAMPUSES.join(', ')}` });
-        }
-        filter.branch = String(branch).trim();
-      }
-    }
+    const filter = teacherListFilter(req, res);
+    if (filter === null) return;
     const teachers = await Teacher.find(filter).sort({ createdAt: -1 });
     return res.json({ status: 'success', data: teachers });
   } catch (err) {
@@ -4253,13 +4312,21 @@ app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'],
 });
 
 // CREATE Teacher (Admin1 or Admin2; Requires Security OTP for Admin2 or optional; Admin2 campus locked)
-app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     let { id, name, subject, salary = 0, mobile, email, branch, classification = 'Teaching', role = 'Senior Lecturer' } = req.body || {};
 
-    if (req.user.role === 'clerk' && req.user.campus && req.user.campus !== 'All') {
-      branch = req.user.campus; // Lock campus to admin2's assigned campus
+    // The campus is whatever the form named. It used to be OVERWRITTEN with
+    // the clerk's own campus, which silently filed a staff member somewhere
+    // other than where the person entering them was told they were going. In a
+    // shared registry the campus is a property of the staff member, not of
+    // whoever is at the keyboard. It is still REQUIRED and still validated
+    // below - a campus-less staff record has no salary book to sit in - so the
+    // fallback applies only when the form named none and the caller belongs to
+    // exactly one campus.
+    if (!branch && req.user.campus && req.user.campus !== 'All') {
+      branch = req.user.campus;
     }
 
     // Refused, never substituted — the same reasoning as the expenditure
@@ -4394,7 +4461,7 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
 });
 
 // UPDATE Teacher
-app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
+app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4405,8 +4472,8 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
       return res.status(404).json({ status: 'error', message: 'Teacher record not found.' });
     }
 
-    if (req.user.role === 'clerk' && String(teacher.branch || '').toLowerCase().trim() !== String(req.user.campus || '').toLowerCase().trim()) {
-      return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot modify staff at [${teacher.branch}].` });
+    if (!callerOwnsTeacher(req, teacher.branch)) {
+      return res.status(403).json({ status: 'error', message: `Access forbidden. Staff member belongs to campus [${teacher.branch}].` });
     }
 
     // Mobile validation on teacher edit
@@ -4482,7 +4549,7 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
 });
 
 // DELETE Teacher (Requires Security OTP; Campus Isolation for Admin2)
-app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4494,8 +4561,8 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
       return res.status(404).json({ status: 'error', message: 'Teacher record not found.' });
     }
 
-    if (req.user.role === 'clerk' && String(teacher.branch || '').toLowerCase().trim() !== String(req.user.campus || '').toLowerCase().trim()) {
-      return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot delete staff at [${teacher.branch}].` });
+    if (!callerOwnsTeacher(req, teacher.branch)) {
+      return res.status(403).json({ status: 'error', message: `Access forbidden. Staff member belongs to campus [${teacher.branch}].` });
     }
 
     // Marked, not removed — restorable from Recently Deleted. The follow-up
@@ -4531,7 +4598,7 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
 });
 
 // 12-MONTH SALARY LEDGER & YEAR-LOCK PAYMENTS ROUTE
-app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
+app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4542,8 +4609,8 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
       return res.status(404).json({ status: 'error', message: 'Teacher not found.' });
     }
 
-    if (req.user.role === 'clerk' && String(teacher.branch || '').toLowerCase().trim() !== String(req.user.campus || '').toLowerCase().trim()) {
-      return res.status(403).json({ status: 'error', message: `Campus Isolation Violation: Admin2 at [${req.user.campus}] cannot modify staff at [${teacher.branch}].` });
+    if (!callerOwnsTeacher(req, teacher.branch)) {
+      return res.status(403).json({ status: 'error', message: `Access forbidden. Staff member belongs to campus [${teacher.branch}].` });
     }
 
     const { academicYear = '2026-2027', month, amountPaid, paymentMode = 'Bank Transfer', note = '' } = req.body || {};
@@ -4674,6 +4741,212 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
     });
 
     return res.json({ status: 'success', message: `Salary payment recorded for ${teacher.name} - ${month} (${academicYear})`, data: teacher });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+
+/**
+ * REMOVE one month's salary from a staff member's ledger.
+ *
+ * Taking a payment back is not the same kind of act as recording one, so it
+ * does not share the recording route:
+ *
+ *   - It ALWAYS costs the caller's own six-digit PIN, the same one they signed
+ *     in with. `verifySecurityOtp` checks it against a bcrypt hash of that
+ *     account's PIN and gives it the same five-guess budget as the login, so
+ *     someone who walks up to an unlocked machine cannot quietly erase a
+ *     month's payroll. The PIN travels as the `x-security-pin` header.
+ *   - It refuses a month that was never paid, rather than reporting success
+ *     for having done nothing. "Deleted" and "there was nothing there" look
+ *     identical on screen otherwise, and only one of them is worth acting on.
+ *   - It withdraws the matching WorkerPayment row in the same breath. That row
+ *     is what the Disbursement History tab lists and what the campus payroll
+ *     totals add up; leaving it behind would show a payment that the ledger
+ *     no longer contains, and the two screens would disagree about how much
+ *     the college had paid out.
+ *
+ * The audit entry is the point of the whole feature: who removed it, from
+ * whom, for which month, how much, and the reason they typed.
+ */
+app.delete(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, verifySecurityOtp, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { id } = req.params;
+    const isObjId = isValidObjectId(id);
+    const teacher = await Teacher.findOne({ $or: [{ _id: isObjId ? id : null }, { id }] });
+
+    if (!teacher) {
+      return res.status(404).json({ status: 'error', message: 'Staff member not found.' });
+    }
+
+    if (!callerOwnsTeacher(req, teacher.branch)) {
+      return res.status(403).json({ status: 'error', message: `Access forbidden. Staff member belongs to campus [${teacher.branch}].` });
+    }
+
+    const academicYear = String((req.body && req.body.academicYear) || ACADEMIC_YEARS[0]).trim();
+    const month = String((req.body && req.body.month) || '').trim();
+    const reason = String((req.body && req.body.reason) || '').trim().slice(0, 200);
+
+    if (!LEDGER_MONTHS.includes(month)) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Name the month to remove. Must be one of: ${LEDGER_MONTHS.join(', ')}.`
+      });
+    }
+    if (!ACADEMIC_YEARS.includes(academicYear)) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Unknown academic year [${academicYear}].`
+      });
+    }
+
+    // Read the record BEFORE removing it: the amount and the payment date are
+    // what the audit entry has to preserve, and after the delete there is
+    // nowhere left to read them from.
+    const ledger = teacher.salaryLedger || {};
+    const existing = (ledger[academicYear] && ledger[academicYear][month]) || null;
+    const wasPaid = !!existing && (existing.status === 'Paid' || existing.paid === true);
+
+    if (!wasPaid) {
+      return res.status(400).json({
+        status: 'error',
+        message: `${month} ${academicYear} is not recorded as paid for ${teacher.name}, so there is nothing to remove.`
+      });
+    }
+
+    const removedAmount = Number(existing.amountPaid || 0);
+    const removedOn = existing.paymentDate || '';
+    const removedMode = existing.paymentMode || '';
+
+    if (ledger[academicYear]) delete ledger[academicYear][month];
+    teacher.salaryLedger = ledger;
+
+    // The year-less legacy map is only cleared when it is describing THIS
+    // payment. It carries no year, so a later year's payment for the same
+    // month may be sitting in it, and blanking that would mark a month unpaid
+    // that genuinely was paid.
+    const legacy = teacher.monthlySalaries || {};
+    const legacyRec = legacy[month];
+    const legacyMatches = legacyRec
+      && Number(legacyRec.amountPaid || 0) === removedAmount
+      && String(legacyRec.paymentDate || '') === String(removedOn);
+    if (legacyMatches) delete legacy[month];
+    teacher.monthlySalaries = legacy;
+
+    teacher.markModified('salaryLedger');
+    teacher.markModified('monthlySalaries');
+    await teacher.save();
+
+    // Withdraw the disbursement row this payment created, so the History tab
+    // and the payroll totals agree with the ledger. Matched on the same
+    // `monthPeriod` string the paying route writes.
+    let withdrawnPayments = 0;
+    try {
+      withdrawnPayments = await WorkerPayment.softDelete(
+        { workerName: teacher.name, branch: teacher.branch, monthPeriod: `${month} (${academicYear})` },
+        { by: req.user.username, reason: reason || `Salary for ${month} ${academicYear} removed` }
+      );
+    } catch (wpErr) {
+      // The ledger is the record of truth and it is already correct. A failure
+      // to withdraw the history row is worth knowing about but must not turn a
+      // completed removal into an error the caller will retry.
+      console.error('[Salary]: could not withdraw the disbursement row:', wpErr.message);
+    }
+
+    recordAudit(req, {
+      action: 'salary.delete',
+      entityType: 'teacher',
+      entityId: teacher.id,
+      entityLabel: `${teacher.name} (${teacher.id})`,
+      campus: teacher.branch,
+      amount: removedAmount,
+      summary: `Removed the ${month} ${academicYear} salary of Rs. ${removedAmount.toLocaleString('en-IN')} `
+        + `from ${teacher.name} (${teacher.id}) at ${teacher.branch}.`
+        + (reason ? ` Reason: ${reason}` : ''),
+      details: {
+        month,
+        academicYear,
+        removedAmount,
+        originalPaymentDate: removedOn,
+        originalPaymentMode: removedMode,
+        reason,
+        withdrawnPayments
+      }
+    });
+
+    return res.json({
+      status: 'success',
+      message: `Removed the ${month} (${academicYear}) salary of Rs. ${removedAmount.toLocaleString('en-IN')} from ${teacher.name}.`,
+      data: teacher
+    });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+
+/**
+ * The faculty history log.
+ *
+ * Every staff record change and every salary movement, newest first, read out
+ * of the same append-only audit trail the rest of the system writes to. It is
+ * a separate READ rather than a separate collection deliberately: a second log
+ * would be a second thing to keep in step, and the trail already records who
+ * did it, when, from where, and against which campus.
+ *
+ * `?teacherId=` narrows it to one person for the ledger screen. Without it the
+ * whole faculty history comes back — which is the only way to see what
+ * happened to a staff member who has since been deleted, and therefore the
+ * question this log most needs to answer.
+ *
+ * Campus is NOT narrowed by the caller: staff are one shared registry, so a
+ * history that hid another campus's entries would describe a different system
+ * from the one the same account can see on the roster.
+ */
+app.get(['/api/admin1/faculty-history', '/api/admin2/faculty-history'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
+  try {
+    await connectToDatabase();
+
+    const filter = { entityType: 'teacher' };
+
+    const teacherId = String(req.query.teacherId || '').trim();
+    if (teacherId) filter.entityId = teacherId;
+
+    // 'added' and 'deleted' are the two the ledger screen offers as buttons.
+    // The actions behind each are listed here rather than in the browser, so
+    // adding an action later does not need the bundle rebuilt to be counted.
+    const kind = String(req.query.kind || 'all').trim().toLowerCase();
+    const KINDS = {
+      added: ['teacher.create', 'salary.pay'],
+      deleted: ['teacher.delete', 'salary.delete'],
+      updated: ['teacher.update', 'salary.update']
+    };
+    if (kind !== 'all') {
+      if (!KINDS[kind]) {
+        return res.status(400).json({
+          status: 'error',
+          message: `Unknown history kind [${kind}]. Use one of: all, ${Object.keys(KINDS).join(', ')}.`
+        });
+      }
+      filter.action = { $in: KINDS[kind] };
+    }
+
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
+
+    // Tiebroken on _id for the same reason the main log is: audit rows are
+    // written in bursts and share a millisecond readily.
+    const entries = await AuditLog.find(filter)
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limit)
+      .lean();
+
+    return res.json({
+      status: 'success',
+      data: entries,
+      meta: { total: entries.length, limit, kind, teacherId: teacherId || null }
+    });
   } catch (err) {
     return failRequest(req, res, err);
   }
@@ -5003,7 +5276,11 @@ app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1
 
 // --- WORKER PAYMENT ROUTES ---
 
-app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
+// Readable by an accountant as well: the Disbursement Payment History Log is
+// a tab ON the faculty screen, which accountants reach now that staff are one
+// shared registry. It stays CAMPUS-SCOPED for everyone - this is a per-campus
+// payroll book, and widening who may read it must not merge the books.
+app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
   try {
     await connectToDatabase();
     const filter = scopedCampusFilter(req, res, 'worker payments');
@@ -7223,7 +7500,7 @@ app.get(['/api/admin1/students/:studentId/fee-breakdown', '/api/admin2/students/
 // Was returning every teacher at every campus to any signed-in caller.
 app.get('/api/admin2/staff-salaries', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
   try {
-    const teachers = await Teacher.find(campusScopeFilter(req)).lean();
+    const teachers = await Teacher.find(teacherScopeFilter(req)).lean();
     return res.json({ status: 'success', data: teachers });
   } catch (err) {
     console.error('[StaffSalaries]: List failed:', err.message);
@@ -7443,7 +7720,7 @@ const ACADEMIC_SECTIONS = ['MPC-A', 'MPC-B', 'BiPC-A', 'BiPC-B', 'MEC-A', 'CEC-A
 
 app.get('/api/admin1/sections', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
-    const teachers = await Teacher.find(campusScopeFilter(req)).lean();
+    const teachers = await Teacher.find(teacherScopeFilter(req)).lean();
     return res.json({ status: 'success', data: { sections: ACADEMIC_SECTIONS, teachers } });
   } catch (err) {
     console.error('[Sections]: Load failed:', err.message);
