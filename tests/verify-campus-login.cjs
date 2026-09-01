@@ -49,7 +49,7 @@ async function clearLocks() {
   const app = require('../server/app.cjs');
   await new Promise(r => { server = app.listen(process.env.PORT, r); });
   BASE = `http://127.0.0.1:${process.env.PORT}`;
-  await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 20000 });
+  await mongoose.connect(process.env.MONGODB_URI, { dbName: process.env.DB_NAME || 'jc_erp_prod', serverSelectionTimeoutMS: 20000 });
   User = require('../server/models/User.cjs');
 
   console.log('\n========================================================');

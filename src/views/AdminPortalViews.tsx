@@ -1,3 +1,4 @@
+import { todayLocalISO } from '../utils/localDate';
 import React, { useState, useEffect } from 'react';
 import { LIMITS, validateMobile, digitsOnly } from '../constants/fieldLimits';
 import { CAMPUS_LIST } from '../constants/campuses';
@@ -866,7 +867,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   const [_reportsData, setReportsData] = useState<any>(null); // kept for fetchReports compat
 
   // Attendance marking states (moved from accountant portal)
-  const [attendanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [attendanceDate] = useState(todayLocalISO());
 
   // Manual timetable scheduling states
 
@@ -880,7 +881,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
   const [customExpCat, setCustomExpCat] = useState('');
   const [newExpAmt, setNewExpAmt] = useState('');
   const [newExpDesc, setNewExpDesc] = useState('');
-  const [newExpDate, setNewExpDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newExpDate, setNewExpDate] = useState(todayLocalISO());
   const [pendingExpDelete, setPendingExpDelete] = useState<ExpenditureItem | null>(null);
   const [isExpDeleteOtpOpen, setIsExpDeleteOtpOpen] = useState(false);
   const [, setExpDeleteOtpInput] = useState('');
@@ -3156,7 +3157,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                   </div>
                   <h3 style={{ ...styles.modalHeading, color: 'var(--critical)' }}>Confirm Student Deletion</h3>
                   <p style={styles.modalSubText}>
-                    Are you sure you want to permanently delete student <strong>{editStudent.name}</strong> ({editStudent.admissionNumber || editStudent.studentId}) from the system?
+                    {/* Says what the server does. Deleting a student has been a
+                        SOFT delete since the recycle bin was added — the record and
+                        its receipts are marked, hidden everywhere, and restorable
+                        for 30 days. Three dialogs still promised permanent removal,
+                        which is wrong twice over: staff avoid correcting a mistake
+                        they are told is irreversible, and anyone deleting a record
+                        to get rid of it believes it is gone when it is not. */}
+                    Remove student <strong>{editStudent.name}</strong> ({editStudent.admissionNumber || editStudent.studentId}) from the live records? Their receipts go with them. You can put them back from Recently Deleted for the next 30 days.
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -3166,7 +3174,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                     style={{ ...styles.modalConfirmBtn, backgroundColor: 'var(--critical)', color: '#FFF', opacity: 1 }}
                     className="press-interactive"
                   >
-                    Yes, Purge Student
+                    Yes, Delete Student
                   </button>
                 </div>
               </GlassCard>
@@ -3190,8 +3198,20 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
     // and no other.
     if (role !== 'admin1' && !clerkCan('manageStaff')) { setActivePage('menu'); return null; }
 
-    const monthsList = ["June", "July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May"];
-    const currentMonth = "July";
+    const monthsList = LEDGER_MONTHS;
+
+    // The calendar month we are actually in.
+    //
+    // This was pinned to the literal "July". Everything on this screen that
+    // says "this month" read it: the Salary Given This Month card, the
+    // Paid/Unpaid badge on every staff row, and the Download Payslip button.
+    // So from August onwards a salary paid in the current month showed as
+    // unpaid and the payslip came out for July — every year, silently.
+    //
+    // en-US is pinned deliberately: the name has to match LEDGER_MONTHS,
+    // which is written in English, and the browser's locale must not decide
+    // whether a lookup succeeds.
+    const currentMonth = new Date().toLocaleString('en-US', { month: 'long' });
 
     const filteredStaff = teachers.filter(t => {
       // A clerk sees their own campus and nothing else.
@@ -3290,7 +3310,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
         email: newFacEmail.trim(),
         branch: targetBranch,
         status: 'Active',
-        joiningDate: new Date().toISOString().split('T')[0]
+        joiningDate: todayLocalISO()
       };
 
       setIsProcessingUpload(true);
@@ -3829,7 +3849,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                             setSelectedStaffMonthForEdit(mName);
                             setStaffMonthStatus(mRec.status || 'Paid');
                             setStaffMonthAmount(String(amtPaid || editTeacher.salary || 0));
-                            setStaffMonthDate(mRec.paymentDate || new Date().toISOString().split('T')[0]);
+                            setStaffMonthDate(mRec.paymentDate || todayLocalISO());
                             setStaffMonthMode(mRec.paymentMode || 'Bank Transfer');
                             setStaffMonthNote(mRec.note || '');
                           }}
@@ -4157,7 +4177,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
                     {facActionType === 'add' ? `Are you sure you want to register faculty member "${newFacName}"?` :
                      facActionType === 'edit' ? `Are you sure you want to save credentials for faculty member "${editTeacher?.name}"?` :
                      facActionType === 'delete' ? `Are you sure you want to delete faculty record for "${editTeacher?.name || selectedTeacher?.name}"?` :
-                     `Are you sure you want to record salary payment of Rs. ${(staffMonthAmount || editTeacher?.salary || selectedTeacher?.salary || 0).toLocaleString('en-IN')} for ${selectedStaffMonthForEdit} (${selectedAcademicYear})?`}
+                     `Are you sure you want to record salary payment of Rs. ${Number(staffMonthAmount || editTeacher?.salary || selectedTeacher?.salary || 0).toLocaleString('en-IN')} for ${selectedStaffMonthForEdit} (${selectedAcademicYear})?`}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
@@ -5484,7 +5504,14 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
             Back to Cockpit
           </button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Admission Enquiries Desk</h1>
-          <p style={styles.subtitle}>Real-time prospective student enquiries submitted via portfolio admission form across all 4 campuses.</p>
+          {/* A clerk's list is campus-scoped by the server, so telling them it
+              spans all four campuses described someone else's screen and made
+              an empty list look like a fault. Say what this account sees. */}
+          <p style={styles.subtitle}>
+            {role === 'admin1'
+              ? 'Real-time prospective student enquiries submitted via portfolio admission form across all 4 campuses.'
+              : `Real-time prospective student enquiries submitted via the portfolio admission form for ${loggedInCampus}.`}
+          </p>
         </header>
 
         <main style={{ ...styles.content, gap: '16px' }}>
@@ -6172,7 +6199,7 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
           category: finalCategory,
           amount: Number(newExpAmt),
           description: newExpDesc,
-          date: newExpDate || new Date().toISOString().split('T')[0]
+          date: newExpDate || todayLocalISO()
         } as any, targetBranch);
         setNewExpAmt(''); setNewExpDesc(''); setCustomExpCat('');
         setIsExpOtpOpen(false); setExpOtpInput('');
@@ -7605,15 +7632,15 @@ export const AdminDashboardView: React.FC<{ role?: 'admin1' | 'clerk' }> = ({ ro
               <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'rgba(239,68,68,0.1)', color: 'var(--critical)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', fontSize: '1.4286rem', fontWeight: 900 }}>!</div>
               <h3 style={{ margin: '0 0 6px', fontWeight: 900, fontSize: '1.1429rem', color: 'var(--critical)' }}>Confirm Permanent Student Deletion</h3>
               <p style={{ margin: 0, fontSize: '0.8929rem', color: 'var(--dark-charcoal)', lineHeight: 1.5, fontWeight: 600 }}>
-                Are you sure you want to <strong>PERMANENTLY DELETE</strong> student record for <strong style={{ color: 'var(--critical)' }}>{selectedStudent.name}</strong> ({selectedStudent.admissionNumber}) from MongoDB and all portal databases?
+                Remove the student record for <strong style={{ color: 'var(--critical)' }}>{selectedStudent.name}</strong> ({selectedStudent.admissionNumber}) from the live records, along with their receipts?
               </p>
               <div style={{ marginTop: '8px', padding: '6px 10px', backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: '8px', fontSize: '0.75rem', color: 'var(--critical)', fontWeight: 700 }}>
-                THIS ACTION CANNOT BE UNDONE.
+                Recoverable from Recently Deleted for 30 days, after which it is permanent.
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => { setIsDeleteStuOtpOpen(false); setDeleteStuOtpInput(''); }} style={{ ...styles.modalCancelBtn, flex: 1 }} className="press-interactive">Cancel</button>
-              <button onClick={() => handlePermanentDeleteStudent()} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.2, backgroundColor: 'var(--critical)', color: '#FFF', fontWeight: 900 }} className="press-interactive">Yes, Purge Student</button>
+              <button onClick={() => handlePermanentDeleteStudent()} style={{ ...styles.saveSubmitBtn, marginTop: 0, flex: 1.2, backgroundColor: 'var(--critical)', color: '#FFF', fontWeight: 900 }} className="press-interactive">Yes, Delete Student</button>
             </div>
           </div>
         </div>

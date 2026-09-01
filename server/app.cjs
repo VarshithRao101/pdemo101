@@ -925,6 +925,23 @@ const VALID_STUDENT_YEARS = ['First Year', 'Second Year', 'Short Term'];
 // once the one before it has all twelve months paid — enforced on the
 // salary-month route, not merely shown in the dropdown.
 const ACADEMIC_YEARS = ['2026-2027', '2027-2028', '2028-2029', '2029-2030'];
+/**
+ * Today's date at the college, as YYYY-MM-DD.
+ *
+ * The host runs on UTC and the college is on IST (UTC+5:30), so
+ * `new Date().toISOString().split('T')[0]` — what this used to be — returns
+ * YESTERDAY for everything recorded between midnight and 5:30 in the morning
+ * local time. A salary stamped with the wrong day lands in the wrong day's
+ * books, and nothing on screen says so.
+ *
+ * en-CA is the locale that formats as YYYY-MM-DD; the time zone is what
+ * actually matters here and is pinned explicitly rather than inherited from
+ * whatever the host happens to be set to.
+ */
+function collegeDateISO() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+}
+
 const LEDGER_MONTHS = [
   'June', 'July', 'August', 'September', 'October', 'November',
   'December', 'January', 'February', 'March', 'April', 'May'
@@ -4615,7 +4632,7 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
       });
     }
 
-    const pDate = new Date().toISOString().split('T')[0];
+    const pDate = collegeDateISO();
 
     const monthRecord = {
       status: 'Paid',

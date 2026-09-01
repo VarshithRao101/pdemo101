@@ -1,3 +1,4 @@
+import { todayLocalISO } from '../utils/localDate';
 import React, { useState, useEffect, useRef } from 'react';
 import { LIMITS, validateMobile, digitsOnly } from '../constants/fieldLimits';
 import {
@@ -518,7 +519,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
   const [collectCategory, setCollectCategory] = useState('Tuition Fee');
   const [collectMode, setCollectMode] = useState('UPI / NetBanking');
   const [collectTransactionRef, setCollectTransactionRef] = useState('');
-  const [collectDate, setCollectDate] = useState(new Date().toISOString().split('T')[0]);
+  const [collectDate, setCollectDate] = useState(todayLocalISO());
   const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
 
   // Undoing a payment. The receipt being reversed, the reason it is being
@@ -1970,19 +1971,19 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
         <div style={{ ...styles.overlayOverlay, zIndex: 1300 }}>
           <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--critical)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ ...styles.modalTitle, color: 'var(--critical)' }}>Confirm Permanent Deletion</h3>
+              <h3 style={{ ...styles.modalTitle, color: 'var(--critical)' }}>Confirm Student Deletion</h3>
               <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); setDeleteOtpInput(''); }} style={{ background: 'none', border: 'none', fontSize: '1.2857rem', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
             </div>
             <p style={{ fontSize: '0.9286rem', color: 'var(--ink-secondary)', lineHeight: 1.5, marginBottom: '14px' }}>
-              Are you sure you want to permanently delete student <strong>{studentToDelete.name}</strong> (Adm No: <strong>{studentToDelete.admissionNumber || studentToDelete.studentId}</strong>)?
+              Remove student <strong>{studentToDelete.name}</strong> (Adm No: <strong>{studentToDelete.admissionNumber || studentToDelete.studentId}</strong>) from the live records?
               <br /><br />
               <span style={{ color: 'var(--critical)', fontWeight: 700 }}>
-                This purges the student record permanently from MongoDB and all portal databases. Cannot be undone.
+                Their receipts are removed with them. The Rector can put both back from Recently Deleted for the next 30 days.
               </span>
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => { setIsDeleteConfirmModalOpen(false); setStudentToDelete(null); setDeleteOtpInput(''); }} style={{ flex: 1, padding: '10px', border: '1px solid var(--line-strong)', backgroundColor: 'var(--surface-sunken)', color: 'var(--ink-secondary)', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleDeleteStudentConfirm} style={{ flex: 1.5, padding: '10px', border: 'none', backgroundColor: 'var(--critical)', color: 'var(--surface)', borderRadius: '10px', fontWeight: 900, cursor: 'pointer' }} className="press-interactive">Yes, Permanently Delete</button>
+              <button onClick={handleDeleteStudentConfirm} style={{ flex: 1.5, padding: '10px', border: 'none', backgroundColor: 'var(--critical)', color: 'var(--surface)', borderRadius: '10px', fontWeight: 900, cursor: 'pointer' }} className="press-interactive">Yes, Delete Student</button>
             </div>
           </div>
         </div>
@@ -2381,7 +2382,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                         const fullProfile = await accountantService.getStudentProfile(s._id || s.studentId || s.admissionNumber);
                         setSelectedStudent(fullProfile as any);
                         setEditStudent({ ...fullProfile } as any);
-                        setCollectDate(new Date().toISOString().split('T')[0]);
+                        setCollectDate(todayLocalISO());
                         triggerToast(`Loaded fee details for ${fullProfile.name}`);
                       } catch {
                         triggerToast('Failed to load profile.');
@@ -2518,7 +2519,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                     Edit Student
                   </button>
                   <button
-                    onClick={() => { setSelectedStudent(null); setEditStudent(null); setCollectDate(new Date().toISOString().split('T')[0]); }}
+                    onClick={() => { setSelectedStudent(null); setEditStudent(null); setCollectDate(todayLocalISO()); }}
                     style={{ ...styles.actionItemBtn, border: '1px solid rgba(0,0,0,0.1)', color: 'var(--muted-gray)' }}
                     className="press-interactive"
                   >
@@ -2757,12 +2758,30 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
                           <label style={styles.formLabel}>Category</label>
                           <select value={collectCategory} onChange={(e) => setCollectCategory(e.target.value)} style={styles.selectInput}>
-                            {getActiveFeeSlots(selectedStudent).map(s => (
-                              <option key={s.id} value={s.name}>{s.name}</option>
-                            ))}
-                            <option value="Tuition Fee">Tuition Fee</option>
-                            <option value="Hostel Fee">Hostel Fee</option>
-                            <option value="Miscellaneous Fee">Miscellaneous Fee</option>
+                            {/* The three standing categories are a FALLBACK for a
+                                student with no slots configured. They used to be
+                                appended unconditionally, so a student who has a
+                                Tuition Fee slot — which is most of them — got
+                                "Tuition Fee" listed twice. Harmless to submit,
+                                since both carry the same value, but a duplicated
+                                option in a money form reads as a broken screen.
+                                Offer each name once. */}
+                            {(() => {
+                              const slots = getActiveFeeSlots(selectedStudent);
+                              const seen = new Set(slots.map(s => s.name));
+                              const standing = ['Tuition Fee', 'Hostel Fee', 'Miscellaneous Fee']
+                                .filter(name => !seen.has(name));
+                              return (
+                                <>
+                                  {slots.map(s => (
+                                    <option key={s.id} value={s.name}>{s.name}</option>
+                                  ))}
+                                  {standing.map(name => (
+                                    <option key={name} value={name}>{name}</option>
+                                  ))}
+                                </>
+                              );
+                            })()}
                           </select>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
@@ -3199,7 +3218,18 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={styles.metaRow}><span>Receipt Number:</span><strong>{selectedReceipt.receiptNumber}</strong></div>
-                    <div style={styles.metaRow}><span>Payment Date:</span><strong>{selectedReceipt.date}</strong></div>
+                    {/* Formatted, not printed raw. This was the one place the
+                        stored value reached the page untouched, so the receipt
+                        a parent is shown and hands back read
+                        "2026-08-31T00:00:00.000Z". The same defensive parse as
+                        buildReceiptMessage: print what we were given rather
+                        than put "Invalid Date" on a receipt. */}
+                    <div style={styles.metaRow}><span>Payment Date:</span><strong>{(() => {
+                      const parsed = new Date(selectedReceipt.date as any);
+                      return isNaN(parsed.getTime())
+                        ? String(selectedReceipt.date || '')
+                        : parsed.toLocaleDateString('en-GB');
+                    })()}</strong></div>
                     <div style={styles.metaRow}><span>Student Name:</span><strong>{selectedStudent.name}</strong></div>
                     <div style={styles.metaRow}><span>Admission No:</span><strong>{selectedStudent.admissionNumber}</strong></div>
                     <div style={styles.metaRow}><span>Fee Category:</span><strong>{selectedReceipt.category}</strong></div>

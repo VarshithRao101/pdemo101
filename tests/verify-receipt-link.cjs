@@ -64,8 +64,21 @@ const req = (method, path, { token, body, form } = {}) => new Promise((resolve, 
     const students = list.json?.data || [];
     ok('list is not empty', students.length > 0, `${students.length} students`);
 
-    const withReceipts = students.filter(s => (s.receipts || []).length > 0);
-    ok('some students have receipts', withReceipts.length > 0, `${withReceipts.length} students`);
+    // Receipts come from the DETAIL route, not the list.
+    //
+    // `receipts` and `yearHistory` were deliberately projected out of list
+    // responses (STUDENT_LIST_OMIT in server/app.cjs) — they were a quarter of
+    // the payload and only single-student screens read them. This suite still
+    // filtered the LIST on `s.receipts`, so it found none and reported
+    // "0 students have receipts" against a database full of them: a red suite
+    // describing an optimisation, not a fault. Fetch each student properly.
+    const withReceipts = [];
+    for (const row of students) {
+      const detail = await req('GET', `/api/accountant/students/${row.studentId}`, { token });
+      const full = detail.json?.data;
+      if (full && (full.receipts || []).length > 0) withReceipts.push(full);
+    }
+    ok('some students have receipts', withReceipts.length > 0, `${withReceipts.length} of ${students.length} students`);
 
     let total = 0, tokened = 0;
     for (const s of withReceipts) {
@@ -147,10 +160,16 @@ const req = (method, path, { token, body, form } = {}) => new Promise((resolve, 
     ok('detail endpoint agrees with the list', detailTokens.length > 0 && detailTokens.every(Boolean));
     ok('same receipt, same token', detailTokens[0] === withReceipts[0].receipts[0].receiptToken);
 
-    // Nothing was written to store it.
-    const again = await req('GET', '/api/accountant/students', { token });
-    const t2 = (again.json?.data || []).find(s => s.studentId === withReceipts[0].studentId)?.receipts?.[0]?.receiptToken;
-    ok('token is stable across requests (derived, not random)', t2 === sample.receiptToken);
+    // Nothing was written to store it: read the same receipt a second time,
+    // through the detail route, and the token must come back identical.
+    //
+    // This used to re-read the LIST, which no longer carries `receipts` — so
+    // it compared a real token against `undefined` and failed every run, on a
+    // property that line 161 has already shown to hold.
+    const again = await req('GET', `/api/accountant/students/${withReceipts[0].studentId}`, { token });
+    const t2 = (again.json?.data?.receipts || [])
+      .find(r => r.receiptNumber === sample.receiptNumber)?.receiptToken;
+    ok('token is stable across requests (derived, not random)', !!t2 && t2 === sample.receiptToken);
 
     console.log(`\n  ${pass} passed, ${fail} failed\n`);
   } catch (err) {

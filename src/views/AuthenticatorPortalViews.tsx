@@ -529,7 +529,13 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <GlassCard hoverable={false} style={{ ...styles.metricCard, borderTop: '5px solid var(--accent)' }}>
                 <span style={styles.metricLabel}>Active Portal Sessions</span>
                 <strong style={{ ...styles.metricValue, color: 'var(--accent)' }}>
-                  {stats.activeSessionCount || 4} / 4 Online
+                  {/* Both halves were literals. The denominator said 4 —
+                      "campus portals" — while the numerator counts SESSIONS,
+                      so five people signed in read "5 / 4". And `|| 4` meant
+                      nobody signed in also rendered as 4, which is the one
+                      state this card exists to make visible. The server
+                      already sends the real figures. */}
+                  {stats.activeSessionCount ?? 0} / {stats.portalSlotTotal ?? stats.totalStaff ?? 0} Online
                 </strong>
                 <span style={styles.metricSub}>Campus portals currently connected</span>
               </GlassCard>
@@ -537,7 +543,10 @@ export const AuthenticatorDashboardView: React.FC = () => {
               <GlassCard hoverable={false} style={{ ...styles.metricCard, borderTop: '5px solid var(--warning)' }}>
                 <span style={styles.metricLabel}>Staff Access Credentials</span>
                 <strong style={{ ...styles.metricValue, color: 'var(--warning)' }}>
-                  {accounts.length || 14} Accounts
+                  {/* Not `|| 14`: an empty account list is a real state and
+                      showing an invented 14 for it hides exactly the fault an
+                      operator would be looking for. */}
+                  {accounts.length} Accounts
                 </strong>
                 <span style={styles.metricSub}>Provisioned administrative staff</span>
               </GlassCard>
