@@ -2360,6 +2360,32 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                   </button>
                 )}
 
+                {/* The fee register as filtered on screen: S.No, admission
+                    number, name, total, paid, pending. Built by the server
+                    from the same filters, because `students` here is a capped
+                    list and an export must not quietly lose its tail. */}
+                <button
+                  onClick={async () => {
+                    try {
+                      await downloadCsv('fee-register', {
+                        q: feeCollectAdm.trim(),
+                        campus: feeFilterCampus,
+                        course: feeFilterCourse,
+                        year: feeFilterYear,
+                        dues: feeFilterDues
+                      });
+                      triggerToast('Fee register downloaded.');
+                    } catch (e: any) {
+                      triggerToast(e?.message || 'Could not download the fee register.', 'error');
+                    }
+                  }}
+                  style={{ ...styles.actionItemBtn, padding: '8px 14px', backgroundColor: 'var(--good-wash)', color: 'var(--good)', border: '1.5px solid var(--good)', fontWeight: 800 }}
+                  className="press-interactive"
+                  title="Download S.No, Admission No, Name, Total, Paid and Pending fees for the students listed"
+                >
+                  Export Fee Register
+                </button>
+
                 <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)', marginLeft: 'auto' }}>
                   {filteredCollectList.length} student{filteredCollectList.length === 1 ? '' : 's'}
                   {collectTotalPages > 1 ? ` · page ${collectPage} of ${collectTotalPages}` : ''}

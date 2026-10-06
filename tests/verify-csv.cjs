@@ -300,6 +300,40 @@ const parseCsv = (body) => {
       await db.collection('expenditures').deleteOne({ id: liveExp.json.data.id });
     }
 
+    // =================================================================
+    section('The fee register from the Fee Collection Desk');
+
+    const reg = await req('GET', `/api/export/fee-register.csv?q=${TAG}`, tokens.clerk);
+    const rRows = parseCsv(reg.raw);
+    ok('the fee register returns 200', reg.status === 200, `status ${reg.status}`);
+    ok('it has exactly the six columns asked for',
+      rRows[0].join('|') === 'S.No|Admission No|Student Name|Total Fees|Fees Paid|Fees Pending',
+      rRows[0].join('|'));
+    ok('the search narrows it to this run\'s three students', rRows.length === 4, `${rRows.length - 1} rows`);
+    ok('S.No counts from 1', rRows.slice(1).map(r => r[0]).join(',') === '1,2,3',
+      rRows.slice(1).map(r => r[0]).join(','));
+    const r1 = rRows.find(r => r[1] === `${TAG}1`);
+    ok('total, paid and pending come from the fee computation',
+      !!r1 && r1[3] === '40000' && r1[4] === '10000' && r1[5] === '30000',
+      JSON.stringify(r1));
+    ok('the formula-shaped name is neutralised here too',
+      !!r1 && r1[2].startsWith("'"), JSON.stringify(r1 && r1[2]));
+
+    const pending = parseCsv((await req('GET',
+      `/api/export/fee-register.csv?q=${TAG}&dues=pending&campus=${encodeURIComponent(CAMPUS)}`, tokens.accountant)).raw);
+    ok('campus and dues filters apply as they do on the desk',
+      pending.length === 2 && pending[1][1] === `${TAG}1`,
+      JSON.stringify(pending.slice(1).map(r => r[1])));
+
+    const settled = parseCsv((await req('GET',
+      `/api/export/fee-register.csv?q=${TAG}&dues=settled`, tokens.admin1)).raw);
+    ok('the settled filter keeps only the paid-up student',
+      settled.length === 2 && settled[1][1] === `${TAG}2`,
+      JSON.stringify(settled.slice(1).map(r => r[1])));
+
+    const regAnon = await req('GET', '/api/export/fee-register.csv', null);
+    ok('a stranger is refused the fee register', regAnon.status === 401, `status ${regAnon.status}`);
+
     console.log(`\n${'='.repeat(60)}`);
     console.log(`CSV EXPORTS: ${pass} passed, ${fail} failed`);
     console.log('='.repeat(60));

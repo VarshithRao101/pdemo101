@@ -8836,6 +8836,78 @@ app.get('/api/export/students.csv',
   }
 });
 
+/**
+ * The fee register, as the Fee Collection Desk sees it: one row per student
+ * with what they owe, what they have paid and what is still pending.
+ *
+ * Separate from students.csv because that is the full register (contacts,
+ * course, status) and this is the six columns the counter is asked for. It
+ * takes the SAME filters the desk shows — search, campus, course, year, dues —
+ * so "download what I am looking at" is what comes out, and it applies them
+ * here rather than trusting the browser's list, which is capped and so would
+ * silently drop students from a large export.
+ *
+ * Read-only, and scoped by the caller exactly as students.csv is.
+ */
+app.get('/api/export/fee-register.csv',
+  authenticateToken, requireRole('admin1', 'clerk', 'accountant'), mongoRateLimiter, requireDatabase,
+  async (req, res) => {
+  try {
+    const filter = { ...studentScopeFilter(req) };
+    const str = (v) => String(v || '').trim();
+
+    const campus = str(req.query.campus);
+    if (campus && campus !== 'All') {
+      // A campus-scoped caller already has `branch` set by studentScopeFilter;
+      // asking for a different one must narrow to nothing, not widen.
+      if (filter.branch && filter.branch !== campus) {
+        return res.status(403).json({ status: 'error', message: 'You may only export your own campus.' });
+      }
+      filter.branch = campus;
+    }
+    const course = str(req.query.course);
+    if (course && course !== 'All') filter.course = course;
+    const year = str(req.query.year);
+    if (year && year !== 'All') {
+      // A record with no year is treated as First Year on the desk, so it is here too.
+      filter.studentYear = year === 'First Year' ? { $in: ['First Year', null] } : year;
+    }
+    const q = str(req.query.q).slice(0, 100);
+    if (q) {
+      const re = new RegExp(escapeRegex(q), 'i');
+      filter.$or = ['name', 'admissionNumber', 'studentId', 'registrationNumber',
+        'mobile', 'parentMobile', 'course', 'branch'].map(f => ({ [f]: re }));
+    }
+    const dues = str(req.query.dues);
+
+    const students = await Student.find(filter).sort({ branch: 1, name: 1 }).lean();
+    const rows = [];
+    for (const s of students) {
+      const fees = computeStudentFees(s);
+      if (dues === 'pending' && !(fees.balance > 0)) continue;
+      if (dues === 'settled' && fees.balance > 0) continue;
+      rows.push([rows.length + 1, s.admissionNumber, s.name, fees.netOwed, fees.paid, fees.balance]);
+    }
+
+    const body = csvDocument(
+      ['S.No', 'Admission No', 'Student Name', 'Total Fees', 'Fees Paid', 'Fees Pending'],
+      rows
+    );
+
+    recordAudit(req, {
+      action: 'export.fee_register',
+      entityType: 'export',
+      entityId: 'fee-register.csv',
+      campus: req.user.campus,
+      summary: `Exported ${rows.length} student fee record(s) to CSV.`,
+      details: { rows: rows.length, campus, course, year, dues, q }
+    });
+    return sendCsv(res, `fee-register-${csvDate(Date.now())}.csv`, body);
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
 app.get('/api/export/payments.csv',
   authenticateToken, requireRole('admin1', 'clerk', 'accountant'), mongoRateLimiter, requireDatabase,
   async (req, res) => {
