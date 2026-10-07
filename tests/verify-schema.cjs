@@ -79,7 +79,7 @@ const read = rel => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
   const roleEnum = [...(read('server/models/User.cjs')
     .match(/enum:\s*\[([^\]]*admin1[^\]]*)\]/) || [null, ''])[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
-  const knownRoles = ['admin1', 'admin2', 'clerk', 'accountant', 'authenticator'];
+  const knownRoles = ['admin1', 'admin2', 'clerk', 'authenticator'];
   ok('the role enum holds no role the server cannot resolve',
     roleEnum.every(r => knownRoles.includes(r)), roleEnum.join(', '));
 

@@ -112,7 +112,6 @@ on disk long after anyone remembers it is there.
 | Role | What they type |
 |---|---|
 | Rector | Portal ID, password, six-digit PIN |
-| Accountant | Campus, password, PIN |
 | Clerk | **Campus only** — then their own password and PIN |
 
 A clerk does not enter a portal ID. They pick their campus and the server

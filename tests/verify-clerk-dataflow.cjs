@@ -91,11 +91,11 @@ async function main() {
   console.log('========================================================\n');
 
   const clerk = await makeAccount('clerk', 'clerk', CAMPUS, ALL);
-  const accountant = await makeAccount('acct', 'accountant', CAMPUS);
-  const foreign = await makeAccount('foreign', 'accountant', OTHER_CAMPUS);
+  const accountant = await makeAccount('acct', 'clerk', CAMPUS, ALL);
+  const foreign = await makeAccount('foreign', 'clerk', OTHER_CAMPUS, ALL);
   const rector = await makeAccount('rector', 'admin1', 'All');
 
-  ok('clerk, accountant, foreign accountant and Rector all signed in',
+  ok('clerk, a second clerk, a clerk at another campus and the Rector all signed in',
     !!(clerk.token && accountant.token && foreign.token && rector.token));
   if (!clerk.token || !accountant.token || !rector.token) return;
 
@@ -118,7 +118,7 @@ async function main() {
   ok('it carries the CLERK\'S campus', dbStudent && dbStudent.branch === CAMPUS, dbStudent && dbStudent.branch);
 
   const seenByAccountant = await call('GET', '/api/accountant/students', { token: accountant.token });
-  ok('the campus accountant sees the clerk\'s student immediately',
+  ok('a second clerk on the campus sees the first clerk\'s student immediately',
     Array.isArray(seenByAccountant.json?.data)
       && seenByAccountant.json.data.some(s => s.admissionNumber === `${TAG}001`));
 
@@ -127,7 +127,7 @@ async function main() {
   // registry was shared. The boundary that still exists is the CLERK one, and
   // verify-shared-registry.cjs is where that is proved.
   const seenByForeign = await call('GET', '/api/accountant/students', { token: foreign.token });
-  ok('an accountant on another campus CAN see it — one shared registry',
+  ok('a clerk on another campus CAN see it — one shared registry',
     Array.isArray(seenByForeign.json?.data)
       && seenByForeign.json.data.some(s => s.admissionNumber === `${TAG}001`));
 
@@ -153,7 +153,7 @@ async function main() {
     afterPay && (afterPay.receipts || []).some(r => r.receiptNumber === receiptNumber));
 
   const acctSeesPayment = await call('GET', `/api/accountant/students/${TAG}001/payments`, { token: accountant.token });
-  ok('the campus accountant sees the clerk\'s receipt',
+  ok('a second clerk on the campus sees the first clerk\'s receipt',
     Array.isArray(acctSeesPayment.json?.data)
       && acctSeesPayment.json.data.some(p => p.receiptNumber === receiptNumber));
 

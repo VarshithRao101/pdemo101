@@ -213,27 +213,26 @@ export interface OpenPrintOptions {
    */
   halfA4?: boolean;
   /**
-   * Print the SAME document twice on one A4 sheet, top and bottom, each
-   * labelled — for a receipt where the parent keeps one half and the student
-   * or the office keeps the other.
+   * Print the SAME document twice, side by side, in the TOP HALF of one A4
+   * sheet - for a receipt where the student keeps one copy and the parent the
+   * other.
    *
-   * Give the two captions in order, top first: `['PARENT COPY', 'STUDENT COPY']`.
+   * Give the two captions in order, LEFT first: `['STUDENT COPY', 'PARENT COPY']`.
+   *
+   * The bottom half of the sheet is left blank on purpose. The clerk prints,
+   * cuts the printed half off (and once down the middle to separate the two
+   * copies), and puts the remaining half-sheet back in the printer for the next
+   * student - so one sheet of paper serves two students.
    *
    * WHY THIS IS NOT `halfA4` TWICE
    *
    * `halfA4` declares a 210 x 148.5mm PAGE. Two of those are two pages, and a
-   * printer given two pages puts them on two sheets unless somebody remembers
-   * to ask for two-up — which nobody does at a fee counter on a busy morning.
-   * This keeps ONE A4 page and stacks two copies inside it, so what comes out
-   * of the tray is a single sheet the clerk cuts once across the middle.
+   * printer given two pages puts them on two sheets. This keeps ONE A4 page and
+   * lays the two copies inside its top half, so what comes out of the tray is a
+   * single sheet.
    *
-   * Each copy is measured against HALF the printable height, so the fitter
-   * shrinks the content to fit its own half rather than the whole sheet.
-   *
-   * The previous two-copy layout was removed for looking like a till slip at
-   * 9.5px. This one is the current receipt design at whatever scale it takes
-   * to fit — usually around 0.8 — so the two halves read like the statement
-   * they belong with.
+   * Each copy is measured against its OWN slot, so the fitter shrinks the
+   * content to fit that slot rather than the whole sheet.
    */
   copies?: [string, string];
   /**
@@ -388,36 +387,44 @@ const whenMeasurable = (win: Window, cb: () => void): void => {
  * the preview. Keeping a document to one sheet is the fitter's job.
  */
 export const pageGeometry = (halfA4: boolean, landscape: boolean, twoCopies = false): { css: string; sheet: Sheet } => {
-  // Two copies on one sheet. The PAGE stays A4 — see `copies` in the options
-  // for why this is not two half-A4 pages — and each copy is measured against
-  // half of what is printable, less the strip the cut line sits in.
+  // Two copies in the top half of one A4 sheet, side by side.
   //
-  // 297 - 16 (margins) = 281mm printable. The cut rule and its label take 9mm,
-  // leaving 272 for the two copies: 136mm each.
+  // The PAGE stays A4 - see `copies` in the options for why this is not two
+  // half-A4 pages. With 8mm margins the printable width is 194mm; two slots of
+  // 94mm leave a 6mm gutter that carries the vertical cut line. The slots are
+  // 138mm tall so the whole row ends at about 146mm, inside the top half
+  // (148.5mm), with a horizontal cut line under it. Nothing is drawn below.
   if (twoCopies) {
     return {
       css: `@page { size: A4 portrait; margin: 8mm; }
             .page { max-width: 194mm; }
-            .pdf-copy { height: 136mm; overflow: hidden; }
-            .pdf-copy + .pdf-cut { margin: 0; }
-            /* The cut line, and the only thing between the two copies. */
+            .pdf-copies-row { display: flex; width: 194mm; height: 138mm; }
+            .pdf-copy { width: 94mm; height: 138mm; overflow: hidden; flex: 0 0 94mm; }
+            .pdf-gutter {
+              width: 6mm; flex: 0 0 6mm; height: 138mm;
+              border-right: 1px dashed #9aa7b4; margin-right: 2.5mm;
+              box-sizing: border-box;
+            }
+            .pdf-gutter + .pdf-copy { margin-left: 0.5mm; }
+            /* The cut line across the sheet, at the half-way mark. */
             .pdf-cut {
-              height: 9mm; display: flex; align-items: center; gap: 6px;
+              width: 194mm; height: 6mm; display: flex; align-items: center; gap: 6px;
               color: #6b7785; font-size: 8px; letter-spacing: 0.12em;
               text-transform: uppercase; font-weight: 700;
             }
             .pdf-cut::before, .pdf-cut::after {
               content: ''; flex: 1; border-top: 1px dashed #9aa7b4;
             }
-            /* Which copy this is. Printed at the very top of each half so it
+            /* Which copy this is. Printed at the very top of each slot so it
                survives the cut on whichever piece it belongs to. */
             .pdf-copy-label {
               font-size: 8px; font-weight: 800; letter-spacing: 0.14em;
               text-transform: uppercase; color: #087FBC; text-align: right;
               margin-bottom: 2mm;
             }
+            html, body { font-size: 9.5px; }
             @media print { .pdf-print-btn { display: none; } }`,
-      sheet: { heightMm: 136, widthMm: 194 }
+      sheet: { heightMm: 138, widthMm: 94 }
     };
   }
   // Half A4 wins over landscape if both are asked for — a receipt is a
@@ -458,14 +465,13 @@ export const buildPrintDocument = (
   // receipt, not two documents that could drift apart. Only the caption above
   // each differs, and it is the caption that tells the clerk which half to
   // hand over.
+  const slot = (label: string) =>
+    `<div class="pdf-copy"><div class="pdf-fit-shell"><div class="pdf-fit">` +
+    `<div class="pdf-copy-label">${escapeHtml(label)}</div>${wrapped}` +
+    `</div></div></div>`;
   const inner = copies
-    ? `<div class="pdf-copy"><div class="pdf-fit-shell"><div class="pdf-fit">` +
-      `<div class="pdf-copy-label">${escapeHtml(copies[0])}</div>${wrapped}` +
-      `</div></div></div>` +
-      `<div class="pdf-cut">cut here</div>` +
-      `<div class="pdf-copy"><div class="pdf-fit-shell"><div class="pdf-fit">` +
-      `<div class="pdf-copy-label">${escapeHtml(copies[1])}</div>${wrapped}` +
-      `</div></div></div>`
+    ? `<div class="pdf-copies-row">${slot(copies[0])}<div class="pdf-gutter"></div>${slot(copies[1])}</div>` +
+      `<div class="pdf-cut">cut here</div>`
     : `<div class="pdf-fit-shell"><div class="pdf-fit">${wrapped}</div></div>`;
 
   return `<!DOCTYPE html>

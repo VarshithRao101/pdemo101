@@ -27,7 +27,7 @@
  * is nowhere else to update.
  */
 
-/** Staff: Rector, accountants and campus clerks. */
+/** Staff: the Rector and campus clerks. */
 export const STAFF_GATE = '#/erp-4Kd9WqhTzVmB-x7PnLs2GcRv';
 
 /** The security authenticator, which has its own separate door. */

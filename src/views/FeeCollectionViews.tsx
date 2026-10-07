@@ -1,20 +1,17 @@
 import { todayLocalISO } from '../utils/localDate';
 import React, { useState, useEffect, useRef } from 'react';
-import { LIMITS, validateMobile, digitsOnly } from '../constants/fieldLimits';
+import { LIMITS } from '../constants/fieldLimits';
 import {
   openPrintDocument, pdfHeader, pdfFooter, pdfSection, pdfTable, pdfTiles,
   pdfDetailCard, money, dateStr, escapeHtml
 } from '../utils/pdfDocument';
 import { useNavigation } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
-import { InspireLogo } from '../components/common/InspireLogo';
-import { PortalDataLoader } from '../components/common/PortalDataLoader';
 import collegeLogo from '../assets/college logo.webp';
 import * as accountantService from '../services/accountantService';
-import { FeeSlotEditor, freshRegFeeSlots, feeSlotsToPayload, slotsFromStudentFees, sumFeeSlots, type FeeSlot } from '../components/common/FeeSlotEditor';
+import { FeeSlotEditor, feeSlotsToPayload, slotsFromStudentFees, sumFeeSlots, type FeeSlot } from '../components/common/FeeSlotEditor';
 import { CAMPUS_LIST } from '../constants/campuses';
 import { useDataFreshness } from '../hooks/useDataFreshness';
-import { OutstandingFeesPanel } from '../components/common/OutstandingFeesPanel';
 import { downloadCsv } from '../services/accountService';
 
 
@@ -284,35 +281,152 @@ const numberToReceiptWords = (amount: number) => {
 
 // escapeHtml now comes from utils/pdfDocument, so there is one implementation.
 
-const normalizeStudentSearch = (value: string) => value.toLowerCase().trim();
+/**
+ * The export preferences: what goes into the fee register before it downloads.
+ *
+ * Starts from what the desk is filtered to, because the usual request is
+ * "download what I am looking at" - and lets the person widen or narrow it
+ * without leaving the screen. The columns are fixed (S.No, Admission No,
+ * Student Name, Total Fees, Fees Paid, Fees Pending); what is chosen here is
+ * which students.
+ */
+interface ExportPrefs {
+  campus: string; course: string; year: string; dues: string; sections: string[]; q: string;
+}
 
-const matchesStudentSearch = (student: Student, query: string) => {
-  const normalizedQuery = normalizeStudentSearch(query);
-  if (!normalizedQuery) return true;
+const FeeRegisterExportDialog: React.FC<{
+  initial: ExportPrefs;
+  facets: { courses: string[]; sections: string[] };
+  onClose: () => void;
+  onResult: (message: string, type?: 'success' | 'error') => void;
+}> = ({ initial, facets, onClose, onResult }) => {
+  const [prefs, setPrefs] = useState<ExportPrefs>(initial);
+  const [busy, setBusy] = useState(false);
+  const set = (patch: Partial<ExportPrefs>) => setPrefs(p => ({ ...p, ...patch }));
+  const toggleSection = (sec: string) =>
+    set({ sections: prefs.sections.includes(sec) ? prefs.sections.filter(x => x !== sec) : [...prefs.sections, sec] });
 
-  return [
-    student.name,
-    student.admissionNumber,
-    student.studentId,
-    student.registrationNumber,
-    student.mobile,
-    student.parentMobile,
-    student.course,
-    student.branch
-  ].some((field) => String(field || '').toLowerCase().includes(normalizedQuery));
+  const download = async () => {
+    setBusy(true);
+    try {
+      await downloadCsv('fee-register', {
+        q: prefs.q.trim(), campus: prefs.campus, course: prefs.course, year: prefs.year,
+        dues: prefs.dues, sections: prefs.sections.join(',')
+      });
+      onResult('Fee register downloaded.', 'success');
+      onClose();
+    } catch (e: any) {
+      onResult(e?.message || 'Could not download the fee register.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const label: React.CSSProperties = { fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '4px' };
+  const field: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid var(--line)', backgroundColor: 'var(--surface)', color: 'var(--ink)', fontSize: '0.9286rem' };
+
+  return (
+    <div
+      role="dialog" aria-modal="true" aria-label="Export fee register"
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ backgroundColor: 'var(--surface)', borderRadius: '18px', padding: '22px', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}
+      >
+        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--ink)' }}>Export Fee Register</h3>
+        <p style={{ margin: '4px 0 16px', fontSize: '0.8571rem', color: 'var(--ink-secondary)' }}>
+          Choose which students to include. The file has S.No, Admission No, Student Name, Total Fees, Fees Paid and Fees Pending.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+          <div>
+            <label style={label}>Campus</label>
+            <select value={prefs.campus} onChange={(e) => set({ campus: e.target.value })} style={field}>
+              <option value="All">All campuses</option>
+              {CAMPUS_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={label}>Course</label>
+            <select value={prefs.course} onChange={(e) => set({ course: e.target.value })} style={field}>
+              <option value="All">All courses</option>
+              {facets.courses.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={label}>Year</label>
+            <select value={prefs.year} onChange={(e) => set({ year: e.target.value })} style={field}>
+              <option value="All">All years</option>
+              <option value="First Year">First Year</option>
+              <option value="Second Year">Second Year</option>
+              <option value="Short Term">Short Term</option>
+            </select>
+          </div>
+          <div>
+            <label style={label}>Fees</label>
+            <select value={prefs.dues} onChange={(e) => set({ dues: e.target.value })} style={field}>
+              <option value="All">Paid and pending</option>
+              <option value="pending">Pending only</option>
+              <option value="settled">Settled only</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={{ marginTop: '14px' }}>
+          <label style={label}>
+            Sections {prefs.sections.length === 0 ? '(all sections)' : `(${prefs.sections.length} selected)`}
+          </label>
+          {facets.sections.length === 0 ? (
+            <div style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>No sections on record yet.</div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {facets.sections.map(sec => {
+                  const on = prefs.sections.includes(sec);
+                  return (
+                    <button
+                      key={sec} type="button" onClick={() => toggleSection(sec)}
+                      aria-pressed={on}
+                      style={{
+                        padding: '6px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.8571rem', fontWeight: 800,
+                        border: on ? '1.5px solid var(--good)' : '1.5px solid var(--line)',
+                        backgroundColor: on ? 'var(--good-wash)' : 'var(--surface)',
+                        color: on ? 'var(--good)' : 'var(--ink-secondary)'
+                      }}
+                    >
+                      {on ? '✓ ' : ''}{sec}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: '8px', display: 'flex', gap: '12px' }}>
+                <button type="button" onClick={() => set({ sections: [...facets.sections] })} style={{ background: 'none', border: 'none', color: 'var(--royal-gold)', fontWeight: 800, cursor: 'pointer', padding: 0, fontSize: '0.8571rem' }}>Select all</button>
+                <button type="button" onClick={() => set({ sections: [] })} style={{ background: 'none', border: 'none', color: 'var(--ink-secondary)', fontWeight: 800, cursor: 'pointer', padding: 0, fontSize: '0.8571rem' }}>Clear</button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {prefs.q.trim() && (
+          <div style={{ marginTop: '12px', fontSize: '0.8571rem', color: 'var(--ink-secondary)' }}>
+            Only students matching “{prefs.q.trim()}” (your current search).{' '}
+            <button type="button" onClick={() => set({ q: '' })} style={{ background: 'none', border: 'none', color: 'var(--royal-gold)', fontWeight: 800, cursor: 'pointer', padding: 0 }}>Remove</button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+          <button type="button" onClick={onClose} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1.5px solid var(--line)', backgroundColor: 'var(--surface-sunken)', color: 'var(--ink-secondary)', fontWeight: 800, cursor: 'pointer' }}>Cancel</button>
+          <button type="button" disabled={busy} onClick={() => void download()} style={{ flex: 1.5, padding: '12px', borderRadius: '12px', border: 'none', backgroundColor: 'var(--good)', color: '#fff', fontWeight: 900, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>
+            {busy ? 'Preparing…' : 'Download CSV'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-/**
- * `restrictTo` pins this view to a single module and is set when a CLERK is
- * borrowing it.
- *
- * A clerk granted "collect fees" gets this exact screen rather than a copy of
- * it — one implementation of the receipt and balance arithmetic. But a clerk
- * is not an accountant: they must not land on the accountant cockpit, and
- * "Back to Cockpit" has to return them to their own. Without this the clerk
- * entered fee collection and had no way back, because changing the hash does
- * not move `activeTab` and the exit button only reset this view's local page.
- */
 export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campusOverride }) => {
   const { user, setActiveTab } = useNavigation();
   // An org-wide account (the Rector) has campus "All", which is not a campus a
@@ -323,7 +437,6 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
     || (user?.campus && user.campus !== 'All' ? user.campus : CAMPUS_LIST[0]);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isPageLoading, setIsPageLoading] = useState(false);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
   const activeSubPage = 'fee_collection' as const;
 
@@ -334,18 +447,24 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
     setFeeCollectAdm('');
     setActiveTab('dashboard');
   };
+  /**
+   * The page of students the desk is showing - never the registry.
+   *
+   * Empty until someone types or picks a filter. The desk used to download
+   * every student on open, which is what made it slow and put hundreds of names
+   * on a screen whose job is to find one.
+   */
   const [students, setStudents] = useState<Student[]>([]);
+  const [deskTotal, setDeskTotal] = useState(0);
+  const [deskLoading, setDeskLoading] = useState(false);
+  const [facets, setFacets] = useState<{ courses: string[]; sections: string[] }>({ courses: [], sections: [] });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [livePulseKey, setLivePulseKey] = useState<'students' | 'fees' | 'settings' | null>(null);
   const [securityKey] = useState('');
 
   // New Student & Delete Student Modals
-  const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
-  const [newStuFormPage, setNewStuFormPage] = useState<1 | 2 | 3>(1);
   const [isDeleteConfirmModalOpen, setIsDeleteConfirmModalOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [, setDeleteOtpInput] = useState('');
-  const [registryPage, setRegistryPage] = useState(1);
   // Fee collection: its own page and filters, kept separate from the registry's
   // so moving between the two screens does not carry one's filters into the
   // other.
@@ -354,110 +473,9 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
   const [feeFilterCourse, setFeeFilterCourse] = useState('All');
   const [feeFilterYear, setFeeFilterYear] = useState('All');
   const [feeFilterDues, setFeeFilterDues] = useState('All');
-  const [isRegStuOtpModalOpen, setIsRegStuOtpModalOpen] = useState(false);
-  const [, setRegStuOtpInput] = useState('');
-  const [regStuError, setRegStuError] = useState('');
-  const [isSubmittingStudent, setIsSubmittingStudent] = useState(false);
-  const [auditPage, setAuditPage] = useState(1);
-  /**
-   * The collection report's rows, from the payments collection.
-   *
-   * Held separately from `students` because it is a different question. This
-   * screen used to derive its list from the receipt arrays of whatever
-   * students were loaded, which quietly limited a report about the college's
-   * takings to the students on the first page of the register.
-   */
-  const [auditTx, setAuditTx] = useState<accountantService.CollectedPayment[]>([]);
-  const [auditTotal, setAuditTotal] = useState(0);
-  const [auditCollected, setAuditCollected] = useState(0);
-  const [auditLoading, setAuditLoading] = useState(false);
-
-  const initialNewStudent = {
-    admissionNumber: '',
-    name: '',
-    mobile: '',
-    course: 'MPC',
-    section: 'MPC-A',
-    // Which year of the programme they are joining. Needed at admission
-    // because a student can be enrolled straight into Second Year, and the
-    // upgrade flow reads this to decide who is eligible to move up.
-    studentYear: 'First Year',
-    branch: loggedInCampus,
-    fatherName: '',
-    motherName: '',
-    dob: '',
-    parentMobile: '',
-    previousSchool: '',
-    previousBoard: 'State Board',
-    address: '',
-    tuitionFee: 0,
-    hostelFee: 0,
-    transportFee: 0,
-    miscellaneousFee: 0,
-    previousPending: 0
-  };
-  const [newStudentData, setNewStudentData] = useState(initialNewStudent);
-  const [newStudentAdmissionError, setNewStudentAdmissionError] = useState('');
-  const [newStudentMobileError, setNewStudentMobileError] = useState('');
-  const [newStudentParentMobileError, setNewStudentParentMobileError] = useState('');
-  const [isCheckingAdmission, setIsCheckingAdmission] = useState(false);
-
-  // Admission numbers are unique college-wide and the server refuses a
-  // duplicate with a 409 — but that only used to be reached after all three
-  // screens and the confirmation, so a clash surfaced at the very end of the
-  // form. Ask while the field is still on screen.
-  //
-  // Debounced, and guarded against a stale answer overwriting a newer one:
-  // typing "24001" then "240012" fires twice, and without the generation check
-  // the slower first reply could land last and mark a free number as taken.
-  // One reset for the whole add-student form. Three call sites each cleared a
-  // different subset, so an error from a previous attempt could still be on
-  // screen when the form was reopened.
-  const resetNewStudentForm = () => {
-    setNewStudentData({ ...initialNewStudent, branch: loggedInCampus });
-    setNewStudentAdmissionError('');
-    setNewStudentMobileError('');
-    setNewStudentParentMobileError('');
-    setNewStuFeeSlots(freshRegFeeSlots());
-    setNewStuFormPage(1);
-  };
-
-  const admissionCheckRef = useRef(0);
-  useEffect(() => {
-    const value = newStudentData.admissionNumber.trim();
-    if (!isAddStudentModalOpen || !value) {
-      setIsCheckingAdmission(false);
-      return;
-    }
-    const generation = ++admissionCheckRef.current;
-    setIsCheckingAdmission(true);
-
-    const timer = setTimeout(async () => {
-      try {
-        const result = await accountantService.checkAdmissionAvailable(value);
-        if (generation !== admissionCheckRef.current) return;
-        setNewStudentAdmissionError(result.available ? '' : (result.message || 'That admission number is already in use.'));
-      } catch {
-        // A failed availability check is not a validation failure — the create
-        // route re-checks and is the real guard. Staying silent here avoids
-        // blocking the form when the network hiccups.
-        if (generation === admissionCheckRef.current) setNewStudentAdmissionError('');
-      } finally {
-        if (generation === admissionCheckRef.current) setIsCheckingAdmission(false);
-      }
-    }, 450);
-
-    return () => clearTimeout(timer);
-  }, [newStudentData.admissionNumber, isAddStudentModalOpen]);
-
-  // The fee table's rows. Same component, same initial sections, and the
-  // same submit mapping as the Rector's admission form.
-  const [newStuFeeSlots, setNewStuFeeSlots] = useState<FeeSlot[]>(freshRegFeeSlots);
-
-
-
+  const [feeFilterSections, setFeeFilterSections] = useState<string[]>([]);
+  const [isExportOpen, setIsExportOpen] = useState(false);
   // Search parameters (Local Edit Buffer state)
-  const [searchAdmNo, setSearchAdmNo] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [editStudent, setEditStudent] = useState<Student | null>(null);
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
@@ -541,148 +559,95 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
 
 
 
-  // Settings & Rules parameters
-  const [settings] = useState({
-    academicYear: '2026-27',
-    installments: '3 Installments',
-    lateFeeRules: '',
-    scholarshipRules: '',
-    discountRules: 'Sibling: 10% waiver'
-  });
-  const [, setDashboardSummary] = useState({
-    collectionToday: 0,
-    pendingCount: 0,
-    pendingAmount: 0,
-    absentCount: 0
-  });
+  /** Whether the desk has anything to look up. Without it the grid stays empty. */
+  const hasDeskCriteria = Boolean(
+    feeCollectAdm.trim() || feeFilterCampus !== 'All' || feeFilterCourse !== 'All'
+    || feeFilterYear !== 'All' || feeFilterDues !== 'All' || feeFilterSections.length > 0
+  );
+  const COLLECT_PER_PAGE = 24;
 
+  // Each lookup gets a number so a slow answer to an old keystroke cannot land
+  // after, and overwrite, the answer to the current one.
+  const deskGeneration = useRef(0);
 
-  const fetchDashboardSummary = React.useCallback(async () => {
-    try {
-      const summary = await accountantService.getDashboardSummary();
-      setDashboardSummary(summary);
-    } catch (err) {
-      console.error('Failed to load dashboard summary:', err);
+  const runDeskSearch = React.useCallback(async () => {
+    if (!hasDeskCriteria) {
+      deskGeneration.current++;
+      setStudents([]);
+      setDeskTotal(0);
+      setDeskLoading(false);
+      return;
     }
-  }, []);
-
-  const fetchAllStudents = React.useCallback(async () => {
+    const generation = ++deskGeneration.current;
+    setDeskLoading(true);
     try {
-      // No campus filter. Students are ONE registry across all four campuses:
-      // a student who moved, or was registered at the wrong campus, or is
-      // simply standing at this counter today, has to be findable here.
-      // Hunting for the campus that happens to hold the record is not a
-      // safeguard, it is an obstacle to collecting the fee.
-      //
-      // A clerk borrowing this screen is still pinned to its own campus —
-      // the server decides that from the account, not from this call.
-      const { items } = await accountantService.searchStudents('');
+      // No campus pin of our own: students are ONE registry across the four
+      // campuses, so a student standing at this counter is findable whichever
+      // campus holds the record. A clerk is still held to the campus the
+      // server derives from their account.
+      const { items, meta } = await accountantService.searchStudentsDesk({
+        search: feeCollectAdm,
+        campus: feeFilterCampus,
+        course: feeFilterCourse,
+        year: feeFilterYear,
+        dues: feeFilterDues,
+        sections: feeFilterSections,
+        page: feeCollectPage,
+        limit: COLLECT_PER_PAGE
+      });
+      if (generation !== deskGeneration.current) return;
       setStudents(items as any);
-    } catch (err) {
-      console.error('Failed to load students:', err);
-    }
-  }, []);
-
-
-  const refreshWithPulse = React.useCallback(async (pulseKey: typeof livePulseKey) => {
-    setLivePulseKey(pulseKey);
-    try {
-      const tasks: Promise<void>[] = [];
-      if (pulseKey === 'students' || pulseKey === 'fees') {
-        tasks.push(fetchDashboardSummary(), fetchAllStudents());
-      }
-      if (pulseKey === 'settings') {
-        tasks.push(fetchDashboardSummary());
-      }
-      if (tasks.length === 0) {
-        tasks.push(fetchDashboardSummary(), fetchAllStudents());
-      }
-      await Promise.all(tasks);
-    } catch (err) {
-      console.error('Accountant live refresh error:', err);
+      setDeskTotal(meta.total);
+    } catch (err: any) {
+      if (generation !== deskGeneration.current) return;
+      setStudents([]);
+      setDeskTotal(0);
+      triggerToast(err?.message || 'Could not search students.', 'error');
     } finally {
-      window.setTimeout(() => setLivePulseKey(null), 1400);
+      if (generation === deskGeneration.current) setDeskLoading(false);
     }
-  }, [fetchAllStudents, fetchDashboardSummary]);
+    // triggerToast is a plain function recreated each render; it only sets state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasDeskCriteria, feeCollectAdm, feeFilterCampus, feeFilterCourse, feeFilterYear,
+      feeFilterDues, feeFilterSections, feeCollectPage]);
 
-  // On mount load dashboard metrics & student list
+  // Typing is debounced; picking a filter or a page feels instant enough at
+  // 300ms and saves a request per keystroke.
   useEffect(() => {
-    const loadInitialData = async () => {
-      setIsLoading(true);
-      await Promise.all([
-        fetchDashboardSummary(),
-        fetchAllStudents()
-      ]);
-      setIsLoading(false);
-    };
-    loadInitialData();
-  }, [fetchDashboardSummary, fetchAllStudents]);
+    const timer = setTimeout(() => { void runDeskSearch(); }, 300);
+    return () => clearTimeout(timer);
+  }, [runDeskSearch]);
 
-  // Smart polling: checks timestamp first, only refetches full data if something changed.
-  // Pauses when tab is hidden, resumes + immediately checks on tab focus/visibility.
-  const accountantRefetch = React.useCallback(async () => {
-    await Promise.all([fetchDashboardSummary(), fetchAllStudents()]);
-  }, [fetchDashboardSummary, fetchAllStudents]);
+  /** Re-run the current lookup, e.g. after a payment changed a balance. */
+  const refreshDesk = React.useCallback(async () => { await runDeskSearch(); }, [runDeskSearch]);
 
-  const { triggerRefetch: triggerFreshnessRefetch } = useDataFreshness(loggedInCampus, accountantRefetch);
-
-  /**
-   * Load one page of the collection report whenever that screen is open.
-   *
-   * Keyed on the page as well as the screen, so the pager below asks the
-   * server for the next fifty receipts rather than slicing an array that was
-   * never the whole record in the first place.
-   */
+  // On open, only the filter options are loaded - no student rows.
   useEffect(() => {
-    if (activeSubPage !== 'reports') return;
     let cancelled = false;
     (async () => {
-      setAuditLoading(true);
       try {
-        const { items, meta } = await accountantService.getCollectedPayments(auditPage, 50);
-        if (cancelled) return;
-        setAuditTx(items);
-        setAuditTotal(meta.total);
-        setAuditCollected(meta.totalAmount ?? 0);
-      } catch {
-        if (!cancelled) { setAuditTx([]); setAuditTotal(0); setAuditCollected(0); }
-      } finally {
-        if (!cancelled) setAuditLoading(false);
-      }
+        const f = await accountantService.getStudentFacets();
+        if (!cancelled) setFacets(f);
+      } catch { /* the filters simply offer nothing; search still works */ }
+      if (!cancelled) setIsLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [activeSubPage, auditPage]);
+  }, []);
+
+  // Smart polling: checks the freshness stamp first and only re-runs the lookup
+  // if something changed. It refreshes what is on screen, not the registry.
+  const { triggerRefetch: triggerFreshnessRefetch } = useDataFreshness(loggedInCampus, refreshDesk);
 
   useEffect(() => {
     // Keep storage/custom-event sync for same-browser-tab coordination
-    const handleSync = () => refreshWithPulse('students');
+    const handleSync = () => { void refreshDesk(); };
     window.addEventListener('storage', handleSync);
     window.addEventListener('jc_sync_data', handleSync);
     return () => {
       window.removeEventListener('storage', handleSync);
       window.removeEventListener('jc_sync_data', handleSync);
     };
-  }, [refreshWithPulse]);
-
-  // On subpage navigation load page specific data
-  useEffect(() => {
-    const loadSubPage = async () => {
-      setIsPageLoading(true);
-      try {
-        if (activeSubPage === 'menu') {
-          await Promise.all([fetchDashboardSummary(), fetchAllStudents()]);
-        } else if (activeSubPage === 'student_search' || activeSubPage === 'fee_collection' || activeSubPage === 'reports') {
-          await fetchAllStudents();
-        }
-      } finally {
-        setIsPageLoading(false);
-      }
-    };
-    loadSubPage();
-  }, [activeSubPage, fetchDashboardSummary, fetchAllStudents]);
-
-
-
+  }, [refreshDesk]);
 
   const triggerToast = (msg: string, type?: 'success' | 'error') => {
     let isError = false;
@@ -769,43 +734,6 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
   };
 
 
-  const submitStudentRegistrationWithOtp = async () => {
-    setIsSubmittingStudent(true);
-    /* security PIN is collected by apiClient on demand */
-    await handleCreateStudent();
-    setIsRegStuOtpModalOpen(false);
-    setRegStuOtpInput('');
-    setIsSubmittingStudent(false);
-  };
-
-  const handleCreateStudent = async () => {
-    setIsLoading(true);
-    try {
-      // The same mapping the Rector's form uses, so a student admitted here
-      // and one admitted there carry identical fee fields.
-      const { grossTotal, ...feeFields } = feeSlotsToPayload(newStuFeeSlots);
-      const created = await accountantService.createStudent({
-        ...newStudentData,
-        ...feeFields,
-        totalPaid: 0,
-        remainingBalance: grossTotal,
-        branch: loggedInCampus,
-        studentId: newStudentData.admissionNumber,
-        registrationNumber: newStudentData.admissionNumber
-      });
-      triggerToast(`Student ${created.name} (${created.admissionNumber}) registered successfully!`);
-      setIsAddStudentModalOpen(false);
-      resetNewStudentForm();
-      // Refetch from server immediately so local state matches true DB state
-      await triggerFreshnessRefetch();
-    } catch (err: any) {
-      if (err?.status === 409) setNewStudentAdmissionError(err.message);
-      triggerToast(err.message || 'Failed to create student.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleDeleteStudentConfirm = async () => {
     if (!studentToDelete) return;
     const targetId = studentToDelete._id || studentToDelete.studentId || studentToDelete.admissionNumber;
@@ -876,12 +804,6 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
       setActiveOverlay(null);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    if ((window as any).logoutUser) {
-      (window as any).logoutUser();
     }
   };
 
@@ -1281,15 +1203,11 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
       body,
       buttonLabel: 'Print / Save Receipt as PDF',
       framed: true,
-      // ONE A4 sheet carrying the receipt twice: the parent's half on top, the
-      // student's underneath, with a cut line between them. The clerk prints
-      // one page, cuts once, and hands over the top half.
-      //
-      // Not `halfA4: true` twice — that declares two 148.5mm PAGES, which a
-      // printer puts on two sheets unless somebody sets two-up by hand, and
-      // nobody does that at a fee counter. The page here stays A4 and the two
-      // copies are stacked inside it.
-      copies: ['PARENT COPY', 'STUDENT COPY'],
+      // ONE A4 sheet carrying the receipt twice, side by side in its TOP half:
+      // student copy on the left, parent copy on the right, the bottom half
+      // left blank. The clerk prints, cuts the printed half off, and feeds the
+      // remaining half back for the next student - one sheet, two students.
+      copies: ['STUDENT COPY', 'PARENT COPY'],
       onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to print the receipt.')
     });
     if (opened) triggerToast('Receipt opened for printing.');
@@ -1605,334 +1523,6 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
         </div>
       )}
 
-      {/* REGISTER NEW STUDENT MODAL OVERLAY */}
-      {isAddStudentModalOpen && (
-        <div style={{ ...styles.overlayOverlay, zIndex: 1200 }}>
-          <div style={{ ...styles.overlaySheet, maxWidth: '920px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1.5px solid var(--line)', paddingBottom: '10px' }}>
-              <div>
-                <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--royal-gold)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  INSPIRE JUNIOR COLLEGE • ACCOUNTANT STUDENT ADMISSION
-                </span>
-                <h3 style={{ margin: '2px 0 0', fontSize: '1.2143rem', fontWeight: 900, color: 'var(--ink)' }}>
-                  {newStuFormPage === 1 ? 'Screen 1 of 3: Basic Academic Information' : newStuFormPage === 2 ? 'Screen 2 of 3: Personal & Family Information' : 'Screen 3 of 3: Fee Structure & Bill Format'}
-                </h3>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.7857rem', fontWeight: 800, backgroundColor: newStuFormPage === 1 ? 'var(--ink)' : 'var(--line)', color: newStuFormPage === 1 ? 'var(--surface)' : 'var(--ink-secondary)' }}>1. Basic Info</span>
-                  <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.7857rem', fontWeight: 800, backgroundColor: newStuFormPage === 2 ? 'var(--ink)' : 'var(--line)', color: newStuFormPage === 2 ? 'var(--surface)' : 'var(--ink-secondary)' }}>2. Personal & Family</span>
-                  <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.7857rem', fontWeight: 800, backgroundColor: newStuFormPage === 3 ? 'var(--ink)' : 'var(--line)', color: newStuFormPage === 3 ? 'var(--surface)' : 'var(--ink-secondary)' }}>3. Fee Structure</span>
-                </div>
-                <button onClick={() => { setIsAddStudentModalOpen(false); resetNewStudentForm(); }} style={{ background: 'none', border: 'none', fontSize: '1.4286rem', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
-              </div>
-            </div>
-
-            <div style={{ padding: '10px 4px' }}>
-              {newStuFormPage === 1 ? (
-                <div>
-                  {/* Screen 1: Basic Information */}
-                  <div style={{ marginBottom: '18px' }}>
-                    <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
-                      1. Basic Academic Information
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '14px' }}>
-                      <div>
-                        <label style={styles.formLabel}>Admission Number *</label>
-                        <input maxLength={LIMITS.admissionNumber}
-                          type="text"
-                          placeholder="e.g. 2400101"
-                          value={newStudentData.admissionNumber}
-                          onChange={(e) => { setNewStudentData({ ...newStudentData, admissionNumber: e.target.value }); setNewStudentAdmissionError(''); }}
-                          style={{ ...styles.textInputBox, borderColor: newStudentAdmissionError ? 'var(--critical)' : undefined }}
-                        />
-                        {newStudentAdmissionError && <span style={{ color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 700 }}>{newStudentAdmissionError}</span>}
-                      </div>
-                      <div>
-                        <label style={styles.formLabel}>Student Full Name *</label>
-                        <input maxLength={LIMITS.personName}
-                          type="text"
-                          placeholder="e.g. Rahul Sharma"
-                          value={newStudentData.name}
-                          onChange={(e) => setNewStudentData({ ...newStudentData, name: e.target.value })}
-                          style={styles.textInputBox}
-                        />
-                      </div>
-                      <div>
-                        <label style={styles.formLabel}>Student Mobile Number *</label>
-                        <input maxLength={LIMITS.mobile}
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="10-digit mobile"
-                          value={newStudentData.mobile}
-                          onChange={(e) => {
-                            const digits = digitsOnly(e.target.value);
-                            setNewStudentData({ ...newStudentData, mobile: digits });
-                            setNewStudentMobileError(validateMobile(digits, 'Student mobile number') || '');
-                          }}
-                          style={{ ...styles.textInputBox, borderColor: newStudentMobileError ? 'var(--critical)' : undefined }}
-                        />
-                        {newStudentMobileError && <span style={{ color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 700 }}>{newStudentMobileError}</span>}
-                      </div>
-                      <div>
-                        <label style={styles.formLabel}>Campus / Branch (Locked)</label>
-                        <input
-                          type="text"
-                          value={loggedInCampus}
-                          disabled
-                          style={{ ...styles.textInputBox, backgroundColor: 'var(--surface-sunken)', color: 'var(--ink-secondary)', fontWeight: 800, cursor: 'not-allowed' }}
-                        />
-                      </div>
-                      <div>
-                        <label style={styles.formLabel}>Course *</label>
-                        <select
-                          value={newStudentData.course}
-                          onChange={(e) => setNewStudentData({ ...newStudentData, course: e.target.value })}
-                          style={styles.selectInput}
-                        >
-                          <option value="MPC">MPC (Maths, Physics, Chem)</option>
-                          <option value="BiPC">BiPC (Biology, Phys, Chem)</option>
-                          <option value="CEC">CEC (Civics, Econ, Commerce)</option>
-                          <option value="MEC">MEC (Maths, Econ, Commerce)</option>
-                          <option value="HEC">HEC (Hist, Econ, Civics)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label style={styles.formLabel}>Year *</label>
-                        <select
-                          value={newStudentData.studentYear}
-                          onChange={(e) => setNewStudentData({ ...newStudentData, studentYear: e.target.value })}
-                          style={styles.selectInput}
-                        >
-                          <option value="First Year">First Year</option>
-                          <option value="Second Year">Second Year</option>
-                          <option value="Short Term">Short Term</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label style={styles.formLabel}>Section *</label>
-                        <input maxLength={LIMITS.section}
-                          type="text"
-                          placeholder="e.g. MPC-A"
-                          value={newStudentData.section}
-                          onChange={(e) => setNewStudentData({ ...newStudentData, section: e.target.value })}
-                          style={styles.textInputBox}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid var(--line)', paddingTop: '14px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddStudentModalOpen(false)}
-                      style={{ ...styles.actionItemBtn, backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', padding: '10px 20px', border: 'none' }}
-                      className="press-interactive"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isCheckingAdmission || !!newStudentAdmissionError}
-                      onClick={() => {
-                        if (!newStudentData.name.trim() || !newStudentData.admissionNumber.trim() || !newStudentData.mobile.trim()) {
-                          setNewStudentAdmissionError('Admission Number, Name, and Mobile are required.');
-                          triggerToast('Please fill in Admission Number, Student Name, and Mobile Number.');
-                          return;
-                        }
-                        // Both of these used to be left to the server, which
-                        // only saw them after screen 3 — so a wrong mobile or a
-                        // taken admission number failed at the end of the form
-                        // with the answers already typed.
-                        const mobileError = validateMobile(newStudentData.mobile, 'Student mobile number');
-                        if (mobileError) {
-                          setNewStudentMobileError(mobileError);
-                          triggerToast(mobileError, 'error');
-                          return;
-                        }
-                        setNewStudentMobileError('');
-                        setNewStuFormPage(2);
-                      }}
-                      style={{
-                        ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px',
-                        backgroundColor: 'var(--ink)', color: 'var(--surface)', fontWeight: 800,
-                        opacity: (isCheckingAdmission || newStudentAdmissionError) ? 0.5 : 1,
-                        cursor: (isCheckingAdmission || newStudentAdmissionError) ? 'not-allowed' : 'pointer'
-                      }}
-                      className="press-interactive"
-                    >
-                      {isCheckingAdmission ? 'Checking admission number…' : 'Next: Personal & Family Info (Screen 2 of 3) →'}
-                    </button>
-                  </div>
-                </div>
-              ) : newStuFormPage === 2 ? (
-                <div>
-                  {/* Screen 2: Personal & Family Information */}
-                  <div style={{ marginBottom: '18px' }}>
-                    <div style={{ fontSize: '0.8571rem', fontWeight: 800, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--line)', paddingBottom: '4px', marginBottom: '12px' }}>
-                      2. Personal & Family Information
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '14px' }}>
-                      <div>
-                        <label style={styles.formLabel}>Father's Name</label>
-                        <input maxLength={LIMITS.personName} type="text" placeholder="e.g. Ramesh Sharma" value={newStudentData.fatherName} onChange={(e) => setNewStudentData({ ...newStudentData, fatherName: e.target.value })} style={styles.textInputBox} />
-                      </div>
-                      <div>
-                        <label style={styles.formLabel}>Mother's Name</label>
-                        <input maxLength={LIMITS.personName} type="text" placeholder="e.g. Sunitha Sharma" value={newStudentData.motherName} onChange={(e) => setNewStudentData({ ...newStudentData, motherName: e.target.value })} style={styles.textInputBox} />
-                      </div>
-                      <div>
-                        <label style={styles.formLabel}>Date of Birth</label>
-                        <input type="date" value={newStudentData.dob} onChange={(e) => setNewStudentData({ ...newStudentData, dob: e.target.value })} style={styles.textInputBox} />
-                      </div>
-                      <div>
-                        <label style={styles.formLabel}>Parent Contact Mobile</label>
-                        <input maxLength={LIMITS.mobile}
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="e.g. 9876543210"
-                          value={newStudentData.parentMobile}
-                          onChange={(e) => {
-                            const digits = digitsOnly(e.target.value);
-                            setNewStudentData({ ...newStudentData, parentMobile: digits });
-                            setNewStudentParentMobileError(validateMobile(digits, 'Parent mobile number') || '');
-                          }}
-                          style={{ ...styles.textInputBox, borderColor: newStudentParentMobileError ? 'var(--critical)' : undefined }}
-                        />
-                        {newStudentParentMobileError && <span style={{ color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 700 }}>{newStudentParentMobileError}</span>}
-                      </div>
-                      <div>
-                        <label style={styles.formLabel}>Previous School</label>
-                        <input maxLength={LIMITS.previousSchool} type="text" placeholder="e.g. ZPHS / St. Johns High School" value={newStudentData.previousSchool} onChange={(e) => setNewStudentData({ ...newStudentData, previousSchool: e.target.value })} style={styles.textInputBox} />
-                      </div>
-                      <div>
-                        <label style={styles.formLabel}>Previous School Board</label>
-                        <select value={newStudentData.previousBoard} onChange={(e) => setNewStudentData({ ...newStudentData, previousBoard: e.target.value })} style={styles.selectInput}>
-                          <option value="State Board">State Board (SSC)</option>
-                          <option value="CBSE">CBSE</option>
-                          <option value="ICSE">ICSE</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-                      <div style={{ gridColumn: 'span 2' }}>
-                        <label style={styles.formLabel}>Permanent Address</label>
-                        <input maxLength={LIMITS.address} type="text" placeholder="H.No., Street, Village/Mandal, District" value={newStudentData.address} onChange={(e) => setNewStudentData({ ...newStudentData, address: e.target.value })} style={styles.textInputBox} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--line)', paddingTop: '14px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setNewStuFormPage(1)}
-                      style={{ ...styles.actionItemBtn, backgroundColor: 'var(--line)', color: 'var(--ink)', padding: '10px 18px', fontWeight: 800 }}
-                      className="press-interactive"
-                    >
-                      ← Back to Basic Info (Screen 1)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const parentError = validateMobile(newStudentData.parentMobile, 'Parent mobile number');
-                        if (parentError) {
-                          setNewStudentParentMobileError(parentError);
-                          triggerToast(parentError, 'error');
-                          return;
-                        }
-                        setNewStudentParentMobileError('');
-                        setNewStuFormPage(3);
-                      }}
-                      style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: 'var(--ink)', color: 'var(--surface)', fontWeight: 800 }}
-                      className="press-interactive"
-                    >
-                      Next: Fee Structure & Bill Format (Screen 3 of 3) →
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  {/* Screen 3: Fee Structure.
-                      The SAME table the Rector's admission form renders. This
-                      screen used to offer three boxes — tuition, hostel, misc —
-                      so a student admitted here could not be given a books fee
-                      or a bus fee at all, and the college ended up holding two
-                      shapes of fee record depending on who typed it in. */}
-                  <FeeSlotEditor
-                    slots={newStuFeeSlots}
-                    onChange={setNewStuFeeSlots}
-                    inputStyle={styles.textInputBox}
-                    buttonStyle={styles.actionItemBtn}
-                    onNotify={(m) => triggerToast(m)}
-                  />
-
-                  <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => setNewStuFormPage(2)}
-                      style={{ ...styles.actionItemBtn, backgroundColor: 'var(--line)', color: 'var(--ink)', padding: '10px 18px', fontWeight: 800 }}
-                      className="press-interactive"
-                    >
-                      ← Back to Personal & Family Info (Screen 2)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!newStudentData.admissionNumber || !newStudentData.name || !newStudentData.mobile) {
-                          setNewStudentAdmissionError('Admission Number, Student Name, and Mobile are required.');
-                          triggerToast('Please fill in Admission Number, Student Name, and Mobile.');
-                          setNewStuFormPage(1);
-                          return;
-                        }
-                        // Last line of defence in the form: someone can reach
-                        // screen 3 and then go back and edit an earlier field.
-                        const blocker = newStudentAdmissionError
-                          || validateMobile(newStudentData.mobile, 'Student mobile number')
-                          || validateMobile(newStudentData.parentMobile, 'Parent mobile number');
-                        if (blocker) {
-                          triggerToast(blocker, 'error');
-                          setNewStuFormPage(1);
-                          return;
-                        }
-                        setIsAddStudentModalOpen(false);
-                        setIsRegStuOtpModalOpen(true);
-                      }}
-                      style={{ ...styles.saveSubmitBtn, marginTop: 0, width: 'auto', padding: '10px 28px', backgroundColor: 'var(--good)', color: 'var(--surface)', fontWeight: 800 }}
-                      className="press-interactive"
-                    >
-                      Register Student
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* REGISTER NEW STUDENT — CONFIRMATION MODAL */}
-      {isRegStuOtpModalOpen && (
-        <div style={{ ...styles.overlayOverlay, zIndex: 1300 }} className="anim-fade-in">
-          <div style={{ ...styles.overlaySheet, maxWidth: '420px', borderTop: '4px solid var(--good)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ ...styles.modalTitle, color: 'var(--good)' }}>Confirm Student Registration</h3>
-              <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ background: 'none', border: 'none', fontSize: '1.2857rem', cursor: 'pointer', color: 'var(--muted-gray)' }}>✕</button>
-            </div>
-            <p style={{ fontSize: '0.9286rem', color: 'var(--dark-charcoal)', lineHeight: 1.5, marginBottom: '16px', fontWeight: 600 }}>
-              Are you sure you want to register student <strong>{newStudentData.name || '—'}</strong> (Admission No: <strong>{newStudentData.admissionNumber || '—'}</strong>)?
-            </p>
-            {regStuError && <div style={{ color: 'var(--critical)', fontSize: '0.7857rem', fontWeight: 700, marginBottom: '8px', padding: '8px 12px', background: 'rgba(220,38,38,0.05)', borderRadius: '8px', border: '1px solid rgba(220,38,38,0.2)' }}>{regStuError}</div>}
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => { setIsRegStuOtpModalOpen(false); setRegStuOtpInput(''); setRegStuError(''); }} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--dark-charcoal)' }} className="press-interactive">
-                Cancel
-              </button>
-              <button onClick={submitStudentRegistrationWithOtp} disabled={isSubmittingStudent} style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'var(--good)', color: '#fff', opacity: isSubmittingStudent ? 0.7 : 1 }} className="press-interactive">
-                {isSubmittingStudent ? 'Registering...' : 'Yes, Confirm & Register'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* DELETE CONFIRMATION MODAL OVERLAY */}
       {isDeleteConfirmModalOpen && studentToDelete && (
         <div style={{ ...styles.overlayOverlay, zIndex: 1300 }}>
@@ -1959,29 +1549,14 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
   );
 
   if (activeSubPage === 'fee_collection') {
-    // Search, then filters, then a page. Applied in that order so a filter
-    // narrows what the search found rather than the whole registry.
-    const searched = students.filter((student) => matchesStudentSearch(student, feeCollectAdm));
-    const filteredCollectList = searched.filter((s: any) => {
-      if (feeFilterCampus !== 'All' && (s.branch || '') !== feeFilterCampus) return false;
-      if (feeFilterCourse !== 'All' && (s.course || '') !== feeFilterCourse) return false;
-      if (feeFilterYear !== 'All' && (s.studentYear || 'First Year') !== feeFilterYear) return false;
-      if (feeFilterDues === 'pending' && !(Number(s.remainingBalance) > 0)) return false;
-      if (feeFilterDues === 'settled' && Number(s.remainingBalance) > 0) return false;
-      return true;
-    });
-
-    const COLLECT_PER_PAGE = 24;
-    const collectTotalPages = Math.max(1, Math.ceil(filteredCollectList.length / COLLECT_PER_PAGE));
-    // Clamped rather than stored: deleting or filtering can leave the stored
-    // page beyond the end, and an empty grid reads as "no students" when the
-    // truth is "no students on page 7".
+    // The server has already searched, filtered and paged: this is the page.
+    const collectTotalPages = Math.max(1, Math.ceil(deskTotal / COLLECT_PER_PAGE));
+    // Clamped rather than stored: narrowing can leave the stored page beyond the
+    // end, and an empty grid reads as "no students" when the truth is "no
+    // students on page 7".
     const collectPage = Math.min(feeCollectPage, collectTotalPages);
-    const collectPageItems = filteredCollectList.slice(
-      (collectPage - 1) * COLLECT_PER_PAGE, collectPage * COLLECT_PER_PAGE
-    );
-
-    const collectCourses = Array.from(new Set(students.map((s: any) => s.course).filter(Boolean))).sort();
+    const collectPageItems = students;
+    const collectCourses = facets.courses;
 
     return (
       <div style={styles.container} className="view-container anim-slide-up">
@@ -2051,11 +1626,12 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
                   <option value="settled">Settled only</option>
                 </select>
 
-                {(feeFilterCampus !== 'All' || feeFilterCourse !== 'All' || feeFilterYear !== 'All' || feeFilterDues !== 'All' || feeCollectAdm) && (
+                {hasDeskCriteria && (
                   <button
                     onClick={() => {
                       setFeeFilterCampus('All'); setFeeFilterCourse('All');
                       setFeeFilterYear('All'); setFeeFilterDues('All');
+                      setFeeFilterSections([]);
                       setFeeCollectAdm(''); setFeeCollectPage(1);
                     }}
                     style={{ ...styles.actionItemBtn, padding: '8px 14px', backgroundColor: 'var(--line)', color: 'var(--ink-secondary)', border: 'none' }}
@@ -2065,37 +1641,54 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
                   </button>
                 )}
 
-                {/* The fee register as filtered on screen: S.No, admission
-                    number, name, total, paid, pending. Built by the server
-                    from the same filters, because `students` here is a capped
-                    list and an export must not quietly lose its tail. */}
+                {/* Opens the export preferences. Starts from whatever the desk is
+                    currently filtered to, so "download what I am looking at" is
+                    one click, and the person can widen or narrow it first. */}
                 <button
-                  onClick={async () => {
-                    try {
-                      await downloadCsv('fee-register', {
-                        q: feeCollectAdm.trim(),
-                        campus: feeFilterCampus,
-                        course: feeFilterCourse,
-                        year: feeFilterYear,
-                        dues: feeFilterDues
-                      });
-                      triggerToast('Fee register downloaded.');
-                    } catch (e: any) {
-                      triggerToast(e?.message || 'Could not download the fee register.', 'error');
-                    }
-                  }}
+                  onClick={() => setIsExportOpen(true)}
                   style={{ ...styles.actionItemBtn, padding: '8px 14px', backgroundColor: 'var(--good-wash)', color: 'var(--good)', border: '1.5px solid var(--good)', fontWeight: 800 }}
                   className="press-interactive"
-                  title="Download S.No, Admission No, Name, Total, Paid and Pending fees for the students listed"
+                  title="Choose what to include, then download S.No, Admission No, Name, Total, Paid and Pending fees"
                 >
                   Export Fee Register
                 </button>
 
                 <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)', marginLeft: 'auto' }}>
-                  {filteredCollectList.length} student{filteredCollectList.length === 1 ? '' : 's'}
-                  {collectTotalPages > 1 ? ` · page ${collectPage} of ${collectTotalPages}` : ''}
+                  {hasDeskCriteria
+                    ? (deskLoading ? 'Searching…' : `${deskTotal} student${deskTotal === 1 ? '' : 's'}${collectTotalPages > 1 ? ` · page ${collectPage} of ${collectTotalPages}` : ''}`)
+                    : ''}
                 </span>
               </div>
+
+              {/* Sections. A college runs several sections of one course, and the
+                  person at the counter often wants one or two of them. */}
+              {facets.sections.length > 0 && (
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sections</span>
+                  {facets.sections.map(sec => {
+                    const on = feeFilterSections.includes(sec);
+                    return (
+                      <button
+                        key={sec}
+                        type="button"
+                        onClick={() => {
+                          setFeeFilterSections(on ? feeFilterSections.filter(x => x !== sec) : [...feeFilterSections, sec]);
+                          setFeeCollectPage(1);
+                        }}
+                        style={{
+                          padding: '5px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.7857rem', fontWeight: 800,
+                          border: on ? '1.5px solid var(--good)' : '1.5px solid var(--line)',
+                          backgroundColor: on ? 'var(--good-wash)' : 'var(--surface)',
+                          color: on ? 'var(--good)' : 'var(--ink-secondary)'
+                        }}
+                        className="press-interactive"
+                      >
+                        {sec}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               <div style={{
                 display: 'grid',
@@ -2188,7 +1781,12 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
                     </div>
                   </GlassCard>
                 ))}
-                {filteredCollectList.length === 0 && (
+                {!hasDeskCriteria && (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px 20px', color: 'var(--muted-gray)', fontSize: '0.9286rem', fontWeight: 600 }}>
+                    Type a name or admission number, or choose a filter, to see students.
+                  </div>
+                )}
+                {hasDeskCriteria && !deskLoading && deskTotal === 0 && (
                   <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--muted-gray)', fontSize: '0.8571rem' }}>
                     No students match. Try a different name or admission number, or clear the filters.
                   </div>
@@ -2985,7 +2583,29 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
         )}
           {renderModals()}
 
+          {isExportOpen && (
+            <FeeRegisterExportDialog
+              initial={{
+                campus: feeFilterCampus, course: feeFilterCourse, year: feeFilterYear,
+                dues: feeFilterDues, sections: feeFilterSections, q: feeCollectAdm
+              }}
+              facets={facets}
+              onClose={() => setIsExportOpen(false)}
+              onResult={triggerToast}
+            />
+          )}
         </main>
+
+        {/* The toast belongs to this screen. It used to be rendered only on the
+            old cockpit page, so every success and every error raised here -
+            including a refused payment - was set and never shown. */}
+        {toastMessage && (
+          <div style={{ ...styles.toastContainer, zIndex: 2000 }} className="anim-slide-up">
+            <div style={styles.toastCard}>
+              <span style={styles.toastText}>{toastMessage}</span>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

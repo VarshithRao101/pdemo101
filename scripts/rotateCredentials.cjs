@@ -29,8 +29,8 @@ const RefreshToken = require('../server/models/RefreshToken.cjs');
 
 const CAMPUSES = ['Erragattugutta C1', 'Erragattugutta C2', 'Beemaram C1', 'Beemaram C2'];
 
-// Exactly the accounts the system should have: one Rector, one security
-// authenticator, one Dean per campus, one accountant per campus.
+// The fixed accounts the system should have: one Rector and one security
+// authenticator. Clerks are created by the Rector; there is no accountant role.
 const ACCOUNTS = [
   { username: 'admin1', role: 'admin1', campus: 'All', name: 'Rector' },
   { username: '9059068384', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
@@ -39,12 +39,6 @@ const ACCOUNTS = [
     role: 'admin2',
     campus: c,
     name: `Dean ${c}`
-  })),
-  ...CAMPUSES.map(c => ({
-    username: `accountant_${c.toLowerCase().replace(/\s+/g, '_')}`,
-    role: 'accountant',
-    campus: c,
-    name: `Accountant ${c}`
   }))
 ];
 
@@ -59,7 +53,7 @@ const ACCOUNTS = [
  *
  * So the shape is: Role, year, and a four-digit random block —
  *
- *     Rector#2026-4821        AccountantBeemaramC2#2026-7390
+ *     Rector#2026-4821        DeanBeemaramC2#2026-7390
  *
  * The randomness lives entirely in those four digits plus the role/campus
  * stem, which is public knowledge. That is deliberately weaker than 20 random
@@ -78,13 +72,13 @@ function readablePassword(stem) {
   return `${stem}#${new Date().getFullYear()}-${block}`;
 }
 
-// Turns "Accountant Beemaram C2" into "AccountantBeemaramC2" — a stem someone
+// Turns "Dean Beemaram C2" into "DeanBeemaramC2" — a stem someone
 // can say out loud without spelling it character by character.
 const stemFor = (account) => {
   const role = account.role === 'admin1' ? 'Rector'
     : account.role === 'authenticator' ? 'Authenticator'
     : account.role === 'admin2' ? 'Dean'
-    : 'Accountant';
+    : 'Clerk';
   // The two org-wide accounts have campus 'All', and "RectorAll" reads like a
   // typo. There is only one Rector and one Authenticator, so the role alone
   // identifies them.

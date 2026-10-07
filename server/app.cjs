@@ -2386,6 +2386,34 @@ function studentSearchFilter(search) {
 }
 
 /**
+ * The Fee Collection Desk's narrowing filters, as a Mongo fragment.
+ *
+ * Shared by the desk's student lookup and the fee-register export so that
+ * "what I filtered to" and "what I downloaded" can never disagree. `dues` is
+ * deliberately NOT here: the lookup answers it from the stored balance and the
+ * export from the live fee computation, and each says so where it uses it.
+ *
+ * `sections` is a comma-separated list, because a college runs several sections
+ * of the same course and the person at the counter wants some of them, not one.
+ */
+function studentDeskFilter(query) {
+  const str = v => String(v || '').trim();
+  const out = {};
+  const course = str(query.course);
+  if (course && course !== 'All') out.course = course;
+
+  const year = str(query.year);
+  if (year && year !== 'All') {
+    // A record with no year has always been treated as First Year.
+    out.studentYear = year === 'First Year' ? { $in: ['First Year', null] } : year;
+  }
+
+  const sections = str(query.sections).split(',').map(x => x.trim()).filter(Boolean).slice(0, 50);
+  if (sections.length) out.section = { $in: sections };
+  return out;
+}
+
+/**
  * The campus a READ may cover, or null once a refusal has been sent.
  *
  * Three separate routes took ?branch straight from the query and used it
@@ -5520,6 +5548,13 @@ app.get('/api/accountant/students', authenticateToken, requireRole('admin1', 'cl
     // response is bounded and carries the true total beside the page.
     const search = studentSearchFilter(req.query.search);
     if (search) Object.assign(filter, search);
+    Object.assign(filter, studentDeskFilter(req.query));
+
+    // Pending / settled, answered from the stored balance - the same field the
+    // desk has always shown beside each name.
+    const dues = String(req.query.dues || '').trim();
+    if (dues === 'pending') filter.remainingBalance = { $gt: 0 };
+    else if (dues === 'settled') filter.remainingBalance = { $not: { $gt: 0 } };
 
     const { limit, page, skip } = readPaging(req);
 
@@ -5536,6 +5571,27 @@ app.get('/api/accountant/students', authenticateToken, requireRole('admin1', 'cl
       data: rows.map(withReceiptTokens),
       meta: { page, limit, total, hasMore: skip + rows.length < total }
     });
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+/**
+ * The values the desk's filter boxes offer: which courses and sections exist.
+ *
+ * Asked of the database rather than read off a loaded student list, because the
+ * desk no longer loads one - it shows nothing until someone filters or types,
+ * and the filter boxes still have to know what to offer.
+ */
+app.get('/api/accountant/student-facets', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
+  try {
+    const filter = studentScopeFilter(req);
+    const [courses, sections] = await Promise.all([
+      Student.distinct('course', filter),
+      Student.distinct('section', filter)
+    ]);
+    const clean = list => list.map(v => String(v || '').trim()).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return res.json({ status: 'success', data: { courses: clean(courses), sections: clean(sections) } });
   } catch (err) {
     return failRequest(req, res, err);
   }
@@ -8862,13 +8918,7 @@ app.get('/api/export/fee-register.csv',
       }
       filter.branch = campus;
     }
-    const course = str(req.query.course);
-    if (course && course !== 'All') filter.course = course;
-    const year = str(req.query.year);
-    if (year && year !== 'All') {
-      // A record with no year is treated as First Year on the desk, so it is here too.
-      filter.studentYear = year === 'First Year' ? { $in: ['First Year', null] } : year;
-    }
+    Object.assign(filter, studentDeskFilter(req.query));
     const q = str(req.query.q).slice(0, 100);
     if (q) {
       const re = new RegExp(escapeRegex(q), 'i');
@@ -8897,7 +8947,7 @@ app.get('/api/export/fee-register.csv',
       entityId: 'fee-register.csv',
       campus: req.user.campus,
       summary: `Exported ${rows.length} student fee record(s) to CSV.`,
-      details: { rows: rows.length, campus, course, year, dues, q }
+      details: { rows: rows.length, campus, course: str(req.query.course), year: str(req.query.year), sections: str(req.query.sections), dues, q }
     });
     return sendCsv(res, `fee-register-${csvDate(Date.now())}.csv`, body);
   } catch (err) {

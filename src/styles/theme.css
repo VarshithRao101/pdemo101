@@ -169,7 +169,6 @@
 */
 .portal-admin1, [data-portal="admin1"] { --accent: #1E3A8A; --accent-wash: #EFF3FC; }
 .portal-admin2, [data-portal="admin2"] { --accent: #0F5D57; --accent-wash: #ECF6F4; }
-.portal-accountant, [data-portal="accountant"] { --accent: #8A4B10; --accent-wash: #FBF3EA; }
 .portal-authenticator, [data-portal="authenticator"] { --accent: #27272A; --accent-wash: #F4F4F5; }
 
 @media (prefers-reduced-motion: reduce) {

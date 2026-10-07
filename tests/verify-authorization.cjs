@@ -54,7 +54,6 @@ const TAG = crypto.randomBytes(3).toString('hex');
 const ACCOUNTS = [
   { role: 'admin1', campus: 'All' },
   { role: 'clerk', campus: 'Beemaram C2' },
-  { role: 'accountant', campus: 'Beemaram C2' },
   { role: 'authenticator', campus: 'All' }
 ];
 
@@ -189,7 +188,7 @@ const concrete = p => p.replace(/:[A-Za-z]+/g, 'zzz000000000000000000000');
       // here. What must NOT be possible is admin1 using it to take the
       // authenticator account, which is checked separately below.
       ['POST', '/api/authenticator/reset-password', ['authenticator', 'admin1']],
-      ['DELETE', '/api/admin1/students/:id', ['admin1', 'clerk', 'accountant']],
+      ['DELETE', '/api/admin1/students/:id', ['admin1', 'clerk']],
       ['POST', '/api/admin1/clerks', ['admin1']],
       ['PUT', '/api/admin1/credentials/:id', ['admin1']]
     ];

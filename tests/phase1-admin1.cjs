@@ -141,7 +141,7 @@ const rows = (r) => {
     // this one; the authenticator is the account it may not, asserted below.
     await db.collection('users').insertOne({
       username: `${TAG}acct`, password: `Pw-${crypto.randomBytes(9).toString('hex')}`, pin: '242526',
-      role: 'accountant', campus: CAMPUS, name: 'Phase1 Accountant', status: 'active',
+      role: 'admin1', campus: 'All', name: 'Phase1 Second Rector', status: 'active',
       permissions: {}, activeSessionId: null, createdAt: new Date(), updatedAt: new Date()
     });
     const login = await req('POST', '/api/auth/login', null, {
@@ -533,12 +533,12 @@ const rows = (r) => {
     // The screen loading is not the same as it working. This changes one for
     // real and signs in with the new password.
     const accts = creds.json?.data?.accounts || creds.json?.data || [];
-    const victim = accts.find(a => a.role === 'accountant');
+    const victim = accts.find(a => a.username === `${TAG}acct`);
     if (victim) {
       const newPw = `Ph1-${crypto.randomBytes(6).toString('hex')}`;
       const changed = await req('PUT', `/api/admin1/credentials/${victim.id}`, token,
         { password: newPw }, withPin());
-      ok('the Rector can change an accountant password', changed.status < 300,
+      ok('the Rector can change another Rector account's password', changed.status < 300,
         `status ${changed.status}: ${changed.raw.slice(0, 140)}`);
 
       const relog = await req('POST', '/api/auth/login', null,
@@ -546,7 +546,7 @@ const rows = (r) => {
       ok('the new password actually signs in', !!relog.json?.token,
         `status ${relog.status}: ${relog.raw.slice(0, 120)}`);
     } else {
-      ok('an accountant exists to change', false, 'no accountant account in the scratch database');
+      ok('a second account exists to change', false, 'no second account in the scratch database');
     }
 
     // =================================================================

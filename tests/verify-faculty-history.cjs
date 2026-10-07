@@ -89,7 +89,7 @@ let seq = 0;
     { key: 'admin1', role: 'admin1', campus: 'All', staff: true },
     { key: 'clerk', role: 'clerk', campus: HOME, staff: true },
     { key: 'bare', role: 'clerk', campus: HOME, staff: false },
-    { key: 'acct', role: 'accountant', campus: OTHER, staff: true }
+    { key: 'acct', role: 'clerk', campus: OTHER, staff: true }
   ];
   const tokens = {};
 
@@ -142,12 +142,12 @@ let seq = 0;
       clerkList.status === 200 && clerkCampuses.includes(HOME) && clerkCampuses.includes(OTHER),
       `status ${clerkList.status}, saw: ${clerkCampuses.join(', ')}`);
 
-    // An accountant could not reach these routes at all before this change.
+    // A clerk at another campus reads the same registry.
     const acctList = await req('GET', '/api/admin1/teachers', tokens.acct);
-    ok('an accountant can now read the staff registry', acctList.status === 200,
+    ok('a clerk at another campus can read the staff registry', acctList.status === 200,
       `status ${acctList.status}: ${acctList.raw.slice(0, 140)}`);
     const acctCampuses = [...new Set((acctList.json?.data || []).map(t => t.branch))];
-    ok('an accountant sees every campus too',
+    ok('and sees every campus too',
       acctCampuses.includes(HOME) && acctCampuses.includes(OTHER),
       `saw: ${acctCampuses.join(', ')}`);
 
@@ -273,7 +273,7 @@ let seq = 0;
     ok('an unknown history kind is refused', badKind.status === 400, `status ${badKind.status}`);
 
     const acctHistory = await history(tokens.acct, `?teacherId=${farStaff}`);
-    ok('an accountant can read the history too', acctHistory.status === 200,
+    ok('a clerk at another campus can read the history too', acctHistory.status === 200,
       `status ${acctHistory.status}`);
 
     // The case the ledger screen cannot cover: the staff member is gone, so

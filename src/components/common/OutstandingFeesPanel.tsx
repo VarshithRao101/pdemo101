@@ -45,7 +45,11 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
   const [hasMore, setHasMore] = useState(false);
   const [branch, setBranch] = useState(fixedCampus && fixedCampus !== 'All' ? fixedCampus : 'All');
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  // Nothing loads until someone asks. Ranking every debtor in the college is the
+  // slow query on this screen, and opening the page should not pay for it: the
+  // list appears when a campus is chosen or Show is pressed.
+  const [requested, setRequested] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -65,7 +69,7 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
     }
   }, [branch]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (requested) load(); }, [load, requested]);
 
   // Filtering here is over a list already scoped and ordered by the server,
   // and it is a narrowing of what is on screen rather than a search of the
@@ -132,7 +136,7 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
       </div>
 
       {/* --- Summary --- */}
-      <div style={{
+      {requested && <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))',
         gap: 10
@@ -156,7 +160,7 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
             }}>{tile.value}</div>
           </div>
         ))}
-      </div>
+      </div>}
 
       {/*
         A capped list must never look like a complete one.
@@ -165,7 +169,7 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
         are only the top of it. Saying so is the difference between a working
         list and one that quietly stops mentioning the families at the bottom.
       */}
-      {hasMore && (
+      {requested && hasMore && (
         <div style={{
           fontSize: '0.7857rem', fontWeight: 700, color: 'var(--ink-secondary)',
           border: '1px solid var(--card-border)', background: 'var(--card-bg)',
@@ -185,7 +189,7 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
         {(!fixedCampus || fixedCampus === 'All') && (
           <select
             value={branch}
-            onChange={(e) => setBranch(e.target.value)}
+            onChange={(e) => { setBranch(e.target.value); setRequested(true); }}
             style={{
               padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--card-border)',
               background: 'var(--bg-primary)', color: 'var(--ink)', fontWeight: 700, fontSize: '0.8571rem'
@@ -218,7 +222,26 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
       </div>
 
       {/* --- List --- */}
-      {loading ? (
+      {!requested ? (
+        <div style={{
+          padding: '28px 20px', borderRadius: 12, border: '1px dashed var(--card-border)',
+          textAlign: 'center', color: 'var(--muted-gray)', fontSize: '0.8571rem', fontWeight: 700
+        }}>
+          <p style={{ margin: '0 0 12px' }}>
+            Choose a campus above to see who owes fees, or load the whole list.
+          </p>
+          <button
+            onClick={() => setRequested(true)}
+            style={{
+              padding: '10px 18px', borderRadius: 10, border: '1.5px solid var(--good)',
+              background: 'transparent', color: 'var(--good)', fontWeight: 850, cursor: 'pointer'
+            }}
+            className="press-interactive"
+          >
+            Show outstanding fees{branch !== 'All' ? ` for ${branch}` : ''}
+          </button>
+        </div>
+      ) : loading ? (
         <p style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)' }}>Loading…</p>
       ) : error ? (
         <div style={{

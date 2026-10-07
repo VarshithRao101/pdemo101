@@ -19,7 +19,7 @@ import {
   pdfDetailCard, money, dateStr, escapeHtml
 } from '../utils/pdfDocument';
 import { useDataFreshness } from '../hooks/useDataFreshness';
-import { FeeSlotEditor, freshRegFeeSlots, feeSlotsToPayload, type FeeSlot } from '../components/common/FeeSlotEditor';
+import { FeeSlotEditor, freshRegFeeSlots, feeSlotsToPayload, slotsFromStudentFees, sumFeeSlots, type FeeSlot } from '../components/common/FeeSlotEditor';
 import { AccountSecurityPanel } from '../components/common/AccountSecurityPanel';
 import { RecentlyDeletedPanel } from '../components/common/RecentlyDeletedPanel';
 import { OutstandingFeesPanel } from '../components/common/OutstandingFeesPanel';
@@ -350,16 +350,12 @@ const MAX_STUDENT_FEE = 1_000_000; // Rs. 10,00,000
 const digitsOnlyPin = (value: string) => String(value).replace(/\D/g, '').slice(0, 6);
 
 /**
- * `restrictTo` pins this view to a single module, the same way
- * AccountantDashboardView's does when a clerk borrows fee collection.
- *
- * An ACCOUNTANT borrows the faculty screen through it. Staff are one shared
- * registry now, so an accountant is entitled to the same roster the Rector
- * and the clerks see — but they must not land on the Rector's cockpit, and
- * "Back to Cockpit" has to return them to their own.
+ * `restrictTo` pins this view to a single module. Nothing mounts it that way
+ * now that the accountant role is gone, but the plumbing is harmless and
+ * "Back to Cockpit" still returns to the account's own cockpit when it is set.
  */
 export const AdminDashboardView: React.FC<{
-  role?: 'admin1' | 'clerk' | 'accountant';
+  role?: 'admin1' | 'clerk';
   restrictTo?: 'teachers';
 }> = ({ role = 'admin1', restrictTo }) => {
   const { user, activeTab: globalActiveTab, setActiveTab } = useNavigation();
@@ -932,6 +928,10 @@ export const AdminDashboardView: React.FC<{
 
   const [feeEditSearch, setFeeEditSearch] = useState('');
   const [selectedFeeStudent, setSelectedFeeStudent] = useState<Student | null>(null);
+  // The fee amounts being edited for the open student: the same rows the
+  // admission form uses, so a base fee can be changed and a new slot added.
+  const [editFeeSlots, setEditFeeSlots] = useState<FeeSlot[]>([]);
+  const [isSavingFees, setIsSavingFees] = useState(false);
   const [feeEditorPage, setFeeEditorPage] = useState(1);
   const [editTuitionWaiver, setEditTuitionWaiver] = useState('0');
   const [editHostelWaiver, setEditHostelWaiver] = useState('0');
@@ -3152,7 +3152,7 @@ export const AdminDashboardView: React.FC<{
                     >
                       Submit & Save Complete Profile
                     </button>
-                    {(role === 'admin1' || role === 'clerk' || role === 'accountant') && (
+                    {(role === 'admin1' || role === 'clerk') && (
                       <button
                         onClick={() => { setDeleteStuOtpInput(''); setIsDeleteStuOtpOpen(true); }}
                         style={{ ...styles.saveSubmitBtn, flex: 1, marginTop: 0, backgroundColor: 'var(--critical)', color: '#fff', border: 'none' }}
@@ -4759,7 +4759,6 @@ export const AdminDashboardView: React.FC<{
       r === 'admin1' ? 'Rector'
         : r === 'authenticator' ? 'Authenticator'
         : r === 'clerk' ? 'Clerk'
-        : r === 'accountant' ? 'Accountant'
         : r;
 
     return (
@@ -6046,7 +6045,8 @@ export const AdminDashboardView: React.FC<{
         setEditSlotWaivers({});
         // The complete record, because "Download Complete Statement" on this
         // screen prints the receipt history, and list rows no longer carry it.
-        hydrateStudent(student).then(full => setSelectedFeeStudent(full));
+        setEditFeeSlots(slotsFromStudentFees(student));
+        hydrateStudent(student).then(full => { setSelectedFeeStudent(full); setEditFeeSlots(slotsFromStudentFees(full)); });
         const targetBranch = student.branch || loggedInCampus;
         const studentKey = student._id || student.studentId || student.admissionNumber;
         const breakdown = await admin2Service.getFeeBreakdown(studentKey, targetBranch);
@@ -6078,6 +6078,45 @@ export const AdminDashboardView: React.FC<{
         setSelectedFeeStudent(null);
         setFeeBreakdownData(null);
         triggerToast('Student not found.');
+      }
+    };
+
+    /**
+     * Save changed fee amounts - the base fee itself, not a waiver on it.
+     *
+     * Goes through the ordinary student update, so the server recomputes the
+     * balance and every screen that reads the student (the desk, receipts,
+     * outstanding fees, the exports) sees the new figure. Only the fee fields
+     * are sent: this is not a whole-record edit.
+     */
+    const handleSaveFeeAmounts = async () => {
+      if (!selectedFeeStudent) return;
+      const { grossTotal, tuitionFee, hostelFee, transportFee, miscellaneousFee, previousPending, customFeeSlots } =
+        feeSlotsToPayload(editFeeSlots);
+      const ok = window.confirm(
+        `Change the fees for ${selectedFeeStudent.name}?\n\n` +
+        `New total fees: Rs.${grossTotal.toLocaleString('en-IN')}\n\n` +
+        'The balance will be recalculated against what has already been paid.'
+      );
+      if (!ok) return;
+      setIsSavingFees(true);
+      try {
+        const studentKey = selectedFeeStudent._id || selectedFeeStudent.studentId || selectedFeeStudent.admissionNumber;
+        await admin1Service.updateStudent(String(studentKey), {
+          tuitionFee, hostelFee, transportFee, miscellaneousFee, previousPending, customFeeSlots
+        });
+        const targetBranch = selectedFeeStudent.branch || loggedInCampus;
+        const breakdown = await admin2Service.getFeeBreakdown(String(studentKey), targetBranch);
+        setFeeBreakdownData(breakdown);
+        const full = await hydrateStudent({ ...selectedFeeStudent });
+        setSelectedFeeStudent(full as any);
+        setEditFeeSlots(slotsFromStudentFees(full));
+        await fetchStudents('', true);
+        triggerToast(`Fees updated for ${selectedFeeStudent.name}.`);
+      } catch (err: any) {
+        triggerToast(err?.message || 'Could not update the fees.');
+      } finally {
+        setIsSavingFees(false);
       }
     };
 
@@ -6147,7 +6186,7 @@ export const AdminDashboardView: React.FC<{
         <header style={styles.header}>
           <button onClick={() => { setActivePage('menu'); setSelectedFeeStudent(null); setFeeBreakdownData(null); }} style={styles.backArrowBtn} className="press-interactive">Back to Finance Cockpit</button>
           <h1 style={{ ...styles.title, marginTop: '8px' }}>Student Fee Editor</h1>
-          <p style={styles.subtitle}>View fee history and apply individual waivers per student</p>
+          <p style={styles.subtitle}>Edit fee amounts, add fee slots, and apply individual waivers per student</p>
         </header>
         <main style={styles.content}>
           {/* Search bar */}
@@ -6429,6 +6468,32 @@ export const AdminDashboardView: React.FC<{
                           </div>
                         );
                       })()}
+                    </div>
+
+                    <div style={{ ...styles.readOnlyBlock, gridColumn: '1 / -1' }}>
+                      <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '8px', marginBottom: '14px' }}>
+                        <h4 style={{ ...styles.sectionSubtitle, margin: 0, borderBottom: 'none', paddingBottom: 0 }}>Edit Fee Amounts</h4>
+                        <p style={{ fontSize: '0.7857rem', color: 'var(--muted-gray)', marginTop: '2px', marginBottom: 0 }}>
+                          Change an existing fee (for example Tuition from 50,000 to 70,000) or add a new fee slot.
+                          The balance is recalculated against what has already been paid.
+                        </p>
+                      </div>
+                      <FeeSlotEditor
+                        slots={editFeeSlots}
+                        onChange={setEditFeeSlots}
+                        inputStyle={styles.textInputBox}
+                        buttonStyle={styles.actionItemBtn}
+                        onNotify={triggerToast}
+                        title="Fee Structure"
+                      />
+                      <button
+                        onClick={() => void handleSaveFeeAmounts()}
+                        disabled={isSavingFees || sumFeeSlots(editFeeSlots) <= 0}
+                        style={{ ...styles.saveSubmitBtn, marginTop: '16px', opacity: isSavingFees ? 0.6 : 1 }}
+                        className="press-interactive"
+                      >
+                        {isSavingFees ? 'Saving…' : 'Save Fee Changes'}
+                      </button>
                     </div>
 
                     <div style={styles.readOnlyBlock}>
@@ -6779,7 +6844,7 @@ export const AdminDashboardView: React.FC<{
                 <input maxLength={LIMITS.remarks} type="text" value={newExpDesc} onChange={(e) => setNewExpDesc(e.target.value)} style={styles.textInputBox} placeholder="Brief description of the expense" />
               </div>
             </div>
-            <button onClick={() => { if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; } handleLogExpenditure(undefined); }} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">
+            <button onClick={() => { if (!newExpAmt || !newExpDesc) { triggerToast('Please fill all fields.'); return; } if (!(Number(newExpAmt) > 0)) { triggerToast('Enter an amount greater than zero.'); return; } setIsExpOtpOpen(true); }} style={{ ...styles.saveSubmitBtn, marginTop: '14px' }} className="press-interactive">
               Log Expenditure
             </button>
           </GlassCard>
@@ -6876,7 +6941,7 @@ export const AdminDashboardView: React.FC<{
                   <h3 style={{ margin: '0 0 4px', fontWeight: 900, fontSize: '1.15rem', color: 'var(--dark-charcoal)' }}>Confirm Expenditure Entry</h3>
                   <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted-gray)', lineHeight: 1.5 }}>Are you sure you want to log this expenditure entry?</p>
                   <div style={{ marginTop: '12px', padding: '10px', backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '10px', fontSize: '0.8571rem', textAlign: 'left' }}>
-                    <div style={{ fontWeight: 700 }}>{newExpCat} • {newExpDesc}</div>
+                    <div style={{ fontWeight: 700 }}>{newExpCat === 'Others' ? (customExpCat.trim() || 'Others') : newExpCat} • {newExpDesc}</div>
                     <div style={{ color: 'var(--critical)', fontWeight: 900, fontSize: '1.1429rem', marginTop: '4px' }}>Rs.{Number(newExpAmt).toLocaleString('en-IN')}</div>
                   </div>
                 </div>
@@ -7715,7 +7780,7 @@ export const AdminDashboardView: React.FC<{
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                   </div>
                   <h4 style={styles.moduleTitle}>Student Fee & Waivers</h4>
-                  <p style={styles.moduleDesc}>Configure individual scholarship category fee waivers.</p>
+                  <p style={styles.moduleDesc}>Edit a student's fee amounts, add fee slots, and set scholarship waivers.</p>
                 </div>
 
                 <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActivePage('expenditure'); } }} onClick={() => setActivePage('expenditure')} style={styles.moduleCardNew} className="press-interactive">

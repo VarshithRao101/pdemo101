@@ -82,8 +82,8 @@ async function main() {
   console.log('========================================================\n');
 
   const rector    = await account('rector', 'admin1', 'All');
-  const homeAcct  = await account('acct_home', 'accountant', HOME);
-  const awayAcct  = await account('acct_away', 'accountant', AWAY);
+  const homeAcct  = await account('acct_home', 'clerk', HOME, ALL);
+  const awayAcct  = await account('acct_away', 'clerk', AWAY, ALL);
   const homeClerk = await account('clerk_home', 'clerk', HOME, ALL);
   ok('all four accounts signed in',
     !!(rector.token && homeAcct.token && awayAcct.token && homeClerk.token));
@@ -96,7 +96,7 @@ async function main() {
   });
   ok(`a student exists at ${HOME}`, made.status === 201, `HTTP ${made.status}`);
 
-  console.log('\nAn accountant at the OTHER campus — should reach it now\n');
+  console.log('\nA clerk at the OTHER campus — should reach it now\n');
 
   const list = await call('GET', '/api/accountant/students', { token: awayAcct.token });
   const rows = list.json?.data || [];

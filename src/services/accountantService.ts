@@ -35,15 +35,46 @@ export interface DashboardSummary {
 
 // Service Functions
 
-// `search` is now applied by the server, so this genuinely searches the
-// registry rather than fetching all of it for the browser to filter.
-export const searchStudents = async (search: string, campus?: string): Promise<ListPage<StudentProfile>> => {
+export interface StudentDeskQuery {
+  search?: string;
+  campus?: string;
+  course?: string;
+  year?: string;
+  /** 'pending' | 'settled' | 'All' */
+  dues?: string;
+  /** Section names to include; empty means every section. */
+  sections?: string[];
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * The Fee Collection Desk's lookup. Everything is applied by the server, so the
+ * browser only ever holds the page it is showing - it never downloads the
+ * registry to filter it.
+ */
+export const searchStudentsDesk = async (q: StudentDeskQuery): Promise<ListPage<StudentProfile>> => {
   const params: string[] = [];
-  if (search) params.push(`search=${encodeURIComponent(search)}`);
-  if (campus && campus !== 'All') params.push(`branch=${encodeURIComponent(campus)}`);
-  const query = params.length > 0 ? `?${params.join('&')}` : '';
-  const res = await apiClient.get<any>(`/accountant/students${query}`);
+  const add = (k: string, v?: string | number) => {
+    if (v === undefined || v === null || v === '' || v === 'All') return;
+    params.push(`${k}=${encodeURIComponent(String(v))}`);
+  };
+  add('search', q.search?.trim());
+  add('branch', q.campus);
+  add('course', q.course);
+  add('year', q.year);
+  add('dues', q.dues);
+  if (q.sections && q.sections.length) add('sections', q.sections.join(','));
+  add('page', q.page);
+  add('limit', q.limit);
+  const res = await apiClient.get<any>(`/accountant/students${params.length ? `?${params.join('&')}` : ''}`);
   return asListPage<StudentProfile>(res);
+};
+
+/** The courses and sections that exist, for the desk's filter boxes. */
+export const getStudentFacets = async (): Promise<{ courses: string[]; sections: string[] }> => {
+  const res = await apiClient.get<{ status: string; data: { courses: string[]; sections: string[] } }>('/accountant/student-facets');
+  return res.data;
 };
 
 export const getStudentProfile = async (id: string): Promise<StudentProfile> => {

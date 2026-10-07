@@ -77,7 +77,6 @@ const rawReq = (method, path, token, body) => new Promise((resolve, reject) => {
 const TAG = crypto.randomBytes(3).toString('hex');
 const ACCOUNTS = [
   { role: 'clerk', campus: HOME },
-  { role: 'accountant', campus: HOME },
   { role: 'admin1', campus: 'All' }
 ];
 
@@ -123,7 +122,7 @@ const countIn = res => {
     }
     // Fully permissioned on purpose: this phase is about CAMPUS, and a clerk
     // refused for want of a permission would look isolated when it is not.
-    console.log(`        three throwaway accounts signed in, clerk and accountant at ${HOME}\n`);
+    console.log(`        two throwaway accounts signed in, a clerk at ${HOME} and the Rector\n`);
 
     // Truth comes from the database, not from another endpoint.
     const totalStudents = await db.collection('students').countDocuments();
@@ -134,7 +133,7 @@ const countIn = res => {
     // =================================================================
     section('Students are shared, on purpose');
 
-    for (const role of ['clerk', 'accountant', 'admin1']) {
+    for (const role of ['clerk', 'admin1']) {
       const res = await reqRetry('GET', '/api/accountant/students', tokens[role]);
       const n = countIn(res);
       ok(`${role} reads the whole register (${n}/${totalStudents})`,

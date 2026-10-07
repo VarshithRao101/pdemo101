@@ -47,9 +47,10 @@ not done yet.
 
 ## Roles
 
-Four, and they see different portals: **admin1** (group-wide administration),
-**clerk** (a single campus), **accountant** (fees, salaries, expenditure) and
-**authenticator** (credential and access administration). A role is established
+Three, and they see different portals: **admin1** (group-wide administration),
+**clerk** (a campus clerk: admissions, fee collection, expenditure and staff,
+as far as the Rector has granted) and **authenticator** (credential and access
+administration). There is no accountant role; clerks take fees. A role is established
 at sign-in and enforced on the server; the client never decides what it may
 see.
 

@@ -98,7 +98,7 @@ const parseCsv = (body) => {
   const ACCOUNTS = [
     { key: 'admin1', role: 'admin1', campus: 'All' },
     { key: 'clerk', role: 'clerk', campus: CAMPUS },
-    { key: 'accountant', role: 'accountant', campus: CAMPUS }
+    { key: 'clerk2', role: 'clerk', campus: OTHER }
   ];
 
   // A name that is a formula, and one with a comma and a quote in it.
@@ -223,21 +223,16 @@ const parseCsv = (body) => {
       `status ${clerkPayments.status}; own=${clerkPayments.raw.includes(`${TAG}-R1`)}, `
       + `other campus=${clerkPayments.raw.includes(`${TAG}-R2`)}`);
 
-    const acctStudents = await req('GET', '/api/export/students.csv', tokens.accountant);
-    ok('an accountant may export students', acctStudents.status === 200, `status ${acctStudents.status}`);
-    ok('an accountant sees the whole student registry too',
-      acctStudents.raw.includes('Other Campus Student'),
-      'the shared registry stopped being shared');
-
-    const acctPayments = await req('GET', '/api/export/payments.csv', tokens.accountant);
-    ok('an accountant may export payments', acctPayments.status === 200, `status ${acctPayments.status}`);
-
-    // Expenditures are admin1 and clerk only — an accountant is refused. This is
-    // asserted rather than assumed, because the UI is about to offer CSV in the
-    // accountant portal and must not offer a button that 403s.
-    const acctExp = await req('GET', '/api/export/expenditures.csv', tokens.accountant);
-    ok('an accountant is refused the expenditure export',
-      acctExp.status === 403, `status ${acctExp.status}`);
+    // A clerk at ANOTHER campus sees the same shared student registry, and the
+    // same boundary on money: only its own campus's payments.
+    const clerk2Students = await req('GET', '/api/export/students.csv', tokens.clerk2);
+    ok('a clerk at another campus sees the whole student registry too',
+      clerk2Students.status === 200 && clerk2Students.raw.includes(`${TAG}1`),
+      `status ${clerk2Students.status}`);
+    const clerk2Payments = await req('GET', '/api/export/payments.csv', tokens.clerk2);
+    ok('and only its own campus payments',
+      clerk2Payments.status === 200 && clerk2Payments.raw.includes(`${TAG}-R2`) && !clerk2Payments.raw.includes(`${TAG}-R1`),
+      `status ${clerk2Payments.status}`);
 
     const anon = await req('GET', '/api/export/students.csv', null);
     ok('a stranger is refused', anon.status === 401, `status ${anon.status}`);
@@ -320,7 +315,7 @@ const parseCsv = (body) => {
       !!r1 && r1[2].startsWith("'"), JSON.stringify(r1 && r1[2]));
 
     const pending = parseCsv((await req('GET',
-      `/api/export/fee-register.csv?q=${TAG}&dues=pending&campus=${encodeURIComponent(CAMPUS)}`, tokens.accountant)).raw);
+      `/api/export/fee-register.csv?q=${TAG}&dues=pending&campus=${encodeURIComponent(CAMPUS)}`, tokens.clerk)).raw);
     ok('campus and dues filters apply as they do on the desk',
       pending.length === 2 && pending[1][1] === `${TAG}1`,
       JSON.stringify(pending.slice(1).map(r => r[1])));

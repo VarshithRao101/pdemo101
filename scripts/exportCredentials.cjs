@@ -35,11 +35,10 @@ const mongoose = require('mongoose');
 const DB = process.env.MONGODB_DB_NAME || 'jc_erp_prod';
 const isHashed = v => typeof v === 'string' && v.startsWith('$2');
 
-const ROLE_ORDER = { admin1: 0, authenticator: 1, accountant: 2, clerk: 3 };
+const ROLE_ORDER = { admin1: 0, authenticator: 1, clerk: 2 };
 const ROLE_LABEL = {
   admin1: 'RECTOR / ADMIN',
   authenticator: 'SECURITY AUTHENTICATOR',
-  accountant: 'ACCOUNTANT',
   clerk: 'CAMPUS CLERK'
 };
 
