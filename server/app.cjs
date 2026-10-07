@@ -308,8 +308,9 @@ function escapeHtmlServer(value) {
 //   1. The token in the URL is an HMAC of the receipt number under a key
 //      derived from JWT_SECRET. Without the secret you cannot produce a valid
 //      token, so the route cannot be walked by trying REC-000001, REC-000002.
-//   2. The reader knows the last four digits of the mobile the college has on
-//      file for that student. A forwarded link alone is no longer enough.
+//   2. The reader types the WHOLE mobile number the college has on file for
+//      that student. A forwarded link alone is not enough, and ten digits is
+//      ten billion combinations rather than the ten thousand that four were.
 //
 // The second check is why the GET renders a form and nothing else: it reads no
 // collection and names no student, so the preview WhatsApp fetches — Meta
@@ -424,6 +425,18 @@ function contactDigitsFor(student) {
   return String(raw).replace(/\D/g, '');
 }
 
+/**
+ * A mobile number reduced to its ten national digits, so "+91 98765 43210",
+ * "09876543210" and "9876543210" all compare equal. Anything that does not
+ * come down to exactly ten digits returns '' and therefore never matches.
+ */
+function nationalMobile(raw) {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (d.length === 12 && d.startsWith('91')) d = d.slice(2);
+  else if (d.length === 11 && d.startsWith('0')) d = d.slice(1);
+  return d.length === 10 ? d : '';
+}
+
 /** Constant-time compare of two short digit strings. */
 function digitsMatch(supplied, expected) {
   if (!supplied || !expected || supplied.length !== expected.length) return false;
@@ -530,9 +543,10 @@ function receiptGate({ error }) {
       : '<h1>INSPIRE JUNIOR COLLEGE</h1>'}
     ${error ? `<div class="err">${escapeHtmlServer(error)}</div>` : ''}
     <h1>View your fee receipt</h1>
-    <p>For your privacy, please enter the <strong>last 4 digits</strong> of the mobile number registered with the college.</p>
-    <input name="last4" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
-           aria-label="Last 4 digits of the registered mobile number" required autofocus />
+    <p>For your privacy, please enter your <strong>full 10-digit mobile number</strong> registered with the college.</p>
+    <input name="mobile" type="tel" inputmode="numeric" maxlength="14" autocomplete="off"
+           placeholder="10-digit mobile number"
+           aria-label="Registered mobile number" required autofocus />
     <button class="btn" type="submit">View Receipt</button>
     <p class="foot">If you do not know the registered number, please contact the college office.</p>
   </form>
@@ -702,7 +716,7 @@ function receiptHeaders(res) {
  * GET /r/:receiptNumber/:token — the gate.
  *
  * Touches no collection at all. The token is checked with an HMAC and the form
- * is returned; nothing about the student is read until the four digits arrive.
+ * is returned; nothing about the student is read until the mobile number arrives.
  * That is what makes WhatsApp's preview fetch harmless, and it also means the
  * common case — a crawler, not a parent — costs no database work whatsoever.
  */
@@ -720,7 +734,7 @@ app.get('/r/:receiptNumber/:token', (req, res) => {
 });
 
 /**
- * POST /r/:receiptNumber/:token — the four digits, and the receipt.
+ * POST /r/:receiptNumber/:token — the full mobile number, and the receipt.
  *
  * Nothing is written and nothing is remembered. No session, no cookie: a
  * parent returning to the link enters the digits again, which is the point of
@@ -734,10 +748,10 @@ app.post('/r/:receiptNumber/:token',
     const { receiptNumber, token } = req.params;
     if (!receiptTokenValid(receiptNumber, token)) return receiptNotFound(res);
 
-    const last4 = String((req.body && req.body.last4) || '').replace(/\D/g, '');
-    if (last4.length !== 4) {
+    const supplied = nationalMobile(req.body && req.body.mobile);
+    if (!supplied) {
       return res.status(400).type('html').send(receiptGate({
-        error: 'Please enter exactly 4 digits.'
+        error: 'Please enter your full 10-digit mobile number.'
       }));
     }
 
@@ -746,15 +760,13 @@ app.post('/r/:receiptNumber/:token',
     // mongoRateLimiter above is keyed on path AND address, which is right for
     // sharing — one parent mistyping their own digits must not use up another
     // parent's allowance. But it means rotating addresses buys 8 fresh guesses
-    // each, and four digits is only 10,000 combinations, so roughly 1,250
-    // addresses exhausts one receipt. That is proxy-pool territory rather than
-    // a realistic threat to a college, but it is a real bound and it is cheap
-    // to close.
+    // each. Ten digits is a large space, but a number is not random — it is a
+    // known mobile prefix and a family's own number — so a bound per receipt is
+    // still worth the one counter it costs.
     //
     // Keyed on the receipt number alone, so every wrong guess against this
     // receipt counts once, wherever it came from. The budget is deliberately
-    // generous against honest error — a parent has far more than enough tries
-    // — and still leaves 10,000 combinations unreachable.
+    // generous against honest error — a parent has far more than enough tries.
     const receiptGuessKey = attemptKey('receipt', String(receiptNumber));
     const guessState = await getLockState(receiptGuessKey, RECEIPT_GLOBAL_GUESS_BUDGET);
     if (guessState.locked) {
@@ -792,8 +804,8 @@ app.post('/r/:receiptNumber/:token',
       .select('name admissionNumber branch course section academicYear studentYear mobile parentMobile receipts')
       .lean();
 
-    const contact = contactDigitsFor(student);
-    if (!digitsMatch(last4, contact.slice(-4))) {
+    const contact = nationalMobile(contactDigitsFor(student));
+    if (!contact || !digitsMatch(supplied, contact)) {
       // Counted against the per-receipt ceiling, not only the per-address one.
       // Only a WRONG guess is recorded; a correct one costs nothing, so a
       // parent reopening their own link repeatedly can never lock it.
@@ -803,7 +815,7 @@ app.post('/r/:receiptNumber/:token',
       // or the student has no mobile on file. A precise error would let
       // someone holding a forwarded link learn which case they are in.
       return res.status(403).type('html').send(receiptGate({
-        error: 'Those digits do not match the number registered for this student.'
+        error: 'That number does not match the one registered for this student.'
       }));
     }
 
@@ -1330,8 +1342,9 @@ function computeStudentFees(source, { totalPaid } = {}) {
 
 // --- MANAGED PORTAL SLOTS ---
 //
-// The fixed set of accounts this system is allowed to have: one Rector, one
-// security authenticator, and one accountant per campus.
+// The fixed set of accounts this system is allowed to have: one Rector and one
+// security authenticator. There is no accountant role any more - clerks take
+// fees.
 //
 // Clerks are NOT listed here. They used to be seven declared slots per campus;
 // they are now created by the Rector as needed, up to fifteen per campus, so
@@ -1339,13 +1352,7 @@ function computeStudentFees(source, { totalPaid } = {}) {
 // whether an account is a clerk asks its role, not this array.
 const defaultUsers = [
   { username: 'admin1', role: 'admin1', campus: 'All', name: 'Rector' },
-  { username: '9059068384', role: 'authenticator', campus: 'All', name: 'Security Authenticator' },
-  ...VALID_CAMPUSES.map(c => ({
-    username: `accountant_${c.toLowerCase().replace(/\s+/g, '_')}`,
-    role: 'accountant',
-    campus: c,
-    name: `Accountant ${c}`
-  }))
+  { username: '9059068384', role: 'authenticator', campus: 'All', name: 'Security Authenticator' }
 ];
 
 /**
@@ -1434,7 +1441,7 @@ function isHashedCredential(stored) {
 const FIXED_AUTHENTICATOR_USERNAME = '9059068384';
 // 'admin2' stays accepted here until the migration has run everywhere; it is
 // collapsed to 'clerk' by normalizeRole before any decision is made.
-const MANAGED_PORTAL_ROLES = new Set(['admin1', 'admin2', 'clerk', 'accountant', 'authenticator']);
+const MANAGED_PORTAL_ROLES = new Set(['admin1', 'admin2', 'clerk', 'authenticator']);
 const MANAGED_PORTAL_USERNAMES = new Set(defaultUsers.map(u => u.username));
 
 function sanitizeManagedAccount(userDoc) {
@@ -1485,7 +1492,7 @@ async function getManagedPortalAccounts() {
         // ?? 99 fallback and sorted below the accountants instead of above
         // them — and un-migrated `admin2` documents would have sorted
         // somewhere else again.
-        const roleOrder = { admin1: 0, authenticator: 1, clerk: 2, accountant: 3 };
+        const roleOrder = { admin1: 0, authenticator: 1, clerk: 2 };
         const rank = r => roleOrder[normalizeRole(r)] ?? 99;
         const roleDiff = rank(a.role) - rank(b.role);
         if (roleDiff !== 0) return roleDiff;
@@ -1606,10 +1613,9 @@ const AUTH_PATH_PATTERN = /\/(login|verify-credentials|force-login|refresh|wipe-
 const PUBLIC_FORM_PATTERN = /^\/api\/enquiries$/;
 const PUBLIC_FORM_BUDGET = 10;
 
-// The public receipt link, which asks for four digits of a mobile number.
-// Four digits is only 10,000 combinations, so the ordinary 120-per-window
-// budget would let someone holding a forwarded link work through the lot in
-// about a day. Eight tries per fifteen minutes turns that into years, and the
+// The public receipt link, which asks for the full registered mobile number.
+// The ordinary 120-per-window budget would still be far too generous for a
+// guessing target, so eight tries per fifteen minutes applies, and the
 // key includes the receipt number, so one parent mistyping their own digits
 // cannot use up anyone else's allowance.
 //
@@ -1944,14 +1950,12 @@ function normalizePermissions(permissions) {
  *
  * admin1 is org-wide and holds every power implicitly — it is the account
  * that GRANTS these, so gating it on its own grant would be circular.
- * Accountants keep the fixed abilities their own routes already define.
  * Only a clerk is actually consulted against the stored grants.
  */
 function callerHasPermission(req, permission) {
   const role = normalizeRole(req.user && req.user.role);
   if (role === 'admin1') return true;
   if (role === 'clerk') return !!(req.user.permissions && req.user.permissions[permission]);
-  if (role === 'accountant') return true;
   return false;
 }
 
@@ -2121,7 +2125,7 @@ function callerOwnsCampus(req, recordCampus) {
  */
 function callerReachesAllStudents(req) {
   const role = normalizeRole(req.user && req.user.role);
-  return role === 'admin1' || role === 'accountant' || role === 'clerk';
+  return role === 'admin1' || role === 'clerk';
 }
 
 /** Mongo filter for a STUDENT query. Empty for the shared-registry roles. */
@@ -2206,7 +2210,7 @@ function callerOwnsStudent(req, studentCampus) {
  */
 function callerReachesAllTeachers(req) {
   const role = normalizeRole(req.user && req.user.role);
-  return role === 'admin1' || role === 'accountant' || role === 'clerk';
+  return role === 'admin1' || role === 'clerk';
 }
 
 /** Mongo filter for a STAFF query. Empty for the shared-registry roles. */
@@ -2571,8 +2575,6 @@ async function verifySecurityOtp(req, res, next) {
 // Convenience shorthands for the login box. These map to real usernames; they
 // are not credentials and grant nothing on their own.
 //
-// There is now exactly one accountant per campus, so the old _1/_2 suffixed
-// aliases are gone along with the duplicate accounts they pointed at.
 const usernameAliasMap = {
   admin: 'admin1',
   admin1: 'admin1',
@@ -2587,12 +2589,7 @@ const usernameAliasMap = {
   admin2_e2: 'admin2_erragattugutta_c2',
   admin2_c2: 'admin2_erragattugutta_c2',
   admin2_b1: 'admin2_beemaram_c1',
-  admin2_b2: 'admin2_beemaram_c2',
-
-  acc_e1: 'accountant_erragattugutta_c1',
-  acc_e2: 'accountant_erragattugutta_c2',
-  acc_b1: 'accountant_beemaram_c1',
-  acc_b2: 'accountant_beemaram_c2'
+  admin2_b2: 'admin2_beemaram_c2'
 };
 
 function resolveUsername(input) {
@@ -3489,7 +3486,7 @@ app.post(['/api/auth/logout', '/auth/logout', '/api/logout'], requireDatabase, a
 
 // --- STUDENT ROUTES ---
 
-app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
+app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
     const { branch } = req.query;
@@ -3500,7 +3497,7 @@ app.get('/api/admin1/students', authenticateToken, requireRole('admin1', 'clerk'
       }
       filter.branch = String(branch).trim();
     }
-    if ((req.user.role === 'clerk' || req.user.role === 'accountant') && req.user.campus && req.user.campus.toLowerCase() !== 'all') {
+    if (req.user.role === 'clerk' && req.user.campus && req.user.campus.toLowerCase() !== 'all') {
       filter.branch = req.user.campus;
     }
 
@@ -3798,7 +3795,7 @@ const createStudentHandler = async (req, res) => {
  * their own campus.
  */
 app.get(['/api/students/admission-available', '/api/accountant/students/admission-available'],
-  authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
+  authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const admissionNumber = String(req.query.admissionNumber || '').trim();
@@ -3829,9 +3826,9 @@ app.get(['/api/students/admission-available', '/api/accountant/students/admissio
   }
 });
 
-app.post('/api/admin1/students', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('addStudent'), mongoRateLimiter, createStudentHandler);
-app.post('/api/admin/students', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('addStudent'), mongoRateLimiter, createStudentHandler);
-app.post('/api/accountant/students', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('addStudent'), mongoRateLimiter, createStudentHandler);
+app.post('/api/admin1/students', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('addStudent'), mongoRateLimiter, createStudentHandler);
+app.post('/api/admin/students', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('addStudent'), mongoRateLimiter, createStudentHandler);
+app.post('/api/accountant/students', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('addStudent'), mongoRateLimiter, createStudentHandler);
 
 /**
  * Fee fields carried by the student edit route.
@@ -3857,7 +3854,7 @@ const STUDENT_FEE_FIELDS = [
  */
 const STUDENT_WAIVER_FIELDS = ['tuitionWaiver', 'hostelWaiver', 'transportWaiver', 'miscWaiver'];
 
-app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('editStudent'), requireDatabase, async (req, res) => {
+app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/students/:id', '/api/accountant/students/:id'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4167,9 +4164,9 @@ const deleteStudentHandler = async (req, res) => {
 // student at another, before this change and independently of it. That is the
 // shared registry applied to DELETION as well as reading, and whether it should
 // be is a decision for the college, not something to change quietly here.
-app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
-app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
-app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
+app.delete('/api/admin1/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
+app.delete('/api/admin/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
+app.delete('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, deleteStudentHandler);
 
 
 // --- FEE WAIVER ROUTE ---
@@ -4299,7 +4296,7 @@ app.patch(['/api/admin1/students/:studentId/fee-override', '/api/admin2/students
 // One registry across all four campuses - see THE SHARED STAFF REGISTRY above.
 // A clerk was pinned to `req.user.campus` here with no way to widen; now every
 // staffed role sees every staff member and may narrow with ?branch=.
-app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
+app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
     const filter = teacherListFilter(req, res);
@@ -4312,7 +4309,7 @@ app.get(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'],
 });
 
 // CREATE Teacher (Admin1 or Admin2; Requires Security OTP for Admin2 or optional; Admin2 campus locked)
-app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     let { id, name, subject, salary = 0, mobile, email, branch, classification = 'Teaching', role = 'Senior Lecturer' } = req.body || {};
@@ -4461,7 +4458,7 @@ app.post(['/api/admin1/teachers', '/api/admin2/teachers', '/api/admin/teachers']
 });
 
 // UPDATE Teacher
-app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
+app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4549,7 +4546,7 @@ app.patch(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/t
 });
 
 // DELETE Teacher (Requires Security OTP; Campus Isolation for Admin2)
-app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/teachers/:id'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4598,7 +4595,7 @@ app.delete(['/api/admin1/teachers/:id', '/api/admin2/teachers/:id', '/api/admin/
 });
 
 // 12-MONTH SALARY LEDGER & YEAR-LOCK PAYMENTS ROUTE
-app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
+app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month', '/api/admin/teachers/:id/salary'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4770,7 +4767,7 @@ app.post(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/sal
  * The audit entry is the point of the whole feature: who removed it, from
  * whom, for which month, how much, and the reason they typed.
  */
-app.delete(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, verifySecurityOtp, async (req, res) => {
+app.delete(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/salary-month'], authenticateToken, requireRole('admin1', 'clerk'), requirePermission('manageStaff'), mongoRateLimiter, requireDatabase, verifySecurityOtp, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -4905,7 +4902,7 @@ app.delete(['/api/admin1/teachers/:id/salary-month', '/api/admin2/teachers/:id/s
  * history that hid another campus's entries would describe a different system
  * from the one the same account can see on the roster.
  */
-app.get(['/api/admin1/faculty-history', '/api/admin2/faculty-history'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
+app.get(['/api/admin1/faculty-history', '/api/admin2/faculty-history'], authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
 
@@ -4955,7 +4952,7 @@ app.get(['/api/admin1/faculty-history', '/api/admin2/faculty-history'], authenti
 
 // --- FEE STRUCTURE ROUTES ---
 
-app.get('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
+app.get('/api/admin2/fee-settings', authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
 
@@ -5280,7 +5277,7 @@ app.delete('/api/admin2/expenditure/:id', authenticateToken, requireRole('admin1
 // a tab ON the faculty screen, which accountants reach now that staff are one
 // shared registry. It stays CAMPUS-SCOPED for everyone - this is a per-campus
 // payroll book, and widening who may read it must not merge the books.
-app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
+app.get('/api/admin2/worker-payments', authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
     const filter = scopedCampusFilter(req, res, 'worker payments');
@@ -5486,7 +5483,7 @@ app.delete('/api/admin2/worker-payments/:id', authenticateToken, requireRole('ad
 
 // --- ACCOUNTANT STUDENT LOOKUP & BIO ROUTES ---
 
-app.get('/api/accountant/students', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), async (req, res) => {
+app.get('/api/accountant/students', authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
 
@@ -5544,7 +5541,7 @@ app.get('/api/accountant/students', authenticateToken, requireRole('accountant',
   }
 });
 
-app.get('/api/accountant/students/:id', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), async (req, res) => {
+app.get('/api/accountant/students/:id', authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -5565,7 +5562,7 @@ app.get('/api/accountant/students/:id', authenticateToken, requireRole('accounta
   }
 });
 
-app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, async (req, res) => {
+app.patch('/api/accountant/students/:id/bio', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, async (req, res) => {
   try {
     await connectToDatabase();
     const { id } = req.params;
@@ -5704,7 +5701,7 @@ const DUPLICATE_WINDOW_MS = 15000;
  * merge: one is money taken twice, the other is a receipt to reissue. Callers
  * that need exactness send a key.
  */
-app.post('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requirePermission('collectFees'), mongoRateLimiter, requireDatabase, async (req, res) => {
+app.post('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('collectFees'), mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const { studentId } = req.params;
     const {
@@ -6049,7 +6046,7 @@ function evaluateUpgradeEligibility(student) {
 }
 
 app.get('/api/accountant/students/:studentId/upgrade-eligibility',
-  authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requireDatabase, async (req, res) => {
+  authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const { studentId } = req.params;
     const isObjId = isValidObjectId(studentId);
@@ -6089,7 +6086,7 @@ app.get('/api/accountant/students/:studentId/upgrade-eligibility',
 });
 
 app.post('/api/accountant/students/:studentId/upgrade',
-  authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requirePermission('editFees'),
+  authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editFees'),
   mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
     const { studentId } = req.params;
@@ -6317,7 +6314,7 @@ app.post('/api/accountant/students/:studentId/upgrade',
  * the ordinary case rather than the unlucky one.
  */
 app.post('/api/accountant/students/:studentId/payments/:receiptNumber/reverse',
-  authenticateToken, requireRole('accountant', 'admin1', 'clerk'),
+  authenticateToken, requireRole('admin1', 'clerk'),
   requirePermission('collectFees'), verifySecurityOtp,
   mongoRateLimiter, requireDatabase, async (req, res) => {
   try {
@@ -6524,7 +6521,7 @@ app.post('/api/accountant/students/:studentId/payments/:receiptNumber/reverse',
   }
 });
 
-app.get('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), async (req, res) => {
+app.get('/api/accountant/students/:studentId/payments', authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
     const { studentId } = req.params;
@@ -7437,7 +7434,7 @@ app.get('/api/system/last-changed', authenticateToken, rejectForeignCampusParam,
 // no route: nothing fails, and the salary simply is not there next month.
 
 // --- FEE BREAKDOWN ---
-app.get(['/api/admin1/students/:studentId/fee-breakdown', '/api/admin2/students/:studentId/fee-breakdown', '/api/admin/students/:studentId/fee-breakdown'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), async (req, res) => {
+app.get(['/api/admin1/students/:studentId/fee-breakdown', '/api/admin2/students/:studentId/fee-breakdown', '/api/admin/students/:studentId/fee-breakdown'], authenticateToken, requireRole('admin1', 'clerk'), async (req, res) => {
   try {
     await connectToDatabase();
     const { studentId } = req.params;
@@ -7498,7 +7495,7 @@ app.get(['/api/admin1/students/:studentId/fee-breakdown', '/api/admin2/students/
 
 // --- STAFF SALARIES ---
 // Was returning every teacher at every campus to any signed-in caller.
-app.get('/api/admin2/staff-salaries', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
+app.get('/api/admin2/staff-salaries', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const teachers = await Teacher.find(teacherScopeFilter(req)).lean();
     return res.json({ status: 'success', data: teachers });
@@ -7580,7 +7577,7 @@ app.patch('/api/admin2/staff-salaries/:teacherId', authenticateToken, requireRol
 // campus whenever the aggregate returned nothing — including when the database
 // was down or a campus genuinely had no students — which is indistinguishable
 // from real data on screen.
-app.get('/api/admin2/enrollment-stats', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
+app.get('/api/admin2/enrollment-stats', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const scope = campusScopeFilter(req);
     const pipeline = [
@@ -7617,7 +7614,7 @@ app.get('/api/admin2/enrollment-stats', authenticateToken, requireRole('admin1',
 // returned success without writing anything. Rather than keep a convincing
 // fake, this now reports only what the database really knows — which students
 // are marked Resident — and the allocation endpoint is explicitly disabled.
-app.get('/api/accountant/hostel', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requireDatabase, async (req, res) => {
+app.get('/api/accountant/hostel', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const residents = await Student.find({ ...campusScopeFilter(req), hostelStatus: 'Resident' })
       .select('studentId admissionNumber name branch course section hostelStatus')
@@ -7639,7 +7636,7 @@ app.get('/api/accountant/hostel', authenticateToken, requireRole('accountant', '
   }
 });
 
-app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, async (req, res) => {
+app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requireRole('admin1', 'clerk'), requirePermission('editStudent'), requireDatabase, async (req, res) => {
   try {
     const { studentId } = req.params;
     const isObjId = isValidObjectId(studentId);
@@ -7671,7 +7668,7 @@ app.patch('/api/accountant/hostel/checkout/:studentId', authenticateToken, requi
 });
 
 // --- DASHBOARD SUMMARY FOR ACCOUNTANT ---
-app.get('/api/accountant/dashboard-summary', authenticateToken, requireRole('accountant', 'admin1', 'clerk'), requireDatabase, async (req, res) => {
+app.get('/api/accountant/dashboard-summary', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const scope = campusScopeFilter(req);
     const startOfDay = new Date();
@@ -7744,7 +7741,7 @@ app.get('/api/admin1/sections', authenticateToken, requireRole('admin1', 'clerk'
  * Campus-scoped: admin1 sees the whole organisation, everyone else sees only
  * their own campus, enforced by the same campusScopeFilter used everywhere.
  */
-app.get('/api/admin1/analytics', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
+app.get('/api/admin1/analytics', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     // An org-wide caller may now narrow to a single campus with ?branch=,
     // which is what the All / campus buttons on the dashboard send. This goes
@@ -7936,7 +7933,7 @@ app.get('/api/admin1/analytics', authenticateToken, requireRole('admin1', 'clerk
 });
 
 
-app.get('/api/admin1/reports', authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
+app.get('/api/admin1/reports', authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const scope = campusScopeFilter(req);
     const campuses = scope.branch ? [scope.branch] : VALID_CAMPUSES;
@@ -8571,7 +8568,7 @@ app.post('/api/admin1/credentials', authenticateToken, requireRole('admin1'), ve
         };
       })
       .sort((a, b) => {
-        const order = { admin1: 0, authenticator: 1, clerk: 2, accountant: 3 };
+        const order = { admin1: 0, authenticator: 1, clerk: 2 };
         const diff = (order[a.role] ?? 99) - (order[b.role] ?? 99);
         if (diff !== 0) return diff;
         if (a.campus !== b.campus) return String(a.campus).localeCompare(String(b.campus));
@@ -8803,7 +8800,7 @@ function csvDate(value) {
 }
 
 app.get('/api/export/students.csv',
-  authenticateToken, requireRole('admin1', 'clerk', 'accountant'), mongoRateLimiter, requireDatabase,
+  authenticateToken, requireRole('admin1', 'clerk'), mongoRateLimiter, requireDatabase,
   async (req, res) => {
   try {
     const filter = studentScopeFilter(req);
@@ -8836,8 +8833,80 @@ app.get('/api/export/students.csv',
   }
 });
 
-app.get('/api/export/payments.csv',
+/**
+ * The fee register, as the Fee Collection Desk sees it: one row per student
+ * with what they owe, what they have paid and what is still pending.
+ *
+ * Separate from students.csv because that is the full register (contacts,
+ * course, status) and this is the six columns the counter is asked for. It
+ * takes the SAME filters the desk shows — search, campus, course, year, dues —
+ * so "download what I am looking at" is what comes out, and it applies them
+ * here rather than trusting the browser's list, which is capped and so would
+ * silently drop students from a large export.
+ *
+ * Read-only, and scoped by the caller exactly as students.csv is.
+ */
+app.get('/api/export/fee-register.csv',
   authenticateToken, requireRole('admin1', 'clerk', 'accountant'), mongoRateLimiter, requireDatabase,
+  async (req, res) => {
+  try {
+    const filter = { ...studentScopeFilter(req) };
+    const str = (v) => String(v || '').trim();
+
+    const campus = str(req.query.campus);
+    if (campus && campus !== 'All') {
+      // A campus-scoped caller already has `branch` set by studentScopeFilter;
+      // asking for a different one must narrow to nothing, not widen.
+      if (filter.branch && filter.branch !== campus) {
+        return res.status(403).json({ status: 'error', message: 'You may only export your own campus.' });
+      }
+      filter.branch = campus;
+    }
+    const course = str(req.query.course);
+    if (course && course !== 'All') filter.course = course;
+    const year = str(req.query.year);
+    if (year && year !== 'All') {
+      // A record with no year is treated as First Year on the desk, so it is here too.
+      filter.studentYear = year === 'First Year' ? { $in: ['First Year', null] } : year;
+    }
+    const q = str(req.query.q).slice(0, 100);
+    if (q) {
+      const re = new RegExp(escapeRegex(q), 'i');
+      filter.$or = ['name', 'admissionNumber', 'studentId', 'registrationNumber',
+        'mobile', 'parentMobile', 'course', 'branch'].map(f => ({ [f]: re }));
+    }
+    const dues = str(req.query.dues);
+
+    const students = await Student.find(filter).sort({ branch: 1, name: 1 }).lean();
+    const rows = [];
+    for (const s of students) {
+      const fees = computeStudentFees(s);
+      if (dues === 'pending' && !(fees.balance > 0)) continue;
+      if (dues === 'settled' && fees.balance > 0) continue;
+      rows.push([rows.length + 1, s.admissionNumber, s.name, fees.netOwed, fees.paid, fees.balance]);
+    }
+
+    const body = csvDocument(
+      ['S.No', 'Admission No', 'Student Name', 'Total Fees', 'Fees Paid', 'Fees Pending'],
+      rows
+    );
+
+    recordAudit(req, {
+      action: 'export.fee_register',
+      entityType: 'export',
+      entityId: 'fee-register.csv',
+      campus: req.user.campus,
+      summary: `Exported ${rows.length} student fee record(s) to CSV.`,
+      details: { rows: rows.length, campus, course, year, dues, q }
+    });
+    return sendCsv(res, `fee-register-${csvDate(Date.now())}.csv`, body);
+  } catch (err) {
+    return failRequest(req, res, err);
+  }
+});
+
+app.get('/api/export/payments.csv',
+  authenticateToken, requireRole('admin1', 'clerk'), mongoRateLimiter, requireDatabase,
   async (req, res) => {
   try {
     const filter = campusScopeFilter(req);
@@ -8934,7 +9003,7 @@ app.get('/api/export/expenditures.csv',
  * family in debt at a campus is worth knowing who pulled.
  */
 app.get('/api/fees/outstanding',
-  authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase,
+  authenticateToken, requireRole('admin1', 'clerk'), requireDatabase,
   async (req, res) => {
   try {
     const filter = studentScopeFilter(req);
@@ -9493,7 +9562,7 @@ app.get('/api/admin1/logs/filters', authenticateToken, requireRole('admin1'), re
   }
 });
 
-app.get(['/api/admin1/payments', '/api/accountant/payments'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
+app.get(['/api/admin1/payments', '/api/accountant/payments'], authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     // The unbounded one. Payments accumulate for the life of the college and
     // were never scoped by date, so for the Rector this returned every payment
@@ -9521,7 +9590,7 @@ app.get(['/api/admin1/payments', '/api/accountant/payments'], authenticateToken,
   }
 });
 
-app.get(['/api/admin1/expenditures', '/api/accountant/expenditures'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
+app.get(['/api/admin1/expenditures', '/api/accountant/expenditures'], authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const filter = campusScopeFilter(req);
     const { limit, page, skip } = readPaging(req);
@@ -9543,7 +9612,7 @@ app.get(['/api/admin1/expenditures', '/api/accountant/expenditures'], authentica
   }
 });
 
-app.get(['/api/admin1/fee-settings', '/api/accountant/fee-settings'], authenticateToken, requireRole('admin1', 'clerk', 'accountant'), requireDatabase, async (req, res) => {
+app.get(['/api/admin1/fee-settings', '/api/accountant/fee-settings'], authenticateToken, requireRole('admin1', 'clerk'), requireDatabase, async (req, res) => {
   try {
     const feeSettings = await FeeSettings.find(campusScopeFilter(req)).lean();
     return res.json({ status: 'success', data: feeSettings });

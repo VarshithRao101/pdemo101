@@ -204,14 +204,14 @@ const checkpoint = async (what) => {
       && !gate.raw.includes(String(payment.amount)), `status ${gate.status}`);
 
     const opened = await new Promise((resolve, reject) => {
-      const body = `last4=${parentMobile.slice(-4)}`;
+      const body = `mobile=${parentMobile}`;
       const rq = http.request(`${BASE}/r/${encodeURIComponent(payment.receiptNumber)}/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }
       }, res => { let raw = ''; res.on('data', c => raw += c); res.on('end', () => resolve({ status: res.statusCode, raw })); });
       rq.on('error', reject); rq.write(body); rq.end();
     });
-    ok('the right four digits open the receipt', opened.status === 200, `status ${opened.status}`);
+    ok('the full registered number opens the receipt', opened.status === 200, `status ${opened.status}`);
     ok('it shows what was paid', opened.raw.includes('Amount Received'), opened.raw.slice(0, 160));
     await checkpoint('a parent opening a receipt');
 

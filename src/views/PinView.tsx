@@ -93,19 +93,6 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
       // No username for a clerk — the campus below identifies them.
       setUserId('');
       setClerkCampus('');
-    } else if (roleId === 'accountant') {
-      // Left EMPTY on purpose. This used to seed
-      // 'accountant_erragattugutta_c1_1', which was wrong twice over: it
-      // pinned every accountant to one campus until they noticed the picker,
-      // and no such account has ever existed - the real IDs have no _1 suffix,
-      // and the alias map does not carry that spelling either. Choosing a
-      // campus therefore submitted a username that resolves to nobody.
-      //
-      // An accountant now types their own portal ID, like every other role, and
-      // the campus comes from the account. Renaming one in the Credentials
-      // screen takes effect immediately, because nothing here knows their name.
-      setUserId('');
-      setClerkCampus('');
     } else {
       setUserId('admin1');
       setClerkCampus('');
@@ -399,21 +386,6 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           <path d="M6 12v5c3 3 9 3 12 0v-5" />
         </svg>
       )
-    },
-    {
-      id: 'accountant',
-      title: 'Accountant',
-      subtitle: 'Financial Ledger',
-      badge: 'Finance',
-      colorBg: 'var(--accent)',
-      colorAccent: '#6366F1',
-      borderColor: '#6366F1',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="5" width="20" height="14" rx="2" />
-          <line x1="2" y1="10" x2="22" y2="10" />
-        </svg>
-      )
     }
   ];
 
@@ -538,7 +510,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
           </div>
         </div>
 
-        {/* Role Quick Selector Grid (Admin 1, Clerk, Accountant) */}
+        {/* Role Quick Selector Grid (Admin 1, Clerk) */}
         {currentMode === 'universal' && (
           <div style={{ marginBottom: '18px' }}>
             <label style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '8px' }}>
@@ -550,7 +522,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                 // guessing at the text in the ID box.
                 //
                 // It used to read `userId === 'admin1'` and
-                // `userId.includes('accountant')`, which made the highlight a
+                // `userId.includes('clerk')`, which made the highlight a
                 // function of what the accounts happen to be named. Both had
                 // already broken: the Rector account was renamed to sriram, so the
                 // Admin card stopped lighting up, and the Accountant card went the
@@ -667,7 +639,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
               </div>
               <input maxLength={LIMITS.username}
                 type="text"
-                placeholder={currentMode === 'authenticator' ? '9059068384' : 'admin1 / clerk / accountant'}
+                placeholder={currentMode === 'authenticator' ? '9059068384' : 'admin1 / clerk'}
                 value={currentMode === 'authenticator' ? '9059068384' : userId}
                 onChange={(e) => {
                   const val = e.target.value;

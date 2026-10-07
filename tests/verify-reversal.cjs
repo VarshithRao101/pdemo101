@@ -269,7 +269,7 @@ let seq = 0;
     // answers 200 after a reversal. The refusal has to come from the POST,
     // which is the request that would otherwise render the document.
     const openReceipt = () => new Promise((resolve, reject) => {
-      const body = `last4=3211`;
+      const body = `mobile=9876543211`;
       const rq = http.request(`${BASE}/r/${encodeURIComponent(paid5.receiptNumber)}/${tok}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }

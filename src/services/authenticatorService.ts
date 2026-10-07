@@ -1,7 +1,7 @@
 import { apiClient } from './apiClient';
 
 export interface SecurityKeyInfo {
-  role: 'accountant' | 'clerk' | 'admin1';
+  role: 'clerk' | 'admin1';
   key: string;
   expiresAt: string;
 }
@@ -19,7 +19,7 @@ export interface AccountInfo {
   _id: string;
   id?: string;
   username: string;
-  role: 'admin1' | 'clerk' | 'accountant' | 'authenticator';
+  role: 'admin1' | 'clerk' | 'authenticator';
   backupCode?: string;
   usedBackupCodes?: string[];
   name?: string;

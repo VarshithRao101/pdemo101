@@ -32,7 +32,7 @@ export type TabType =
   | 'fees'
   | 'home'
   | string;
-export type PortalRoleType = 'admin1' | 'clerk' | 'accountant' | 'authenticator';
+export type PortalRoleType = 'admin1' | 'clerk' | 'authenticator';
 
 /**
  * Which portal a signed-in account gets.
@@ -47,7 +47,6 @@ export type PortalRoleType = 'admin1' | 'clerk' | 'accountant' | 'authenticator'
  */
 export const portalRoleFor = (rawRole: string): PortalRoleType => {
   const role = (rawRole || '').toLowerCase();
-  if (role.includes('accountant') || role.includes('acc')) return 'accountant';
   if (role.includes('clerk') || role.includes('admin2') || role.includes('principal')) return 'clerk';
   if (role.includes('authenticator') || role.includes('security')) return 'authenticator';
   return 'admin1';
@@ -65,13 +64,12 @@ export type ClerkPermissionKey =
  * requirePermission, because a hidden button stops nobody who can type a URL
  * — this exists so a clerk is not shown modules that would refuse them.
  *
- * admin1 and accountant are unrestricted here for the same reason the server
- * treats them so: admin1 is the account that grants these, and the
- * accountant's abilities are fixed by its own routes.
+ * admin1 is unrestricted here for the same reason the server treats it so:
+ * it is the account that grants these.
  */
 export const accountCan = (user: any, permission: ClerkPermissionKey): boolean => {
   const role = portalRoleFor(user?.role || '');
-  if (role === 'admin1' || role === 'accountant' || role === 'authenticator') return true;
+  if (role === 'admin1' || role === 'authenticator') return true;
   return user?.permissions?.[permission] === true;
 };
 

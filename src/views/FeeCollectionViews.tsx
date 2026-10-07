@@ -313,64 +313,31 @@ const matchesStudentSearch = (student: Student, query: string) => {
  * entered fee collection and had no way back, because changing the hash does
  * not move `activeTab` and the exit button only reset this view's local page.
  */
-export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; campusOverride?: string }> = ({ restrictTo, campusOverride }) => {
-  const { user, activeTab: globalActiveTab, setActiveTab } = useNavigation();
-  // An org-wide account (the Rector) has campus "All", which is not a campus
-  // this module can act on — it collects fees for exactly one. campusOverride
-  // is the campus they picked; everyone else is pinned by their own account.
-  // The old fallback silently used Erragattugutta C1 for any org-wide caller,
-  // which would have taken payments against the wrong campus.
+export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campusOverride }) => {
+  const { user, setActiveTab } = useNavigation();
+  // An org-wide account (the Rector) has campus "All", which is not a campus a
+  // receipt can be raised against - the receipt is recorded against the
+  // STUDENT's campus by the server. This is only the default for forms that
+  // need a campus before a student is chosen.
   const loggedInCampus = campusOverride
-    || (user?.campus && user.campus !== 'All' ? user.campus : 'Erragattugutta C1');
+    || (user?.campus && user.campus !== 'All' ? user.campus : CAMPUS_LIST[0]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
-  const [activeSubPage, setActiveSubPage] = useState<'menu' | 'student_search' | 'fee_collection' | 'reports' | 'profile' | 'outstanding_fees'>(
-    restrictTo || 'menu'
-  );
+  const activeSubPage = 'fee_collection' as const;
 
-  /**
-   * Leaving this view.
-   *
-   * A borrowing clerk goes back to their OWN cockpit, which means moving the
-   * global tab — this component is only mounted for them while that tab says
-   * fee_collection. An accountant just returns to their menu as before.
-   */
+  /** Leaving this view returns to the signed-in account's own cockpit. */
   const exitToCockpit = () => {
     setSelectedStudent(null);
     setEditStudent(null);
     setFeeCollectAdm('');
-    if (restrictTo) {
-      setActiveTab('dashboard');
-      return;
-    }
-    setActiveSubPage('menu');
+    setActiveTab('dashboard');
   };
   const [students, setStudents] = useState<Student[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [livePulseKey, setLivePulseKey] = useState<'students' | 'fees' | 'settings' | null>(null);
   const [securityKey] = useState('');
-
-  // Sync globalActiveTab from sidebar/navigation drawer into local activeSubPage
-  useEffect(() => {
-    // A restricted mount is pinned to its one module and must never follow the
-    // tab elsewhere — a clerk borrowing fee collection has no business landing
-    // on the accountant's reports or profile.
-    if (restrictTo) {
-      setActiveSubPage(restrictTo);
-      return;
-    }
-    if (globalActiveTab) {
-      if (globalActiveTab === 'dashboard' || globalActiveTab === 'home') {
-        setActiveSubPage('menu');
-      } else if (globalActiveTab === 'add_student') {
-        setIsAddStudentModalOpen(true);
-      } else if (['student_search', 'fee_collection', 'reports', 'profile'].includes(globalActiveTab)) {
-        setActiveSubPage(globalActiveTab as any);
-      }
-    }
-  }, [globalActiveTab, restrictTo]);
 
   // New Student & Delete Student Modals
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
@@ -1119,7 +1086,7 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
         'View / download your receipt:',
         `${window.location.origin}/r/${encodeURIComponent(receipt.receiptNumber)}/${token}`,
         '',
-        '_To open it, enter the last 4 digits of your registered mobile number._'
+        '_To open it, enter your registered 10-digit mobile number._'
       );
     }
 
@@ -1991,268 +1958,6 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
     </>
   );
 
-  if (activeSubPage === 'student_search') {
-    const filteredSearchList = students.filter((student) => matchesStudentSearch(student, searchAdmNo));
-
-    return (
-      <div style={styles.container} className="view-container anim-slide-up">
-        {renderBackgroundDesign('emerald')}
-        <header style={styles.header}>
-          <button onClick={() => { setActiveSubPage('menu'); setSelectedStudent(null); setEditStudent(null); setSearchAdmNo(''); }} style={styles.backArrowBtn} className="press-interactive">
-             Back to Cockpit
-          </button>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', marginTop: '8px' }}>
-            <div>
-              <h1 style={styles.title}>Student Management Console</h1>
-              <p style={styles.subtitle}>Audit profiles, edit fee structures, register new students, or purge records from database</p>
-            </div>
-            <button
-              onClick={() => {
-                resetNewStudentForm();
-                setIsAddStudentModalOpen(true);
-              }}
-              style={{
-                ...styles.actionItemBtn,
-                backgroundColor: 'var(--good)',
-                color: 'var(--surface)',
-                border: 'none',
-                fontWeight: 900,
-                fontSize: '0.8571rem',
-                padding: '10px 18px',
-                borderRadius: '10px',
-                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-              className="press-interactive"
-            >
-              + Register New Student
-            </button>
-          </div>
-        </header>
-
-        <main style={styles.content}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }}>
-
-            {/* Search & Filter Bar */}
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <div style={{ flex: 1, position: 'relative' }}>
-                <input maxLength={100}
-                  type="text"
-                  placeholder="Search any student by name, admission number or phone — all campuses"
-                  value={searchAdmNo}
-                  onChange={(e) => setSearchAdmNo(e.target.value)}
-                  style={{ ...styles.textInputBox, fontSize: '0.9286rem', padding: '12px 14px' }}
-                />
-              </div>
-              {searchAdmNo && (
-                <button
-                  onClick={() => setSearchAdmNo('')}
-                  style={{
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    color: 'var(--critical)',
-                    borderRadius: '8px',
-                    padding: '8px 14px',
-                    cursor: 'pointer',
-                    fontSize: '0.7857rem',
-                    fontWeight: 800,
-                    textTransform: 'uppercase'
-                  }}
-                >
-                  Clear Search
-                </button>
-              )}
-              <div style={{ fontSize: '0.8571rem', color: 'var(--muted-gray)', fontWeight: 700, padding: '0 8px' }}>
-                Showing <strong>{filteredSearchList.length}</strong> Students
-              </div>
-            </div>
-
-            {/* STUDENT BOXES GRID */}
-            {(() => {
-              // Five columns, five rows. A page that fills the screen exactly
-              // is easier to scan than one that runs past the fold.
-              const REGISTRY_PER_PAGE = 25;
-              const totalPages = Math.max(1, Math.ceil(filteredSearchList.length / REGISTRY_PER_PAGE));
-              const currentPage = Math.min(registryPage, totalPages);
-              const paginated = filteredSearchList.slice((currentPage - 1) * REGISTRY_PER_PAGE, currentPage * REGISTRY_PER_PAGE);
-              return (<>
-              {totalPages > 1 && (
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '4px' }}>
-                  <button onClick={() => setRegistryPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                    style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: currentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: currentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: currentPage === 1 ? 'default' : 'pointer' }}>
-                    ←  Prev
-                  </button>
-                  <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>Page {currentPage} / {totalPages}</span>
-                  <button onClick={() => setRegistryPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                    style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: currentPage === totalPages ? 'var(--surface-sunken)' : '#fff', color: currentPage === totalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: currentPage === totalPages ? 'default' : 'pointer' }}>
-                    Next ← ’
-                  </button>
-                </div>
-              )}
-            <div style={{
-              display: 'grid',
-              // 200px tracks give five columns on a normal desktop and fold
-              // down to fewer on narrow screens without a media query.
-              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))',
-              gap: '12px',
-              marginTop: '8px'
-            }}>
-              {paginated.map(s => {
-                const totalPaid = Number(s.totalPaid || 0);
-                const remaining = Number(s.remainingBalance || 0);
-                const totalFee = totalPaid + remaining;
-                const paidPct = totalFee > 0 ? Math.min(100, Math.round((totalPaid / totalFee) * 100)) : 100;
-                const isResident = s.hostelStatus === 'Resident';
-
-                return (
-                  <GlassCard
-                    key={s._id || s.studentId}
-                    hoverable={true}
-                    style={{
-                      padding: '12px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      gap: '10px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.85)',
-                      border: '1.5px solid rgba(226, 232, 240, 0.9)',
-                      borderRadius: '16px',
-                      boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    {/* Top Row: Avatar + Name + Adm Badge */}
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                      <div style={{
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '10px',
-                        backgroundColor: isResident ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                        color: isResident ? 'var(--warning)' : 'var(--good)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.9286rem',
-                        fontWeight: 900,
-                        flexShrink: 0
-                      }}>
-                        {(s.name || 'S').charAt(0).toUpperCase()}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <strong style={{ fontSize: '0.8571rem', color: 'var(--dark-charcoal)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {s.name}
-                          </strong>
-                        </div>
-                        <div style={{ fontSize: '0.7857rem', color: 'var(--ink-secondary)', marginTop: '2px', fontWeight: 600 }}>
-                          Adm: <span style={{ color: 'var(--ink)', fontWeight: 800 }}>{s.admissionNumber || s.studentId}</span>
-                        </div>
-                        <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
-                          {s.branch || loggedInCampus} ({s.course || 'MPC'}{s.section ? ` - ${s.section}` : ''})
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Middle Info Row: Contact & Badges */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--surface-sunken)', padding: '10px 12px', borderRadius: '10px', fontSize: '0.7857rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink-secondary)' }}>
-                        <span>Student Mob: <strong>{s.mobile || 'N/A'}</strong></span>
-                        <span>Parent: <strong>{s.parentMobile || 'N/A'}</strong></span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                        <span style={{
-                          fontSize: '0.7143rem',
-                          fontWeight: 800,
-                          padding: '2px 8px',
-                          borderRadius: '999px',
-                          backgroundColor: 'rgba(59, 130, 246, 0.12)',
-                          color: '#1D4ED8'
-                        }}>
-                          {s.transportStatus || 'Self Transport'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Financial Progress Bar */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7857rem', fontWeight: 800 }}>
-                        <span style={{ color: 'var(--good)' }}>Paid: Rs.{totalPaid.toLocaleString('en-IN')}</span>
-                        <span style={{ color: remaining > 0 ? 'var(--critical)' : 'var(--good)' }}>
-                          Due: Rs.{remaining.toLocaleString('en-IN')}
-                        </span>
-                      </div>
-                      <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--line)', borderRadius: '999px', overflow: 'hidden' }}>
-                        <div style={{ width: `${paidPct}%`, height: '100%', backgroundColor: remaining > 0 ? 'var(--warning)' : 'var(--good)', transition: 'width 0.4s ease' }} />
-                      </div>
-                    </div>
-
-                    {/* Card Action Buttons */}
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                      <button
-                        onClick={() => void openStudentEditor(s as any)}
-                        style={{
-                          flex: 1,
-                          padding: '8px 12px',
-                          border: '1.5px solid var(--royal-gold)',
-                          // #FAB219 on the #F5F5F4 sunken surface is a 1.68
-                          // contrast ratio — the label was there but unreadable.
-                          // Matches the border instead.
-                          color: 'var(--royal-gold)',
-                          backgroundColor: 'var(--surface-sunken)',
-                          borderRadius: '8px',
-                          fontWeight: 800,
-                          fontSize: '0.7857rem',
-                          cursor: 'pointer'
-                        }}
-                        className="press-interactive"
-                      >
-                        Edit Profile & Fees
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setStudentToDelete(s);
-                          setIsDeleteConfirmModalOpen(true);
-                        }}
-                        style={{
-                          padding: '8px 12px',
-                          border: '1.5px solid rgba(239, 68, 68, 0.3)',
-                          color: 'var(--critical)',
-                          backgroundColor: 'rgba(254, 242, 242, 0.8)',
-                          borderRadius: '8px',
-                          fontWeight: 800,
-                          fontSize: '0.7857rem',
-                          cursor: 'pointer'
-                        }}
-                        className="press-interactive"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </GlassCard>
-                );
-              })}
-              {paginated.length === 0 && (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px 20px', color: 'var(--muted-gray)', fontSize: '0.9286rem', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: '16px' }}>
-                  No student records match your search criteria. Try searching by Name, Admission Number, or Phone.
-                </div>
-              )}
-            </div>
-            </>);
-            })()}
-          </div>
-
-          {renderModals()}
-
-
-        </main>
-      </div>
-    );
-  }
-
-  //  SUBPAGE 2: FEE COLLECTION DESK (Sub-page)
   if (activeSubPage === 'fee_collection') {
     // Search, then filters, then a page. Applied in that order so a filter
     // narrows what the search found rather than the whole registry.
@@ -2359,6 +2064,32 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
                     Clear
                   </button>
                 )}
+
+                {/* The fee register as filtered on screen: S.No, admission
+                    number, name, total, paid, pending. Built by the server
+                    from the same filters, because `students` here is a capped
+                    list and an export must not quietly lose its tail. */}
+                <button
+                  onClick={async () => {
+                    try {
+                      await downloadCsv('fee-register', {
+                        q: feeCollectAdm.trim(),
+                        campus: feeFilterCampus,
+                        course: feeFilterCourse,
+                        year: feeFilterYear,
+                        dues: feeFilterDues
+                      });
+                      triggerToast('Fee register downloaded.');
+                    } catch (e: any) {
+                      triggerToast(e?.message || 'Could not download the fee register.', 'error');
+                    }
+                  }}
+                  style={{ ...styles.actionItemBtn, padding: '8px 14px', backgroundColor: 'var(--good-wash)', color: 'var(--good)', border: '1.5px solid var(--good)', fontWeight: 800 }}
+                  className="press-interactive"
+                  title="Download S.No, Admission No, Name, Total, Paid and Pending fees for the students listed"
+                >
+                  Export Fee Register
+                </button>
 
                 <span style={{ fontSize: '0.7857rem', fontWeight: 800, color: 'var(--ink-secondary)', marginLeft: 'auto' }}>
                   {filteredCollectList.length} student{filteredCollectList.length === 1 ? '' : 's'}
@@ -3259,459 +2990,9 @@ export const AccountantDashboardView: React.FC<{ restrictTo?: 'fee_collection'; 
     );
   }
 
-  //  SUBPAGE 3: ATTENDANCE CONSOLE (Sub-page)
-
-  //  SUBPAGE 4: COLLECTION REPORTS (Sub-page)
-  if (activeSubPage === 'reports') {
-    // Server-paged, newest first, over the payments collection — see
-    // getCollectedPayments for why this is no longer derived from `students`.
-    const AUDIT_PER_PAGE = 50;
-    const auditTotalPages = Math.max(1, Math.ceil(auditTotal / AUDIT_PER_PAGE));
-    const auditCurrentPage = Math.min(auditPage, auditTotalPages);
-    const auditPagedTx = auditTx;
-
-    return (
-      <div style={styles.container} className="view-container anim-slide-up">
-        {renderBackgroundDesign('ruby')}
-        <header style={styles.header}>
-          <button onClick={() => { setActiveSubPage('menu'); }} style={styles.backArrowBtn} className="press-interactive">
-             Back to Cockpit
-          </button>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', marginTop: '8px' }}>
-            <div>
-              <h1 style={styles.title}>Audit Report Compiler</h1>
-              {/* The server's count for the whole ledger, not the page. */}
-              <p style={styles.subtitle}>Transaction audit stream — {auditTotal} records total</p>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {/* CSV alongside the PDF. They are not the same thing: the PDF is
-                  what gets filed and signed, the CSV is what gets opened in a
-                  spreadsheet and reconciled against a bank statement.
-
-                  The accountant portal had no CSV at all, even though
-                  /api/export/students.csv and payments.csv have always served
-                  this role. Expenditures is deliberately NOT offered here - that
-                  route is admin1 and clerk only, and a button that answers 403
-                  is worse than no button. verify-csv asserts that refusal so
-                  this stays true. */}
-              <button
-                onClick={async () => {
-                  try {
-                    await downloadCsv('payments');
-                    triggerToast('Payments CSV downloaded.');
-                  } catch (e: any) {
-                    triggerToast(e?.message || 'Could not download the CSV.', 'error');
-                  }
-                }}
-                style={{ ...styles.sheetBtn, backgroundColor: 'var(--surface-sunken)', color: 'var(--ink)', border: '1.5px solid var(--line)', fontWeight: 800, padding: '10px 16px' }}
-                className="press-interactive"
-              >
-                Payments CSV
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    await downloadCsv('students');
-                    triggerToast('Students CSV downloaded.');
-                  } catch (e: any) {
-                    triggerToast(e?.message || 'Could not download the CSV.', 'error');
-                  }
-                }}
-                style={{ ...styles.sheetBtn, backgroundColor: 'var(--surface-sunken)', color: 'var(--ink)', border: '1.5px solid var(--line)', fontWeight: 800, padding: '10px 16px' }}
-                className="press-interactive"
-              >
-                Students CSV
-              </button>
-              <button
-                onClick={async () => {
-                  // An audit report is the WHOLE ledger, not the fifty rows on
-                  // screen. The list is server-paged now, so the pages are
-                  // walked here before the document is built — printing
-                  // `auditTx` would silently produce a report of page one and
-                  // put a "Total" under it.
-                  let allTransactions: accountantService.CollectedPayment[] = [];
-                  try {
-                    const PER = 1000; // the server's own ceiling
-                    const first = await accountantService.getCollectedPayments(1, PER);
-                    allTransactions = first.items;
-                    const pages = Math.ceil((first.meta.total || 0) / PER);
-                    for (let p = 2; p <= pages; p++) {
-                      const next = await accountantService.getCollectedPayments(p, PER);
-                      allTransactions = allTransactions.concat(next.items);
-                    }
-                  } catch {
-                    triggerToast('Could not load the full ledger for the report.');
-                    return;
-                  }
-                  if (allTransactions.length === 0) { triggerToast('No transactions to export.'); return; }
-
-                  // Reversed receipts are listed but do not count towards what
-                  // was collected — the same rule the server applies to its
-                  // own totals, and the reason this is not a plain sum.
-                  const live = allTransactions.filter(tx => !tx.reversed);
-                  const totalAmount = live.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
-                  const reversedCount = allTransactions.length - live.length;
-
-                  const body = [
-                    pdfHeader({
-                      logoSrc: collegeLogo,
-                      title: 'Audit Report',
-                      subtitle: `${allTransactions.length} transaction(s)`,
-                      campus: loggedInCampus
-                    }),
-                    pdfTiles([
-                      { label: 'Transactions', value: String(allTransactions.length) },
-                      { label: 'Reversed', value: String(reversedCount) },
-                      { label: 'Total Collected', value: money(totalAmount), tone: 'good' }
-                    ]),
-                    pdfSection('Transaction Ledger'),
-                    pdfTable({
-                      headers: ['#', 'Receipt No.', 'Student', 'Adm No.', 'Category', 'Installment', 'Mode', 'Date', 'Amount'],
-                      numeric: [8],
-                      rows: allTransactions.map((tx, idx) => [
-                        String(idx + 1),
-                        `<strong>${escapeHtml(tx.receiptNumber)}</strong>`,
-                        escapeHtml(tx.studentName),
-                        escapeHtml(tx.admissionNumber),
-                        escapeHtml(tx.category),
-                        escapeHtml(tx.installment),
-                        escapeHtml(tx.paymentMode),
-                        dateStr(tx.date),
-                        tx.reversed
-                          ? `<span class="pdf-strong" style="text-decoration:line-through">${money(tx.amount)}</span>`
-                          : `<span class="pdf-strong">${money(tx.amount)}</span>`
-                      ]),
-                      footer: ['', '', '', '', '', '', '', 'Total', money(totalAmount)]
-                    }),
-                    pdfFooter({ note: 'Computer-generated audit report, verified against the Inspire College ERP records.' })
-                  ].join('');
-
-                  // Landscape: nine columns do not fit across a portrait page.
-                  const opened = openPrintDocument({
-                    title: 'Audit Report',
-                    body,
-                    landscape: true,
-                    buttonLabel: 'Print / Save Audit Report as PDF',
-                    onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to download the report.')
-                  });
-                  if (opened) triggerToast('Audit report opened — ' + allTransactions.length + ' records.');
-                }}
-                style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 800, padding: '10px 18px', borderRadius: '10px' }}
-                className="press-interactive"
-              >
-                 Download PDF
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <main style={{ ...styles.content, gap: '16px' }}>
-          {/* Pagination Controls — top */}
-          {auditTotalPages > 1 && (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
-              <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>
-                Showing {((auditCurrentPage - 1) * AUDIT_PER_PAGE) + 1}–{Math.min(auditCurrentPage * AUDIT_PER_PAGE, auditTotal)} of {auditTotal}
-                {auditCollected > 0 && <> &middot; {money(auditCollected)} collected</>}
-              </span>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button onClick={() => setAuditPage(p => Math.max(1, p - 1))} disabled={auditCurrentPage === 1}
-                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: auditCurrentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: auditCurrentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: auditCurrentPage === 1 ? 'default' : 'pointer' }}>
-                  ← Prev
-                </button>
-                <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)', display: 'flex', alignItems: 'center' }}>Page {auditCurrentPage} / {auditTotalPages}</span>
-                <button onClick={() => setAuditPage(p => Math.min(auditTotalPages, p + 1))} disabled={auditCurrentPage === auditTotalPages}
-                  style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid var(--line)', background: auditCurrentPage === auditTotalPages ? 'var(--surface-sunken)' : '#fff', color: auditCurrentPage === auditTotalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: auditCurrentPage === auditTotalPages ? 'default' : 'pointer' }}>
-                  Next →
-                </button>
-              </div>
-            </div>
-          )}
-
-          <h4 style={styles.sectionSubtitle}>Collection Audit Logs</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1 }}>
-            {/* "Loading" and "there are none" must not look the same. */}
-            {auditPagedTx.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted-gray)', fontSize: '0.9286rem', backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: '16px' }}>
-                {auditLoading ? 'Loading transactions…' : 'No transactions recorded yet.'}
-              </div>
-            )}
-            {auditPagedTx.map((tx, idx) => (
-              <div key={tx.receiptNumber || idx} style={styles.receiptRowItem}>
-                <div>
-                  <strong>{tx.receiptNumber} — {tx.studentName}</strong>
-                  <div style={{ fontSize: '0.7143rem', color: 'var(--muted-gray)' }}>
-                    {tx.category} · {tx.installment} · Adm: {tx.admissionNumber}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  {/*
-                    A reversed receipt is shown struck through rather than
-                    hidden. It is still a row in the ledger and its receipt
-                    number was still issued; dropping it would leave an
-                    unexplained gap in a report people reconcile against a
-                    bank statement. It is already excluded from the collected
-                    total, which the server sums with `reversed` filtered out.
-                  */}
-                  <span style={{
-                    fontWeight: 850,
-                    color: tx.reversed ? 'var(--muted-gray)' : 'var(--good)',
-                    textDecoration: tx.reversed ? 'line-through' : 'none'
-                  }}>
-                    + Rs.{Number(tx.amount || 0).toLocaleString('en-IN')}
-                  </span>
-                  <div style={{ fontSize: '0.5714rem', color: 'var(--muted-gray)' }}>
-                    {new Date(tx.date).toLocaleDateString('en-IN')} · {tx.paymentMode}
-                    {tx.reversed ? ' · REVERSED' : ''}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Bottom Pagination Controls */}
-          {auditTotalPages > 1 && (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center', zIndex: 1, marginTop: '8px' }}>
-              <button onClick={() => setAuditPage(p => Math.max(1, p - 1))} disabled={auditCurrentPage === 1}
-                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid var(--line)', background: auditCurrentPage === 1 ? 'var(--surface-sunken)' : '#fff', color: auditCurrentPage === 1 ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: auditCurrentPage === 1 ? 'default' : 'pointer' }}>
-                ← Previous
-              </button>
-              <span style={{ fontSize: '0.8571rem', fontWeight: 700, color: 'var(--ink-secondary)' }}>Page {auditCurrentPage} of {auditTotalPages}</span>
-              <button onClick={() => setAuditPage(p => Math.min(auditTotalPages, p + 1))} disabled={auditCurrentPage === auditTotalPages}
-                style={{ padding: '8px 18px', borderRadius: '10px', border: '1.5px solid var(--line)', background: auditCurrentPage === auditTotalPages ? 'var(--surface-sunken)' : '#fff', color: auditCurrentPage === auditTotalPages ? 'var(--ink-muted)' : 'var(--ink)', fontWeight: 800, fontSize: '0.8571rem', cursor: auditCurrentPage === auditTotalPages ? 'default' : 'pointer' }}>
-                Next →
-              </button>
-            </div>
-          )}
-          {renderModals()}
-
-        </main>
-      </div>
-    );
-  }
-
-  //  SUBPAGE 6: LATE FEE SETTINGS (Sub-page)
-
-  //  SUBPAGE 7: SCHOLARSHIPS SETTINGS (Sub-page)
-
-  //  SUBPAGE 8: ACCOUNTANT PROFILE (Sub-page)
-  // Fee reminders. The same panel the Rector and the clerks use - one
-  // implementation, so a change to the reminder wording reaches every portal
-  // at once rather than three copies drifting apart.
-  //
-  // fixedCampus pins it to this accountant's own campus. /api/fees/outstanding
-  // already scopes by the caller anyway, so this is what the screen SAYS rather
-  // than what it is allowed to read.
-  if (activeSubPage === 'outstanding_fees') {
-    return (
-      <div style={styles.container} className="view-container anim-slide-up">
-        {renderBackgroundDesign('ruby')}
-        <header style={styles.header}>
-          <button onClick={() => { setActiveSubPage('menu'); }} style={styles.backArrowBtn} className="press-interactive">
-             Back to Cockpit
-          </button>
-          <div style={{ marginTop: '8px' }}>
-            <h1 style={styles.title}>Outstanding Fees</h1>
-            <p style={styles.subtitle}>Students at {loggedInCampus} with a balance — largest first</p>
-          </div>
-        </header>
-        <OutstandingFeesPanel
-          campuses={CAMPUS_LIST}
-          fixedCampus={loggedInCampus}
-          onToast={triggerToast}
-        />
-      </div>
-    );
-  }
-
-  if (activeSubPage === 'profile') {
-    return (
-      <div style={styles.container} className="view-container anim-slide-up">
-        {renderBackgroundDesign('navy')}
-        <header style={styles.header}>
-          <button onClick={() => setActiveSubPage('menu')} style={styles.backArrowBtn} className="press-interactive">
-             Back to Cockpit
-          </button>
-          <h1 style={{ ...styles.title, marginTop: '8px' }}>Accountant Profile Details</h1>
-          <p style={styles.subtitle}>Cashier credential profiles and academic year registers</p>
-        </header>
-
-        <main style={styles.content}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', zIndex: 1 }}>
-            <GlassCard hoverable={false} style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.45)' }}>
-              <div style={styles.heroAvatar}>{user?.name ? user.name.split(' ').map((n: any) => n[0]).join('').toUpperCase().slice(0, 2) : 'VN'}</div>
-              <h3 style={{ ...styles.studentName, marginTop: '12px' }}>{user?.name || 'Venkatesh M.'}</h3>
-              <span style={styles.studentID}>Role: Accountant ({loggedInCampus})</span>
-              <div style={styles.heroLineDivider} />
-              <div style={styles.heroMetaGrid}>
-                <div style={styles.metaRow}><span>Active ERP Registry</span><strong>{user?.campus ? `Inspire ${user.campus} Campus` : 'Inspire Junior Campus'}</strong></div>
-                <div style={styles.metaRow}><span>Academic Year</span><strong>{settings.academicYear}</strong></div>
-                <div style={styles.metaRow}><span>Installment Terms</span><strong>{settings.installments}</strong></div>
-              </div>
-            </GlassCard>
-          </div>
-          {renderModals()}
-
-        </main>
-      </div>
-    );
-  }
-
-  //  DEFAULT VIEW: CONSOLIDATED COCKPIT MAIN MENU (No tabs)
-  return (
-    <div style={styles.container} className="view-container anim-slide-up">
-      <PortalDataLoader visible={isPageLoading} colorAccent="var(--warning)" />
-      {renderBackgroundDesign('gold')}
-
-      {/* Top Welcome Title Bar */}
-      <header style={styles.header}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', zIndex: 1 }}>
-          <div style={styles.parentWelcomeRow}>
-            <div style={styles.avatarMini}>{user?.name ? user.name.split(' ').map((n: any) => n[0]).join('').toUpperCase().slice(0, 2) : 'VN'}</div>
-            <div>
-              <span style={styles.greetingText}>Inspire ERP Control, ({loggedInCampus})</span>
-              <h2 style={styles.parentWelcomeTitle}>{user?.name || 'Venkatesh M.'}</h2>
-              <p style={styles.childMetaText}>Bursar Ledger Terminal</p>
-            </div>
-          </div>
-          <div style={{ paddingRight: '8px' }}>
-            <InspireLogo size="md" inPortal={true} />
-          </div>
-        </div>
-      </header>
-
-      <main style={{ ...styles.content, zIndex: 1 }}>
-        {/* Summary Metrics Bar - Single Bar as requested */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{
-            padding: '18px 24px',
-            borderRadius: '16px',
-            backgroundColor: 'rgba(255, 255, 255, 0.85)',
-            border: '2px solid rgba(212, 175, 55, 0.35)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '12px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.02)'
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '0.7143rem', fontWeight: 800, color: 'var(--muted-gray)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Campus Registration Summary
-              </span>
-              <h3 style={{ margin: 0, fontSize: '1.2857rem', fontWeight: 900, color: 'var(--dark-charcoal)' }}>
-                Total Students in {loggedInCampus}: <span style={{ color: 'var(--good)', fontSize: '1.4286rem' }}>{students.length}</span>
-              </h3>
-            </div>
-            <div style={{
-              padding: '8px 16px',
-              borderRadius: '10px',
-              backgroundColor: 'rgba(16, 185, 129, 0.1)',
-              color: 'var(--good)',
-              fontSize: '0.8571rem',
-              fontWeight: 800,
-              border: '1px solid rgba(16, 185, 129, 0.25)'
-            }}>
-              Active Campus: {loggedInCampus}
-            </div>
-          </div>
-        </section>
-
-        {/* Module Grid */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <h3 style={styles.sectionTitle}>Bursar Grid Modules</h3>
-          <div className="grid-container">
-
-            <div onClick={() => setActiveSubPage('student_search')} style={styles.moduleCardNew} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.18)' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--good)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Student Registry & Management</h4>
-              <p style={styles.moduleDesc}>Register students, audit profiles, and edit complete fee structures.</p>
-            </div>
-
-            <div onClick={() => setActiveSubPage('fee_collection')} style={styles.moduleCardNew} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Fee Collection</h4>
-              <p style={styles.moduleDesc}>Search student records and log term payments.</p>
-            </div>
-
-            <div onClick={() => setActiveSubPage('outstanding_fees')} style={styles.moduleCardNew} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--critical)" strokeWidth="2"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Outstanding Fees</h4>
-              <p style={styles.moduleDesc}>Students with a balance, largest first, with a one-tap WhatsApp reminder.</p>
-            </div>
-
-            {/*
-              Faculty Management is the SAME screen the Rector and the clerks
-              use, reached by moving the global tab — App.tsx mounts it for an
-              accountant when the tab says 'teachers'. Staff became one shared
-              registry across the four campuses, so an accountant sees and
-              edits the same roster everyone else does; a second copy of this
-              screen would be a second place for the salary ledger arithmetic
-              to drift.
-            */}
-            <div onClick={() => setActiveTab('teachers')} style={styles.moduleCardNew} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M22 11h-4"/></svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Faculty Management</h4>
-              <p style={styles.moduleDesc}>Staff across all 4 campuses, their salary ledgers, and the history of every change.</p>
-            </div>
-
-            <div onClick={() => setActiveSubPage('reports')} style={styles.moduleCardNew} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--critical)" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Audit Reports</h4>
-              <p style={styles.moduleDesc}>Compile collection audit logs and spreadsheets.</p>
-            </div>
-
-            <div onClick={() => setActiveSubPage('profile')} style={styles.moduleCardNew} className="press-interactive">
-              <div style={{ ...styles.moduleIconWrapper, backgroundColor: 'rgba(15,23,42,0.05)', border: '1px solid rgba(15,23,42,0.12)' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink-secondary)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              </div>
-              <h4 style={styles.moduleTitle}>Bursar Profile</h4>
-              <p style={styles.moduleDesc}>Review registered cashier bio and access tokens.</p>
-            </div>
-
-          </div>
-        </section>
-
-        {/* Terminate Session */}
-        <button onClick={handleLogout} style={{ ...styles.logoutBtn, marginTop: '8px' }} className="press-interactive">
-          Sign Out
-        </button>
-
-        {/* Footer */}
-        <footer style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 28px 12px', gap: '8px', opacity: 0.85 }}>
-          <InspireLogo size="sm" inPortal={true} />
-          <span style={{ fontSize: '0.6429rem', color: 'var(--muted-gray)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.06em' }}>
-            Inspire ERP Bursar Portal v2.6.4 • Powered by TRNT BEE Technologies
-          </span>
-        </footer>
-
-      </main>
-
-      {toastMessage && (
-        <div style={styles.toastContainer} className="anim-slide-up">
-          <div style={styles.toastCard}>
-            <span style={styles.toastText}>{toastMessage}</span>
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
+  return null;
 };
 
-// --- STUB ROUTERS SO COMPILER DOES NOT FAIL ---
-export const AccountantAcademicsView: React.FC = () => null;
-export const AccountantUpdatesView: React.FC = () => null;
-export const AccountantProfileView: React.FC = () => null;
 
 // --- STYLING COEFFICIENTS ---
 const styles: { [key: string]: React.CSSProperties } = {

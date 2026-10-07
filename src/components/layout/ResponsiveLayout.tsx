@@ -98,12 +98,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
           ? [{ label: 'Campus Expenditures', type: 'expenditure', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('expenditure'); } }]
           : []),
       ]
-    : [
-        { label: 'Accountant Cockpit', type: 'dashboard', icon: <SvgHome />, action: () => { setIsDrawerOpen(false); setActiveTab('dashboard'); } },
-        { label: 'Student Registry', type: 'student_search', icon: <SvgCrest />, action: () => { setIsDrawerOpen(false); setActiveTab('student_search'); } },
-        { label: '+ Add New Student', type: 'add_student', icon: <SvgStar />, action: () => { setIsDrawerOpen(false); setActiveTab('add_student'); } },
-        { label: 'Collect Student Fees', type: 'fee_collection', icon: <SvgCog />, action: () => { setIsDrawerOpen(false); setActiveTab('fee_collection'); } },
-      ];
+    : [];
 
   // Helper function to render styled Neo-Brutalist Modal Overlay
   /*
@@ -140,7 +135,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({ children }) 
 
 
 
-  // If NOT Authenticator (admin1, admin2, accountant), render clean full-width content without sidebar
+  // If NOT Authenticator (admin1, clerk), render clean full-width content without sidebar
   if (portalRole !== 'authenticator') {
     return (
       <div style={{ width: '100%', minHeight: '100vh', backgroundColor: 'var(--bg-primary)', overflowY: 'auto' }}>

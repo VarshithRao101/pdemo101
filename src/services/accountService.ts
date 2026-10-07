@@ -85,7 +85,7 @@ export const getOutstandingFees = async (branch?: string): Promise<ListPage<Outs
  * workaround.
  */
 export const downloadCsv = async (
-  kind: 'students' | 'payments' | 'expenditures',
+  kind: 'students' | 'payments' | 'expenditures' | 'fee-register',
   params: Record<string, string> = {}
 ): Promise<void> => {
   const search = new URLSearchParams(params).toString();

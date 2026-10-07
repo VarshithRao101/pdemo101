@@ -5,7 +5,7 @@ import { ResponsiveLayout } from './components/layout/ResponsiveLayout';
 import { PinView } from './views/PinView';
 import { PortfolioView } from './views/PortfolioView';
 const AdminDashboardView = React.lazy(() => import('./views/AdminPortalViews').then(m => ({ default: m.AdminDashboardView })));
-const AccountantDashboardView = React.lazy(() => import('./views/AccountantPortalViews').then(m => ({ default: m.AccountantDashboardView })));
+const FeeCollectionView = React.lazy(() => import('./views/FeeCollectionViews').then(m => ({ default: m.FeeCollectionView })));
 const AuthenticatorDashboardView = React.lazy(() => import('./views/AuthenticatorPortalViews').then(m => ({ default: m.AuthenticatorDashboardView })));
 
 // The two ERP addresses live in src/constants/gates.ts, which also sets out what
@@ -15,7 +15,7 @@ const AuthenticatorDashboardView = React.lazy(() => import('./views/Authenticato
 import { HorizontalProgressBarLoader } from './components/common/HorizontalProgressBarLoader';
 import { PortalErrorBoundary } from './components/common/PortalErrorBoundary';
 
-const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'authenticator' }> = ({ forcedRole }) => {
+const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'authenticator' }> = ({ forcedRole }) => {
   const { portalRole, checkSession, logout, isAuthenticated, isAuthLoading, setPortalRole, activeTab } = useNavigation();
   const [flowStage, setFlowStage] = useState<'portfolio' | 'pin' | 'authenticated'>('portfolio');
   const [currentHash, setCurrentHash] = useState<string>(window.location.hash);
@@ -183,7 +183,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'a
 
   const renderActiveView = () => {
     if (portalRole === 'admin1') {
-      // The Rector collects fees through the accountant's module, with no
+      // The Rector collects fees through the shared fee collection screen, with no
       // campus to choose first: students are one registry, so the search
       // spans all four campuses and the receipt is recorded against the
       // STUDENT's campus rather than whoever happened to take the money.
@@ -191,7 +191,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'a
       if (activeTab === 'fee_collection') {
         return (
           <PortalErrorBoundary portalLabel="Rector — Fee Collection">
-            <AccountantDashboardView restrictTo="fee_collection" />
+            <FeeCollectionView />
           </PortalErrorBoundary>
         );
       }
@@ -203,40 +203,18 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'a
     }
 
     if (portalRole === 'clerk') {
-      // Fee collection is the accountant's module, reused rather than
-      // reimplemented — it is already scoped entirely from `user.campus`,
-      // which is exactly what a clerk needs. A second copy would be a second
-      // place for the receipt and balance arithmetic to drift.
+      // One fee collection screen for the Rector and every clerk. It is scoped
+      // entirely from the account, so a clerk is held to their own campus.
       if (activeTab === 'fee_collection') {
         return (
           <PortalErrorBoundary portalLabel="Clerk Portal — Fee Collection">
-            <AccountantDashboardView restrictTo="fee_collection" />
+            <FeeCollectionView />
           </PortalErrorBoundary>
         );
       }
       return (
         <PortalErrorBoundary portalLabel="Clerk Portal">
           <AdminDashboardView role="clerk" />
-        </PortalErrorBoundary>
-      );
-    }
-
-    if (portalRole === 'accountant') {
-      // Faculty is the admin portal's screen, borrowed — the same arrangement
-      // as the Rector and clerks borrowing the accountant's fee collection
-      // above. Staff are one registry across the four campuses now, so an
-      // accountant is entitled to the same roster, and reusing the screen
-      // keeps one implementation of the twelve-month ledger.
-      if (activeTab === 'teachers') {
-        return (
-          <PortalErrorBoundary portalLabel="Accountant Portal — Faculty">
-            <AdminDashboardView role="accountant" restrictTo="teachers" />
-          </PortalErrorBoundary>
-        );
-      }
-      return (
-        <PortalErrorBoundary portalLabel="Accountant Portal">
-          <AccountantDashboardView />
         </PortalErrorBoundary>
       );
     }
@@ -271,7 +249,7 @@ const AppContent: React.FC<{ forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'a
 };
 
 interface AppProps {
-  forcedRole?: 'admin1' | 'clerk' | 'accountant' | 'authenticator';
+  forcedRole?: 'admin1' | 'clerk' | 'authenticator';
 }
 
 function App({ forcedRole }: AppProps = {}) {

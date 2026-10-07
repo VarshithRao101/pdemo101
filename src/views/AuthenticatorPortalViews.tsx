@@ -54,7 +54,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
   // Account creation/edit state
   const [accountUsername, setAccountUsername] = useState<string>('');
-  const [accountRole, setAccountRole] = useState<'admin1' | 'clerk' | 'accountant' | 'authenticator'>('accountant');
+  const [accountRole, setAccountRole] = useState<'admin1' | 'clerk' | 'authenticator'>('clerk');
   const [accountPassword, setAccountPassword] = useState<string>('');
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
   const [accountName, setAccountName] = useState<string>('');
@@ -396,7 +396,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
 
 
 
-  // Create/Update Admin & Accountant Accounts
+  // Update Rector and authenticator accounts
   const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAccountId) {
@@ -1158,7 +1158,6 @@ export const AuthenticatorDashboardView: React.FC = () => {
                   >
                     <option value="admin1">Admin 1 (Rector)</option>
                     <option value="clerk">Clerk (Campus Clerk)</option>
-                    <option value="accountant">Accountant</option>
                     <option value="authenticator">Security Authenticator</option>
                   </select>
                 </div>
