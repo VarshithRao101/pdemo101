@@ -2389,7 +2389,7 @@ export const AdminDashboardView: React.FC<{
                   style={{ ...styles.selectInput, fontSize: '0.8929rem' }}
                 >
                   <option value="Erragattugutta C1">IIT and NEET</option>
-                  <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
+                  <option value="Erragattugutta C2">Main Campus</option>
                   <option value="Beemaram C1">Beemaram Campus C1</option>
                   <option value="Beemaram C2">Beemaram Campus C2</option>
                 </select>
@@ -2595,7 +2595,7 @@ export const AdminDashboardView: React.FC<{
                             <label style={styles.formLabel}>Campus / Branch *</label>
                             <select value={newStuBranch} onChange={(e) => setNewStuBranch(e.target.value)} style={styles.selectInput}>
                               <option value="Erragattugutta C1">IIT and NEET</option>
-                              <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
+                              <option value="Erragattugutta C2">Main Campus</option>
                               <option value="Beemaram C1">Beemaram Campus C1</option>
                               <option value="Beemaram C2">Beemaram Campus C2</option>
                             </select>
@@ -3111,7 +3111,7 @@ export const AdminDashboardView: React.FC<{
                         <label style={styles.formLabel}>Campus / Branch</label>
                         <select value={editStudent.branch || ''} onChange={(e) => setEditStudent({ ...editStudent, branch: e.target.value })} style={styles.selectInput}>
                           <option value="Erragattugutta C1">IIT and NEET</option>
-                          <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
+                          <option value="Erragattugutta C2">Main Campus</option>
                           <option value="Beemaram C1">Beemaram Campus C1</option>
                           <option value="Beemaram C2">Beemaram Campus C2</option>
                         </select>
@@ -3902,7 +3902,7 @@ export const AdminDashboardView: React.FC<{
                         style={styles.selectInput}
                       >
                         <option value="Erragattugutta C1">IIT and NEET</option>
-                        <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
+                        <option value="Erragattugutta C2">Main Campus</option>
                         <option value="Beemaram C1">Beemaram Campus C1</option>
                         <option value="Beemaram C2">Beemaram Campus C2</option>
                       </select>
@@ -4354,7 +4354,7 @@ export const AdminDashboardView: React.FC<{
                         style={styles.selectInput}
                       >
                         <option value="Erragattugutta C1">IIT and NEET</option>
-                        <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
+                        <option value="Erragattugutta C2">Main Campus</option>
                         <option value="Beemaram C1">Beemaram Campus C1</option>
                         <option value="Beemaram C2">Beemaram Campus C2</option>
                       </select>

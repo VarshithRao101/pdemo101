@@ -22,10 +22,11 @@ export type CampusName = (typeof CAMPUS_LIST)[number];
 /**
  * What a campus is called on screen. The stored value stays the same, so
  * clerk logins, receipts and every saved record keep working; only the name
- * people read changes. Erragattugutta C1 is the IIT & NEET campus.
+ * people read changes. Erragattugutta C1 is the IIT & NEET campus and C2 is the main campus.
  */
 const CAMPUS_LABELS: Record<string, string> = {
-  'Erragattugutta C1': 'IIT and NEET'
+  'Erragattugutta C1': 'IIT and NEET',
+  'Erragattugutta C2': 'Main Campus'
 };
 
 export function campusLabel(campus: string | null | undefined): string {
