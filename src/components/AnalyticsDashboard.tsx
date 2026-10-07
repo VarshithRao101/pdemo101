@@ -13,6 +13,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { apiClient } from '../services/apiClient';
 import { Panel, Stat, Trend, Bars, Composition, Recovery, TableView, Empty, inrFull } from './common/Charts';
+import { campusLabel } from '../constants/campuses';
 
 interface Analytics {
   scope: string;
@@ -122,7 +123,7 @@ export const AnalyticsDashboard: React.FC<{ onBack?: () => void }> = ({ onBack }
                 <button key={c}
                         className={`seg-btn${campus === c ? ' is-active' : ''}`}
                         onClick={() => setCampus(c)}
-                        title={c}>{c}</button>
+                        title={campusLabel(c)}>{campusLabel(c)}</button>
               ))}
             </div>
           )}

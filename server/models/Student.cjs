@@ -48,6 +48,14 @@ const studentSchema = new mongoose.Schema({
   previousSchool: { type: String, default: '', trim: true },
   previousBoard: { type: String, default: '', trim: true },
   address: { type: String, default: '' },
+  // From the paper admission ledger. Not shown in every view yet, but kept
+  // so the register can be rebuilt from the database alone.
+  aadhaar: { type: String, default: '', trim: true },
+  caste: { type: String, default: '', trim: true },
+  sscGpa: { type: String, default: '', trim: true },
+  ledgerNotes: { type: [String], default: [] },
+  // Which bulk import created the record, so one can be undone as a unit.
+  importBatch: { type: String, default: '', index: true },
   hostelStatus: {
     type: String,
     enum: ['Resident', 'Day Scholar'],

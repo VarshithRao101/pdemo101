@@ -1,7 +1,7 @@
 import { todayLocalISO } from '../utils/localDate';
 import React, { useState, useEffect, useRef } from 'react';
 import { LIMITS, validateMobile, digitsOnly } from '../constants/fieldLimits';
-import { CAMPUS_LIST } from '../constants/campuses';
+import { CAMPUS_LIST, campusLabel } from '../constants/campuses';
 import { useNavigation, accountCan, type ClerkPermissionKey } from '../context/NavigationContext';
 import { GlassCard } from '../components/common/GlassCard';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -2388,7 +2388,7 @@ export const AdminDashboardView: React.FC<{
                   onChange={(e) => setNewStuBranch(e.target.value)}
                   style={{ ...styles.selectInput, fontSize: '0.8929rem' }}
                 >
-                  <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
+                  <option value="Erragattugutta C1">IIT and NEET</option>
                   <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
                   <option value="Beemaram C1">Beemaram Campus C1</option>
                   <option value="Beemaram C2">Beemaram Campus C2</option>
@@ -2594,7 +2594,7 @@ export const AdminDashboardView: React.FC<{
                           <div>
                             <label style={styles.formLabel}>Campus / Branch *</label>
                             <select value={newStuBranch} onChange={(e) => setNewStuBranch(e.target.value)} style={styles.selectInput}>
-                              <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
+                              <option value="Erragattugutta C1">IIT and NEET</option>
                               <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
                               <option value="Beemaram C1">Beemaram Campus C1</option>
                               <option value="Beemaram C2">Beemaram Campus C2</option>
@@ -3110,7 +3110,7 @@ export const AdminDashboardView: React.FC<{
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Campus / Branch</label>
                         <select value={editStudent.branch || ''} onChange={(e) => setEditStudent({ ...editStudent, branch: e.target.value })} style={styles.selectInput}>
-                          <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
+                          <option value="Erragattugutta C1">IIT and NEET</option>
                           <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
                           <option value="Beemaram C1">Beemaram Campus C1</option>
                           <option value="Beemaram C2">Beemaram Campus C2</option>
@@ -3646,7 +3646,7 @@ export const AdminDashboardView: React.FC<{
                         }}
                         className="press-interactive"
                       >
-                        {cName === 'All' ? 'All Campuses' : cName}
+                        {cName === 'All' ? 'All Campuses' : campusLabel(cName)}
                       </button>
                     ))}
                   </div>
@@ -3760,7 +3760,7 @@ export const AdminDashboardView: React.FC<{
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span style={{ color: 'var(--muted-gray)', fontWeight: 700 }}>Campus:</span>
-                            <span style={{ fontWeight: 800, color: 'var(--dark-charcoal)' }}>{t.branch || 'Erragattugutta C1'}</span>
+                            <span style={{ fontWeight: 800, color: 'var(--dark-charcoal)' }}>{campusLabel(t.branch || 'Erragattugutta C1')}</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span style={{ color: 'var(--muted-gray)', fontWeight: 700 }}>Monthly Salary:</span>
@@ -3901,7 +3901,7 @@ export const AdminDashboardView: React.FC<{
                         onChange={(e) => canEditFaculty && setEditTeacher({ ...editTeacher, branch: e.target.value })}
                         style={styles.selectInput}
                       >
-                        <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
+                        <option value="Erragattugutta C1">IIT and NEET</option>
                         <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
                         <option value="Beemaram C1">Beemaram Campus C1</option>
                         <option value="Beemaram C2">Beemaram Campus C2</option>
@@ -4353,7 +4353,7 @@ export const AdminDashboardView: React.FC<{
                         onChange={(e) => setNewFacBranch(e.target.value)}
                         style={styles.selectInput}
                       >
-                        <option value="Erragattugutta C1">Erragattugutta Campus C1</option>
+                        <option value="Erragattugutta C1">IIT and NEET</option>
                         <option value="Erragattugutta C2">Erragattugutta Campus C2</option>
                         <option value="Beemaram C1">Beemaram Campus C1</option>
                         <option value="Beemaram C2">Beemaram Campus C2</option>
@@ -4652,7 +4652,7 @@ export const AdminDashboardView: React.FC<{
                     }}
                     className="press-interactive"
                   >
-                    {b}
+                    {campusLabel(b)}
                   </div>
                 );
               })}
@@ -5178,7 +5178,7 @@ export const AdminDashboardView: React.FC<{
                         {selected ? 'Selected campus' : 'Campus'}
                       </div>
                       <div style={{ fontSize: '0.9286rem', fontWeight: 900, color: 'var(--ink)', marginTop: '2px' }}>
-                        {campus}
+                        {campusLabel(campus)}
                       </div>
                     </div>
                   );
@@ -6842,7 +6842,7 @@ export const AdminDashboardView: React.FC<{
                 const isActive = selectedExpBranch === b;
                 return (
                   <div key={b} onClick={() => setSelectedExpBranch(b as any)} style={{ padding: '12px 10px', borderRadius: '12px', border: isActive ? '2px solid var(--ink)' : '1px solid rgba(255,255,255,0.1)', background: isActive ? 'var(--ink)' : 'rgba(255,255,255,0.03)', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }} className="press-interactive">
-                    <div style={{ fontSize: '0.7143rem', color: isActive ? 'var(--surface)' : 'var(--muted-gray)', fontWeight: 800 }}>{b}</div>
+                    <div style={{ fontSize: '0.7143rem', color: isActive ? 'var(--surface)' : 'var(--muted-gray)', fontWeight: 800 }}>{campusLabel(b)}</div>
                     <strong style={{ fontSize: '1rem', color: isActive ? '#38BDF8' : 'var(--critical)', display: 'block', marginTop: '4px' }}>Rs.{total.toLocaleString('en-IN')}</strong>
                   </div>
                 );

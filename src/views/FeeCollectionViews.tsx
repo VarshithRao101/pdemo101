@@ -10,7 +10,7 @@ import { GlassCard } from '../components/common/GlassCard';
 import collegeLogo from '../assets/college logo.webp';
 import * as accountantService from '../services/accountantService';
 import { FeeSlotEditor, feeSlotsToPayload, slotsFromStudentFees, sumFeeSlots, type FeeSlot } from '../components/common/FeeSlotEditor';
-import { CAMPUS_LIST } from '../constants/campuses';
+import { CAMPUS_LIST, campusLabel } from '../constants/campuses';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 import { downloadCsv } from '../services/accountService';
 
@@ -345,14 +345,14 @@ const FeeRegisterExportDialog: React.FC<{
             <label style={label}>Campus</label>
             <select value={prefs.campus} onChange={(e) => set({ campus: e.target.value })} style={field}>
               <option value="All">All campuses</option>
-              {CAMPUS_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+              {CAMPUS_LIST.map(c => <option key={c} value={c}>{campusLabel(c)}</option>)}
             </select>
           </div>
           <div>
             <label style={label}>Course</label>
             <select value={prefs.course} onChange={(e) => set({ course: e.target.value })} style={field}>
               <option value="All">All courses</option>
-              {facets.courses.map(c => <option key={c} value={c}>{c}</option>)}
+              {facets.courses.map(c => <option key={c} value={c}>{campusLabel(c)}</option>)}
             </select>
           </div>
           <div>
@@ -1607,7 +1607,7 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
                 <select value={feeFilterCampus} onChange={(e) => { setFeeFilterCampus(e.target.value); setFeeCollectPage(1); }}
                   style={{ ...styles.selectInput, width: 'auto', minWidth: '150px' }}>
                   <option value="All">All campuses</option>
-                  {CAMPUS_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                  {CAMPUS_LIST.map(c => <option key={c} value={c}>{campusLabel(c)}</option>)}
                 </select>
 
                 <select value={feeFilterCourse} onChange={(e) => { setFeeFilterCourse(e.target.value); setFeeCollectPage(1); }}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { STAFF_GATE, AUTH_GATE } from '../constants/gates';
 import { LIMITS } from '../constants/fieldLimits';
+import { campusLabel } from '../constants/campuses';
 import PinEntry from '../components/common/PinEntry';
 import { useNavigation } from '../context/NavigationContext';
 import { InspireLogo } from '../components/common/InspireLogo';
@@ -607,7 +608,7 @@ export const PinView: React.FC<PinViewProps> = ({ onComplete, mode }) => {
                           cursor: 'pointer'
                         }}
                       >
-                        {campus}
+                        {campusLabel(campus)}
                       </button>
                     );
                   })}

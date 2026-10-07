@@ -4,7 +4,7 @@ import { LIMITS } from '../constants/fieldLimits';
 import { GlassCard } from '../components/common/GlassCard';
 import { useNavigation } from '../context/NavigationContext';
 import { authenticatorService, BACKUP_CATEGORIES } from '../services/authenticatorService';
-import { CAMPUS_LIST } from '../constants/campuses';
+import { CAMPUS_LIST, campusLabel } from '../constants/campuses';
 import type {
   AccountInfo,
   ActiveSessionInfo,
@@ -978,7 +978,7 @@ export const AuthenticatorDashboardView: React.FC = () => {
                 style={{ width: '100%', padding: '11px 12px', borderRadius: '10px', border: '2px solid var(--line)', backgroundColor: 'var(--surface-sunken)', color: 'var(--ink)', fontWeight: 700, fontSize: '0.9286rem', marginBottom: '18px' }}
               >
                 <option value="">Select a campus…</option>
-                {CAMPUS_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                {CAMPUS_LIST.map(c => <option key={c} value={c}>{campusLabel(c)}</option>)}
               </select>
 
               {/* Categories */}
