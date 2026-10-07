@@ -1,5 +1,5 @@
 import { todayLocalISO } from '../utils/localDate';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LIMITS, validateMobile, digitsOnly } from '../constants/fieldLimits';
 import { CAMPUS_LIST } from '../constants/campuses';
 import { useNavigation, accountCan, type ClerkPermissionKey } from '../context/NavigationContext';
@@ -1522,33 +1522,41 @@ export const AdminDashboardView: React.FC<{
 
 
 
-  const fetchStudents = async (query = '', suppressToast = false) => {
+  /**
+   * The query behind the student list on screen.
+   *
+   * The registry and the fee editor show NOTHING until someone searches. Loading
+   * the whole registry on every open was the slow part, and a list of hundreds
+   * of names is not what either screen is for. A call that passes no argument
+   * (a refresh after a save, the background poll) re-runs the CURRENT query, so
+   * results the person asked for do not vanish underneath them; a call that
+   * passes '' on purpose (opening a screen) clears it.
+   */
+  const studentQueryRef = useRef('');
+
+  const fetchStudents = async (query: string = studentQueryRef.current, suppressToast = false) => {
+    studentQueryRef.current = query;
     try {
+      if (!query.trim()) {
+        // Blank list. One row is requested only to learn how many students
+        // exist, which the admission form uses to suggest the next number.
+        setStudents([]);
+        setStudentsTruncated(false);
+        setStudentsLoadedPage(1);
+        const { meta } = await admin1Service.getStudents('', '', 1, 1);
+        setStudentTotal(meta.total);
+        return;
+      }
       // No campus filter. Students are ONE registry across all four campuses
       // for every staffed role, so a clerk's registry here matches what they
-      // see on the fee-collection screen. The same person getting two
-      // different answers from two screens is worse than either answer.
-      //
-      // Teachers, fee settings and worker payments elsewhere in this file are
-      // deliberately still campus-scoped: those are per-campus books.
-      const { items, meta } = await admin1Service.getStudents(query, '');
+      // see on the fee-collection screen.
+      const { items, meta } = await admin1Service.getStudents(query.trim(), '');
+      if (studentQueryRef.current !== query) return; // a newer search has started
       setStudents(items);
       setStudentTotal(meta.total);
       setStudentsTruncated(meta.hasMore);
       setStudentsLoadedPage(1);
     } catch (err: any) {
-      // On 404/503 (Vercel cold-start or transient error), retry once silently after a short delay
-      if (err?.status === 404 || err?.status === 503) {
-        try {
-          await new Promise(r => setTimeout(r, 1500));
-          const { items, meta } = await admin1Service.getStudents(query, '');
-          setStudents(items);
-          setStudentTotal(meta.total);
-          setStudentsTruncated(meta.hasMore);
-          setStudentsLoadedPage(1);
-          return;
-        } catch { /* fall through to toast below */ }
-      }
       if (!suppressToast) {
         triggerToast(err.message || 'Failed to load students.');
       }
@@ -1593,7 +1601,7 @@ export const AdminDashboardView: React.FC<{
    * consecutive pages; without this it appears twice in the list and twice in
    * anything counting it.
    */
-  const loadMoreStudents = async (query = '') => {
+  const loadMoreStudents = async (query = studentQueryRef.current) => {
     if (loadingMoreStudents) return;
     setLoadingMoreStudents(true);
     try {
@@ -1751,6 +1759,21 @@ export const AdminDashboardView: React.FC<{
       window.removeEventListener('focus', handleFocus);
     };
   }, [activePage, refreshCurrentPage]);
+
+  // The registry and the fee editor search the DATABASE as the person types.
+  useEffect(() => {
+    if (activePage !== 'students') return;
+    const timer = setTimeout(() => { void fetchStudents(searchAdm); }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchAdm, activePage]);
+
+  useEffect(() => {
+    if (activePage !== 'fee_editor') return;
+    const timer = setTimeout(() => { void fetchStudents(feeEditSearch); }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feeEditSearch, activePage]);
 
   // Sync state variables with database records on subpage change
   useEffect(() => {
@@ -2873,12 +2896,8 @@ export const AdminDashboardView: React.FC<{
                 {/*
                   Deliberately requests the NEXT PAGE OF THE SAME QUERY the
                   loaded rows came from, which is the unfiltered registry —
-                  fetchStudents is called with no search term, and the box
-                  above narrows those rows in the browser. Passing the search
-                  term here instead would page a different result set onto the
-                  end of this one: page 1 of every student followed by page 2
-                  of the matches, which is neither list and skips students in
-                  between.
+                  the list now comes from the search, so the next page is the
+                  next page of that same search.
                 */}
                 <button
                   onClick={() => loadMoreStudents()}
@@ -2903,6 +2922,16 @@ export const AdminDashboardView: React.FC<{
               gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
               gap: '12px'
             }}>
+              {!searchAdm.trim() && (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 20px', color: 'var(--muted-gray)', fontSize: '0.9286rem', fontWeight: 600 }}>
+                  Type a name, admission number or mobile number to see students.
+                </div>
+              )}
+              {searchAdm.trim() && registryPageStudents.length === 0 && (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 20px', color: 'var(--muted-gray)', fontSize: '0.8571rem' }}>
+                  No students match that search.
+                </div>
+              )}
               {registryPageStudents.map((student) => (
                 <GlassCard
                   key={student._id || student.admissionNumber || student.studentId}
@@ -3262,7 +3291,12 @@ export const AdminDashboardView: React.FC<{
     // whether a lookup succeeds.
     const currentMonth = new Date().toLocaleString('en-US', { month: 'long' });
 
-    const filteredStaff = teachers.filter(t => {
+    // Blank until the person searches or picks a filter, like the student lists.
+    const staffCriteria = Boolean(
+      searchFac.trim() || filterFacCampus !== 'All'
+      || filterStaffClassification !== 'All' || filterFacSubject !== 'All'
+    );
+    const filteredStaff = !staffCriteria ? [] : teachers.filter(t => {
       // Every staffed role sees every campus's staff. The clerk-only cut that
       // used to sit here was removed with the campus scoping on the server:
       // leaving it would have quietly kept the old behaviour on the one screen
@@ -3671,6 +3705,11 @@ export const AdminDashboardView: React.FC<{
 
                 {/* Staff Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '12px', marginTop: '4px' }}>
+                  {!staffCriteria && (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 20px', color: 'var(--muted-gray)', fontSize: '0.9286rem', fontWeight: 600 }}>
+                      Search by name, or pick a campus or role, to see staff.
+                    </div>
+                  )}
                   {facultyPageItems.map(t => {
                     const baseSal = Number(t.salary || 0);
                     const isCurPaid = isMonthPaid(monthRecordFor(t, currentLedgerYear(t), currentMonth));
@@ -5010,7 +5049,7 @@ export const AdminDashboardView: React.FC<{
         </header>
         <RecentlyDeletedPanel
           onToast={triggerToast}
-          onRestored={() => { fetchStudents('', true); fetchExpenditures(); }}
+          onRestored={() => { fetchStudents(undefined, true); fetchExpenditures(); }}
         />
       </div>
     );
@@ -6111,7 +6150,7 @@ export const AdminDashboardView: React.FC<{
         const full = await hydrateStudent({ ...selectedFeeStudent });
         setSelectedFeeStudent(full as any);
         setEditFeeSlots(slotsFromStudentFees(full));
-        await fetchStudents('', true);
+        await fetchStudents(undefined, true);
         triggerToast(`Fees updated for ${selectedFeeStudent.name}.`);
       } catch (err: any) {
         triggerToast(err?.message || 'Could not update the fees.');
@@ -6167,7 +6206,7 @@ export const AdminDashboardView: React.FC<{
             remainingBalance: breakdown.remainingBalance
           };
           setSelectedFeeStudent(freshStudentDoc as any);
-          await fetchStudents('');
+          await fetchStudents(undefined, true);
 
           triggerToast(`Fee overrides updated for ${selectedFeeStudent.name}.`);
           setIsFeeOtpOpen(false);
@@ -6211,6 +6250,11 @@ export const AdminDashboardView: React.FC<{
               gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
               gap: '12px'
             }}>
+              {!feeEditSearch.trim() && (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 20px', color: 'var(--muted-gray)', fontSize: '0.9286rem', fontWeight: 600 }}>
+                  Type a name or admission number to find a student.
+                </div>
+              )}
               {feeEditorPageStudents.map((student) => (
                 <GlassCard
                   key={student._id || student.admissionNumber || student.studentId}

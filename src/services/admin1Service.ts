@@ -245,8 +245,9 @@ export const admin1Service = {
   // parameter existed here and the box that should have filled it filtered the
   // loaded rows in the browser instead, which is why searching for a real
   // admission number past the cap answered "Student record not found".
-  async getStudents(search = '', branch = '', page = 1): Promise<ListPage<StudentProfile>> {
+  async getStudents(search = '', branch = '', page = 1, limit?: number): Promise<ListPage<StudentProfile>> {
     const params: string[] = [];
+    if (limit) params.push(`limit=${limit}`);
     if (search) params.push(`search=${encodeURIComponent(search)}`);
     if (branch && branch !== 'All') params.push(`branch=${encodeURIComponent(branch)}`);
     if (page > 1) params.push(`page=${page}`);

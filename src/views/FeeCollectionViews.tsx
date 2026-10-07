@@ -865,6 +865,7 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
       // did not send a student back, we refetch instead of inventing one.
       if (!res.student || typeof res.student.remainingBalance !== 'number') {
         triggerToast('Payment recorded. Refreshing balances from the server...');
+        setIsProcessingUpload(false);
         await triggerFreshnessRefetch();
         setCollectAmount('');
         setCollectTransactionRef('');
@@ -912,8 +913,12 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
       // choosing how the parent gets the receipt are separate decisions —
       // some want it printed, some want it on the phone — so the receipt is
       // shown and the clerk picks Print or Share Digital.
-      // Refetch full list and dashboard from server immediately after payment
-      await triggerFreshnessRefetch();
+      // The payment is saved and the receipt is on screen: drop the spinner NOW.
+      // The list refresh below used to be awaited with the spinner still up, so
+      // a slow connection left "processing" covering a receipt that already
+      // existed, and the clerk could not tell whether the money had been taken.
+      setIsProcessingUpload(false);
+      void triggerFreshnessRefetch();
     } catch (err: any) {
       triggerToast(err.message || 'Failed to submit payment.');
     } finally {
