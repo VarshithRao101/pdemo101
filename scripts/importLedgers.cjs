@@ -23,15 +23,19 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const BATCH = 'ledger-2026-10';
-const CAMPUS = { data: 'Erragattugutta C1', m1d: 'Erragattugutta C2', m2d: 'Erragattugutta C2' };
-const BOOK = { data: 'IIT & NEET', m1d: 'Main 1st Yr', m2d: 'Main 2nd Yr' };
+const BOYS = ['b1d', 'b2d'];
+const CAMPUS = { data: 'Erragattugutta C1', m1d: 'Erragattugutta C2', m2d: 'Erragattugutta C2', b1d: 'Beemaram C1', b2d: 'Beemaram C2' };
+const BOOK = { data: 'IIT & NEET', m1d: 'Main 1st Yr', m2d: 'Main 2nd Yr', b1d: 'Boys C1', b2d: 'Boys C2 2nd Yr' };
 const CASHIER = 'ledger-import';
 
 const args = process.argv.slice(2);
 const dataDir = args[0];
 const dbName = args.includes('--db') ? args[args.indexOf('--db') + 1] : null;
 const undo = args.includes('--undo');
+const BOOKS = args.includes('--books') ? args[args.indexOf('--books') + 1].split(',') : ['data', 'm1d', 'm2d'];
+// Girls and boys were loaded separately, so each set is its own batch and can be undone alone.
+const BATCH = BOOKS.every(b => BOYS.includes(b)) ? 'ledger-2026-10-boys' : 'ledger-2026-10';
+const NOTEBOOK = b => b === 'm2d' || b === 'b2d';
 if (!dataDir) { console.error('usage: importLedgers.cjs <dataDir> [--db name] [--undo]'); process.exit(1); }
 
 const sum = (rows, i) => rows.reduce((t, r) => t + (Number(r[i]) || 0), 0);
@@ -42,6 +46,8 @@ const isOthers = l => /^(others|books)/i.test(l);
 
 function isPaidRow(book, [label, date, rc]) {
   if (rc) return true;
+  // The boys' books mark a paid row with its receipt number and nothing else.
+  if (BOYS.includes(book)) return false;
   if (/\bdue\b|remaining/i.test(label)) return false;
   return book !== 'data' && !!date && /party|lab/i.test(label);
 }
@@ -65,7 +71,7 @@ function slotsFrom(rows) {
 
 function load() {
   const out = [];
-  for (const book of ['data', 'm1d', 'm2d']) {
+  for (const book of BOOKS) {
     const dir = path.join(dataDir, book);
     for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort()) {
       out.push({ book, ...JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) });
@@ -74,14 +80,24 @@ function load() {
   return out;
 }
 
-function build(recs) {
+const TAG = { data: 'G1', m1d: 'G2', m2d: 'G2', b1d: 'B1', b2d: 'B2' };
+
+function build(recs, taken = new Map(), seqStart = 1) {
   const students = [], payments = [], report = [];
-  const seenAdm = new Map();
+  const seenAdm = new Map(taken);
+  let seq = seqStart;
   for (const r of recs) {
     const flags = [...(r.uncertain || [])];
     let adm = String(r.adm || '').trim();
-    if (!adm) { adm = `NOADM-${r.img}`; flags.unshift('No admission number - placeholder used'); }
-    if (seenAdm.has(adm)) { flags.unshift(`Admission no. ${adm} also used by ${seenAdm.get(adm)} - suffixed`); adm = `${adm}-${r.img}`; }
+    if (!adm) {
+      // Temporary numbers, continuing the 1-25 the girls' book used; the college
+      // replaces them with real ones.
+      do { adm = String(seq++); } while (seenAdm.has(adm));
+      flags.unshift(`Temporary admission no. ${adm} (was blank in ledger) - replace with real number`);
+    } else if (seenAdm.has(adm)) {
+      flags.unshift(`Admission no. ${adm} is also ${seenAdm.get(adm)} - stored as ${adm}-${TAG[r.book]}`);
+      adm = `${adm}-${TAG[r.book]}`;
+    }
     seenAdm.set(adm, `${r.name} (${r.img})`);
 
     const year2 = Number(r.year) === 2;
@@ -92,7 +108,7 @@ function build(recs) {
     // Fees for the current year.
     const othersAmt = cur.det.filter(d => isOthers(d[0])).reduce((t, d) => t + d[3], 0);
     let tuition = Number(cur.fee) || 0;
-    if (book === 'm2d' && cur.inc && tuition) tuition = Math.max(0, tuition - othersAmt);
+    if (NOTEBOOK(book) && cur.inc && tuition) tuition = Math.max(0, tuition - othersAmt);
     const slots = slotsFrom(cur.det);
     if (!year2 && Number(r.fee2) > 0) slots.push({ id: 'second-year-fee-agreed', name: `2nd Year Fee agreed: ${r.fee2}${r.fee2_note ? ' (' + r.fee2_note + ')' : ''}`.slice(0, 120), amount: 0 });
     if (!tuition) flags.push(`${year2 ? '2nd' : '1st'}-year college fee not written - tuition left 0`);
@@ -100,9 +116,13 @@ function build(recs) {
     // History for second-year students.
     let previousPending = 0, yearHistory = [];
     if (year2) {
-      const pay1 = r.pay1 || [], det1 = r.det1 || [];
+      const pay1 = r.pay1 || [];
+      // A party fee first written without a receipt and later written again
+      // with one is the same charge, not two.
+      const det1 = (r.det1 || []).filter((d, i, all) => !(BOYS.includes(book) && d[0] === 'Party Fee' && !d[2]
+        && all.some(o => o[0] === 'Party Fee (2nd entry)')));
       const paid1 = sum(pay1, 2) + det1.filter(d => isPaidRow(book, d)).reduce((t, d) => t + d[3], 0);
-      if (book === 'm2d') previousPending = Number(r.due1) || 0;
+      if (NOTEBOOK(book)) previousPending = Number(r.due1) || 0;
       else if (r.fee1) {
         previousPending = Math.max(0, r.fee1 - sum(pay1, 2)) + det1.filter(d => !isPaidRow(book, d)).reduce((t, d) => t + d[3], 0);
         if (previousPending) flags.push(`1st-year pending ${previousPending} computed from ledger (fee - payments + unpaid items)`);
@@ -173,17 +193,26 @@ function csv(rows) {
 }
 
 (async () => {
-  const { students, payments, report } = build(load());
+  const seqStart = args.includes('--seq-start') ? Number(args[args.indexOf('--seq-start') + 1]) : 1;
+  let taken = new Map();
+  if (dbName && !undo) {
+    const mg = require('mongoose');
+    await mg.connect(process.env.MONGODB_URI, { dbName });
+    const S = require('../server/models/Student.cjs');
+    for (const x of await S.find({}).setOptions({ withDeleted: true }).select('admissionNumber name branch').lean()) taken.set(x.admissionNumber, `${x.name} (${x.branch}, already in database)`);
+    await mg.disconnect();
+  }
+  const { students, payments, report } = build(load(), taken, seqStart);
   const t = k => report.reduce((s, r) => s + r[k], 0);
   console.log(`students ${students.length}  payments ${payments.length}`);
-  for (const b of Object.values(BOOK)) {
+  for (const b of BOOKS.map(k => BOOK[k])) {
     const rr = report.filter(r => r.book === b);
     console.log(`  ${b.padEnd(12)} ${String(rr.length).padStart(3)} students  total ${rr.reduce((s, r) => s + r.total, 0)}  paid ${rr.reduce((s, r) => s + r.paid, 0)}  balance ${rr.reduce((s, r) => s + r.balance, 0)}`);
   }
   console.log(`  ALL          total ${t('total')}  paid ${t('paid')}  balance ${t('balance')}  flagged ${report.filter(r => r.flags).length}`);
   const rn = new Set(); for (const p of payments) { if (rn.has(p.receiptNumber)) throw new Error('dup receipt ' + p.receiptNumber); rn.add(p.receiptNumber); }
-  fs.writeFileSync(path.join(dataDir, 'import-report.csv'), '﻿' + csv(report));
-  if (!dbName) { console.log('dry run - report written to', path.join(dataDir, 'import-report.csv')); return; }
+  fs.writeFileSync(path.join(dataDir, BATCH + '-report.csv'), '﻿' + csv(report));
+  if (!dbName) { console.log('dry run - report written to', path.join(dataDir, BATCH + '-report.csv')); return; }
 
   const mongoose = require('mongoose');
   const Student = require('../server/models/Student.cjs');
@@ -191,7 +220,8 @@ function csv(rows) {
   await mongoose.connect(process.env.MONGODB_URI, { dbName });
   try {
     if (undo) {
-      const a = await Payment.deleteMany({ cashier: CASHIER, receiptNumber: /^LG-/ });
+      const ids = (await Student.find({ importBatch: BATCH }).setOptions({ withDeleted: true }).select('studentId').lean()).map(x => x.studentId);
+      const a = await Payment.deleteMany({ cashier: CASHIER, studentId: { $in: ids } });
       const b = await Student.deleteMany({ importBatch: BATCH }).setOptions({ withDeleted: true });
       console.log(`removed ${b.deletedCount} students, ${a.deletedCount} payments from ${dbName}`);
       return;
@@ -202,7 +232,7 @@ function csv(rows) {
     await Payment.insertMany(payments, { ordered: true });
     // Read back and compare with what was built.
     const got = await Student.find({ importBatch: BATCH }).lean();
-    const pays = await Payment.aggregate([{ $match: { cashier: CASHIER, receiptNumber: /^LG-/ } }, { $group: { _id: null, n: { $sum: 1 }, amt: { $sum: '$amount' } } }]);
+    const pays = await Payment.aggregate([{ $match: { cashier: CASHIER, studentId: { $in: got.map(x => x.studentId) } } }, { $group: { _id: null, n: { $sum: 1 }, amt: { $sum: '$amount' } } }]);
     const paidDb = got.reduce((s, x) => s + x.totalPaid, 0), balDb = got.reduce((s, x) => s + x.remainingBalance, 0);
     console.log(`in ${dbName}: students ${got.length}/${students.length}  payments ${pays[0]?.n}/${payments.length}  paid ${paidDb}/${t('paid')}  payment sum ${pays[0]?.amt}  balance ${balDb}/${t('balance')}`);
     if (got.length !== students.length || pays[0]?.n !== payments.length || paidDb !== t('paid') || pays[0]?.amt !== t('paid') || balDb !== t('balance')) { console.error('MISMATCH'); process.exit(3); }
