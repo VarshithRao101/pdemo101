@@ -538,7 +538,7 @@ const rows = (r) => {
       const newPw = `Ph1-${crypto.randomBytes(6).toString('hex')}`;
       const changed = await req('PUT', `/api/admin1/credentials/${victim.id}`, token,
         { password: newPw }, withPin());
-      ok('the Rector can change another Rector account's password', changed.status < 300,
+      ok("the Rector can change another Rector account's password", changed.status < 300,
         `status ${changed.status}: ${changed.raw.slice(0, 140)}`);
 
       const relog = await req('POST', '/api/auth/login', null,
