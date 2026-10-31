@@ -17,7 +17,7 @@
     "test:ci": "node tests/run-all.cjs --ci"
   },
   "dependencies": {
-    "@googleapis/drive": "^21.0.0",
+    "@googleapis/drive": "^27.0.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
