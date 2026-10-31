@@ -335,7 +335,6 @@ async function reconcileAll(Student, Payment) {
 
     // ------------------------------------------------------------------
     section('7. Every collecting clerk at once, 10 payments each');
-    const busy = [];
     const pool = await Student.find({ status: 'Active', remainingBalance: { $gt: 3000 } }).select('studentId remainingBalance branch').limit(400).lean();
     let k = 0;
     const t0 = Date.now();
