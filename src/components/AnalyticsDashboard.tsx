@@ -178,7 +178,7 @@ export const AnalyticsDashboard: React.FC<{ onBack?: () => void }> = ({ onBack }
           </Panel>
 
           <Panel title="Fee recovery" hint="Collected against what has been billed.">
-            <Recovery pct={h.recoveryRate} collected={h.collected} billed={h.billed} />
+            <Recovery pct={h.recoveryRate} collected={h.collected} billed={h.billed} outstanding={h.outstanding} />
           </Panel>
 
           <Panel title="Students by balance" hint="How the outstanding load is distributed.">

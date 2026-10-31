@@ -992,9 +992,14 @@ export const AdminDashboardView: React.FC<{
     if (stu?.handLoan) baseSlots.push({ id: 'handLoan', name: 'Hand Loan', amount: Number(stu.handLoan) || 0, isDefault: true });
 
     if (stu?.customFeeSlots && Array.isArray(stu.customFeeSlots)) {
-      const standardNames = ['tuition fee', 'tuition fee (academic)', 'hostel fee', 'miscellaneous fee', 'previous pending', 'books fee', 'uniform fees', 'hnd fees', 'internal exam', 'annual exam', 'party fees', 'bus fees', 'lab fees', 'hand loan'];
+      // Skip a slot only when the same fee is ALREADY on the bill above. This
+      // used to skip any slot NAMED like a standard fee ("Books Fee", "Lab
+      // Fees", ...) on the theory that a dedicated field carried it - but the
+      // schema has no such fields, so those fees vanished from the bill while
+      // still counting in its total.
+      const shown = new Set([...baseSlots.map(s => s.name.toLowerCase()), 'tuition fee', 'hostel fee', 'miscellaneous fee', 'previous pending']);
       stu.customFeeSlots.forEach((c: any, idx: number) => {
-        if (c && c.name && !standardNames.includes(String(c.name).toLowerCase().trim())) {
+        if (c && c.name && !shown.has(String(c.name).toLowerCase().trim())) {
           baseSlots.push({
             id: c.id ? `${c.id}_${idx}` : `custom_${c.name}_${idx}`,
             name: c.name,
@@ -2981,7 +2986,7 @@ export const AdminDashboardView: React.FC<{
                           Adm: {student.admissionNumber}  |  Reg: {student.registrationNumber || student.studentId}
                         </div>
                         <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
-                          {student.branch} ({student.course})
+                          {campusLabel(student.branch)}{student.course ? ` (${student.course})` : ''}
                         </div>
                       </div>
                     </div>
@@ -3088,7 +3093,7 @@ export const AdminDashboardView: React.FC<{
                         {editStudent.branch || 'Campus'}
                       </span>
                       <span style={{ fontSize: '0.7857rem', fontWeight: 800, padding: '4px 10px', borderRadius: '6px', backgroundColor: 'var(--good-wash)', color: 'var(--good)' }}>
-                        {editStudent.course || 'Course'}
+                        {editStudent.course || 'Course not set'}
                       </span>
                     </div>
                   </div>
@@ -3122,7 +3127,14 @@ export const AdminDashboardView: React.FC<{
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Course</label>
-                        <select value={editStudent.course || 'MPC'} onChange={(e) => setEditStudent({ ...editStudent, course: e.target.value })} style={styles.selectInput}>
+                        {/* Shows the stored value as it is. The imported register has
+                            blank courses and group names such as MPC-IIT; with only the
+                            three fixed options those all displayed as "MPC". */}
+                        <select value={editStudent.course || ''} onChange={(e) => setEditStudent({ ...editStudent, course: e.target.value })} style={styles.selectInput}>
+                          <option value="">Not set</option>
+                          {editStudent.course && !['MPC', 'BiPC', 'CEC'].includes(editStudent.course) && (
+                            <option value={editStudent.course}>{editStudent.course}</option>
+                          )}
                           <option value="MPC">MPC</option>
                           <option value="BiPC">BiPC</option>
                           <option value="CEC">CEC</option>
@@ -6294,7 +6306,7 @@ export const AdminDashboardView: React.FC<{
                           Adm: {student.admissionNumber}
                         </div>
                         <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
-                          {student.branch} ({student.course})
+                          {campusLabel(student.branch)}{student.course ? ` (${student.course})` : ''}
                         </div>
                       </div>
                     </div>

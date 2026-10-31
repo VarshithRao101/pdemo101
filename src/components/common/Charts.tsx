@@ -209,7 +209,12 @@ export const Composition: React.FC<{
 
 /* --------------------------------------------------------------- Recovery */
 
-export const Recovery: React.FC<{ pct: number; collected: number; billed: number }> = ({ pct, collected, billed }) => (
+// `outstanding` is the sum of every student's balance - the same figure as the
+// Outstanding tile beside this chart. Billed minus collected is NOT that number
+// whenever a student has paid more than their fee: the overpayment cancels
+// someone else's debt in the subtraction, and the page showed two different
+// "outstanding" amounts.
+export const Recovery: React.FC<{ pct: number; collected: number; billed: number; outstanding: number }> = ({ pct, collected, billed, outstanding }) => (
   <div className="viz-recovery">
     <div className="viz-recovery-head">
       <span className="viz-recovery-pct">{pct}%</span>
@@ -220,7 +225,7 @@ export const Recovery: React.FC<{ pct: number; collected: number; billed: number
     </span>
     <div className="viz-recovery-foot">
       <span><strong>{inrFull(collected)}</strong> collected</span>
-      <span>{inrFull(Math.max(0, billed - collected))} outstanding</span>
+      <span>{inrFull(outstanding)} outstanding</span>
     </div>
   </div>
 );
