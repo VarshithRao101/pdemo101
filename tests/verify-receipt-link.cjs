@@ -166,7 +166,9 @@ const req = (method, path, { token, body, form } = {}) => new Promise((resolve, 
     // This used to re-read the LIST, which no longer carries `receipts` — so
     // it compared a real token against `undefined` and failed every run, on a
     // property that line 161 has already shown to hold.
-    const again = await req('GET', `/api/accountant/students/${withReceipts[0].studentId}`, { token });
+    // The OWNER of `sample`, which is not withReceipts[0] whenever the first
+    // student with receipts has no mobile number on file.
+    const again = await req('GET', `/api/accountant/students/${owner.studentId}`, { token });
     const t2 = (again.json?.data?.receipts || [])
       .find(r => r.receiptNumber === sample.receiptNumber)?.receiptToken;
     ok('token is stable across requests (derived, not random)', !!t2 && t2 === sample.receiptToken);

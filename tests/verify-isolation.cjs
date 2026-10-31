@@ -87,7 +87,11 @@ const campusesIn = res => {
     : Array.isArray(res.json) ? res.json : [];
   return [...new Set(rows.map(r => r && (r.branch || r.campus)).filter(Boolean))];
 };
+// What the scope reaches, across every page. A page holds at most 500 rows
+// (LIST_DEFAULT_LIMIT), and the college has more students than that, so the
+// length of one page is not the size of the register; `meta.total` is.
 const countIn = res => {
+  if (Number.isFinite(res.json?.meta?.total)) return res.json.meta.total;
   const d = res.json?.data;
   return Array.isArray(d) ? d.length : Array.isArray(d?.items) ? d.items.length : null;
 };

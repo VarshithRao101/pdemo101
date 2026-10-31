@@ -217,7 +217,7 @@ export interface OpenPrintOptions {
    * sheet - for a receipt where the student keeps one copy and the parent the
    * other.
    *
-   * Give the two captions in order, LEFT first: `['STUDENT COPY', 'PARENT COPY']`.
+   * Give the two captions in order, LEFT first: `['INSTITUTION COPY', 'PARENT COPY']`.
    *
    * The bottom half of the sheet is left blank on purpose. The clerk prints,
    * cuts the printed half off (and once down the middle to separate the two

@@ -457,6 +457,10 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
   const [students, setStudents] = useState<Student[]>([]);
   const [deskTotal, setDeskTotal] = useState(0);
   const [deskLoading, setDeskLoading] = useState(false);
+  // Why the last lookup failed, if it did. Kept apart from an empty result:
+  // on a dropped connection the desk used to say "No students match", and a
+  // clerk who believes that admits the student a second time.
+  const [deskError, setDeskError] = useState('');
   const [facets, setFacets] = useState<{ courses: string[]; sections: string[] }>({ courses: [], sections: [] });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [securityKey] = useState('');
@@ -580,6 +584,7 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
     }
     const generation = ++deskGeneration.current;
     setDeskLoading(true);
+    setDeskError('');
     try {
       // No campus pin of our own: students are ONE registry across the four
       // campuses, so a student standing at this counter is findable whichever
@@ -602,6 +607,7 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
       if (generation !== deskGeneration.current) return;
       setStudents([]);
       setDeskTotal(0);
+      setDeskError(err?.message || 'Could not search students.');
       triggerToast(err?.message || 'Could not search students.', 'error');
     } finally {
       if (generation === deskGeneration.current) setDeskLoading(false);
@@ -1209,10 +1215,11 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
       buttonLabel: 'Print / Save Receipt as PDF',
       framed: true,
       // ONE A4 sheet carrying the receipt twice, side by side in its TOP half:
-      // student copy on the left, parent copy on the right, the bottom half
-      // left blank. The clerk prints, cuts the printed half off, and feeds the
-      // remaining half back for the next student - one sheet, two students.
-      copies: ['STUDENT COPY', 'PARENT COPY'],
+      // institution copy on the left (the college keeps it), parent copy on
+      // the right, the bottom half left blank. The clerk prints, cuts the
+      // printed half off, and feeds the remaining half back for the next
+      // student - one sheet, two students.
+      copies: ['INSTITUTION COPY', 'PARENT COPY'],
       onBlocked: () => triggerToast('Popup blocked by the browser. Allow popups for this site to print the receipt.')
     });
     if (opened) triggerToast('Receipt opened for printing.');
@@ -1751,7 +1758,10 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
                             Adm: {s.admissionNumber || s.studentId}  |  ID: {s.studentId || s.admissionNumber}
                           </div>
                           <div style={{ fontSize: '0.7857rem', color: 'var(--royal-gold)', fontWeight: 800, marginTop: '2px' }}>
-                            {s.branch || loggedInCampus} ({s.course || 'MPC'}{s.section ? ` - ${s.section}` : ''})
+                            {/* No course is shown rather than a guessed one: the imported
+                                register leaves it blank where the college's sheet did. */}
+                            {campusLabel(s.branch || loggedInCampus)}
+                            {s.course ? ` (${s.course}${s.section ? ` - ${s.section}` : ''})` : ''}
                           </div>
                         </div>
                       </div>
@@ -1791,7 +1801,21 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
                     Type a name or admission number, or choose a filter, to see students.
                   </div>
                 )}
-                {hasDeskCriteria && !deskLoading && deskTotal === 0 && (
+                {hasDeskCriteria && !deskLoading && deskError && (
+                  <div role="alert" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: '#B91C1C', fontSize: '0.8571rem', fontWeight: 600 }}>
+                    The search did not run: {deskError} This does not mean the student is missing.
+                    <div style={{ marginTop: '12px' }}>
+                      <button
+                        onClick={() => runDeskSearch()}
+                        style={{ padding: '8px 16px', borderRadius: '10px', border: '1.5px solid currentColor', background: 'transparent', color: 'inherit', fontWeight: 800, cursor: 'pointer' }}
+                        className="press-interactive"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {hasDeskCriteria && !deskLoading && !deskError && deskTotal === 0 && (
                   <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--muted-gray)', fontSize: '0.8571rem' }}>
                     No students match. Try a different name or admission number, or clear the filters.
                   </div>
