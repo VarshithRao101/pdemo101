@@ -3122,6 +3122,16 @@ export const AdminDashboardView: React.FC<{
                         </select>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={styles.formLabel}>Year</label>
+                        {/* A correction to how the student is filed. Promoting a
+                            first-year with a new year's fees is the Upgrade button. */}
+                        <select value={(editStudent as any).studentYear || 'First Year'} onChange={(e) => setEditStudent({ ...editStudent, studentYear: e.target.value } as any)} style={styles.selectInput}>
+                          <option value="First Year">First Year</option>
+                          <option value="Second Year">Second Year</option>
+                          <option value="Short Term">Short Term</option>
+                        </select>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={styles.formLabel}>Student Mobile</label>
                         <input maxLength={LIMITS.mobile} type="text" value={editStudent.mobile || ''} onChange={(e) => setEditStudent({ ...editStudent, mobile: e.target.value })} style={styles.textInputBox} />
                       </div>

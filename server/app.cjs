@@ -4016,9 +4016,70 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
       });
     }
 
-    // `branch` is deliberately absent: moving a student between campuses is
-    // not a routine profile edit, and allowing it here would let a
-    // campus-scoped account pull records across the isolation boundary.
+    // Admission number, campus and year — corrections to how a student is
+    // filed, which the college needs after the fee-Excel import left 189
+    // temporary admission numbers and two campuses whose year was inferred.
+    //
+    // Each is compared to the STORED value, never tested for presence: the
+    // editor PATCHes the whole record, so every save carries all three
+    // unchanged (see the waiver guard above for what testing presence did).
+    //
+    // `studentId` is deliberately NOT renamed. It is the key every payment
+    // record points at, and leaving it alone means a renumbered student keeps
+    // their whole history without rewriting a single foreign key. Receipt
+    // numbers and the links already sent to parents are signed over the
+    // receipt number alone, so they keep working too.
+    const filing = {};
+    const before = { admissionNumber: student.admissionNumber, branch: student.branch, studentYear: student.studentYear };
+
+    if (body.admissionNumber !== undefined && String(body.admissionNumber).trim() !== student.admissionNumber) {
+      const next = String(body.admissionNumber).trim();
+      if (!next) {
+        return res.status(400).json({ status: 'error', message: 'Admission number cannot be blank.' });
+      }
+      if (next.length > FIELD_LIMITS.admissionNumber) {
+        return res.status(400).json({ status: 'error', message: `Admission number must be at most ${FIELD_LIMITS.admissionNumber} characters.` });
+      }
+      // Case- and spacing-insensitive, like creation, and against studentId
+      // too: lookups match either field, so a number equal to another
+      // student's studentId would make that student ambiguous. Deleted
+      // students count — the unique index still holds their numbers.
+      const clash = await Student.findOne({
+        _id: { $ne: student._id },
+        $or: [{ admissionNumber: new RegExp(`^\\s*${escapeRegex(next)}\\s*$`, 'i') }, { studentId: next }]
+      }).setOptions({ withDeleted: true }).lean();
+      if (clash) {
+        return res.status(409).json({
+          status: 'error',
+          message: clash.deletedAt
+            ? `Admission number [${next}] belongs to a deleted student (${clash.name}). Restore or permanently remove that record first.`
+            : `Admission number [${next}] already belongs to ${clash.name} (${clash.branch}).`
+        });
+      }
+      filing.admissionNumber = next;
+    }
+
+    if (body.branch !== undefined && normalizeCampus(body.branch) !== student.branch) {
+      const next = normalizeCampus(body.branch);
+      if (!VALID_CAMPUSES.includes(next)) {
+        return res.status(400).json({ status: 'error', message: `Unknown campus [${body.branch}].` });
+      }
+      // Rector only. A clerk is filed under one campus; moving students
+      // between campuses changes whose numbers they count in, which is the
+      // Rector's call.
+      if (req.user.role !== 'admin1') {
+        return res.status(403).json({ status: 'error', message: 'Only the Rector can move a student to another campus.' });
+      }
+      filing.branch = next;
+    }
+
+    if (body.studentYear !== undefined && body.studentYear !== student.studentYear) {
+      if (!VALID_STUDENT_YEARS.includes(body.studentYear)) {
+        return res.status(400).json({ status: 'error', message: `Year must be one of: ${VALID_STUDENT_YEARS.join(', ')}.` });
+      }
+      filing.studentYear = body.studentYear;
+    }
+
     const result = applyAllowedFields(student, req.body, {
       name: 'string', fatherName: 'string', motherName: 'string',
       mobile: 'string', parentMobile: 'string', email: 'string',
@@ -4038,6 +4099,7 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
       return res.status(400).json({ status: 'error', message: result.error });
     }
     if (req.body.customFeeSlots !== undefined) student.markModified('customFeeSlots');
+    Object.assign(student, filing);
 
     // Keep the derived balance consistent with whatever fees just changed,
     // rather than leaving a stale figure on the record.
@@ -4045,18 +4107,38 @@ app.patch(['/api/admin1/students/:id', '/api/admin2/students/:id', '/api/admin/s
 
     await student.save();
 
+    // Payments carry a copy of the admission number and campus, for the
+    // exports and the campus collection totals. They follow the student, so
+    // a student moved to the right campus does not leave their money counted
+    // at the wrong one. Deleted payments too (updateMany is not filtered by
+    // the soft-delete plugin): if one is restored it should come back filed
+    // correctly.
+    const paymentCopy = {};
+    if (filing.admissionNumber) paymentCopy.admissionNumber = filing.admissionNumber;
+    if (filing.branch) paymentCopy.branch = filing.branch;
+    if (Object.keys(paymentCopy).length) {
+      try {
+        await Payment.updateMany({ studentId: student.studentId }, { $set: paymentCopy });
+      } catch (err) {
+        // The student is already saved and correct; only the copies are
+        // stale. Say so loudly rather than fail an edit that succeeded.
+        console.error(`[Student edit]: payment copies not updated for ${student.studentId}:`, err.message);
+      }
+    }
+
     // `result.applied` is the list of fields applyAllowedFields actually
     // wrote, so the log names what was edited rather than saying "profile
     // updated" — and it excludes anything the caller sent that was ignored.
-    const changedFields = result.applied || [];
+    const changedFields = [...(result.applied || []), ...Object.keys(filing)];
+    const filingNote = Object.keys(filing).map(f => `${f} ${before[f]} → ${filing[f]}`).join('; ');
     recordAudit(req, {
       action: 'student.update',
       entityType: 'student',
       entityId: student.studentId,
       entityLabel: studentLabel(student),
       campus: student.branch,
-      summary: `Edited ${studentLabel(student)}${changedFields.length ? ` — changed ${changedFields.join(', ')}` : ''}.`,
-      details: { fields: changedFields, remainingBalance: student.remainingBalance }
+      summary: `Edited ${studentLabel(student)}${changedFields.length ? ` — changed ${changedFields.join(', ')}` : ''}${filingNote ? ` (${filingNote})` : ''}.`,
+      details: { fields: changedFields, remainingBalance: student.remainingBalance, ...(filingNote ? { before, after: filing } : {}) }
     });
 
     return res.json({ status: 'success', data: student });

@@ -10,6 +10,7 @@ import { GlassCard } from '../components/common/GlassCard';
 import collegeLogo from '../assets/college logo.webp';
 import * as accountantService from '../services/accountantService';
 import { FeeSlotEditor, feeSlotsToPayload, slotsFromStudentFees, sumFeeSlots, type FeeSlot } from '../components/common/FeeSlotEditor';
+import { WhatsAppNumberDialog } from '../components/common/WhatsAppNumberDialog';
 import { CAMPUS_LIST, campusLabel } from '../constants/campuses';
 import { useDataFreshness } from '../hooks/useDataFreshness';
 import { downloadCsv } from '../services/accountService';
@@ -482,6 +483,8 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
   // Search parameters (Local Edit Buffer state)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [editStudent, setEditStudent] = useState<Student | null>(null);
+  // Share Digital asks for the number first; most imported students have none.
+  const [shareNumberOpen, setShareNumberOpen] = useState(false);
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [isStuOtpModalOpen, setIsStuOtpModalOpen] = useState(false);
   const [, setStuOtpInput] = useState('');
@@ -1057,28 +1060,34 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
    * toast says exactly that, because a button called "share digital" that
    * quietly sent only half of it would be worse than one that explains.
    */
-  const shareReceiptDigitally = (receipt: Receipt, student: Student) => {
-    const sent = sendReceiptOnWhatsApp(receipt, student);
-    if (!sent) return;   // no number, or pop-up blocked — already reported
+  /**
+   * Runs from the number dialog's Send click, so both windows open inside the
+   * user's gesture. The number is saved afterwards — a failed save (no
+   * editStudent permission) leaves the receipt already on its way.
+   */
+  const shareReceiptDigitally = (receipt: Receipt, student: Student, tenDigits: string, saveToRecord: boolean) => {
+    setShareNumberOpen(false);
+    const sent = sendReceiptOnWhatsApp(receipt, student, tenDigits);
+    if (!sent) return;   // pop-up blocked — already reported
 
     // Opened second so WhatsApp is the window in front.
     handleDownloadPDF(receipt, student);
+
+    if (!saveToRecord) return;
+    const id = student._id || student.studentId || student.admissionNumber;
+    accountantService.updateStudentBio(encodeURIComponent(id), { parentMobile: tenDigits } as any)
+      .then(() => {
+        setSelectedStudent(prev => prev && (prev._id === student._id ? { ...prev, parentMobile: tenDigits } as any : prev));
+        setEditStudent(prev => prev && (prev._id === student._id ? { ...prev, parentMobile: tenDigits } as any : prev));
+        triggerToast(`${tenDigits} saved as ${student.name}'s parent mobile.`);
+      })
+      .catch((err: any) => triggerToast(`Receipt sent, but the number was not saved: ${String(err?.message || 'request failed').replace(/\.$/, '')}.`, 'error'));
   };
 
-  const sendReceiptOnWhatsApp = (receipt: Receipt, student: Student): boolean => {
-    const raw = String((student as any)?.parentMobile || student?.mobile || '').replace(/\D/g, '');
-
-    if (raw.length < 10) {
-      triggerToast(
-        `No mobile number saved for ${student?.name || 'this student'}. Add a parent or student mobile on their record first.`,
-        'error'
-      );
-      return false;
-    }
-
-    // wa.me wants the country code and no plus. Ten digits is a bare Indian
-    // number; anything longer already carries its own code.
-    const to = raw.length === 10 ? `91${raw}` : raw;
+  const sendReceiptOnWhatsApp = (receipt: Receipt, student: Student, tenDigits: string): boolean => {
+    // wa.me wants the country code and no plus; the dialog has already
+    // reduced whatever was typed to ten national digits.
+    const to = `91${tenDigits}`;
 
     // encodeURIComponent rather than a template in the URL: a student name
     // containing & or # would otherwise truncate the message silently.
@@ -1444,6 +1453,16 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Admission Number</label>
                     <input maxLength={LIMITS.admissionNumber} type="text" value={editStudent.admissionNumber || ''} onChange={(e) => setEditStudent({ ...editStudent, admissionNumber: e.target.value })} style={styles.textInputBox} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={styles.formLabel}>Year</label>
+                    {/* A correction to how the student is filed. Promoting a
+                        first-year with a new year's fees is the Upgrade button. */}
+                    <select value={editStudent.studentYear || 'First Year'} onChange={(e) => setEditStudent({ ...editStudent, studentYear: e.target.value as Student['studentYear'] })} style={styles.selectInput}>
+                      <option value="First Year">First Year</option>
+                      <option value="Second Year">Second Year</option>
+                      <option value="Short Term">Short Term</option>
+                    </select>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={styles.formLabel}>Student Mobile</label>
@@ -2600,7 +2619,7 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '10px', marginTop: '16px' }}>
                 <button onClick={() => handleDownloadPDF(selectedReceipt, selectedStudent)} style={{ ...styles.sheetBtn, backgroundColor: 'var(--royal-gold)', color: '#FFFFFF', fontWeight: 800 }} className="press-interactive">Download PDF / Print</button>
                 <button
-                  onClick={() => shareReceiptDigitally(selectedReceipt, selectedStudent)}
+                  onClick={() => setShareNumberOpen(true)}
                   style={{ ...styles.sheetBtn, backgroundColor: '#25D366', color: '#FFFFFF', fontWeight: 800 }}
                   className="press-interactive"
                 >
@@ -2610,6 +2629,16 @@ export const FeeCollectionView: React.FC<{ campusOverride?: string }> = ({ campu
             </div>
           </div>
         )}
+          {activeOverlay === 'receipt_view' && selectedReceipt && selectedStudent && (
+            <WhatsAppNumberDialog
+              open={shareNumberOpen}
+              studentName={selectedStudent.name}
+              savedNumber={(selectedStudent as any).parentMobile || selectedStudent.mobile || ''}
+              sendLabel="Send receipt"
+              onSend={(tenDigits, save) => shareReceiptDigitally(selectedReceipt, selectedStudent, tenDigits, save)}
+              onClose={() => setShareNumberOpen(false)}
+            />
+          )}
           {renderModals()}
 
           {isExportOpen && (
