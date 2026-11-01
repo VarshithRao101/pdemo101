@@ -13,6 +13,8 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getOutstandingFees, type OutstandingStudent } from '../../services/accountService';
+import { updateStudentBio } from '../../services/accountantService';
+import { WhatsAppNumberDialog } from './WhatsAppNumberDialog';
 
 interface Props {
   campuses: readonly string[];
@@ -51,6 +53,8 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
   const [requested, setRequested] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // The student whose reminder is being addressed, while the number is asked.
+  const [reminding, setReminding] = useState<OutstandingStudent | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,22 +95,30 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
     + `Kindly clear the balance at the college office at your earliest convenience. `
     + `Please ignore this message if you have already paid.`;
 
-  /** Indian numbers stored as 10 digits; WhatsApp wants the country code. */
-  const waNumber = (contact: string) => {
-    const digits = String(contact || '').replace(/\D/g, '');
-    if (digits.length === 10) return `91${digits}`;
-    return digits;
-  };
-
-  const remind = (student: OutstandingStudent) => {
-    if (!student.contact) {
-      onToast(`No contact number on file for ${student.name}.`);
-      return;
-    }
+  /**
+   * Send the reminder to the number confirmed in the dialog.
+   *
+   * WhatsApp opens first and synchronously, inside the click — after an await
+   * a pop-up blocker would stop it. Saving the number follows, and failing to
+   * save (a clerk without editStudent, say) does not undo a reminder already
+   * on its way.
+   */
+  const remind = (student: OutstandingStudent, tenDigits: string, saveToRecord: boolean) => {
+    setReminding(null);
     // Opened, never sent. A person reads the draft and presses send.
-    const url = `https://wa.me/${waNumber(student.contact)}?text=${encodeURIComponent(messageFor(student))}`;
+    const url = `https://wa.me/91${tenDigits}?text=${encodeURIComponent(messageFor(student))}`;
     const opened = window.open(url, '_blank', 'noopener,noreferrer');
-    if (!opened) onToast('Popup blocked. Allow popups for this site to open WhatsApp.');
+    if (!opened) { onToast('Popup blocked. Allow popups for this site to open WhatsApp.'); return; }
+    if (!saveToRecord) return;
+
+    const hadNone = !student.contact;
+    updateStudentBio(encodeURIComponent(student.admissionNumber), { parentMobile: tenDigits } as any)
+      .then(() => {
+        setRows(prev => prev.map(r => r.admissionNumber === student.admissionNumber ? { ...r, contact: tenDigits } : r));
+        if (hadNone) setWithoutContact(n => Math.max(0, n - 1));
+        onToast(`WhatsApp opened. ${tenDigits} saved as ${student.name}'s parent mobile.`);
+      })
+      .catch((err: any) => onToast(`WhatsApp opened, but the number was not saved: ${String(err?.message || 'request failed').replace(/\.$/, '')}.`));
   };
 
   const copyNumbers = async () => {
@@ -299,16 +311,15 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
               </div>
 
               <button
-                onClick={() => remind(student)}
-                disabled={!student.contact}
-                title={student.contact ? 'Open WhatsApp with a drafted reminder' : 'No contact number on file'}
+                onClick={() => setReminding(student)}
+                title={student.contact ? 'Open WhatsApp with a drafted reminder' : 'Enter a number and open WhatsApp with a drafted reminder'}
                 style={{
                   padding: '8px 13px', borderRadius: 9,
-                  border: `1.5px solid ${student.contact ? 'var(--good)' : 'var(--card-border)'}`,
+                  border: '1.5px solid var(--good)',
                   background: 'transparent',
-                  color: student.contact ? 'var(--good)' : 'var(--muted-gray)',
+                  color: 'var(--good)',
                   fontWeight: 850, fontSize: '0.7857rem',
-                  cursor: student.contact ? 'pointer' : 'not-allowed',
+                  cursor: 'pointer',
                   whiteSpace: 'nowrap'
                 }}
                 className="press-interactive"
@@ -319,6 +330,15 @@ export const OutstandingFeesPanel: React.FC<Props> = ({
           ))}
         </div>
       )}
+
+      <WhatsAppNumberDialog
+        open={Boolean(reminding)}
+        studentName={reminding?.name || ''}
+        savedNumber={reminding?.contact || ''}
+        sendLabel="Send reminder"
+        onSend={(tenDigits, save) => reminding && remind(reminding, tenDigits, save)}
+        onClose={() => setReminding(null)}
+      />
     </div>
   );
 };
